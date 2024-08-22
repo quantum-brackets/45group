@@ -6,6 +6,7 @@ import "./globals.css";
 import theme from "./theme";
 import { cn } from "~/utils/helpers";
 import TanstackQueryProvider from "~/providers/tanstack-query";
+import Toast from "~/components/toast";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,7 +25,10 @@ export default function RootLayout({
       <body className={cn(inter.className, "scroll-smooth min-h-screen")}>
         <AppRouterCacheProvider>
           <TanstackQueryProvider>
-            <ThemeProvider theme={theme}>{children}</ThemeProvider>
+            <ThemeProvider theme={theme}>
+              <Toast />
+              {children}
+            </ThemeProvider>
           </TanstackQueryProvider>
         </AppRouterCacheProvider>
       </body>
