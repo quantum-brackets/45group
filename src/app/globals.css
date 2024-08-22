@@ -2,32 +2,98 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    --primary: #d34c23;
+    --primary-50: #fdf5ef;
+    --primary-100: #fbe8d9;
+    --primary-200: #f5cfb3;
+    --primary-300: #efae82;
+    --primary-400: #e8834f;
+    --primary-500: #e15e26;
+    --primary-600: #d34c23;
+    --primary-700: #b0391e;
+    --primary-800: #8c2f20;
+    --primary-900: #71291d;
+    --primary-950: #3d120d;
+
+    --secondary: #2aa148;
+    --secondary-50: #f2fbf4;
+    --secondary-100: #e0f8e5;
+    --secondary-200: #c2f0cd;
+    --secondary-300: #92e3a6;
+    --secondary-400: #5bcd78;
+    --secondary-500: #35b254;
+    --secondary-600: #2aa148;
+    --secondary-700: #217436;
+    --secondary-800: #1f5c2f;
+    --secondary-900: #1b4c29;
+    --secondary-950: #0a2913;
   }
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+#nprogress {
+  pointer-events: none;
 }
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+#nprogress .bar {
+  @apply bg-primary;
+  position: fixed;
+  z-index: 9999;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+}
+#nprogress .peg {
+  display: block;
+  position: absolute;
+  right: 0px;
+  width: 100px;
+  height: 100%;
+  @apply shadow-sm shadow-primary;
+  opacity: 1;
+  -webkit-transform: rotate(3deg) translate(0px, -4px);
+  -ms-transform: rotate(3deg) translate(0px, -4px);
+  transform: rotate(3deg) translate(0px, -4px);
+}
+#nprogress .spinner {
+  display: block;
+  position: fixed;
+  z-index: 1031;
+  top: 15px;
+  right: 15px;
+}
+#nprogress .spinner-icon {
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  border: solid 2px transparent;
+  @apply border-l-primary border-t-primary;
+  border-radius: 50%;
+  -webkit-animation: nprogresss-spinner 400ms linear infinite;
+  animation: nprogress-spinner 400ms linear infinite;
+}
+.nprogress-custom-parent {
+  overflow: hidden;
+  position: relative;
+}
+.nprogress-custom-parent #nprogress .spinner,
+.nprogress-custom-parent #nprogress .bar {
+  position: absolute;
+}
+@-webkit-keyframes nprogress-spinner {
+  0% {
+    -webkit-transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(360deg);
+  }
+}
+@keyframes nprogress-spinner {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
   }
 }
