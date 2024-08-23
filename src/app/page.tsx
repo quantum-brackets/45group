@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { notifyError, notifyInfo, notifySuccess } from "~/utils/toast";
 
 export default function Home() {
@@ -15,6 +16,10 @@ export default function Home() {
         </button>
         <button onClick={() => notifySuccess({ message: "success" })}>success</button>
         <button onClick={() => notifyInfo({ message: "info" })}>info</button>
+      </div>
+
+      <div>
+        <Link href={"/api/hello"}>Go to API</Link>
       </div>
     </main>
   );
