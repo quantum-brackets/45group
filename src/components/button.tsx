@@ -9,7 +9,7 @@ export default function Button({
   className,
   sx,
   children,
-  size = "large",
+  size = "medium",
   ...props
 }: LoadingButtonProps) {
   return (

@@ -10,6 +10,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         dancing_script: ["var(--font-dancing-script)"],
+        merriweather: ["var(--font-merriweather)"],
       },
       colors: {
         primary: {
