@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import { ThemeProvider } from "@mui/material";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
 import "./globals.css";
@@ -7,8 +6,7 @@ import theme from "./theme";
 import { cn } from "~/utils/helpers";
 import TanstackQueryProvider from "~/providers/tanstack-query";
 import Toast from "~/components/toast";
-
-const inter = Inter({ subsets: ["latin"] });
+import { dancing_script, merriweather } from "~/utils/fonts";
 
 export const metadata: Metadata = {
   title: "45Group",
@@ -22,7 +20,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={cn(inter.className, "scroll-smooth min-h-screen")}>
+      <body
+        className={cn(dancing_script.variable, merriweather.variable, "min-h-screen scroll-smooth")}
+      >
         <AppRouterCacheProvider>
           <TanstackQueryProvider>
             <ThemeProvider theme={theme}>

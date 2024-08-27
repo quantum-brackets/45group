@@ -9,7 +9,7 @@ export default function Button({
   className,
   sx,
   children,
-  size = "large",
+  size = "medium",
   ...props
 }: LoadingButtonProps) {
   return (
@@ -18,10 +18,11 @@ export default function Button({
       variant={variant}
       size={size}
       className={cn(
+        "!font-medium",
         {
           "opacity-40": loading,
         },
-        `${className}`
+        className
       )}
       sx={{
         textTransform: "none",

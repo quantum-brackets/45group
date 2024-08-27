@@ -30,6 +30,10 @@
     --secondary-900: #1b4c29;
     --secondary-950: #0a2913;
   }
+
+  * {
+    @apply font-merriweather;
+  }
 }
 
 #nprogress {
