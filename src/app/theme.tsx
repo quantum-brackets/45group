@@ -1,6 +1,7 @@
 "use client";
 
 import { createTheme } from "@mui/material/styles";
+import { merriweather } from "~/utils/fonts";
 
 const theme = createTheme({
   palette: {
@@ -30,6 +31,9 @@ const theme = createTheme({
       800: "#1f5c2f",
       900: "#1b4c29",
     },
+  },
+  typography: {
+    fontFamily: merriweather.style.fontFamily,
   },
   components: {
     MuiOutlinedInput: {
@@ -132,6 +136,13 @@ const theme = createTheme({
         },
         root: {
           fontWeight: 600,
+        },
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          marginTop: "0px",
         },
       },
     },

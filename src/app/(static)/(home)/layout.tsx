@@ -4,7 +4,7 @@ type Props = Record<"children" | "lodges" | "events" | "cuisine" | "contact", Re
 
 export default function Layout({ children, lodges, events, cuisine, contact }: Props) {
   return (
-    <div className="flex flex-col gap-16 pb-16">
+    <div className="max-w-App flex w-full flex-col gap-16 pb-16">
       {children}
       {lodges}
       {events}

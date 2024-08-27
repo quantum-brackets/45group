@@ -5,12 +5,16 @@ const config: Config = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/modules/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       fontFamily: {
         dancing_script: ["var(--font-dancing-script)"],
         merriweather: ["var(--font-merriweather)"],
+      },
+      maxWidth: {
+        App: "1900px",
       },
       colors: {
         primary: {
@@ -48,6 +52,8 @@ const config: Config = {
         mediumMobile: { max: "375px" },
 
         largeMobile: { max: "425px" },
+
+        tablet_768: { max: "768px" },
 
         tablet: { max: "900px" },
 
