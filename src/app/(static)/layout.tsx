@@ -56,13 +56,13 @@ export default function Layout({ children }: Props) {
           <Logo className="w-[2.5rem]" />
         </Link>
         <div className="flex items-center gap-8 largeMobile:gap-4">
-          <Link href={""}>
+          <Link href={"https://x.com/hotel45ng"}>
             <FaSquareXTwitter className="text-xl text-zinc-700" />
           </Link>
-          <Link href={""}>
+          <Link href={"https://www.instagram.com/hotel45.ng"}>
             <FaInstagram className="text-xl text-zinc-700" />
           </Link>
-          <Link href={""}>
+          <Link href={"https://www.facebook.com/Hotel45.ng"}>
             <FaFacebook className="text-xl text-zinc-700" />
           </Link>
         </div>
