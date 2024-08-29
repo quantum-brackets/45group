@@ -1,8 +1,8 @@
 import Link from "next/link";
 import SectionWrapper from "~/components/home/section-wrapper";
 
-const tel = "+61 234–567 8910";
-const email = "support@gulaly.com";
+const tel = "+234 8174683545";
+const email = "info@45group.org";
 
 export default function Contact() {
   return (
