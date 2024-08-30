@@ -2,13 +2,36 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Drawer, IconButton } from "@mui/material";
 import { HiOutlineMenuAlt2 } from "react-icons/hi";
 import { IoClose } from "react-icons/io5";
 import Logo from "~/components/logo";
+import { cn } from "~/utils/helpers";
+
+const links = [
+  {
+    href: "/lodges",
+    text: "Lodges",
+  },
+  {
+    href: "/events",
+    text: "Events",
+  },
+  {
+    href: "/cuisines",
+    text: "Cuisines",
+  },
+  {
+    href: "/about",
+    text: "About",
+  },
+];
 
 export default function NavbarMenu() {
   const [open, setOpen] = useState(false);
+
+  const pathname = usePathname();
 
   function closeDrawer() {
     setOpen(false);
@@ -35,28 +58,21 @@ export default function NavbarMenu() {
             <IoClose className="!text-zinc-700" />
           </IconButton>
           <ul className="flex flex-col items-center gap-8 tablet:gap-6 largeLaptop:gap-12">
+            {links.map(({ href, text }, index) => (
+              <li key={index}>
+                <Link
+                  href={href}
+                  className={cn("text-sm hover:underline", {
+                    underline: pathname === href,
+                  })}
+                  onClick={closeDrawer}
+                >
+                  {text}
+                </Link>
+              </li>
+            ))}
             <li>
-              <Link href={"/lodges"} className="text-sm hover:underline">
-                Lodges
-              </Link>
-            </li>
-            <li>
-              <Link href={"/events"} className="text-sm hover:underline">
-                Events
-              </Link>
-            </li>
-            <li>
-              <Link href={"/cuisines"} className="text-sm hover:underline">
-                Cuisines
-              </Link>
-            </li>
-            <li>
-              <Link href={"/about"} className="text-sm hover:underline">
-                About
-              </Link>
-            </li>
-            <li>
-              <Link href={"/about"} className="text-sm hover:underline">
+              <Link href={"/#contact"} onClick={closeDrawer} className="text-sm hover:underline">
                 Contact
               </Link>
             </li>
