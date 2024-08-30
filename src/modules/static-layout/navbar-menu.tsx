@@ -9,26 +9,11 @@ import { IoClose } from "react-icons/io5";
 import Logo from "~/components/logo";
 import { cn } from "~/utils/helpers";
 
-const links = [
-  {
-    href: "/lodges",
-    text: "Lodges",
-  },
-  {
-    href: "/events",
-    text: "Events",
-  },
-  {
-    href: "/cuisines",
-    text: "Cuisines",
-  },
-  {
-    href: "/about",
-    text: "About",
-  },
-];
+type Props = {
+  links: Record<"href" | "text", string>[];
+};
 
-export default function NavbarMenu() {
+export default function NavbarMenu({ links }: Props) {
   const [open, setOpen] = useState(false);
 
   const pathname = usePathname();
