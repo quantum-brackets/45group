@@ -30,7 +30,7 @@ export default function Lodges() {
     <div className="flex w-full flex-col gap-12 p-12 largeMobile:pt-10 tablet:px-4">
       <header className="flex flex-col items-center gap-10 largeMobile:gap-6">
         <h1 className="text-3xl largeMobile:text-2xl">Lodges</h1>
-        <p className="text-sm largeMobile:text-xs">
+        <p className="text-center text-sm largeMobile:text-xs">
           Embark on your next unforgettable adventure at Loges Location, where breathtaking
           landscapes and thrilling experiences await to inspire your wanderlust, create lasting
           memories, and offer you the perfect backdrop for exploration and discovery in the great
