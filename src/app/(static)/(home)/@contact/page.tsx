@@ -7,6 +7,7 @@ const email = "info@45group.org";
 export default function Contact() {
   return (
     <SectionWrapper
+      id="contact"
       title="Contact"
       subtitle="For comprehensive support and assistance with your travel needs, please don't hesitate to contact the dedicated team at 45Group, who can expertly help you with booking comfortable lodges for your stay, guide you through the process of attending local events and attractions, or assist in making reservations at the finest restaurants in the area to enhance your dining experience."
     >

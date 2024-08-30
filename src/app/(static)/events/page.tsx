@@ -24,7 +24,7 @@ const lodges = [
   },
 ];
 
-export default function Lodges() {
+export default function Events() {
   return (
     <div className="flex w-full flex-col gap-12 p-12 largeMobile:pt-10 tablet:px-4">
       <header className="flex flex-col items-center gap-10 largeMobile:gap-6">
