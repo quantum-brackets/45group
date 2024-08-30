@@ -59,13 +59,23 @@ export default function StaticCard({ name, location, images, link }: Props) {
     }),
   };
 
+  function startHover() {
+    setIsHovered(true);
+  }
+
+  function endHover() {
+    setIsHovered(false);
+  }
+
   return (
     <Link href={link} className="flex flex-col items-center gap-12 tablet_768:gap-8">
       <figure className="relative aspect-video w-full">
         <motion.div
-          className="relative h-full w-full overflow-hidden rounded-md largeLaptop:rounded-xl"
-          onHoverStart={() => setIsHovered(true)}
-          onHoverEnd={() => setIsHovered(false)}
+          className="relative h-full w-full overflow-hidden rounded-xl largeLaptop:rounded-2xl"
+          onHoverStart={startHover}
+          onHoverEnd={endHover}
+          onDragStart={startHover}
+          onDragEnd={endHover}
         >
           <AnimatePresence initial={false} custom={1}>
             <motion.div
@@ -93,8 +103,8 @@ export default function StaticCard({ name, location, images, link }: Props) {
             style={{ zIndex: images.length + 2 }}
           />
         </motion.div>
-        <div className="absolute -bottom-4 -right-4 -z-[1] h-full w-full rounded-md bg-black/25 tablet_768:!-bottom-2.5 tablet_768:!-right-2.5 largeLaptop:rounded-xl" />
-        <div className="absolute -bottom-8 -right-8 -z-[2] h-full w-full rounded-md bg-black/15 tablet_768:!-bottom-5 tablet_768:!-right-5 largeLaptop:rounded-xl" />
+        <div className="absolute -bottom-[14px] -right-[14px] -z-[1] h-full w-full rounded-xl bg-black/25 tablet_768:!-bottom-2.5 tablet_768:!-right-2.5 largeLaptop:rounded-xl" />
+        <div className="absolute -bottom-[28px] -right-[28px] -z-[2] h-full w-full rounded-xl bg-black/15 tablet_768:!-bottom-5 tablet_768:!-right-5 largeLaptop:rounded-xl" />
       </figure>
       <div className="flex flex-col items-center gap-1">
         <h5 className="text-sm largeMobile:text-xs largeMobile:font-semibold largeLaptop:text-lg">
