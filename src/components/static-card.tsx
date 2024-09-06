@@ -25,8 +25,6 @@ export default function StaticCard({ name, location, images, link }: Props) {
     [images.length]
   );
 
-  console.log(currentIndex);
-
   useEffect(() => {
     if (isHovered) {
       intervalRef.current = setInterval(() => {
