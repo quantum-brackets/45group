@@ -3,7 +3,8 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import Image, { StaticImageData } from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { cn } from "~/utils/helpers";
 
 type Props = {
   name: string;
@@ -24,6 +25,8 @@ export default function StaticCard({ name, location, images, link }: Props) {
     [images.length]
   );
 
+  console.log(currentIndex);
+
   useEffect(() => {
     if (isHovered) {
       intervalRef.current = setInterval(() => {
@@ -42,23 +45,6 @@ export default function StaticCard({ name, location, images, link }: Props) {
     };
   }, [isHovered, images.length, nextIndex]);
 
-  const variants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? 1000 : -1000,
-      opacity: 0,
-    }),
-    center: {
-      zIndex: 1,
-      x: 0,
-      opacity: 1,
-    },
-    exit: (direction: number) => ({
-      zIndex: 0,
-      x: direction < 0 ? 1000 : -1000,
-      opacity: 0,
-    }),
-  };
-
   function startHover() {
     setIsHovered(true);
   }
@@ -69,43 +55,72 @@ export default function StaticCard({ name, location, images, link }: Props) {
 
   return (
     <Link href={link} className="flex flex-col items-center gap-12 tablet_768:gap-8">
-      <figure className="relative aspect-video w-full">
-        <motion.div
-          className="relative h-full w-full overflow-hidden rounded-xl largeLaptop:rounded-2xl"
-          onHoverStart={startHover}
-          onHoverEnd={endHover}
-          onDragStart={startHover}
-          onDragEnd={endHover}
-        >
-          <AnimatePresence initial={false} custom={1}>
+      <motion.div
+        className="relative aspect-video w-full"
+        onHoverStart={startHover}
+        onHoverEnd={endHover}
+      >
+        {images.map((image, index) => {
+          const imagePosition = (index - currentIndex + images.length) % images.length;
+
+          const shouldBeVisible = imagePosition >= 0 && imagePosition < 3;
+
+          return (
             <motion.div
-              key={currentIndex}
-              custom={1}
-              variants={variants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{
-                x: { type: "spring", stiffness: 300, damping: 30 },
-                opacity: { duration: 0.2 },
+              key={index}
+              className={cn(
+                "absolute h-full w-full overflow-hidden rounded-xl largeLaptop:rounded-2xl",
+                {
+                  block: shouldBeVisible,
+                  hidden: !shouldBeVisible,
+                }
+              )}
+              initial={{
+                bottom: index === currentIndex ? 0 : `-${14 * index}px`,
+                right: index === currentIndex ? 0 : `-${14 * index}px`,
               }}
-              className="absolute h-full w-full"
+              animate={{
+                bottom: imagePosition === 0 ? 0 : `-${14 * imagePosition}px`,
+                right: imagePosition === 0 ? 0 : `-${14 * imagePosition}px`,
+                zIndex: images.length - imagePosition,
+              }}
+              transition={{
+                duration: 2,
+                ease: "easeInOut",
+              }}
             >
-              <Image
-                src={images[currentIndex]}
-                alt={`${name} - Image ${currentIndex + 1}`}
-                className="h-full w-full object-cover"
-              />
+              <div className="relative h-full w-full">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: index === currentIndex ? 1 : 0 }}
+                  transition={{ duration: 0.5, ease: "easeInOut" }}
+                  className="absolute h-full w-full"
+                >
+                  <Image
+                    src={image}
+                    alt={`${name} - Image ${index + 1}`}
+                    className="absolute h-full w-full object-cover"
+                  />
+                </motion.div>
+                <div
+                  className="absolute top-0 z-[1] h-full w-full bg-black/40"
+                  style={{
+                    backgroundColor: `rgba(0, 0, 0, ${
+                      index === currentIndex
+                        ? 0.4
+                        : imagePosition === 1
+                          ? 0.25
+                          : imagePosition === 2
+                            ? 0.15
+                            : 0
+                    })`,
+                  }}
+                />
+              </div>
             </motion.div>
-          </AnimatePresence>
-          <div
-            className="absolute top-0 h-full w-full bg-black/40"
-            style={{ zIndex: images.length + 2 }}
-          />
-        </motion.div>
-        <div className="absolute -bottom-[14px] -right-[14px] -z-[1] h-full w-full rounded-xl bg-black/25 tablet_768:!-bottom-2.5 tablet_768:!-right-2.5 largeLaptop:rounded-xl" />
-        <div className="absolute -bottom-[28px] -right-[28px] -z-[2] h-full w-full rounded-xl bg-black/15 tablet_768:!-bottom-5 tablet_768:!-right-5 largeLaptop:rounded-xl" />
-      </figure>
+          );
+        })}
+      </motion.div>
       <div className="flex flex-col items-center gap-1">
         <h5 className="text-sm largeMobile:text-xs largeMobile:font-semibold largeLaptop:text-lg">
           {name}
