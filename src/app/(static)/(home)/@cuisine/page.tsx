@@ -3,6 +3,7 @@ import StaticCard from "~/components/static-card";
 import Beef from "~/assets/images/home/cuisines/beef.jpg";
 import Sushi from "~/assets/images/home/cuisines/sushi.jpg";
 import Omelette from "~/assets/images/home/cuisines/omelette.jpg";
+import Palas from "~/assets/images/home/lodges/palas.jpg";
 
 const cuisines = [
   {
@@ -12,7 +13,7 @@ const cuisines = [
     location: "Abuja Municipal",
   },
   {
-    images: [Beef, Sushi, Omelette],
+    images: [Beef, Sushi, Omelette, Palas],
     link: "/evergreen-oasis",
     name: "Evergreen Oasis",
     location: "Abuja Municipal",
