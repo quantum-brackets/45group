@@ -83,7 +83,7 @@ export default function StaticCard({ name, location, images, link }: Props) {
                 zIndex: images.length - imagePosition,
               }}
               transition={{
-                duration: 2,
+                duration: 1,
                 ease: "easeInOut",
               }}
             >
