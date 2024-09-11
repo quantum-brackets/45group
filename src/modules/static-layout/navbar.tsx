@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import nProgress from "nprogress";
 import Button from "~/components/button";
 import { cn } from "~/utils/helpers";
 
@@ -11,6 +12,7 @@ type Props = {
 
 export default function Navbar({ links }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <div className="flex items-center justify-between gap-24 tablet:gap-12 largeLaptop:gap-44">
@@ -33,7 +35,14 @@ export default function Navbar({ links }: Props) {
           </Link>
         </li>
       </ul>
-      <Button>Reserve</Button>
+      <Button
+        onClick={() => {
+          nProgress.start();
+          router.push("/booking");
+        }}
+      >
+        Reserve
+      </Button>
     </div>
   );
 }

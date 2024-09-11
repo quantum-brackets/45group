@@ -1,26 +1,74 @@
 import StaticCard from "~/components/static-card";
-import BirthdayParty from "~/assets/images/home/events/birthday-party.jpg";
-import FlowerOnTable from "~/assets/images/home/events/flower-on-table.jpg";
-import TableOnBeach from "~/assets/images/home/events/table-on-beach.jpg";
+
+//? Calabar - Event 45
+import CalabarEvent451 from "~/assets/images/events/calabar/event-45/img_1368.jpg";
+import CalabarEvent452 from "~/assets/images/events/calabar/event-45/img_1375.jpg";
+import CalabarEvent453 from "~/assets/images/events/calabar/event-45/img_1378.jpg";
+import CalabarEvent454 from "~/assets/images/events/calabar/event-45/img_1387.jpg";
+import CalabarEvent455 from "~/assets/images/events/calabar/event-45/img_1394.jpg";
+import CalabarEvent456 from "~/assets/images/events/calabar/event-45/img_1398.jpg";
+import CalabarEvent457 from "~/assets/images/events/calabar/event-45/img_1399.jpg";
+import CalabarEvent458 from "~/assets/images/events/calabar/event-45/img_1408.jpg";
+import CalabarEvent459 from "~/assets/images/events/calabar/event-45/img_1423.jpg";
+import CalabarEvent4510 from "~/assets/images/events/calabar/event-45/img_1449.jpg";
+import CalabarEvent4511 from "~/assets/images/events/calabar/event-45/img_1476.jpg";
+
+//? Calabar - Hotel 45
+import CalabarHotel451 from "~/assets/images/events/calabar/hotel-45/DSCF3397JPG.jpg";
+import CalabarHotel452 from "~/assets/images/events/calabar/hotel-45/DSCF3398JPG.jpg";
+import CalabarHotel453 from "~/assets/images/events/calabar/hotel-45/DSCF3399JPG.jpg";
+import CalabarHotel454 from "~/assets/images/events/calabar/hotel-45/DSCF3400JPG.jpg";
+import CalabarHotel455 from "~/assets/images/events/calabar/hotel-45/IMG_1534.jpg";
+import CalabarHotel456 from "~/assets/images/events/calabar/hotel-45/IMG_1537.jpg";
+import CalabarHotel457 from "~/assets/images/events/calabar/hotel-45/IMG_1545.jpg";
+import CalabarHotel458 from "~/assets/images/events/calabar/hotel-45/conference3JPG.jpg";
+
+//? Ikom - Event Hall
+import IkomEventHall1 from "~/assets/images/events/ikom/event-hall/img_9547.jpg";
+import IkomEventHall2 from "~/assets/images/events/ikom/event-hall/img_9551.jpg";
+import IkomEventHall3 from "~/assets/images/events/ikom/event-hall/img_9561.jpg";
+import IkomEventHall4 from "~/assets/images/events/ikom/event-hall/img_9847.jpg";
+import IkomEventHall5 from "~/assets/images/events/ikom/event-hall/img_9854.jpg";
 
 const lodges = [
   {
-    images: [BirthdayParty, FlowerOnTable, TableOnBeach],
-    link: "/evergreen-oasis",
-    name: "Evergreen Oasis",
-    location: "Abuja Municipal",
+    images: [
+      CalabarEvent451,
+      CalabarEvent452,
+      CalabarEvent453,
+      CalabarEvent454,
+      CalabarEvent455,
+      CalabarEvent456,
+      CalabarEvent457,
+      CalabarEvent458,
+      CalabarEvent459,
+      CalabarEvent4510,
+      CalabarEvent4511,
+    ],
+    link: "/booking?type=events&city=calabar",
+    name: "Event 45",
+    location: "Calabar",
   },
   {
-    images: [BirthdayParty, FlowerOnTable, TableOnBeach],
-    link: "/evergreen-oasis",
-    name: "Evergreen Oasis",
-    location: "Abuja Municipal",
+    images: [
+      CalabarHotel451,
+      CalabarHotel452,
+      CalabarHotel453,
+      CalabarHotel454,
+      CalabarHotel455,
+      CalabarHotel456,
+      CalabarHotel457,
+      CalabarHotel458,
+    ],
+    link: "/booking?type=events&city=calabar",
+    name: "Hotel 45",
+    location: "Calabar",
   },
   {
-    images: [BirthdayParty, FlowerOnTable, TableOnBeach],
-    link: "/evergreen-oasis",
-    name: "Evergreen Oasis",
-    location: "Abuja Municipal",
+    images: [IkomEventHall1, IkomEventHall2, IkomEventHall3, IkomEventHall4, IkomEventHall5],
+    link: "/booking?type=events&city=ikom",
+    name: "Event Hall",
+    location: "Ikom",
   },
 ];
 

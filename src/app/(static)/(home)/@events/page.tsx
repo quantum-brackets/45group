@@ -1,8 +1,8 @@
 import Image from "next/image";
-import BirthdayParty from "~/assets/images/home/events/birthday-party.jpg";
-import FlowerOnTable from "~/assets/images/home/events/flower-on-table.jpg";
-import TableOnBeach from "~/assets/images/home/events/table-on-beach.jpg";
 import SectionWrapper from "~/components/home/section-wrapper";
+import CalabarEvent45 from "~/assets/images/events/calabar/event-45/img_1375.jpg";
+import CalabarHotel452 from "~/assets/images/events/calabar/hotel-45/DSCF3399JPG.jpg";
+import IkomEventHall2 from "~/assets/images/events/ikom/event-hall/img_9561.jpg";
 
 export default function Events() {
   return (
@@ -13,8 +13,8 @@ export default function Events() {
       <main className="grid grid-cols-2 gap-6 largeMobile:!gap-2 tablet_768:gap-4 largeLaptop:gap-10">
         <figure className="relative max-h-[800px] w-full overflow-hidden rounded-xl">
           <Image
-            src={FlowerOnTable}
-            alt="Image of a flowers placed on a table"
+            src={CalabarEvent45}
+            alt="Image of an event"
             className="h-full w-full object-cover"
           />
           <div className="absolute top-0 z-[2] h-full w-full bg-black/40" />
@@ -28,16 +28,16 @@ export default function Events() {
           <div className="grid grid-cols-2 gap-6 largeMobile:!gap-2 tablet_768:gap-4 largeLaptop:gap-10">
             <figure className="relative max-h-[600px] overflow-hidden rounded-lg">
               <Image
-                src={BirthdayParty}
-                alt="Image of a birthday party"
+                src={CalabarHotel452}
+                alt="Image of an event"
                 className="h-full w-full object-cover"
               />
               <div className="absolute top-0 z-[2] h-full w-full bg-black/40" />
             </figure>
             <figure className="relative max-h-[600px] overflow-hidden rounded-lg">
               <Image
-                src={TableOnBeach}
-                alt="Image of a table on the beach"
+                src={IkomEventHall2}
+                alt="Image of an event"
                 className="h-full w-full object-cover"
               />
               <div className="absolute top-0 z-[2] h-full w-full bg-black/40" />

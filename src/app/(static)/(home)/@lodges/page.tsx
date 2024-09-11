@@ -1,43 +1,21 @@
 import Image from "next/image";
-import Palas from "~/assets/images/home/lodges/palas.jpg";
 import SectionWrapper from "~/components/home/section-wrapper";
+import AbujaGuest45 from "~/assets/images/lodges/abuja/guest-45/DSC7856.jpg";
+import CalabarHotel45 from "~/assets/images/lodges/calabar/hotel-45/img_0604.jpg";
+import IkomHotel45 from "~/assets/images/lodges/ikom/hotel-45/img_0343.jpg";
 
 const data = [
   {
-    image: Palas,
+    image: AbujaGuest45,
     location: "Abuja",
   },
   {
-    image: Palas,
-    location: "Lagos",
+    image: CalabarHotel45,
+    location: "Calabar",
   },
   {
-    image: Palas,
-    location: "Ogun",
-  },
-  {
-    image: Palas,
-    location: "Abuja",
-  },
-  {
-    image: Palas,
-    location: "Abuja",
-  },
-  {
-    image: Palas,
-    location: "Abuja",
-  },
-  {
-    image: Palas,
-    location: "Abuja",
-  },
-  {
-    image: Palas,
-    location: "Abuja",
-  },
-  {
-    image: Palas,
-    location: "Abuja",
+    image: IkomHotel45,
+    location: "Ikom",
   },
 ];
 
@@ -50,7 +28,7 @@ export default function Lodges() {
             key={index}
             className="relative h-[600px] w-[400px] overflow-hidden rounded-xl largeMobile:!h-[450px] largeMobile:!w-[250px] tablet:h-[500px] tablet:w-[300px]"
           >
-            <Image src={image} alt="Image of a palas" className="h-full w-full object-cover" />
+            <Image src={image} alt="Image of lodge" className="h-full w-full object-cover" />
             <div className="absolute top-0 z-[2] h-full w-full bg-black/40" />
             <h1 className="absolute right-1/2 top-[50px] z-[3] translate-x-1/2 text-2xl text-white">
               {location}
