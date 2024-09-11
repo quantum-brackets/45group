@@ -65,11 +65,11 @@ const lodges = [
   },
   {
     images: [
+      IkomHotel45Lodge5,
       IkomHotel45Lodge1,
       IkomHotel45Lodge2,
       IkomHotel45Lodge3,
       IkomHotel45Lodge4,
-      IkomHotel45Lodge5,
       IkomHotel45Lodge6,
       IkomHotel45Lodge7,
       IkomHotel45Lodge8,
@@ -86,7 +86,7 @@ export default function Lodges() {
       <header className="flex flex-col items-center gap-10 largeMobile:gap-6">
         <h1 className="text-3xl largeMobile:text-2xl">Lodges</h1>
         <p className="text-center text-sm largeMobile:text-xs">
-          Embark on your next unforgettable adventure at Loges Location, where breathtaking
+          Embark on your next unforgettable adventure at Lodges Location, where breathtaking
           landscapes and thrilling experiences await to inspire your wanderlust, create lasting
           memories, and offer you the perfect backdrop for exploration and discovery in the great
           outdoors.
