@@ -1,13 +1,15 @@
 import { ReactNode } from "react";
+import Link from "next/link";
 
 type Props = {
   id?: string;
   title: string;
+  href?: string;
   subtitle: string;
   children: ReactNode;
 };
 
-export default function SectionWrapper({ id, title, children, subtitle }: Props) {
+export default function SectionWrapper({ id, title, href, children, subtitle }: Props) {
   return (
     <section
       id={id}
@@ -15,7 +17,7 @@ export default function SectionWrapper({ id, title, children, subtitle }: Props)
     >
       <header className="flex items-center gap-2">
         <h1 className="text-2xl largeMobile:!text-base tablet:text-xl">
-          {title} ~{" "}
+          {href ? <Link href={href}>{title}</Link> : title} ~{" "}
           <span className="text-base largeMobile:!text-xs tablet:text-sm">{subtitle}</span>
         </h1>
       </header>
