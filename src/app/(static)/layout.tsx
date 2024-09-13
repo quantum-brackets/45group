@@ -19,7 +19,7 @@ const links = [
     text: "Events",
   },
   {
-    href: "/cuisines",
+    href: "/cuisine",
     text: "Cuisines",
   },
   {
