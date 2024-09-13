@@ -19,8 +19,8 @@ const links = [
     text: "Events",
   },
   {
-    href: "/cuisines",
-    text: "Cuisines",
+    href: "/cuisine",
+    text: "Cuisine",
   },
   {
     href: "/about",
