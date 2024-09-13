@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start -p 5040",
     "lint": "next lint --report-unused-disable-directives --max-warnings 0",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "migrate": "drizzle-kit migrate",
+    "generate": "drizzle-kit generate"
   },
   "dependencies": {
     "@emotion/cache": "^11.13.1",
@@ -18,10 +20,13 @@
     "@mui/material-nextjs": "^5.16.6",
     "@tanstack/react-query": "^5.52.0",
     "clsx": "^2.1.1",
+    "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.33.0",
     "formik": "^2.4.6",
     "framer-motion": "^11.3.31",
     "next": "14.2.5",
     "nprogress": "^0.2.0",
+    "postgres": "^3.4.4",
     "react": "^18",
     "react-dom": "^18",
     "react-icons": "^5.3.0",
@@ -36,6 +41,7 @@
     "@types/nprogress": "^0.2.3",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "drizzle-kit": "^0.24.2",
     "eslint": "^8",
     "eslint-config-next": "14.2.5",
     "lint-staged": "^15.2.9",
