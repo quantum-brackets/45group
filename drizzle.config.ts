@@ -1,6 +1,11 @@
 import { defineConfig } from "drizzle-kit";
 import * as dotenv from "dotenv";
-dotenv.config({ path: ".env.local" });
+
+if (process.env.NODE_ENV === "production") {
+  dotenv.config({ path: ".env.production" });
+} else {
+  dotenv.config({ path: ".env.local" });
+}
 
 export default defineConfig({
   schema: "./src/db/schema.ts",
