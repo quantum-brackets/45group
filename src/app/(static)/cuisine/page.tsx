@@ -65,7 +65,7 @@ export default function Cuisines() {
   return (
     <div className="flex w-full flex-col gap-12 p-12 largeMobile:pt-10 tablet:px-4">
       <header className="flex flex-col items-center gap-10 largeMobile:gap-6">
-        <h1 className="text-3xl largeMobile:text-2xl">Cuisines</h1>
+        <h1 className="text-3xl largeMobile:text-2xl">Cuisine</h1>
         <p className="text-center text-sm largeMobile:text-xs">
           Embark on a culinary journey where the rich traditions of the past meet the bold
           innovations of the present. Every dish is a masterful creation, telling a unique story of
