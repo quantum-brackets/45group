@@ -20,7 +20,7 @@ const links = [
   },
   {
     href: "/cuisine",
-    text: "Cuisines",
+    text: "Cuisine",
   },
   {
     href: "/about",
