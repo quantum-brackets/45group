@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import Image, { StaticImageData } from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, useAnimation } from "framer-motion";
 import { cn } from "~/utils/helpers";
 
 type Props = {
@@ -16,7 +16,11 @@ type Props = {
 export default function StaticCard({ name, location, images, link }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isInView, setIsInView] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const controls = useAnimation();
 
   const nextIndex = useCallback(
     (index: number) => {
@@ -26,13 +30,25 @@ export default function StaticCard({ name, location, images, link }: Props) {
   );
 
   useEffect(() => {
-    if (isHovered) {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  useEffect(() => {
+    if ((isHovered || (isMobile && isInView)) && !intervalRef.current) {
       intervalRef.current = setInterval(() => {
         setCurrentIndex((prevIndex) => nextIndex(prevIndex));
-      }, 2000);
-    } else {
+      }, 5000);
+    } else if ((!isHovered && !isMobile) || (isMobile && !isInView)) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     }
 
@@ -41,26 +57,52 @@ export default function StaticCard({ name, location, images, link }: Props) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isHovered, images.length, nextIndex]);
+  }, [isHovered, isMobile, isInView, images.length, nextIndex]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsInView(entry.isIntersecting);
+        if (entry.isIntersecting && isMobile) {
+          controls.start({ opacity: 1, y: 0 });
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    const currentCardRef = cardRef.current;
+
+    if (currentCardRef) {
+      observer.observe(currentCardRef);
+    }
+
+    return () => {
+      if (currentCardRef) {
+        observer.unobserve(currentCardRef);
+      }
+    };
+  }, [isMobile, controls]);
 
   function startHover() {
-    setIsHovered(true);
+    if (!isMobile) setIsHovered(true);
   }
 
   function endHover() {
-    setIsHovered(false);
+    if (!isMobile) setIsHovered(false);
   }
 
   return (
     <Link href={link} className="flex flex-col items-center gap-12 tablet_768:gap-8">
       <motion.div
+        ref={cardRef}
         className="relative aspect-video w-full"
         onHoverStart={startHover}
         onHoverEnd={endHover}
+        initial={isMobile ? { opacity: 0, y: 50 } : {}}
+        animate={controls}
       >
         {images.map((image, index) => {
           const imagePosition = (index - currentIndex + images.length) % images.length;
-
           const shouldBeVisible = imagePosition >= 0 && imagePosition < 3;
 
           return (
