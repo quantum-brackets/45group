@@ -40,7 +40,7 @@ export default function StaticCard({ name, location, images, link }: Props) {
       if ((isHovered || (isMobile && isInView)) && !isTransitioning) {
         setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
       }
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [images.length, isHovered, isMobile, isInView, isTransitioning]);
