@@ -36,6 +36,21 @@ export default function StaticCard({ name, location, images, link }: Props) {
   useEffect(() => {
     if (images.length === 0) return;
 
+    const preloadImages = async () => {
+      const promises = (images as string[]).map((src) => {
+        return new Promise<void>((resolve) => {
+          const img = new window.Image();
+          img.src = src;
+          img.onload = () => resolve();
+        });
+      });
+      await Promise.all(promises);
+    };
+
+    preloadImages();
+  }, [images]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
       if ((isHovered || (isMobile && isInView)) && !isTransitioning) {
         setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
@@ -120,6 +135,8 @@ export default function StaticCard({ name, location, images, link }: Props) {
                     src={images[index]}
                     alt={`${name} - Image ${index + 1}`}
                     className="absolute h-full w-full object-cover"
+                    priority={true}
+                    placeholder="blur"
                   />
                   <div
                     className="absolute top-0 z-[1] h-full w-full"
