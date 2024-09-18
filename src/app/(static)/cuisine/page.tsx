@@ -73,7 +73,7 @@ export default function Cuisines() {
           of tastes that celebrates both the heritage and the artistry of fine cuisine.
         </p>
       </header>
-      <main className="grid grid-cols-3 gap-16 largeMobile:!grid-cols-1 tablet_768:!gap-y-8 tablet_768:!pl-0 tablet:gap-12 tablet:px-4 largeTabletAndBelow:grid-cols-2 [@media(max-width:500px)]:!grid-cols-1">
+      <main className="grid grid-cols-3 gap-16 largeMobile:!grid-cols-1 tablet_768:!gap-y-8 tablet_768:!pl-0 tablet:gap-12 tablet:px-7 largeTabletAndBelow:grid-cols-2 [@media(max-width:500px)]:!grid-cols-1">
         {cuisines.map((cuisine, index) => (
           <StaticCard {...cuisine} key={index} />
         ))}

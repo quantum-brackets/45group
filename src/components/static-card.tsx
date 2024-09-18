@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Image, { StaticImageData } from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence, useAnimation } from "framer-motion";
+import { motion, AnimatePresence, useAnimation, Variants } from "framer-motion";
 import { cn } from "~/utils/helpers";
 
 type Props = {
@@ -97,6 +97,7 @@ export default function StaticCard({ name, location, images, link }: Props) {
         <AnimatePresence initial={false}>
           {[0, 1, 2].map((offset) => {
             const index = (currentIndex + offset) % images.length;
+
             return (
               <motion.div
                 key={index}
@@ -116,15 +117,25 @@ export default function StaticCard({ name, location, images, link }: Props) {
                   bottom: `-${14 * offset}px`,
                   right: `-${14 * offset}px`,
                   zIndex: 3 - offset,
+                  y: [0, -5, 0],
+                  transition: {
+                    type: "tween",
+                    delay: offset === 0 ? 0.2 : offset === 1 ? 0.4 : offset === 2 ? 0.6 : 0,
+                    stiffness: 300,
+                    damping: 10,
+                    duration: 0.5,
+                  },
                 }}
                 exit={{
-                  bottom: `-${14 * 3}px`,
-                  right: `-${14 * 3}px`,
-                  zIndex: 0,
-                  opacity: 0,
+                  bottom: `${14}px`,
+                  right: `${14}px`,
+                  opacity: "0%",
+                  transition: {
+                    duration: 0.5,
+                  },
                 }}
                 transition={{
-                  y: { type: "spring", stiffness: 300, damping: 30 },
+                  y: { type: "spring", stiffness: 300, damping: 30, duration: 0.5 },
                   opacity: { duration: 0.2 },
                 }}
                 onAnimationStart={() => setIsTransitioning(true)}
