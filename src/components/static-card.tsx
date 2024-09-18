@@ -109,15 +109,15 @@ export default function StaticCard({ name, location, images, link }: Props) {
                 }}
                 custom={offset}
                 initial={{
-                  bottom: `-${14 * offset}px`,
-                  right: `-${14 * offset}px`,
+                  bottom: `-${10 * offset}px`,
+                  right: `-${10 * offset}px`,
                   zIndex: 3 - offset,
                 }}
                 animate={{
-                  bottom: `-${14 * offset}px`,
-                  right: `-${14 * offset}px`,
+                  bottom: `-${10 * offset}px`,
+                  right: `-${10 * offset}px`,
                   zIndex: 3 - offset,
-                  y: [0, -5, 0],
+                  y: [0, 0, 0],
                   transition: {
                     type: "tween",
                     delay: offset === 0 ? 0.2 : offset === 1 ? 0.4 : offset === 2 ? 0.6 : 0,
