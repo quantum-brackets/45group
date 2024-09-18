@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Image, { StaticImageData } from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence, useAnimation, Variants } from "framer-motion";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { cn } from "~/utils/helpers";
 
 type Props = {
@@ -135,7 +135,7 @@ export default function StaticCard({ name, location, images, link }: Props) {
                   },
                 }}
                 transition={{
-                  y: { type: "spring", stiffness: 300, damping: 30, duration: 0.5 },
+                  y: { type: "tween", stiffness: 300, damping: 30, duration: 0.5 },
                   opacity: { duration: 0.2 },
                 }}
                 onAnimationStart={() => setIsTransitioning(true)}
