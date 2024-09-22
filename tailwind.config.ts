@@ -15,6 +15,10 @@ const config: Config = {
       },
       maxWidth: {
         App: "1900px",
+        1700: "1700px",
+      },
+      borderWidth: {
+        "1.5": "1.5px",
       },
       colors: {
         primary: {

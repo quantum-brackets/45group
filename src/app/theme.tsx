@@ -54,14 +54,14 @@ const theme = createTheme({
         root: {
           borderRadius: "6px",
           "& input": {
-            padding: "14px 14px",
-            fontSize: "1rem",
+            padding: "12px 14px 12px 10px",
+            fontSize: "0.8rem",
           },
           "&:hover:not(.Mui-focused) .MuiOutlinedInput-notchedOutline": {
             borderColor: "#78716c",
           },
           "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-            borderWidth: "2px",
+            borderWidth: "1px",
           },
         },
       },
@@ -77,11 +77,10 @@ const theme = createTheme({
             "& .MuiMenuItem-root": {
               paddingTop: "8px",
               paddingBottom: "8px",
-              fontSize: "0.85rem",
+              fontSize: "0.8rem",
               "&.Mui-selected": {
-                backgroundColor: "var(--primary-hover)",
-                color: "#fff",
                 transition: "all",
+                color: "var(--primary)",
               },
             },
           },
@@ -156,6 +155,16 @@ const theme = createTheme({
       styleOverrides: {
         paper: {
           marginTop: "0px",
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        root: {
+          "& .MuiOutlinedInput-input": {
+            padding: "10px 14px 10px 10px",
+            fontSize: "0.8rem",
+          },
         },
       },
     },

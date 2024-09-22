@@ -23,12 +23,14 @@ export default function Currency() {
 
   return (
     <ClickAwayListener onClickAway={onClose}>
-      <div>
+      <div className="w-fit">
         <button
           onClick={(e) => (open ? setAnchorEl(null) : setAnchorEl(e.currentTarget))}
-          className="flex items-center gap-2"
+          className="flex w-fit items-center gap-2"
         >
-          <span className="text-sm font-medium uppercase tablet:hidden">{currency}</span>
+          <span className="w-fit text-nowrap text-sm font-medium uppercase tablet:hidden">
+            {currency}
+          </span>
           <FaAngleDown className="text-zinc-800" />
         </button>
         <Popper
