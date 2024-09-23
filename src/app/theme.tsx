@@ -1,6 +1,8 @@
 "use client";
 
 import { createTheme } from "@mui/material/styles";
+import { MdOutlineRadioButtonUnchecked } from "react-icons/md";
+import { MdOutlineRadioButtonChecked } from "react-icons/md";
 import { merriweather } from "~/utils/fonts";
 
 const theme = createTheme({
@@ -31,6 +33,19 @@ const theme = createTheme({
       800: "#1f5c2f",
       900: "#1b4c29",
     },
+    info: {
+      main: "#52525b",
+      50: "#fafafa",
+      100: "#f4f4f5",
+      200: "#e4e4e7",
+      300: "#d4d4d8",
+      400: "#a1a1aa",
+      500: "#71717a",
+      600: "#52525b",
+      700: "#3f3f46",
+      800: "#27272a",
+      900: "#18181b",
+    },
   },
   typography: {
     fontFamily: merriweather.style.fontFamily,
@@ -41,14 +56,14 @@ const theme = createTheme({
         root: {
           borderRadius: "6px",
           "& input": {
-            padding: "14px 14px",
-            fontSize: "1rem",
+            padding: "12px 14px 12px 10px",
+            fontSize: "0.8rem",
           },
           "&:hover:not(.Mui-focused) .MuiOutlinedInput-notchedOutline": {
             borderColor: "#78716c",
           },
           "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-            borderWidth: "2px",
+            borderWidth: "1px",
           },
         },
       },
@@ -64,15 +79,22 @@ const theme = createTheme({
             "& .MuiMenuItem-root": {
               paddingTop: "8px",
               paddingBottom: "8px",
-              fontSize: "0.85rem",
+              fontSize: "0.8rem",
               "&.Mui-selected": {
-                backgroundColor: "var(--primary-hover)",
-                color: "#fff",
                 transition: "all",
+                color: "var(--primary)",
               },
             },
           },
         },
+      },
+    },
+    MuiRadio: {
+      defaultProps: {
+        size: "medium",
+        color: "primary",
+        icon: <MdOutlineRadioButtonUnchecked />,
+        checkedIcon: <MdOutlineRadioButtonChecked />,
       },
     },
     MuiDialogTitle: {
@@ -143,6 +165,25 @@ const theme = createTheme({
       styleOverrides: {
         paper: {
           marginTop: "0px",
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        root: {
+          "& .MuiOutlinedInput-input": {
+            padding: "10px 14px 10px 10px",
+            fontSize: "0.8rem",
+          },
+        },
+      },
+    },
+    MuiPopover: {
+      styleOverrides: {
+        root: {
+          "& .MuiFormControlLabel-label": {
+            fontSize: "0.8rem",
+          },
         },
       },
     },

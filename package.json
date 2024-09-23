@@ -37,6 +37,7 @@
     "zustand": "^4.5.5"
   },
   "devDependencies": {
+    "@svgr/webpack": "^8.1.0",
     "@tanstack/react-query-devtools": "^5.52.0",
     "@types/node": "^20",
     "@types/nprogress": "^0.2.3",
