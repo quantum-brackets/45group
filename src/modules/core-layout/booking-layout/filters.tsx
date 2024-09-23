@@ -33,9 +33,9 @@ export default function Filters() {
   );
 
   return (
-    <aside className="flex flex-grow flex-col gap-4 border-r-1.5 border-zinc-300/60 p-4 pt-8 tablet:border-b tablet:pt-4 largeTabletAndBelow:w-[250px]">
-      <h2>Filters:</h2>
-      <div className="flex w-[300px] flex-col gap-6 tablet:!w-full tablet:flex-row tablet:overflow-x-auto">
+    <aside className="flex flex-grow flex-col gap-6 border-r-1.5 border-zinc-300/60 p-4 pt-8 tablet:border-b tablet:pt-4 largeTabletAndBelow:w-[250px]">
+      <h2 className="font-semibold text-black/80">Filters:</h2>
+      <div className="flex w-[300px] flex-col gap-4 tablet:!w-full tablet:flex-row tablet:overflow-x-auto">
         <SelectInput
           label="Type"
           value={type || ""}
