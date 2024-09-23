@@ -1,6 +1,8 @@
 "use client";
 
 import { createTheme } from "@mui/material/styles";
+import { MdOutlineRadioButtonUnchecked } from "react-icons/md";
+import { MdOutlineRadioButtonChecked } from "react-icons/md";
 import { merriweather } from "~/utils/fonts";
 
 const theme = createTheme({
@@ -87,6 +89,14 @@ const theme = createTheme({
         },
       },
     },
+    MuiRadio: {
+      defaultProps: {
+        size: "medium",
+        color: "primary",
+        icon: <MdOutlineRadioButtonUnchecked />,
+        checkedIcon: <MdOutlineRadioButtonChecked />,
+      },
+    },
     MuiDialogTitle: {
       styleOverrides: {
         root: {
@@ -163,6 +173,15 @@ const theme = createTheme({
         root: {
           "& .MuiOutlinedInput-input": {
             padding: "10px 14px 10px 10px",
+            fontSize: "0.8rem",
+          },
+        },
+      },
+    },
+    MuiPopover: {
+      styleOverrides: {
+        root: {
+          "& .MuiFormControlLabel-label": {
             fontSize: "0.8rem",
           },
         },
