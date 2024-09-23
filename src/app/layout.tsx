@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { ThemeProvider } from "@mui/material";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
 import "./globals.css";
@@ -12,7 +13,16 @@ import AppProgressBar from "~/components/app-progress-bar";
 export const metadata: Metadata = {
   title: "45Group",
   description: "where the heart is",
-  keywords: ["Hotel 45", "Hotel45", "Event 45", "Club 45", "Lounge 45", "Bar 45", "Bar 90", "45 Group"],
+  keywords: [
+    "Hotel 45",
+    "Hotel45",
+    "Event 45",
+    "Club 45",
+    "Lounge 45",
+    "Bar 45",
+    "Bar 90",
+    "45 Group",
+  ],
 };
 
 export default function RootLayout({
@@ -34,6 +44,10 @@ export default function RootLayout({
             </ThemeProvider>
           </TanstackQueryProvider>
         </AppRouterCacheProvider>
+        <Script
+          src="https://cdn.jsdelivr.net/gh/iamogbz/oh-my-wcs@6b7a7b0/components/carousel-stack.js"
+          strategy="beforeInteractive"
+        />
       </body>
     </html>
   );
