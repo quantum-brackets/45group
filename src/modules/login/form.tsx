@@ -52,7 +52,7 @@ export default function LoginForm() {
               label="Password"
               required
               type={"password"}
-              placeholder="Create your password"
+              placeholder="Enter your password"
             />
             <div className="flex w-full items-center justify-end gap-4 mediumMobile:flex-col-reverse mediumMobile:gap-2">
               <Link

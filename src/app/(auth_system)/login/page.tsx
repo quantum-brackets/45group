@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { IconButton } from "@mui/material";
 import { FcGoogle } from "react-icons/fc";
 import Logo from "~/components/logo";
@@ -7,10 +8,12 @@ export default function Login() {
   return (
     <main className="flex flex-col gap-4">
       <header className="flex flex-col items-center gap-4">
-        <Logo className="w-[3rem]" />
+        <Link href={"/"}>
+          <Logo className="w-[3rem]" />
+        </Link>
         <div className="flex flex-col items-center gap-1">
           <h1 className="text-xl">Welcome back</h1>
-          <small className="text-info-500">Please enter your details to sign in.</small>
+          <small className="text-info-500">Please enter your details to log in.</small>
         </div>
       </header>
       <div className="flex items-center justify-center gap-4">
