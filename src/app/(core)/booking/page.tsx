@@ -1,12 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { Skeleton } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import BookingCard from "~/components/booking-card";
 import bookingsData from "~/data/bookings.json";
 import NoDataIllustration from "~/assets/illustrations/no-data.png";
-import { useSearchParams } from "next/navigation";
 
 export default function Booking() {
   const searchParams = useSearchParams();
