@@ -44,8 +44,10 @@ export default function RootLayout({
             </ThemeProvider>
           </TanstackQueryProvider>
         </AppRouterCacheProvider>
-
-        <Script src="https://cdn.jsdelivr.net/gh/iamogbz/oh-my-wcs@main/components/carousel-stack.js" />
+        <Script
+          src="https://cdn.jsdelivr.net/gh/iamogbz/oh-my-wcs@6b7a7b0/components/carousel-stack.js"
+          strategy="beforeInteractive"
+        />
       </body>
     </html>
   );
