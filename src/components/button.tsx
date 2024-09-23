@@ -26,9 +26,6 @@ export default function Button({
       )}
       sx={{
         textTransform: "none",
-        "&.MuiButton-sizeLarge": {
-          paddingY: "12px",
-        },
         "&.MuiButton-sizeSmall": {
           padding: "10px 10px",
         },
