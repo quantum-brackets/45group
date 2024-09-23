@@ -6,22 +6,26 @@ import { useQuery } from "@tanstack/react-query";
 import BookingCard from "~/components/booking-card";
 import bookingsData from "~/data/bookings.json";
 import NoDataIllustration from "~/assets/illustrations/no-data.png";
+import { useSearchParams } from "next/navigation";
 
-export default function Booking({
-  searchParams: { type, city, group, from, to, sort_by, q },
-}: {
-  searchParams: {
-    type: "rooms" | "events" | "dining";
-    city: string;
-    group: string;
-    from: string;
-    to: string;
-    q: string;
-    sort_by: string;
-  };
-}) {
+export default function Booking() {
+  const searchParams = useSearchParams();
+
+  const params: BookingSearchParams = [
+    "type",
+    "city",
+    "group",
+    "from",
+    "to",
+    "sort_by",
+    "q",
+  ].reduce((acc, param) => {
+    acc[param as keyof BookingSearchParams] = searchParams.get(param) || undefined;
+    return acc;
+  }, {} as BookingSearchParams);
+
   const { data: bookings, isLoading } = useQuery<Booking[]>({
-    queryKey: ["bookings", { type, city, group, from, to, sort_by, q }],
+    queryKey: ["bookings", { ...params }],
     queryFn: async () => {
       return new Promise((resolve) => {
         setTimeout(() => {
