@@ -29,6 +29,18 @@
     --secondary-800: #1f5c2f;
     --secondary-900: #1b4c29;
     --secondary-950: #0a2913;
+
+    --info: #52525b;
+    --info-50: #fafafa;
+    --info-100: #f4f4f5;
+    --info-200: #e4e4e7;
+    --info-300: #d4d4d8;
+    --info-400: #a1a1aa;
+    --info-500: #71717a;
+    --info-600: #52525b;
+    --info-700: #3f3f46;
+    --info-800: #27272a;
+    --info-900: #18181b;
   }
 
   * {
