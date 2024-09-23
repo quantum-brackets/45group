@@ -13,7 +13,7 @@ export default function SearchInput({
   return (
     <OutlinedInput
       type="search"
-      startAdornment={<FiSearch className="text-[21px] text-primary" />}
+      startAdornment={<FiSearch className="!text-info-500/20 text-[21px]" />}
       {...props}
       className={cn("!rounded-md !border-zinc-600", className)}
       placeholder={placeholder}
