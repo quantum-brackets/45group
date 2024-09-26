@@ -25,13 +25,13 @@ export default function StaticCard({ name, location, images, link }: Props) {
       .join("|");
   }, [images]);
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setImageIdx((prev) => (prev + 1) % 4);
+  const timeoutRef = useRef<NodeJS.Timeout>();
+  if (!timeoutRef.current) {
+    timeoutRef.current = setTimeout(() => {
+      timeoutRef.current = undefined;
+      setImageIdx((prev) => (prev + 1));
     }, 3000);
-
-    return () => clearTimeout(timeoutId);
-  }, [imageIdx]);
+  }
 
   const carouselRef = useRef<CarouselStackElement | null>(null);
 
@@ -69,6 +69,7 @@ export default function StaticCard({ name, location, images, link }: Props) {
         }}
         image-gap="10px"
         image-idx={imageIdx}
+        transition-secs="1"
       />
       <div className="flex flex-col items-center gap-1">
         <h5 className="text-sm largeMobile:text-xs largeMobile:font-semibold largeLaptop:text-lg">
