@@ -15,7 +15,6 @@ import { useQuery } from "@tanstack/react-query";
 import { FaChevronDown } from "react-icons/fa6";
 import bookingsData from "~/data/bookings.json";
 import SearchInput from "~/components/inputs/search-input";
-import useDebounce from "~/hooks/debounce";
 import { cn } from "~/utils/helpers";
 
 const sortData = [
@@ -92,7 +91,7 @@ export default function Header() {
 
   if (isLoading) {
     return (
-      <div className="border-b-1.5 flex w-full items-center justify-between gap-8 p-2 px-8 tablet:px-4">
+      <div className="flex w-full items-center justify-between gap-8 border-b-1.5 p-2 px-8 tablet:px-4">
         <Skeleton variant="rounded" className="h-[20px] w-[100px]" />
         <div className="flex items-center gap-4">
           <Skeleton variant="rounded" className="!h-[40px] w-[300px]" />
@@ -103,7 +102,7 @@ export default function Header() {
   }
 
   return (
-    <header className="border-b-1.5 flex w-full items-center justify-between gap-8 border-zinc-300/60 p-2 px-8 tablet:px-4 [@media(max-width:500px)]:justify-start">
+    <header className="flex w-full items-center justify-between gap-8 border-b-1.5 border-zinc-300/60 p-2 px-8 tablet:px-4 [@media(max-width:500px)]:justify-start">
       <p className="text-nowrap text-sm text-zinc-500 tablet_768:text-xs [@media(max-width:500px)]:self-start">
         <span className="text-base tablet_768:text-sm">{bookings?.length || 0}</span> results
       </p>
