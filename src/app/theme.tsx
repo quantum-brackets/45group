@@ -74,6 +74,8 @@ const theme = createTheme({
           boxShadow: "0 4px 8px 0 rgb(0 0 0 / 0.1)",
           marginTop: "4px",
           borderRadius: "4px",
+          overflow: "hidden",
+          padding: "8px",
           "& .MuiMenu-list": {
             padding: "0px",
             "& .MuiMenuItem-root": {
@@ -84,6 +86,16 @@ const theme = createTheme({
                 transition: "all",
                 color: "var(--primary)",
               },
+            },
+          },
+          "& button": {
+            width: "100%",
+            padding: "8px 16px",
+            fontSize: "0.8rem",
+            color: "#333333",
+            display: "flex",
+            "&:hover": {
+              backgroundColor: "rgb(0 0 0 / 0.05)",
             },
           },
         },

@@ -5,6 +5,7 @@ import { ClickAwayListener, Fade, Paper, Popper } from "@mui/material";
 import { FaAngleDown } from "react-icons/fa6";
 import Button from "~/components/button";
 import useAppStore from "~/store/app";
+import { cn } from "~/utils/helpers";
 
 export default function Currency() {
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
@@ -28,10 +29,12 @@ export default function Currency() {
           onClick={(e) => (open ? setAnchorEl(null) : setAnchorEl(e.currentTarget))}
           className="flex w-fit items-center gap-2"
         >
-          <span className="w-fit text-nowrap text-sm font-medium uppercase tablet:hidden">
-            {currency}
-          </span>
-          <FaAngleDown className="text-zinc-800" />
+          <div className="w-fit text-nowrap text-sm font-medium uppercase">{currency}</div>
+          <FaAngleDown
+            className={cn("text-zinc-800", {
+              "rotate-180": open,
+            })}
+          />
         </button>
         <Popper
           open={open}
