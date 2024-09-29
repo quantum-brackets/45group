@@ -1,16 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import {
-  FormControlLabel,
-  MenuItem,
-  Popover,
-  Radio,
-  RadioGroup,
-  Select,
-  Skeleton,
-} from "@mui/material";
+import { debounce, FormControlLabel, Popover, Radio, RadioGroup } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { FaChevronDown } from "react-icons/fa6";
 import bookingsData from "~/data/bookings.json";
@@ -53,13 +45,13 @@ export default function Header() {
     return acc;
   }, {} as BookingSearchParams);
 
-  const { type, city, group, from, to, sort_by, q } = params;
+  const { q, sort_by } = params;
 
   const [search, setSearch] = useState(q || "");
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const open = Boolean(anchorEl);
 
-  const { data: bookings, isLoading } = useQuery<Booking[]>({
+  const { data: bookings } = useQuery<Booking[]>({
     queryKey: ["bookings", { ...params }],
     queryFn: async () => {
       return new Promise((resolve) => {
@@ -71,7 +63,22 @@ export default function Header() {
     },
   });
 
-  const sortBy = searchParams.get("sort") || "featured";
+  const debouncedSetSearch = useMemo(
+    () =>
+      debounce((value: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("q", value);
+        window.history.replaceState(null, "", `/booking?${params.toString()}`);
+      }, 300),
+    [searchParams]
+  );
+
+  useEffect(() => {
+    debouncedSetSearch(search);
+    return () => {
+      debouncedSetSearch.clear();
+    };
+  }, [search, debouncedSetSearch]);
 
   function onClose() {
     setAnchorEl(null);
@@ -81,24 +88,12 @@ export default function Header() {
     const params = new URLSearchParams(searchParams);
 
     if (value === "featured") {
-      window.history.replaceState(null, "", pathname);
+      params.delete("sort_by");
     } else {
-      params.set("sort", value);
-      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+      params.set("sort_by", value);
     }
+    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
     onClose();
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex w-full items-center justify-between gap-8 border-b-1.5 p-2 px-8 tablet:px-4">
-        <Skeleton variant="rounded" className="h-[20px] w-[100px]" />
-        <div className="flex items-center gap-4">
-          <Skeleton variant="rounded" className="!h-[40px] w-[300px]" />
-          <Skeleton variant="rounded" className="!h-[40px] w-[180px]" />
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -112,24 +107,18 @@ export default function Header() {
             value={search || ""}
             className="!w-[350px] tablet_768:!w-full"
             onChange={(e) => {
-              const value = e.target.value;
-              setSearch(value || "");
-
-              const params = new URLSearchParams(searchParams.toString());
-              params.set("q", value);
-
-              window.history.replaceState(null, "", `/booking?${params.toString()}`);
+              setSearch(e.target.value || "");
             }}
           />
         </div>
         <div className="flex items-center gap-4 tablet_768:hidden">
           <p className="text-sm tablet_768:text-xs">Sort By:</p>
           <button className="flex items-center gap-2" onClick={(e) => setAnchorEl(e.currentTarget)}>
-            <p className="text-sm text-primary tablet_768:text-xs">
-              {sortData.find((item) => item.value === sortBy)?.label}
+            <p className="whitespace-nowrap text-sm text-primary tablet_768:text-xs">
+              {sortData.find((item) => item.value === sort_by)?.label || "Featured"}
             </p>
             <FaChevronDown
-              className={cn("text-sm text-primary transition tablet_768:text-xs", {
+              className={cn("text-sm text-primary tablet_768:text-xs", {
                 "rotate-180": open,
               })}
             />
@@ -143,9 +132,9 @@ export default function Header() {
               horizontal: "left",
             }}
           >
-            <div className="min-w-[200px] bg-white p-4">
+            <div className="min-w-[200px] bg-white p-2">
               <RadioGroup
-                value={sortBy}
+                value={sort_by || "featured"}
                 onChange={(e) => {
                   handleChange(e.target.value);
                 }}

@@ -24,3 +24,10 @@ type BookingSearchParams = {
   to?: string;
   sort_by?: string;
 };
+
+type User = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  image: string;
+};
