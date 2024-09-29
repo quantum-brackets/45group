@@ -4,10 +4,12 @@ import { DEFAULT_CURRENCY_CODE } from "~/utils/constants";
 
 type State = {
   currency: string;
+  isLogoutModalVisible: boolean;
 };
 
 type Action = {
   changeCurrency: (value: string) => void;
+  toggleLogoutModal: (isVisible: boolean) => void;
 };
 
 const useAppStore = create<State & Action>()(
@@ -15,6 +17,8 @@ const useAppStore = create<State & Action>()(
     (set) => ({
       currency: DEFAULT_CURRENCY_CODE,
       changeCurrency: (currency) => set({ currency }),
+      isLogoutModalVisible: false,
+      toggleLogoutModal: (isVisible) => set({ isLogoutModalVisible: isVisible }),
     }),
     {
       name: "app-store",
