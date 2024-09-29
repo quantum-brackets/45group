@@ -8,6 +8,7 @@ import nProgress from "nprogress";
 import { FaAngleDown } from "react-icons/fa6";
 import Button from "~/components/button";
 import { cn } from "~/utils/helpers";
+import useAppStore from "~/store/app";
 
 const links = [
   {
@@ -36,6 +37,8 @@ const links = [
 
 export default function Account() {
   const router = useRouter();
+
+  const { toggleLogoutModal } = useAppStore();
 
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [openSublinkIndex, setOpenSublinkIndex] = useState<number | null>(null);
@@ -156,12 +159,19 @@ export default function Account() {
                           router.push(link.href);
                           onClose();
                         }}
-                        className="flex w-full p-4 py-2 text-sm text-[#333333] hover:bg-black/10"
                       >
                         {link.text}
                       </button>
                     );
                   })}
+                  <button
+                    onClick={() => {
+                      toggleLogoutModal(true);
+                      onClose();
+                    }}
+                  >
+                    Logout
+                  </button>
                 </div>
               </Paper>
             </Fade>

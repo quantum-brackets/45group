@@ -9,6 +9,7 @@ import TanstackQueryProvider from "~/providers/tanstack-query";
 import Toast from "~/components/toast";
 import { dancing_script, merriweather } from "~/utils/fonts";
 import AppProgressBar from "~/components/app-progress-bar";
+import LogoutModal from "~/components/logout-modal";
 
 export const metadata: Metadata = {
   title: "45Group",
@@ -41,6 +42,7 @@ export default function RootLayout({
               <Toast />
               <AppProgressBar />
               {children}
+              <LogoutModal />
             </ThemeProvider>
           </TanstackQueryProvider>
         </AppRouterCacheProvider>

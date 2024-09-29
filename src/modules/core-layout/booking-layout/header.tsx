@@ -111,14 +111,14 @@ export default function Header() {
             }}
           />
         </div>
-        <div className="flex items-center gap-4 tablet_768:hidden">
-          <p className="text-sm tablet_768:text-xs">Sort By:</p>
+        <div className="flex items-center gap-2 tablet_768:hidden largeLaptop:gap-4">
+          <p className="text-xs largeLaptop:text-sm">Sort By:</p>
           <button className="flex items-center gap-2" onClick={(e) => setAnchorEl(e.currentTarget)}>
-            <p className="whitespace-nowrap text-sm text-primary tablet_768:text-xs">
+            <p className="whitespace-nowrap text-xs text-primary largeLaptop:text-sm">
               {sortData.find((item) => item.value === sort_by)?.label || "Featured"}
             </p>
             <FaChevronDown
-              className={cn("text-sm text-primary tablet_768:text-xs", {
+              className={cn("text-xs text-primary largeLaptop:text-sm", {
                 "rotate-180": open,
               })}
             />
