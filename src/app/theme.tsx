@@ -199,6 +199,16 @@ const theme = createTheme({
         },
       },
     },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          width: "fit-content !important",
+          "& button": {
+            padding: "8px !important",
+          },
+        },
+      },
+    },
   },
 });
 
