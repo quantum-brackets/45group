@@ -49,21 +49,23 @@ export default function Currency() {
           {({ TransitionProps }) => (
             <Fade {...TransitionProps} timeout={350}>
               <Paper className={"flex flex-col"}>
-                {["ngn", "usd"].map((region, index) => (
-                  <Button
-                    variant="text"
-                    color={currency === region ? "primary" : "info"}
-                    key={index}
-                    className="!rounded-none p-4 !uppercase"
-                    onClick={async () => {
-                      changeCurrency(region);
-                      onClose();
-                      window.location.reload();
-                    }}
-                  >
-                    {region}
-                  </Button>
-                ))}
+                {["ngn", "usd"]
+                  .filter((str) => str !== currency)
+                  .map((region, index) => (
+                    <Button
+                      variant="text"
+                      color={currency === region ? "primary" : "info"}
+                      key={index}
+                      className="!rounded-none p-4 !uppercase"
+                      onClick={async () => {
+                        changeCurrency(region);
+                        onClose();
+                        window.location.reload();
+                      }}
+                    >
+                      {region}
+                    </Button>
+                  ))}
               </Paper>
             </Fade>
           )}

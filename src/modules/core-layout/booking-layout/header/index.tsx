@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { debounce, FormControlLabel, Popover, Radio, RadioGroup } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { FaChevronDown } from "react-icons/fa6";
+import { FiFilter } from "react-icons/fi";
 import bookingsData from "~/data/bookings.json";
 import SearchInput from "~/components/inputs/search-input";
 import { cn } from "~/utils/helpers";
@@ -97,20 +98,26 @@ export default function Header() {
   }
 
   return (
-    <header className="flex w-full items-center justify-between gap-8 border-b-1.5 border-zinc-300/60 p-2 px-8 tablet:px-4 [@media(max-width:500px)]:justify-start">
+    <header className="flex w-full items-center justify-between gap-8 border-b-1.5 border-zinc-300/60 p-2 px-8 tablet:px-4 largeTabletAndBelow:px-4 [@media(max-width:500px)]:justify-start">
       <p className="text-nowrap text-sm text-zinc-500 tablet_768:text-xs [@media(max-width:500px)]:self-start">
         <span className="text-base tablet_768:text-sm">{bookings?.length || 0}</span> results
       </p>
       <div className="flex items-center gap-8 [@media(max-width:500px)]:w-full [@media(max-width:500px)]:flex-col [@media(max-width:500px)]:items-start">
         <div className="tablet_768:w-full [@media(max-width:500px)]:w-full [@media(max-width:500px)]:border-b">
-          <SearchInput
-            value={search || ""}
-            className="!w-[350px] tablet_768:!w-full"
-            onChange={(e) => {
-              setSearch(e.target.value || "");
-            }}
-          />
+          <div className="w-[350px] largeTabletAndBelow:w-[300px]">
+            <SearchInput
+              value={search || ""}
+              className="!w-full"
+              onChange={(e) => {
+                setSearch(e.target.value || "");
+              }}
+            />
+          </div>
         </div>
+        <button className="hidden items-center gap-2 text-xs tablet:flex">
+          <FiFilter />
+          <span>Filter</span>
+        </button>
         <div className="flex items-center gap-2 tablet_768:hidden largeLaptop:gap-4">
           <p className="text-xs largeLaptop:text-sm">Sort By:</p>
           <button className="flex items-center gap-2" onClick={(e) => setAnchorEl(e.currentTarget)}>

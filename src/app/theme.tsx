@@ -88,7 +88,7 @@ const theme = createTheme({
               },
             },
           },
-          "& button": {
+          "& .popper-btn button": {
             width: "100%",
             padding: "8px 16px",
             fontSize: "0.8rem",
