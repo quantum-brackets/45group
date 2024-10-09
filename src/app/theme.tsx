@@ -88,7 +88,7 @@ const theme = createTheme({
               },
             },
           },
-          "& button": {
+          "& .popper-btn button": {
             width: "100%",
             padding: "8px 16px",
             fontSize: "0.8rem",
@@ -195,6 +195,16 @@ const theme = createTheme({
         root: {
           "& .MuiFormControlLabel-label": {
             fontSize: "0.8rem",
+          },
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          width: "fit-content !important",
+          "& button": {
+            padding: "8px !important",
           },
         },
       },

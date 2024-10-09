@@ -111,7 +111,7 @@ export default function Account() {
           {({ TransitionProps }) => (
             <Fade {...TransitionProps} timeout={350}>
               <Paper>
-                <div className={"flex w-[200px] flex-col"}>
+                <div className={"popper-btn flex w-[200px] flex-col"}>
                   {links.map((link, index) => {
                     if (!link.href && !link.sublink) return null;
 
