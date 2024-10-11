@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import clsx, { ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { DEFAULT_CURRENCY_CODE } from "./constants";
@@ -22,4 +23,8 @@ export function convertToLocale({
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount / 100);
+}
+
+export function hashValue(value: string): string {
+  return crypto.createHash("sha256").update(value).digest("hex");
 }
