@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+import crypto from "crypto";
 import clsx, { ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { DEFAULT_CURRENCY_CODE } from "./constants";
