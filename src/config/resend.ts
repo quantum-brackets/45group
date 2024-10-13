@@ -6,9 +6,12 @@ export async function sendEmail(
   payload: Omit<CreateEmailOptions, "from">,
   options?: CreateEmailRequestOptions
 ) {
+  if (!process.env.ONBOARDING_RESEND_EMAIL_SENDER)
+    throw new Error("Resend `from` option not added");
+
   const { data, error } = await resend.emails.send(
     {
-      from: "45Group <onboarding@resend.dev>",
+      from: process.env.ONBOARDING_RESEND_EMAIL_SENDER,
       ...payload,
     } as CreateEmailOptions,
     options

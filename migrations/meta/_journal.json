@@ -29,6 +29,13 @@
       "when": 1728658175427,
       "tag": "0003_clear_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1728825479379,
+      "tag": "0004_unusual_talon",
+      "breakpoints": true
     }
   ]
 }

@@ -36,7 +36,7 @@ export const POST = catchAsync(async (req: NextRequest) => {
 
   const otp = generateOTP();
   const hashedOTP = hashValue(otp);
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // OTP expires in 10 minutes
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // OTP expires in 5 minutes
 
   await db.insert(otps).values({
     user_email: user.email,

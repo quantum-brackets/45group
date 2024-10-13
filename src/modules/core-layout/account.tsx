@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Avatar, ClickAwayListener, Collapse, Fade, Paper, Popper, Skeleton } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import nProgress from "nprogress";
@@ -37,6 +37,7 @@ const links = [
 
 export default function Account() {
   const router = useRouter();
+  const pathname = usePathname();
 
   const { toggleLogoutModal } = useAppStore();
 
@@ -71,7 +72,7 @@ export default function Account() {
   if (!currentUser) {
     return (
       <div className="flex gap-4">
-        <Button href="./signin">Sign-in</Button>
+        <Button href={`/signin?from=${pathname}`}>Sign-in</Button>
       </div>
     );
   }

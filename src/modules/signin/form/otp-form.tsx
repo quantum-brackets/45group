@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Formik } from "formik";
 import * as Yup from "yup";
@@ -11,17 +10,17 @@ import Button from "~/components/button";
 
 type Props = {
   email: string;
+  from?: string;
 };
 
-const validationSchema = {
-  otp: Yup.string().required("OTP is required"),
-};
+const validationSchema = Yup.object({
+  otp: Yup.string().length(6, "OTP must be 6 digits").required("OTP is required"),
+});
 
-export default function OTPForm({ email }: Props) {
+const OTP_LENGTH = 6;
+
+export default function OTPForm({ email, from }: Props) {
   const router = useRouter();
-
-  const [otp, setOtp] = useState("");
-  const [isComplete, setIsComplete] = useState(false);
 
   const { mutateAsync: verifyOtp } = useVerifyOtp();
   const { mutateAsync: requestOtp, isPending: requestIsPending } = useRequestOtp();
@@ -38,22 +37,23 @@ export default function OTPForm({ email }: Props) {
             { email, otp },
             {
               onSuccess: () => {
+                resetForm();
                 nProgress.start();
-                router.push("/");
+                router.push(from || "/booking");
               },
             }
           );
         }}
         validateOnBlur={false}
       >
-        {({ handleSubmit, isSubmitting }) => (
+        {({ handleSubmit, isSubmitting, values }) => (
           <form onSubmit={handleSubmit} className="flex w-full flex-col gap-5">
-            <OTPField name="otp" required length={6} />
+            <OTPField name="otp" required length={OTP_LENGTH} />
             <Button
               type="submit"
               size="large"
               loading={isSubmitting}
-              disabled={nProgress.isStarted()}
+              disabled={nProgress.isStarted() || values.otp.length !== OTP_LENGTH}
             >
               Confirm
             </Button>
