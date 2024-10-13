@@ -11,7 +11,11 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    environment: production
+    env:
+      NODE_ENV: production
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      ONBOARDING_RESEND_EMAIL_SENDER: ${{ secrets.ONBOARDING_RESEND_EMAIL_SENDER }}
 
     steps:
       - uses: actions/checkout@v4
@@ -20,9 +24,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-
-      - name: Log NODE_ENV
-        run: echo "NODE_ENV is $NODE_ENV"
 
       - name: Install dependencies
         run: yarn install
