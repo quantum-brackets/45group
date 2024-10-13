@@ -21,6 +21,9 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Log NODE_ENV
+        run: echo "NODE_ENV is $NODE_ENV"
+
       - name: Install dependencies
         run: yarn install
 
