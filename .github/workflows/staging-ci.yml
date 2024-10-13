@@ -26,8 +26,10 @@ jobs:
       - name: Run lint-staged
         run: yarn lint-staged
 
-      - name: Mirgate DB
-        run: yarn migrate
-
       - name: Build project
         run: yarn build
+
+      - name: Mirgate DB
+        run: yarn migrate
+        env:
+          NODE_ENV: production
