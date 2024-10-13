@@ -11,6 +11,11 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: production
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      ONBOARDING_RESEND_EMAIL_SENDER: ${{ secrets.ONBOARDING_RESEND_EMAIL_SENDER }}
 
     steps:
       - uses: actions/checkout@v4
@@ -26,8 +31,8 @@ jobs:
       - name: Run lint-staged
         run: yarn lint-staged
 
-      - name: Mirgate DB
-        run: yarn migrate
-
       - name: Build project
         run: yarn build
+
+      - name: Mirgate DB
+        run: yarn migrate
