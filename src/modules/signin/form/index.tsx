@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import EmailForm from "./email-form";
 import OTPForm from "./otp-form";
 
-export default function SiginForm() {
+type Props = {
+  from?: string;
+};
+
+export default function SiginForm({ from }: Props) {
   const [otpForm, setOtpForm] = useState<{
     open: boolean;
     email: string | null;
@@ -24,7 +28,7 @@ export default function SiginForm() {
             </small>
           </div>
           <div className="flex w-full flex-col items-center gap-4">
-            <OTPForm email={otpForm.email} />
+            <OTPForm email={otpForm.email} from={from} />
           </div>
         </div>
       ) : (

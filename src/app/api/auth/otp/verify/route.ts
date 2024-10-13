@@ -6,6 +6,7 @@ import { users } from "~/db/schemas/users";
 import catchAsync from "~/utils/catch-async";
 import { otps } from "~/db/schemas/otps";
 import { hashValue } from "~/utils/helpers";
+import { sendEmail } from "~/config/resend";
 
 export const POST = catchAsync(async (req: NextRequest) => {
   const body = await req.json();
@@ -43,7 +44,19 @@ export const POST = catchAsync(async (req: NextRequest) => {
     });
   }
 
-  await db.update(users).set({ is_verified: true }).where(eq(users.email, email));
+  await Promise.all([
+    db.delete(otps).where(eq(otps.id, validOTP.id)),
+    db
+      .update(users)
+      .set({ last_login_at: currentTime, is_verified: true })
+      .where(eq(users.email, email)),
+  ]);
+
+  await sendEmail({
+    to: email,
+    subject: "Welcome to 45Group",
+    text: "Hello and Welcome",
+  });
 
   return NextResponse.json({
     success: true,

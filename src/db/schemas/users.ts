@@ -9,5 +9,6 @@ export const users = pgTable("users", {
   is_verified: boolean("is_verified").default(false),
   updated_at: timestamp("updated_at"),
   created_at: timestamp("created_at").defaultNow(),
+  last_login_at: timestamp("last_login_at"),
   metadata: json("metadata"),
 });

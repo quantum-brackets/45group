@@ -6,6 +6,7 @@ import catchAsync from "~/utils/catch-async";
 import { users } from "~/db/schemas/users";
 import { otps } from "~/db/schemas/otps";
 import { hashValue } from "~/utils/helpers";
+import { sendEmail } from "~/config/resend";
 
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -35,7 +36,7 @@ export const POST = catchAsync(async (req: NextRequest) => {
 
   const otp = generateOTP();
   const hashedOTP = hashValue(otp);
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // OTP expires in 10 minutes
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // OTP expires in 5 minutes
 
   await db.insert(otps).values({
     user_email: user.email,
@@ -43,7 +44,11 @@ export const POST = catchAsync(async (req: NextRequest) => {
     expires_at: expiresAt,
   });
 
-  //? Send to email
+  await sendEmail({
+    to: [email],
+    subject: "45Group - Request OTP",
+    text: otp,
+  });
 
   return NextResponse.json({
     success: true,

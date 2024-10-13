@@ -41,13 +41,15 @@ export default function OTPField({
             {...field}
             {...props}
             autoFocus
-            validateChar={(char) => {
-              return /^\d+$/.test(char);
-            }}
+            validateChar={(char) => /^\d+$/.test(char)}
             className={cn(
               "mx-auto mediumMobile:!gap-[8px] largeMobile:w-full largeMobile:gap-[10px]",
               className
             )}
+            onChange={(value) => {
+              if (value === field.value) return;
+              form.setFieldValue(props.name, value);
+            }}
             TextFieldsProps={{
               variant: "outlined",
               className: " [@media(max-width:660px)]:w-fit",
