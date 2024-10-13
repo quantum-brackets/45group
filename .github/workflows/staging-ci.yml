@@ -28,8 +28,6 @@ jobs:
 
       - name: Build project
         run: yarn build
-        env:
-          NODE_ENV: production
 
       - name: Mirgate DB
         run: yarn migrate
