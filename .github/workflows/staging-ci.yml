@@ -15,7 +15,6 @@ jobs:
       NODE_ENV: production
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-      ONBOARDING_RESEND_EMAIL_SENDER: ${{ secrets.ONBOARDING_RESEND_EMAIL_SENDER }}
 
     steps:
       - uses: actions/checkout@v4
