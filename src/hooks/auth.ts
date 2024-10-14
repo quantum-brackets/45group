@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
+import { axiosPrivate } from "~/config/axios";
 import AuthService from "~/services/auth";
 import { notifyError } from "~/utils/toast";
 
@@ -36,6 +37,15 @@ export function useVerifyOtp() {
           return notifyError({ message: "OTP expired or does not exist" });
         }
       }
+    },
+  });
+}
+
+export function useCreateJwt() {
+  return useMutation({
+    mutationFn: AuthService.createJwt,
+    onSuccess: (data) => {
+      axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + data.access;
     },
   });
 }

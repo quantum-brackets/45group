@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import nProgress from "nprogress";
-import { useVerifyOtp, useRequestOtp } from "~/hooks/auth";
+import { useVerifyOtp, useRequestOtp, useCreateJwt } from "~/hooks/auth";
 import OTPField from "~/components/fields/otp-field";
 import Button from "~/components/button";
 
@@ -24,6 +24,7 @@ export default function OTPForm({ email, from }: Props) {
 
   const { mutateAsync: verifyOtp } = useVerifyOtp();
   const { mutateAsync: requestOtp, isPending: requestIsPending } = useRequestOtp();
+  const { mutateAsync: createJwt } = useCreateJwt();
 
   return (
     <div className="flex flex-col gap-4">
@@ -36,10 +37,17 @@ export default function OTPForm({ email, from }: Props) {
           await verifyOtp(
             { email, otp },
             {
-              onSuccess: () => {
-                resetForm();
-                nProgress.start();
-                router.push(from || "/booking");
+              onSuccess: async () => {
+                await createJwt(
+                  { email },
+                  {
+                    onSuccess: () => {
+                      resetForm();
+                      nProgress.start();
+                      router.push(from || "/booking");
+                    },
+                  }
+                );
               },
             }
           );

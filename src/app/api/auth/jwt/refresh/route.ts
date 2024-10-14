@@ -7,6 +7,7 @@ import catchAsync from "~/utils/catch-async";
 import { usersTable } from "~/db/schemas/users";
 import { appError, signJwt } from "~/utils/helpers";
 import { blacklistedTokenTable } from "~/db/schemas/blacklisted-token";
+import { COOKIE_MAX_AGE, JWT_KEY } from "~/utils/constants";
 
 export const POST = catchAsync(async (req: NextRequest) => {
   const body = await req.json();
@@ -51,9 +52,15 @@ export const POST = catchAsync(async (req: NextRequest) => {
   const access = signJwt.access(user.id);
   const newRefresh = signJwt.refresh(user.id);
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     success: true,
     access,
     refresh: newRefresh,
   });
+
+  response.cookies.set(JWT_KEY, refresh, {
+    maxAge: COOKIE_MAX_AGE,
+  });
+
+  return response;
 });
