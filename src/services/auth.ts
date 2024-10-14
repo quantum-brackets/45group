@@ -14,8 +14,23 @@ class AuthService {
   };
 
   static verifyOtp = async (data: Record<"email" | "otp", string>) => {
-    const { data: response } = await axiosInstance.post<{ access_token: string }>(
-      "/api/auth/otp/verify",
+    const { data: response } = await axiosInstance.post("/api/auth/otp/verify", data);
+
+    return response;
+  };
+
+  static createJwt = async (data: Record<"email", string>) => {
+    const { data: response } = await axiosInstance.post<Record<"access" | "refresh", string>>(
+      "/api/auth/jwt/create",
+      data
+    );
+
+    return response;
+  };
+
+  static refreshJwt = async (data: Record<"email", string>) => {
+    const { data: response } = await axiosInstance.post<Record<"refresh", string>>(
+      "/api/auth/jwt/refresh",
       data
     );
 

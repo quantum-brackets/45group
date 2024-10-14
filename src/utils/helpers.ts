@@ -1,6 +1,8 @@
 import crypto from "crypto";
+import { NextResponse } from "next/server";
 import clsx, { ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import jwt from "jsonwebtoken";
 import { DEFAULT_CURRENCY_CODE } from "./constants";
 
 export function cn(...inputs: ClassValue[]) {
@@ -28,3 +30,40 @@ export function convertToLocale({
 export function hashValue(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
+
+export function appError({
+  status,
+  error,
+  errors,
+  ...rest
+}: {
+  status: number;
+  errors?: {
+    field: string | undefined;
+    message: string;
+  }[];
+  error?: string;
+} & Omit<ResponseInit, "status">) {
+  return NextResponse.json(
+    {
+      success: false,
+      error,
+      errors,
+    },
+    {
+      status,
+      ...rest,
+    }
+  );
+}
+
+export const signJwt = {
+  access: (id: string) =>
+    jwt.sign({ user_id: id }, process.env.JWT_SECRET as string, {
+      expiresIn: "15m",
+    }),
+  refresh: (id: string) =>
+    jwt.sign({ user_id: id }, process.env.JWT_SECRET as string, {
+      expiresIn: "15m",
+    }),
+};

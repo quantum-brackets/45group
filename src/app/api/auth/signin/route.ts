@@ -3,7 +3,8 @@ import { eq } from "drizzle-orm";
 import * as Yup from "yup";
 import { db } from "~/db";
 import catchAsync from "~/utils/catch-async";
-import { users } from "~/db/schemas/users";
+import { usersTable } from "~/db/schemas/users";
+import { appError } from "~/utils/helpers";
 
 export const POST = catchAsync(async (req: NextRequest) => {
   const body = await req.json();
@@ -13,21 +14,16 @@ export const POST = catchAsync(async (req: NextRequest) => {
   });
   const { email } = await schema.validate({ ...body }, { abortEarly: false, stripUnknown: true });
 
-  const [user] = await db.select().from(users).where(eq(users.email, email));
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
 
   if (user) {
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Email already exist",
-      },
-      {
-        status: 400,
-      }
-    );
+    return appError({
+      error: "Email already exist",
+      status: 400,
+    });
   }
 
-  await db.insert(users).values({ email });
+  await db.insert(usersTable).values({ email });
 
   return NextResponse.json({
     success: true,
