@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { NextResponse } from "next/server";
 import clsx, { ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { DEFAULT_CURRENCY_CODE } from "./constants";
@@ -27,4 +28,30 @@ export function convertToLocale({
 
 export function hashValue(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+export function appError({
+  status,
+  error,
+  errors,
+  ...rest
+}: {
+  status: number;
+  errors?: {
+    field: string | undefined;
+    message: string;
+  }[];
+  error?: string;
+} & Omit<ResponseInit, "status">) {
+  return NextResponse.json(
+    {
+      success: false,
+      error,
+      errors,
+    },
+    {
+      status,
+      ...rest,
+    }
+  );
 }

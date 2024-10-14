@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, gt } from "drizzle-orm";
 import * as Yup from "yup";
 import { db } from "~/db";
-import { users } from "~/db/schemas/users";
+import { usersTable } from "~/db/schemas/users";
 import catchAsync from "~/utils/catch-async";
-import { otps } from "~/db/schemas/otps";
-import { hashValue } from "~/utils/helpers";
+import { otpsTable } from "~/db/schemas/otps";
+import { appError, hashValue } from "~/utils/helpers";
 import { sendEmail } from "~/config/resend";
 
 export const POST = catchAsync(async (req: NextRequest) => {
@@ -28,28 +28,28 @@ export const POST = catchAsync(async (req: NextRequest) => {
 
   const [validOTP] = await db
     .select()
-    .from(otps)
+    .from(otpsTable)
     .where(
       and(
-        eq(otps.user_email, email),
-        eq(otps.hashed_otp, hashedOTP),
-        gt(otps.expires_at, currentTime)
+        eq(otpsTable.user_email, email),
+        eq(otpsTable.hashed_otp, hashedOTP),
+        gt(otpsTable.expires_at, currentTime)
       )
     );
 
   if (!validOTP) {
-    return NextResponse.json({
-      success: false,
-      message: "The OTP does not exist or has expired.",
+    return appError({
+      status: 400,
+      error: "The OTP does not exist or has expired.",
     });
   }
 
   await Promise.all([
-    db.delete(otps).where(eq(otps.id, validOTP.id)),
+    db.delete(otpsTable).where(eq(otpsTable.id, validOTP.id)),
     db
-      .update(users)
+      .update(usersTable)
       .set({ last_login_at: currentTime, is_verified: true })
-      .where(eq(users.email, email)),
+      .where(eq(usersTable.email, email)),
   ]);
 
   await sendEmail({
