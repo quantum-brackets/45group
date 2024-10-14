@@ -43,10 +43,17 @@ export const POST = catchAsync(async (req: NextRequest) => {
     });
   }
 
+  await db.insert(blacklistedTokenTable).values({
+    token: refresh,
+    blacklisted_at: new Date(),
+  });
+
   const access = signJwt.access(user.id);
+  const newRefresh = signJwt.refresh(user.id);
 
   return NextResponse.json({
     success: true,
     access,
+    refresh: newRefresh,
   });
 });
