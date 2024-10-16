@@ -66,7 +66,7 @@ export default function Account() {
   }
 
   if (isLoading) {
-    return <Skeleton width={100} height={50} />;
+    return <Skeleton width={100} height={30} />;
   }
 
   if (!currentUser) {

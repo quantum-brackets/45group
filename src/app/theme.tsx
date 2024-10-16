@@ -209,6 +209,20 @@ const theme = createTheme({
         },
       },
     },
+    MuiTypography: {
+      styleOverrides: {
+        h1: {
+          fontSize: "1rem",
+        },
+      },
+    },
+    MuiSkeleton: {
+      styleOverrides: {
+        root: {
+          transform: "none",
+        },
+      },
+    },
   },
 });
 
