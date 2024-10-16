@@ -44,7 +44,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <Link
                 href={href}
                 key={index}
-                className={cn("flex items-center gap-4 rounded p-2 px-4", {
+                className={cn("flex items-center gap-4 rounded p-3 px-4", {
                   "hover: bg-primary text-white": pathname === href,
                   "hover:bg-zinc-100": pathname !== href,
                 })}
@@ -56,7 +56,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </aside>
-      <main className="w-full p-4">{children}</main>
+      <main className="mx-auto w-full max-w-[1250px] p-6">{children}</main>
     </div>
   );
 }
