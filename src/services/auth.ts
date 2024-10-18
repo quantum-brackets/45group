@@ -28,8 +28,8 @@ class AuthService {
     return response;
   };
 
-  static refreshJwt = async (data: Record<"email", string>) => {
-    const { data: response } = await axiosInstance.post<Record<"refresh", string>>(
+  static refreshJwt = async (data: Record<"refresh", string>) => {
+    const { data: response } = await axiosInstance.post<Record<"access" | "refresh", string>>(
       "/api/auth/jwt/refresh",
       data
     );

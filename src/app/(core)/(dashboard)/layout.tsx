@@ -10,8 +10,8 @@ import { cn } from "~/utils/helpers";
 
 const links = [
   {
-    title: "Bookings",
-    href: "/bookings",
+    title: "Previous Bookings",
+    href: "/previous-bookings",
     icon: LiaBookSolid,
   },
   {

@@ -1,4 +1,7 @@
 import axios, { AxiosError } from "axios";
+import { getCookie } from "~/app/_actions/util";
+import AuthService from "~/services/auth";
+import { JWT_KEY } from "~/utils/constants";
 // import { getValueFromCookie } from "~/app/_actions/jwt";
 // import AuthService from "~/services/auth";
 
@@ -24,27 +27,33 @@ export const axiosPrivate = axios.create({
   },
 });
 
-// axiosPrivate.interceptors.request.use(
-//   async (config) => {
-//     if (!config.headers.Authorization) {
-//       const refreshToken = await getValueFromCookie(JWT_KEY);
-//       if (!refreshToken) {
-//         return config;
-//       }
+axiosPrivate.interceptors.request.use(
+  async (config) => {
+    try {
+      if (!config.headers.Authorization) {
+        const refreshToken = await getCookie(JWT_KEY);
 
-//       const token = await AuthService.refreshToken({
-//         refreshToken,
-//       });
+        if (!refreshToken) {
+          return config;
+        }
 
-//       if (token) {
-//         config.headers.Authorization = `Bearer ${token}`;
-//         axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + token;
-//       }
-//     }
-//     return config;
-//   },
-//   (error) => Promise.reject(error)
-// );
+        const token = await AuthService.refreshJwt({
+          refresh: refreshToken,
+        });
+
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+          axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + token;
+        }
+      }
+    } catch (error) {
+      return Promise.reject(error);
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // axiosPrivate.interceptors.response.use(
 //   (response) => response,
@@ -55,19 +64,19 @@ export const axiosPrivate = axios.create({
 //       return Promise.reject(error);
 //     }
 
-//     // const status = error?.response?.status;
+//     const status = error?.response?.status;
 
-//     // if (status === 401) {
-//     //   const token = await getValueFromCookie(JWT_KEY);
+//     if (status === 401) {
+//       const token = await getValueFromCookie(JWT_KEY);
 
-//     //   console.log(token);
+//       console.log(token);
 
-//     //   if (token) {
-//     //     axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + token;
-//     //   }
+//       if (token) {
+//         axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + token;
+//       }
 
-//     //   return axiosPrivate.request(error.config);
-//     // }
+//       return axiosPrivate.request(error.config);
+//     }
 //     return Promise.reject(error);
 //   }
 // );
