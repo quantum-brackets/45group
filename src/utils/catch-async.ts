@@ -6,9 +6,13 @@ const catchAsync = (
   fn:
     | ((req: NextRequest) => Promise<any>)
     | ((req: NextRequest, _next: NextFetchEvent) => Promise<NextMiddlewareResult>)
-): NextMiddleware => {
-  return (req: NextRequest, next: NextFetchEvent) => {
-    return fn(req, next).catch((err: any) => globalErrors(err));
+) => {
+  return async (req: NextRequest, next: NextFetchEvent) => {
+    try {
+      return await fn(req, next);
+    } catch (error) {
+      return globalErrors(error);
+    }
   };
 };
 
