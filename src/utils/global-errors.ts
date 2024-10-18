@@ -2,6 +2,7 @@ import { ErrorResponse } from "resend";
 import { JsonWebTokenError, TokenExpiredError } from "jsonwebtoken";
 import * as Yup from "yup";
 import { appError } from "./helpers";
+import { isAxiosError } from "axios";
 
 function globalErrors(error: any) {
   console.error(error, "In global error");
@@ -37,6 +38,13 @@ function globalErrors(error: any) {
     return appError({
       status: 401,
       error: "Token has expired",
+    });
+  }
+
+  if (isAxiosError(error)) {
+    return appError({
+      status: error.response?.status || 400,
+      error: error.response?.data,
     });
   }
 
