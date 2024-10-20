@@ -1,9 +1,9 @@
 import { defineConfig } from "drizzle-kit";
 import * as dotenv from "dotenv";
 
-if (!process.env.NODE_ENV || process.env.NODE_ENV === "development") {
-  dotenv.config({ path: ".env.local" });
-} else {
+dotenv.config({ path: ".env.local" });
+
+if (!process.env.DATABASE_URL) {
   dotenv.config({ path: ".env" });
 }
 

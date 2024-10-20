@@ -10,7 +10,7 @@ import Button from "~/components/button";
 
 type Props = {
   email: string;
-  from?: string;
+  origin?: string;
 };
 
 const validationSchema = Yup.object({
@@ -19,7 +19,7 @@ const validationSchema = Yup.object({
 
 const OTP_LENGTH = 6;
 
-export default function OTPForm({ email, from }: Props) {
+export default function OTPForm({ email, origin }: Props) {
   const router = useRouter();
 
   const { mutateAsync: verifyOtp } = useVerifyOtp();
@@ -44,7 +44,7 @@ export default function OTPForm({ email, from }: Props) {
                     onSuccess: () => {
                       resetForm();
                       nProgress.start();
-                      router.push(from || "/booking");
+                      router.push(origin || "/booking");
                     },
                   }
                 );

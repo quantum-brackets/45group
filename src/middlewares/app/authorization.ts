@@ -13,7 +13,7 @@ const protectedPaths = ["/profile", "/previous-bookings", "/receipts"];
 
 const redirectToLogin = (req: NextRequest, origin: string) => {
   const redirectUrl = new URL(req.url);
-  redirectUrl.pathname = "signin";
+  redirectUrl.pathname = "/signin";
   return NextResponse.redirect(`${redirectUrl}?origin=${origin}`, 307);
 };
 
@@ -24,10 +24,11 @@ export const authorization: MiddlewareFactory = (next) => {
     if (protectedPaths.some((path) => pathname.startsWith(path))) {
       const jwt = req.cookies.get(JWT_KEY)?.value;
 
+      //? remove `&& !cache.user` when previous user still shows after logout
       if (jwt && !cache.user) {
         try {
           cache.user = await UsersService.getMe();
-        } catch {
+        } catch (error) {
           return redirectToLogin(req, pathname);
         }
       }

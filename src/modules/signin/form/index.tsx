@@ -5,10 +5,10 @@ import EmailForm from "./email-form";
 import OTPForm from "./otp-form";
 
 type Props = {
-  from?: string;
+  origin?: string;
 };
 
-export default function SiginForm({ from }: Props) {
+export default function SiginForm({ origin }: Props) {
   const [otpForm, setOtpForm] = useState<{
     open: boolean;
     email: string | null;
@@ -28,7 +28,7 @@ export default function SiginForm({ from }: Props) {
             </small>
           </div>
           <div className="flex w-full flex-col items-center gap-4">
-            <OTPForm email={otpForm.email} from={from} />
+            <OTPForm email={otpForm.email} origin={origin} />
           </div>
         </div>
       ) : (

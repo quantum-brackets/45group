@@ -41,7 +41,7 @@ export async function getHeader(key: string): Promise<string | null> {
   return headers().get(key);
 }
 
-export async function getAllHeaders(key: string): Promise<{ [key: string]: string }> {
+export async function getAllHeaders(): Promise<{ [key: string]: string }> {
   const headersList = headers();
   const headersObject: { [key: string]: string } = {};
   headersList.forEach((value, key) => {
