@@ -3,12 +3,6 @@ import { MiddlewareFactory } from "../stack-middlewares";
 import { JWT_KEY } from "~/utils/constants";
 import UsersService from "~/services/users";
 
-const cache: {
-  user: User | null;
-} = {
-  user: null,
-};
-
 const protectedPaths = ["/profile", "/previous-bookings", "/receipts"];
 
 const redirectToLogin = (req: NextRequest, origin: string) => {
@@ -24,17 +18,12 @@ export const authorization: MiddlewareFactory = (next) => {
     if (protectedPaths.some((path) => pathname.startsWith(path))) {
       const jwt = req.cookies.get(JWT_KEY)?.value;
 
-      //? remove `&& !cache.user` when previous user still shows after logout
-      if (jwt && !cache.user) {
+      if (jwt) {
         try {
-          cache.user = await UsersService.getMe();
+          await UsersService.getMe();
         } catch (error) {
           return redirectToLogin(req, pathname);
         }
-      }
-
-      if (!cache.user) {
-        return redirectToLogin(req, pathname);
       }
     }
 

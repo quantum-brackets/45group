@@ -29,10 +29,11 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
     { abortEarly: false, stripUnknown: true }
   );
 
-  const updatedUser = await db
+  const [updatedUser] = await db
     .update(usersTable)
     .set(validatedData)
-    .where(eq(usersTable.id, userId));
+    .where(eq(usersTable.id, userId))
+    .returning();
 
   if (!updatedUser) {
     return appError({
@@ -43,7 +44,7 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
 
   return NextResponse.json({
     success: true,
-    updatedUser,
+    user: updatedUser,
   });
 });
 

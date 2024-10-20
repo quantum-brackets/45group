@@ -1,8 +1,12 @@
 import { axiosPrivate } from "~/config/axios";
 
+type UserReq = Omit<Partial<User>, "email" | "image"> & {
+  image?: File;
+};
+
 class UsersService {
-  static updateMe = async (data: any) => {
-    const { data: response } = await axiosPrivate.post<User>(`/api/users/me`, data);
+  static updateMe = async (data: UserReq) => {
+    const { data: response } = await axiosPrivate.patch<User>(`/api/users/me`, data);
 
     return response;
   };

@@ -7,6 +7,8 @@ import { Formik } from "formik";
 import { IoPerson, IoCameraOutline } from "react-icons/io5";
 import Button from "~/components/button";
 import FormField from "~/components/fields/form-field";
+import { useUpdateMe } from "~/hooks/users";
+import { notifySuccess } from "~/utils/toast";
 
 export default function Profile() {
   const profileImageInputRef = useRef<HTMLInputElement | null>(null);
@@ -26,6 +28,8 @@ export default function Profile() {
     },
   });
 
+  const { mutateAsync: updateMe } = useUpdateMe();
+
   return (
     <main className="flex flex-col gap-10">
       <Typography variant="h6">My Profile</Typography>
@@ -34,9 +38,15 @@ export default function Profile() {
           first_name: currentUser?.first_name || "",
           last_name: currentUser?.last_name || "",
           image: currentUser?.image || "",
-          email: currentUser?.email || "anachuna@gmai.com",
+          email: currentUser?.email || "",
         }}
-        onSubmit={async () => {}}
+        onSubmit={async ({ email: _, image: __, ...data }) => {
+          await updateMe(data, {
+            onSuccess: () => {
+              notifySuccess({ message: "Profile updated successfully" });
+            },
+          });
+        }}
         validateOnBlur={false}
         enableReinitialize
       >
@@ -96,7 +106,9 @@ export default function Profile() {
                 </div>
               </div>
               <div className="flex justify-end">
-                <Button loading={isSubmitting}>Save changes</Button>
+                <Button loading={isSubmitting} type="submit">
+                  Save changes
+                </Button>
               </div>
             </form>
           </div>
