@@ -1,11 +1,10 @@
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 import { getCookie } from "~/app/_actions/util";
 import AuthService from "~/services/auth";
 import { JWT_KEY } from "~/utils/constants";
-// import { getValueFromCookie } from "~/app/_actions/jwt";
-// import AuthService from "~/services/auth";
 
 const axiosInstance = axios.create({
+  baseURL: process.env.BASE_URL,
   headers: {
     common: {
       Accept: "application/json",
@@ -17,6 +16,7 @@ const axiosInstance = axios.create({
 });
 
 export const axiosPrivate = axios.create({
+  baseURL: process.env.BASE_URL,
   headers: {
     common: {
       Accept: "application/json",
@@ -37,13 +37,13 @@ axiosPrivate.interceptors.request.use(
           return config;
         }
 
-        const token = await AuthService.refreshJwt({
+        const { access, refresh } = await AuthService.refreshJwt({
           refresh: refreshToken,
         });
 
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-          axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + token;
+        if (access && refresh) {
+          config.headers.Authorization = `Bearer ${access}`;
+          axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + access;
         }
       }
     } catch (error) {

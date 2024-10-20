@@ -5,7 +5,7 @@ import { appError } from "./helpers";
 import { isAxiosError } from "axios";
 
 function globalErrors(error: any) {
-  console.error(error, "In global error");
+  // console.error(error, "In global error");
   //? Create mini functions that handle errors
 
   if (error instanceof Yup.ValidationError) {

@@ -1,9 +1,9 @@
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
-import axios from "axios";
 import { MiddlewareFactory } from "../stack-middlewares";
 import { appError } from "~/utils/helpers";
 import catchAsync from "~/utils/catch-async";
 import { HEADER_DATA_KEY } from "~/utils/constants";
+import axiosInstance from "~/config/axios";
 
 const protectedRoutes = ["/api/users"];
 
@@ -23,7 +23,7 @@ export const authorization: MiddlewareFactory = (next) => {
 
       const {
         data: { user_id },
-      } = await axios.post("/api/utils/validate-token", {
+      } = await axiosInstance.post("/api/utils/validate-token", {
         token,
       });
 

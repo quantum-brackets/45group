@@ -64,6 +64,6 @@ export const signJwt = {
     }),
   refresh: (id: string) =>
     jwt.sign({ user_id: id }, process.env.JWT_SECRET as string, {
-      expiresIn: "15m",
+      expiresIn: "14d",
     }),
 };

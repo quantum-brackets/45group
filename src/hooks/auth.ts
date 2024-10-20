@@ -1,7 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
+import { setCookie } from "~/app/_actions/util";
 import { axiosPrivate } from "~/config/axios";
 import AuthService from "~/services/auth";
+import { JWT_KEY } from "~/utils/constants";
 import { notifyError } from "~/utils/toast";
 
 export function useSignin() {
@@ -30,7 +32,7 @@ export function useVerifyOtp() {
     mutationFn: AuthService.verifyOtp,
     onError: (error) => {
       if (isAxiosError(error)) {
-        if (error.status === 401) {
+        if (error.status === 400) {
           return notifyError({ message: "Otp has expired or does not exist." });
         }
         if (error.status === 404) {
@@ -44,8 +46,9 @@ export function useVerifyOtp() {
 export function useCreateJwt() {
   return useMutation({
     mutationFn: AuthService.createJwt,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + data.access;
+      await setCookie(JWT_KEY, data.refresh);
     },
   });
 }
