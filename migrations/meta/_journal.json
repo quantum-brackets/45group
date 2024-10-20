@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1728652552281,
-      "tag": "0000_overjoyed_madrox",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1728653313691,
-      "tag": "0001_yummy_bloodaxe",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1728657290326,
-      "tag": "0002_fresh_squadron_sinister",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1728658175427,
-      "tag": "0003_clear_nova",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1728825479379,
-      "tag": "0004_unusual_talon",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1728911424104,
-      "tag": "0005_lowly_sheva_callister",
+      "when": 1729432175228,
+      "tag": "0000_confused_starjammers",
       "breakpoints": true
     }
   ]
