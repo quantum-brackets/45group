@@ -9,23 +9,14 @@ import Button from "~/components/button";
 import FormField from "~/components/fields/form-field";
 import { useUpdateMe } from "~/hooks/users";
 import { notifySuccess } from "~/utils/toast";
+import UsersService from "~/services/users";
 
 export default function Profile() {
   const profileImageInputRef = useRef<HTMLInputElement | null>(null);
 
   const { data: currentUser, isLoading } = useQuery<User>({
     queryKey: ["current-user"],
-    queryFn: async () => {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({
-            first_name: "Uchechukwu",
-            last_name: "Anachuna",
-            image: "https://picsum.photos/200",
-          } as User);
-        }, 5000);
-      });
-    },
+    queryFn: UsersService.getMe,
   });
 
   const { mutateAsync: updateMe } = useUpdateMe();
