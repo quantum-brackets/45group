@@ -26,7 +26,7 @@ export default function Button({
       )}
       sx={{
         textTransform: "none",
-        "&.MuiButton-colorPrimary": {
+        "&.MuiButton-colorPrimary.MuiButton-containedPrimary": {
           color: "white",
         },
         "&.MuiButton-sizeSmall": {

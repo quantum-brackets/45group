@@ -9,6 +9,7 @@ import { FaAngleDown } from "react-icons/fa6";
 import Button from "~/components/button";
 import { cn } from "~/utils/helpers";
 import useAppStore from "~/store/app";
+import UsersService from "~/services/users";
 
 const links = [
   {
@@ -48,17 +49,7 @@ export default function Account() {
 
   const { isLoading, data: currentUser } = useQuery<User>({
     queryKey: ["current-user"],
-    queryFn: async () => {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({
-            first_name: "Uchechukwu",
-            last_name: "Anachuna",
-            image: "https://picsum.photos/200",
-          } as User);
-        }, 5000);
-      });
-    },
+    queryFn: UsersService.getMe,
   });
 
   function onClose() {
