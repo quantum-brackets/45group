@@ -1,6 +1,6 @@
-import { toast } from "sonner";
+import { ExternalToast, toast } from "sonner";
 
-type Params = {
+type Params = Omit<ExternalToast, "description"> & {
   message: string;
   description?: string;
 };
