@@ -1,3 +1,12 @@
+type User = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  image: string;
+  phone: string;
+  complete_profile: boolean;
+};
+
 type Booking = {
   id: string;
   images: string[];
@@ -23,11 +32,4 @@ type BookingSearchParams = {
   from?: string;
   to?: string;
   sort_by?: string;
-};
-
-type User = {
-  first_name: string;
-  last_name: string;
-  email: string;
-  image: string;
 };

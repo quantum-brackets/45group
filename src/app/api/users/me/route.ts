@@ -23,6 +23,7 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
         "Phone number must be between 10 and 15 characters",
         (val) => !val || (val.length >= 10 && val.length <= 15)
       ),
+    complete_profile: Yup.boolean().optional(),
   });
   const validatedData = await schema.validate(
     { ...body },

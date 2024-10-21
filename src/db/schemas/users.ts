@@ -10,5 +10,6 @@ export const usersTable = pgTable("users", {
   updated_at: timestamp("updated_at"),
   created_at: timestamp("created_at").defaultNow(),
   last_login_at: timestamp("last_login_at"),
+  complete_profile: boolean("complete_profile").default(false),
   metadata: json("metadata"),
 });

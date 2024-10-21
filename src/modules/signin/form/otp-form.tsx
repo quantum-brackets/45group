@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Formik } from "formik";
 import * as Yup from "yup";
@@ -22,6 +23,8 @@ const OTP_LENGTH = 6;
 export default function OTPForm({ email, origin }: Props) {
   const router = useRouter();
 
+  const [isLoading, setIsLoading] = useState(false);
+
   const { mutateAsync: verifyOtp } = useVerifyOtp();
   const { mutateAsync: requestOtp, isPending: requestIsPending } = useRequestOtp();
   const { mutateAsync: createJwt } = useCreateJwt();
@@ -34,6 +37,7 @@ export default function OTPForm({ email, origin }: Props) {
         }}
         validationSchema={validationSchema}
         onSubmit={async ({ otp }, { resetForm }) => {
+          setIsLoading(true);
           await verifyOtp(
             { email, otp },
             {
@@ -45,22 +49,29 @@ export default function OTPForm({ email, origin }: Props) {
                       resetForm();
                       nProgress.start();
                       router.push(origin || "/booking");
+                      setIsLoading(false);
+                    },
+                    onError: () => {
+                      setIsLoading(false);
                     },
                   }
                 );
+              },
+              onError: () => {
+                setIsLoading(false);
               },
             }
           );
         }}
         validateOnBlur={false}
       >
-        {({ handleSubmit, isSubmitting, values }) => (
+        {({ handleSubmit, values }) => (
           <form onSubmit={handleSubmit} className="flex w-full flex-col gap-5">
             <OTPField name="otp" required length={OTP_LENGTH} />
             <Button
               type="submit"
               size="large"
-              loading={isSubmitting}
+              loading={isLoading}
               disabled={nProgress.isStarted() || values.otp.length !== OTP_LENGTH}
             >
               Confirm

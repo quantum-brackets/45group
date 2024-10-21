@@ -7,6 +7,7 @@ export const DEFAULT_CURRENCY_CODE = "ngn";
 
 export const JWT_KEY = "_jwt";
 
-export const phoneRegExp = /^(\+\d{1,2}\s?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/;
+// export const phoneRegExp = /^(\+\d{1,2}\s?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/;
+export const phoneRegExp = /^[0-9]{11}$/;
 
 export const HEADER_DATA_KEY = "x-data";
