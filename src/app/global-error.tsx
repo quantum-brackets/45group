@@ -21,13 +21,13 @@ export default function GlobalError({
     <html>
       <body className={cn(merriweather.variable, "min-h-screen scroll-smooth")}>
         <ThemeProvider theme={theme}>
-          <div className="flex w-full max-w-App flex-grow flex-col items-center justify-center gap-2 self-center p-8">
-            <figure className="w-[20%] largeMobile:!w-[65%] tablet:w-[50%]">
+          <div className="mx-auto flex h-full w-full max-w-[800px] flex-grow flex-col items-center justify-center gap-2 self-center p-8">
+            <figure className="w-full">
               <Image priority src={ErrorIllustrtion} alt="Error occured illustration" />
             </figure>
             <div className="flex flex-col items-center gap-4">
-              <h2 className="text-2xl">An Error Occured!</h2>
-              {process.env.NODE_ENV === "development" && <p>Error: {error.message}</p>}
+              <h2 className="text-2xl tablet_768:text-base">An Error Occured!</h2>
+              {/* {process.env.NODE_ENV === "development" && <p>Error: {error.message}</p>} */}
               <Button onClick={() => reset()}>Try again</Button>
             </div>
           </div>
