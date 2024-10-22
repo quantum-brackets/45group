@@ -27,7 +27,7 @@ export default function GlobalError({
       >
         <ThemeProvider theme={theme}>
           <div className="flex h-full w-full max-w-[800px] flex-grow flex-col items-center justify-center gap-2 self-center p-8">
-            <figure className="w-[80%]">
+            <figure className="w-[80%] largeMobile:w-full">
               <Image priority src={ErrorIllustrtion} alt="Error occured illustration" />
             </figure>
             <div className="flex flex-col items-center gap-4">
