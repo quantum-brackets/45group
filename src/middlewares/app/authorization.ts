@@ -4,7 +4,6 @@ import { JWT_KEY } from "~/utils/constants";
 import UsersService from "~/services/users";
 
 const protectedPaths = ["/profile", "/previous-bookings", "/receipts", "/complete-profile"];
-
 const externalPaths = ["/booking"];
 
 const authPaths = {
@@ -55,16 +54,16 @@ export const authorization: MiddlewareFactory = (next) => {
 
     const user = await getMe(jwt);
 
-    if (pathname === authPaths.completeProfile && user && user.complete_profile) {
-      return redirect({ req, pathname: "/booking" });
-    }
-
     if (isProtectedPath && !user) {
       return redirect({ req, pathname: authPaths.signin, origin: pathname });
     }
 
-    if (user && !user.complete_profile) {
+    if (!user?.complete_profile) {
       return redirect({ req, pathname: authPaths.completeProfile, origin: pathname });
+    }
+
+    if (pathname === authPaths.completeProfile && user?.complete_profile) {
+      return redirect({ req, pathname: "/booking" });
     }
 
     return next(req, _next);
