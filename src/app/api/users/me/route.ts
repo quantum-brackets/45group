@@ -43,10 +43,7 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
     });
   }
 
-  return NextResponse.json({
-    success: true,
-    user: updatedUser,
-  });
+  return NextResponse.json(updatedUser);
 });
 
 export const GET = catchAsync(async (req: NextRequest) => {
@@ -61,8 +58,5 @@ export const GET = catchAsync(async (req: NextRequest) => {
     });
   }
 
-  return NextResponse.json({
-    success: true,
-    user,
-  });
+  return NextResponse.json(user);
 });

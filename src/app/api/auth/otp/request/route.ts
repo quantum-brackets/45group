@@ -46,7 +46,6 @@ export const POST = catchAsync(async (req: NextRequest) => {
   });
 
   return NextResponse.json({
-    success: true,
     message: "OTP sent to email",
   });
 });

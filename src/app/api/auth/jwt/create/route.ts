@@ -31,7 +31,6 @@ export const POST = catchAsync(async (req: NextRequest) => {
   const refresh = signJwt.refresh(user.id);
 
   const response = NextResponse.json({
-    success: true,
     access,
     refresh,
   });
