@@ -26,7 +26,6 @@ export const POST = catchAsync(async (req: NextRequest) => {
   await db.insert(usersTable).values({ email });
 
   return NextResponse.json({
-    success: true,
     message: "User created successfully",
   });
 });

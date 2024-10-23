@@ -46,7 +46,6 @@ export function appError({
 } & Omit<ResponseInit, "status">) {
   return NextResponse.json(
     {
-      success: false,
       error,
       errors,
     },

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getCookie } from "~/app/_actions/util";
+import { getCookie, setCookie } from "~/app/_actions/util";
 import AuthService from "~/services/auth";
 import { JWT_KEY } from "~/utils/constants";
 
@@ -32,7 +32,6 @@ axiosPrivate.interceptors.request.use(
     try {
       if (!config.headers.Authorization) {
         const refreshToken = await getCookie(JWT_KEY);
-
         if (!refreshToken) {
           return config;
         }
@@ -41,9 +40,14 @@ axiosPrivate.interceptors.request.use(
           refresh: refreshToken,
         });
 
-        if (access && refresh) {
-          config.headers.Authorization = `Bearer ${access}`;
-          axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + access;
+        try {
+          if (access && refresh) {
+            config.headers.Authorization = `Bearer ${access}`;
+            axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + access;
+            await setCookie(JWT_KEY, refresh);
+          }
+        } catch (error) {
+          console.log(error, "in request");
         }
       }
     } catch (error) {
@@ -55,30 +59,42 @@ axiosPrivate.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// axiosPrivate.interceptors.response.use(
-//   (response) => response,
-//   async (error: AxiosError) => {
-//     const originalRequest = error?.config;
+axiosPrivate.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error?.config;
 
-//     if (!originalRequest) {
-//       return Promise.reject(error);
-//     }
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
 
-//     const status = error?.response?.status;
+    const status = error?.response?.status;
 
-//     if (status === 401) {
-//       const token = await getValueFromCookie(JWT_KEY);
+    if (status === 401) {
+      const refreshToken = await getCookie(JWT_KEY);
 
-//       console.log(token);
+      if (!refreshToken) {
+        return Promise.reject(error);
+      }
 
-//       if (token) {
-//         axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + token;
-//       }
+      const { access, refresh } = await AuthService.refreshJwt({
+        refresh: refreshToken,
+      });
 
-//       return axiosPrivate.request(error.config);
-//     }
-//     return Promise.reject(error);
-//   }
-// );
+      try {
+        if (access && refresh) {
+          axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + access;
+          await setCookie(JWT_KEY, refresh);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+
+      return axiosPrivate.request(error?.config);
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export default axiosInstance;

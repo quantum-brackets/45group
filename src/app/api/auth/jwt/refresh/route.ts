@@ -53,12 +53,11 @@ export const POST = catchAsync(async (req: NextRequest) => {
   const newRefresh = signJwt.refresh(user.id);
 
   const response = NextResponse.json({
-    success: true,
     access,
     refresh: newRefresh,
   });
 
-  response.cookies.set(JWT_KEY, refresh, {
+  response.cookies.set(JWT_KEY, newRefresh, {
     maxAge: COOKIE_MAX_AGE,
   });
 

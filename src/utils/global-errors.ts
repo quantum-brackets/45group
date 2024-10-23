@@ -1,8 +1,8 @@
+import { isAxiosError } from "axios";
 import { ErrorResponse } from "resend";
 import { JsonWebTokenError, TokenExpiredError } from "jsonwebtoken";
 import * as Yup from "yup";
 import { appError } from "./helpers";
-import { isAxiosError } from "axios";
 
 function globalErrors(error: any) {
   // console.error(error, "In global error");
@@ -45,6 +45,30 @@ function globalErrors(error: any) {
     return appError({
       status: error.response?.status || 400,
       error: error.response?.data,
+    });
+  }
+
+  if (error?.code === "23505" && error.detail) {
+    const regex = /Key \((\w+)\)=\((.*?)\) already exists\./;
+    const match = error.detail.match(regex);
+
+    if (match) {
+      return appError({
+        status: 409,
+        errors: [
+          {
+            field: match[1],
+            message: `"${match[1]}" already exists`,
+          },
+        ],
+      });
+    }
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    return appError({
+      status: 500,
+      error,
     });
   }
 
