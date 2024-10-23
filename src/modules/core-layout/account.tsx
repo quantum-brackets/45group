@@ -77,7 +77,7 @@ export default function Account() {
         >
           <Avatar
             alt={`${currentUser.first_name} ${currentUser.last_name}`}
-            src={currentUser.image}
+            src={currentUser.image || ""}
             sx={{ width: 35, height: 35 }}
           >
             {`${currentUser.first_name} ${currentUser.last_name}`}
