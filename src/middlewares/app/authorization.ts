@@ -58,14 +58,8 @@ export const authorization: MiddlewareFactory = (next) => {
       return redirect({ req, pathname: authPaths.signin, origin: pathname });
     }
 
-    if (user) {
-      if (!user.complete_profile) {
-        return redirect({ req, pathname: authPaths.completeProfile, origin: pathname });
-      }
-
-      if (pathname === authPaths.completeProfile && user.complete_profile) {
-        return redirect({ req, pathname: "/booking" });
-      }
+    if (user && !user.complete_profile) {
+      return redirect({ req, pathname: authPaths.completeProfile, origin: pathname });
     }
 
     return next(req, _next);
