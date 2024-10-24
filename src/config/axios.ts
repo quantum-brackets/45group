@@ -29,34 +29,34 @@ export const axiosPrivate = axios.create({
 
 axiosPrivate.interceptors.request.use(
   async (config) => {
-    // try {
-    //   if (!config.headers.Authorization) {
-    //     const refreshToken = await getCookie(JWT_KEY);
-    //     if (!refreshToken) {
-    //       return config;
-    //     }
+    try {
+      if (!config.headers.Authorization) {
+        const refreshToken = await getCookie(JWT_KEY);
+        if (!refreshToken) {
+          return config;
+        }
 
-    //     try {
-    //       const { access, refresh } = await AuthService.refreshJwt({
-    //         refresh: refreshToken,
-    //       });
+        try {
+          const { access, refresh } = await AuthService.refreshJwt({
+            refresh: refreshToken,
+          });
 
-    //       if (access && refresh) {
-    //         config.headers.Authorization = `Bearer ${access}`;
-    //         axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + access;
-    //         await setCookie(JWT_KEY, refresh);
-    //       }
-    //     } catch (error) {
-    //       if (isAxiosError(error)) {
-    //         if (error.response?.status === 401) {
-    //           await deleteCookie(JWT_KEY);
-    //         }
-    //       }
-    //     }
-    //   }
-    // } catch (error) {
-    //   return Promise.reject(error);
-    // }
+          if (access && refresh) {
+            config.headers.Authorization = `Bearer ${access}`;
+            axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + access;
+            await setCookie(JWT_KEY, refresh);
+          }
+        } catch (error) {
+          if (isAxiosError(error)) {
+            if (error.response?.status === 401) {
+              await deleteCookie(JWT_KEY);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      return Promise.reject(error);
+    }
 
     return config;
   },
