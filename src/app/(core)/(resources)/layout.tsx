@@ -8,6 +8,7 @@ export default function ResourceLayout({ children }: { children: ReactNode }) {
   useQuery({
     queryKey: ["current-user"],
     queryFn: UsersService.getMe,
+    retry: 2,
   });
 
   return <>{children}</>;

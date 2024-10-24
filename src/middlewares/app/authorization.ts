@@ -3,7 +3,7 @@ import { MiddlewareFactory } from "../stack-middlewares";
 import { JWT_KEY } from "~/utils/constants";
 import UsersService from "~/services/users";
 
-const protectedPaths = ["/profile", "/previous-bookings", "/receipts", "/complete-profile"];
+const protectedPaths = ["/profile", "/previous-bookings", "/receipts"];
 const externalPaths = ["/booking"];
 
 const authPaths = {
