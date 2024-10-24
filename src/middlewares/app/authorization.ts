@@ -3,7 +3,7 @@ import { MiddlewareFactory } from "../stack-middlewares";
 import { JWT_KEY } from "~/utils/constants";
 import UsersService from "~/services/users";
 
-const protectedPaths = ["/profile", "/previous-bookings", "/receipts", "/complete-profile"];
+const protectedPaths = ["/profile", "/previous-bookings", "/receipts"];
 const externalPaths = ["/booking"];
 
 const authPaths = {
@@ -58,12 +58,8 @@ export const authorization: MiddlewareFactory = (next) => {
       return redirect({ req, pathname: authPaths.signin, origin: pathname });
     }
 
-    if (!user?.complete_profile) {
+    if (user && !user.complete_profile) {
       return redirect({ req, pathname: authPaths.completeProfile, origin: pathname });
-    }
-
-    if (pathname === authPaths.completeProfile && user?.complete_profile) {
-      return redirect({ req, pathname: "/booking" });
     }
 
     return next(req, _next);
