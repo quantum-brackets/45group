@@ -4,6 +4,8 @@ import { useRef } from "react";
 import { Avatar, Skeleton, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { Formik } from "formik";
+import * as Yup from "yup";
+import { matchIsValidTel } from "mui-tel-input";
 import { IoPerson, IoCameraOutline } from "react-icons/io5";
 import Button from "~/components/button";
 import FormField from "~/components/fields/form-field";
@@ -11,6 +13,17 @@ import { useUpdateMe } from "~/hooks/users";
 import { notifySuccess } from "~/utils/toast";
 import UsersService from "~/services/users";
 import PhoneNumberField from "~/components/fields/phone-number-field";
+
+const validationSchema = Yup.object({
+  first_name: Yup.string().optional(),
+  last_name: Yup.string().optional(),
+  phone: Yup.string()
+    .optional()
+    .test("valid-phone", "Please enter a valid phone number", (value) => {
+      if (!value) return false;
+      return matchIsValidTel(value);
+    }),
+});
 
 export default function Profile() {
   const profileImageInputRef = useRef<HTMLInputElement | null>(null);
@@ -33,6 +46,7 @@ export default function Profile() {
           email: currentUser?.email || "",
           phone: currentUser?.phone || "",
         }}
+        validationSchema={validationSchema}
         onSubmit={async ({ email: _, image: __, ...data }) => {
           await updateMe(data, {
             onSuccess: () => {

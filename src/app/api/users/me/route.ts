@@ -1,10 +1,11 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { isValidPhoneNumber } from "libphonenumber-js";
 import * as Yup from "yup";
 import { db } from "~/db";
 import { usersTable } from "~/db/schemas/users";
 import catchAsync from "~/utils/catch-async";
-import { HEADER_DATA_KEY, phoneRegExp } from "~/utils/constants";
+import { HEADER_DATA_KEY } from "~/utils/constants";
 import { appError } from "~/utils/helpers";
 
 export const PATCH = catchAsync(async (req: NextRequest) => {
@@ -16,13 +17,11 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
     first_name: Yup.string().trim().optional(),
     last_name: Yup.string().trim().optional(),
     phone: Yup.string()
-      .matches(phoneRegExp, "Phone number is not valid")
       .optional()
-      .test(
-        "len",
-        "Phone number must be between 10 and 15 characters",
-        (val) => !val || (val.length >= 10 && val.length <= 15)
-      ),
+      .test("valid-phone", "Please enter a valid phone number", (value) => {
+        if (!value) return false;
+        return isValidPhoneNumber(value);
+      }),
     complete_profile: Yup.boolean().optional(),
   });
   const validatedData = await schema.validate(
