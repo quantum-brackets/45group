@@ -14,7 +14,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b-1.5 border-zinc-300/60">
-        <div className="mx-auto flex max-w-App items-center justify-between p-4 py-1">
+        <div className="mx-auto flex items-center justify-between p-4 py-1">
           <div className="flex items-center gap-4">
             <button className="hidden tablet:block" onClick={() => setOpenSidebar(true)}>
               <IoMenu className="text-2xl text-zinc-700" />
@@ -31,7 +31,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </header>
       <div className="flex flex-grow">
         <Sidebar onClose={() => setOpenSidebar(false)} open={openSidebar} />
-        <main className="mx-auto w-full max-w-[1250px] p-6">{children}</main>
+        <main className="mx-auto w-full max-w-[1250px] p-6 tablet_768:px-4">{children}</main>
       </div>
     </div>
   );

@@ -213,6 +213,9 @@ const theme = createTheme({
       styleOverrides: {
         h1: {
           fontSize: "1rem",
+          "@media screen and (max-width: 425px) ": {
+            fontSize: "0.85rem",
+          },
         },
       },
     },
@@ -220,6 +223,13 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           transform: "none",
+        },
+      },
+    },
+    MuiAvatar: {
+      styleOverrides: {
+        circular: {
+          fontSize: "1rem",
         },
       },
     },

@@ -79,8 +79,9 @@ export default function Account() {
             alt={`${currentUser.first_name} ${currentUser.last_name}`}
             src={currentUser.image || ""}
             sx={{ width: 35, height: 35 }}
+            className="!bg-primary"
           >
-            {`${currentUser.first_name} ${currentUser.last_name}`}
+            {`${currentUser.first_name?.[0]}${currentUser.last_name?.[0]}`}
           </Avatar>
           <FaAngleDown
             className={cn({
