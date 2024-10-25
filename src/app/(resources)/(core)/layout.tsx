@@ -1,8 +1,8 @@
 import { ReactNode } from "react";
 import Link from "next/link";
 import Logo from "~/components/logo";
-import Currency from "~/modules/core-layout/currency";
-import Account from "~/modules/core-layout/account";
+import Currency from "~/components/layout-components/currency";
+import Account from "~/components/layout-components/account";
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
