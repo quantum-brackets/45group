@@ -10,6 +10,7 @@ import FormField from "~/components/fields/form-field";
 import { useUpdateMe } from "~/hooks/users";
 import { notifySuccess } from "~/utils/toast";
 import UsersService from "~/services/users";
+import PhoneNumberField from "~/components/fields/phone-number-field";
 
 export default function Profile() {
   const profileImageInputRef = useRef<HTMLInputElement | null>(null);
@@ -30,6 +31,7 @@ export default function Profile() {
           last_name: currentUser?.last_name || "",
           image: currentUser?.image || "",
           email: currentUser?.email || "",
+          phone: currentUser?.phone || "",
         }}
         onSubmit={async ({ email: _, image: __, ...data }) => {
           await updateMe(data, {
@@ -78,13 +80,11 @@ export default function Profile() {
                 <FormField
                   name="first_name"
                   label="First Name"
-                  required
                   placeholder={initialValues.first_name}
                 />
                 <FormField
                   name="last_name"
                   label="Last Name"
-                  required
                   placeholder={initialValues.last_name}
                 />
                 <div className="flex flex-col gap-1">
@@ -95,6 +95,11 @@ export default function Profile() {
                     {initialValues.email}
                   </p>
                 </div>
+                <PhoneNumberField
+                  name="phone"
+                  label="Phone number"
+                  placeholder={initialValues.phone}
+                />
               </div>
               <div className="flex justify-end">
                 <Button loading={isSubmitting} type="submit">
