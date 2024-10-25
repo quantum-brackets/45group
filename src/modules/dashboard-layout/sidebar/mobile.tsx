@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { Drawer, IconButton } from "@mui/material";
-import { IoMenu } from "react-icons/io5";
 import SideBarLinks from "./links";
+import MenuIcon from "~/assets/icons/menu.svg";
 
 type Props = {
   open: boolean;
@@ -12,9 +13,9 @@ type Props = {
 export default function MobileSidebar({ open, onClose }: Props) {
   return (
     <Drawer anchor="left" open={open} onClose={onClose} closeAfterTransition>
-      <aside className="relative w-[350px] px-4 pb-8 pt-20 mediumMobile:!w-[250px] largeMobile:w-[290px] [@media(min-width:768px)]:hidden">
-        <IconButton className="!absolute !left-[16px] !top-[16px] w-fit" onClick={onClose}>
-          <IoMenu className="text-2xl text-zinc-700" />
+      <aside className="relative w-[250px] px-4 pb-8 pt-20">
+        <IconButton className="!absolute !left-[14px] !top-[14px] w-fit" onClick={onClose}>
+          <Image src={MenuIcon} width={22} height={22} alt="menu icon" className="-scale-x-[1]" />
         </IconButton>
         <div className="mt-4">
           <SideBarLinks />
