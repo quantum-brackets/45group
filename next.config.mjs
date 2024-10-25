@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ["mui-tel-input"],
   webpack(config) {
     const fileLoaderRule = config.module.rules.find((rule) => rule.test?.test?.(".svg"));
 

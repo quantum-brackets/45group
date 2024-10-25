@@ -1,24 +1,29 @@
 "use client";
 
+import { useRef } from "react";
 import { useRouter } from "next/navigation";
+import { Avatar } from "@mui/material";
 import { Formik } from "formik";
 import * as Yup from "yup";
+import { MuiTelInput, MuiTelInputProps, matchIsValidTel } from "mui-tel-input";
+
 import nProgress from "nprogress";
+import { IoPerson } from "react-icons/io5";
 import Button from "~/components/button";
 import FormField from "~/components/fields/form-field";
 import Logo from "~/components/logo";
 import { useUpdateMe } from "~/hooks/users";
-import { Avatar } from "@mui/material";
-import { IoPerson } from "react-icons/io5";
-import { useRef } from "react";
+import PhoneNumberField from "~/components/fields/phone-number-field";
 
 const validationSchema = Yup.object({
   first_name: Yup.string().required("First name is required"),
   last_name: Yup.string().required("Last name is required"),
-  phone: Yup.string().matches(
-    /^[0-9]{11}$/,
-    "Invalid phone number. Phone number must be exactly 11 digits long and contain only numbers."
-  ),
+  phone: Yup.string()
+    .required("Phone number is required")
+    .test("valid-phone", "Please enter a valid phone number", function (value) {
+      if (!value) return false;
+      return matchIsValidTel(value);
+    }),
 });
 
 export default function CompleteProfile({
@@ -128,12 +133,7 @@ export default function CompleteProfile({
                       required
                       placeholder="Enter your last name"
                     />
-                    <FormField
-                      name="phone"
-                      label="Phone Number"
-                      required
-                      placeholder="Enter your phone number"
-                    />
+                    <PhoneNumberField name="phone" label="Phone number" required />
                   </div>
                   <Button type="submit" size="large" loading={isSubmitting}>
                     Continue
