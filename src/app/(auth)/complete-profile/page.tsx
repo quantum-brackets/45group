@@ -54,9 +54,10 @@ export default function CompleteProfile({
               first_name: "",
               last_name: "",
               phone: "",
+              image: "",
             }}
             validationSchema={validationSchema}
-            onSubmit={async (data, { resetForm }) => {
+            onSubmit={async ({ image: _, ...data }, { resetForm }) => {
               await updateMe(
                 {
                   ...data,
@@ -74,8 +75,6 @@ export default function CompleteProfile({
             validateOnBlur={false}
           >
             {({ handleSubmit, isSubmitting, setFieldValue, values, initialValues }) => {
-              const image = (values as typeof initialValues & { image?: File }).image;
-
               return (
                 <form onSubmit={handleSubmit} className="flex w-full flex-col gap-5">
                   <div className="flex flex-col gap-4">
@@ -83,7 +82,10 @@ export default function CompleteProfile({
                       <div className="!size-28 overflow-hidden rounded-full border border-black/15 bg-black/15">
                         <Avatar
                           className="!size-full"
-                          src={image ? URL.createObjectURL(image) : ""}
+                          src={
+                            (values as typeof initialValues & { image_base64: string })
+                              .image_base64 || values.image
+                          }
                         >
                           <IoPerson className={"size-[40%]"} />
                         </Avatar>
@@ -115,7 +117,12 @@ export default function CompleteProfile({
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            setFieldValue("image", file);
+                            const reader = new FileReader();
+                            reader.readAsDataURL(file);
+                            reader.onload = () => {
+                              setFieldValue("image", file);
+                              setFieldValue(`image_base64`, reader.result);
+                            };
                           }
                         }}
                       />
