@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Formik } from "formik";
 import * as Yup from "yup";
@@ -24,10 +24,20 @@ export default function OTPForm({ email, origin }: Props) {
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [count, setCount] = useState(60);
 
   const { mutateAsync: verifyOtp } = useVerifyOtp();
   const { mutateAsync: requestOtp, isPending: requestIsPending } = useRequestOtp();
   const { mutateAsync: createJwt } = useCreateJwt();
+
+  useEffect(() => {
+    if (count > 0 && count < 60) {
+      const timer = setTimeout(() => setCount(count - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [count]);
+
+  const startCountdown = () => setCount(59);
 
   return (
     <div className="flex flex-col gap-4">
@@ -49,9 +59,8 @@ export default function OTPForm({ email, origin }: Props) {
                       resetForm();
                       nProgress.start();
                       router.push(origin || "/booking");
-                      setIsLoading(false);
                     },
-                    onError: () => {
+                    onSettled: () => {
                       setIsLoading(false);
                     },
                   }
@@ -79,17 +88,30 @@ export default function OTPForm({ email, origin }: Props) {
           </form>
         )}
       </Formik>
-      <small className="text-xs text-info-600">
+      <small className="flex gap-1 text-xs text-info-600">
         Having troubles with otp?{" "}
-        <button
-          className="text-primary"
-          onClick={async () => {
-            await requestOtp({ email });
-          }}
-          disabled={requestIsPending}
-        >
-          {requestIsPending ? "Loading..." : "Request new OTP"}
-        </button>
+        {count > 0 && count < 60 ? (
+          <p>
+            Retry in <span>{count}</span>
+          </p>
+        ) : (
+          <button
+            className="text-primary"
+            onClick={async () => {
+              await requestOtp(
+                { email },
+                {
+                  onSuccess: () => {
+                    startCountdown();
+                  },
+                }
+              );
+            }}
+            disabled={requestIsPending}
+          >
+            {requestIsPending ? "Loading..." : "Request new OTP"}
+          </button>
+        )}
       </small>
     </div>
   );

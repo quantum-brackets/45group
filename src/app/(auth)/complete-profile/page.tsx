@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { Avatar } from "@mui/material";
 import { Formik } from "formik";
 import * as Yup from "yup";
-import { MuiTelInput, MuiTelInputProps, matchIsValidTel } from "mui-tel-input";
-
+import { matchIsValidTel } from "mui-tel-input";
 import nProgress from "nprogress";
 import { IoPerson } from "react-icons/io5";
 import Button from "~/components/button";
@@ -20,7 +19,7 @@ const validationSchema = Yup.object({
   last_name: Yup.string().required("Last name is required"),
   phone: Yup.string()
     .required("Phone number is required")
-    .test("valid-phone", "Please enter a valid phone number", function (value) {
+    .test("valid-phone", "Please enter a valid phone number", (value) => {
       if (!value) return false;
       return matchIsValidTel(value);
     }),
