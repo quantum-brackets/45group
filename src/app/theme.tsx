@@ -177,6 +177,8 @@ const theme = createTheme({
       styleOverrides: {
         paper: {
           marginTop: "0px",
+          padding: "0px",
+          borderRadius: "0px",
         },
       },
     },
