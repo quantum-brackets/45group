@@ -44,7 +44,14 @@ export const POST = catchAsync(async (req: NextRequest) => {
     });
   }
 
-  const [_, [user]] = await Promise.all([
+  const [existingUser] = await db
+    .select({
+      last_login_at: usersTable.last_login_at,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.email, email));
+
+  await Promise.all([
     db.delete(otpsTable).where(eq(otpsTable.id, validOTP.id)),
     db
       .update(usersTable)
@@ -53,7 +60,7 @@ export const POST = catchAsync(async (req: NextRequest) => {
       .returning(),
   ]);
 
-  if (!user?.last_login_at) {
+  if (!existingUser?.last_login_at) {
     await sendEmail({
       to: email,
       subject: "Welcome to 45Group",
