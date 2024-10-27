@@ -44,19 +44,29 @@ export const POST = catchAsync(async (req: NextRequest) => {
     });
   }
 
+  const [existingUser] = await db
+    .select({
+      last_login_at: usersTable.last_login_at,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.email, email));
+
   await Promise.all([
     db.delete(otpsTable).where(eq(otpsTable.id, validOTP.id)),
     db
       .update(usersTable)
       .set({ last_login_at: currentTime, is_verified: true })
-      .where(eq(usersTable.email, email)),
+      .where(eq(usersTable.email, email))
+      .returning(),
   ]);
 
-  await sendEmail({
-    to: email,
-    subject: "Welcome to 45Group",
-    text: "Hello and Welcome",
-  });
+  if (!existingUser?.last_login_at) {
+    await sendEmail({
+      to: email,
+      subject: "Welcome to 45Group",
+      text: "Hello and Welcome",
+    });
+  }
 
   return NextResponse.json({
     message: "Account successfully verified",

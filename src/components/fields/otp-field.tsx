@@ -53,6 +53,8 @@ export default function OTPField({
             TextFieldsProps={{
               variant: "outlined",
               className: " [@media(max-width:660px)]:w-fit",
+              inputMode: "numeric",
+              type: "tel",
               label: null,
               ...TextFieldsProps,
             }}

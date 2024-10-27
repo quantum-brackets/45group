@@ -34,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={cn(dancing_script.variable, merriweather.variable, "min-h-screen scroll-smooth")}
+        className={cn(dancing_script.variable, merriweather.variable, "min-h-dvh scroll-smooth")}
       >
         <AppRouterCacheProvider>
           <TanstackQueryProvider>
