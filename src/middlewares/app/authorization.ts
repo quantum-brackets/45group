@@ -33,13 +33,13 @@ function redirect({
   return NextResponse.redirect(redirectUrl, 307);
 }
 
-async function getMe(jwt: string | undefined): Promise<User | null> {
-  if (!jwt) return null;
+async function getUserBySessionToken(token: string | undefined): Promise<User | null> {
+  if (!token) return null;
 
   try {
     const { data: user } = await axiosInstance.get<User>("/api/users/me", {
       headers: {
-        Authorization: `Bearer ${jwt}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -67,13 +67,13 @@ export const authorization: MiddlewareFactory = (next) => {
       return redirect({ req, pathname: authPaths.signin, origin: pathname });
     }
 
-    const user = await getMe(session);
+    const user = await getUserBySessionToken(session);
+
+    console.log(user);
 
     if (isProtectedPath && !user) {
       return redirect({ req, pathname: authPaths.signin, origin: pathname });
     }
-
-    console.log(user);
 
     if (user && !user.complete_profile) {
       return redirect({ req, pathname: authPaths.completeProfile, origin: pathname });
