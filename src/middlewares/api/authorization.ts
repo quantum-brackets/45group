@@ -17,7 +17,7 @@ export const authorization: MiddlewareFactory = (next) => {
 
       const {
         data: { user_id },
-      } = await axiosInstance.post("/utils/decode", {
+      } = await axiosInstance.post("/api/utils/decode", {
         session,
       });
 
