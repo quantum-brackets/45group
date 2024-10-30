@@ -36,6 +36,12 @@ class AuthService {
 
     return response;
   };
+
+  static createSession = async (data: Record<"email", string>) => {
+    const { data: response } = await axiosInstance.post<any>("/api/auth/session/create", data);
+
+    return response;
+  };
 }
 
 export default AuthService;
