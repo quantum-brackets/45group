@@ -52,3 +52,9 @@ export function useCreateJwt() {
     },
   });
 }
+
+export function useCreateSession() {
+  return useMutation({
+    mutationFn: AuthService.createSession,
+  });
+}

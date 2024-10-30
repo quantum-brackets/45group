@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import nProgress from "nprogress";
-import { useVerifyOtp, useRequestOtp, useCreateJwt } from "~/hooks/auth";
+import { useVerifyOtp, useRequestOtp, useCreateSession } from "~/hooks/auth";
 import OTPField from "~/components/fields/otp-field";
 import Button from "~/components/button";
 
@@ -28,7 +28,7 @@ export default function OTPForm({ email, origin }: Props) {
 
   const { mutateAsync: verifyOtp } = useVerifyOtp();
   const { mutateAsync: requestOtp, isPending: requestIsPending } = useRequestOtp();
-  const { mutateAsync: createJwt } = useCreateJwt();
+  const { mutateAsync: createSession } = useCreateSession();
 
   useEffect(() => {
     if (count > 0 && count < 60) {
@@ -52,7 +52,7 @@ export default function OTPForm({ email, origin }: Props) {
             { email, otp },
             {
               onSuccess: async () => {
-                await createJwt(
+                await createSession(
                   { email },
                   {
                     onSuccess: () => {

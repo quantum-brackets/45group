@@ -1,7 +1,8 @@
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 import { MiddlewareFactory } from "../stack-middlewares";
-import { JWT_KEY } from "~/utils/constants";
+import { SESSION_KEY } from "~/utils/constants";
 import UsersService from "~/services/users";
+import axiosInstance from "~/config/axios";
 
 const protectedPaths = ["/profile", "/previous-bookings", "/receipts"];
 const externalPaths = ["/booking"];
@@ -9,6 +10,12 @@ const externalPaths = ["/booking"];
 const authPaths = {
   signin: "/signin",
   completeProfile: "/complete-profile",
+};
+
+const cache: {
+  user: User | null;
+} = {
+  user: null,
 };
 
 function redirect({
@@ -30,7 +37,13 @@ async function getMe(jwt: string | undefined): Promise<User | null> {
   if (!jwt) return null;
 
   try {
-    return await UsersService.getMe();
+    const { data: user } = await axiosInstance.get<User>("/api/users/me", {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+      },
+    });
+
+    return user;
   } catch (error) {
     return null;
   }
@@ -39,7 +52,7 @@ async function getMe(jwt: string | undefined): Promise<User | null> {
 export const authorization: MiddlewareFactory = (next) => {
   return async (req: NextRequest, _next: NextFetchEvent) => {
     const pathname = req.nextUrl.pathname;
-    const jwt = req.cookies.get(JWT_KEY)?.value;
+    const session = req.cookies.get(SESSION_KEY)?.value;
 
     const isProtectedPath = protectedPaths.some((path) => pathname.startsWith(path));
     const isExternalPath = externalPaths.some((path) => pathname.startsWith(path));
@@ -48,11 +61,11 @@ export const authorization: MiddlewareFactory = (next) => {
       return next(req, _next);
     }
 
-    if (isProtectedPath && !jwt) {
+    if (isProtectedPath && !session) {
       return redirect({ req, pathname: authPaths.signin, origin: pathname });
     }
 
-    const user = await getMe(jwt);
+    const user = await getMe(session);
 
     if (isProtectedPath && !user) {
       return redirect({ req, pathname: authPaths.signin, origin: pathname });

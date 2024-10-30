@@ -1,9 +1,12 @@
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { MiddlewareFactory } from "../stack-middlewares";
 import { appError } from "~/utils/helpers";
 import catchAsync from "~/utils/catch-async";
-import { HEADER_DATA_KEY } from "~/utils/constants";
+import { HEADER_DATA_KEY, SESSION_KEY } from "~/utils/constants";
 import axiosInstance from "~/config/axios";
+import { authOptions } from "~/app/api/auth/[...nextauth]/route";
+import { decode } from "next-auth/jwt";
 
 const protectedRoutes = ["/api/users"];
 
@@ -12,23 +15,23 @@ export const authorization: MiddlewareFactory = (next) => {
     const pathname = req.nextUrl.pathname;
 
     if (protectedRoutes.some((path) => pathname.startsWith(path))) {
-      const token = req.headers.get("Authorization")?.split(" ")[1];
+      const session =
+        req.cookies.get(SESSION_KEY)?.value || req.headers.get("Authorization")?.split(" ")[1];
 
-      if (!token) {
+      const data = await decode({
+        secret: process.env.NEXTAUTH_SECRET!,
+        token: session,
+      });
+
+      if (!data?.id) {
         return appError({
           status: 401,
-          error: "No token provided",
+          error: "No session provided",
         });
       }
 
-      const {
-        data: { user_id },
-      } = await axiosInstance.post("/api/utils/validate-token", {
-        token,
-      });
-
       const res = NextResponse.next();
-      res.headers.set(HEADER_DATA_KEY, user_id);
+      res.headers.set(HEADER_DATA_KEY, data.id);
 
       return res;
     }
