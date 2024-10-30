@@ -70,6 +70,8 @@ const config: Config = {
 
         largeMobile: { max: "425px" },
 
+        largeMobile_545: { max: "545px" },
+
         tablet_768: { max: "768px" },
 
         tablet: { max: "900px" },

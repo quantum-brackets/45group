@@ -214,9 +214,9 @@ const theme = createTheme({
     MuiTypography: {
       styleOverrides: {
         h1: {
-          fontSize: "1rem",
+          fontSize: "1.25rem",
           "@media screen and (max-width: 425px) ": {
-            fontSize: "0.85rem",
+            fontSize: "1rem",
           },
         },
       },
