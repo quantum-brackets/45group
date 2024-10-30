@@ -1,7 +1,6 @@
-import axios, { isAxiosError } from "axios";
-import { deleteCookie, getCookie, setCookie } from "~/app/_actions/util";
-import AuthService from "~/services/auth";
-import { JWT_KEY } from "~/utils/constants";
+import axios from "axios";
+import { getCookie } from "~/app/_actions/util";
+import { SESSION_KEY } from "~/utils/constants";
 
 const axiosInstance = axios.create({
   baseURL: process.env.BASE_URL,
@@ -27,41 +26,28 @@ export const axiosPrivate = axios.create({
   },
 });
 
-// axiosPrivate.interceptors.request.use(
-//   async (config) => {
-//     try {
-//       if (!config.headers.Authorization) {
-//         const refreshToken = await getCookie(JWT_KEY);
-//         if (!refreshToken) {
-//           return config;
-//         }
+axiosPrivate.interceptors.request.use(
+  async (config) => {
+    try {
+      if (!config.headers.Authorization) {
+        const session = await getCookie(SESSION_KEY);
+        if (!session) {
+          return config;
+        }
 
-//         try {
-//           const { access, refresh } = await AuthService.refreshJwt({
-//             refresh: refreshToken,
-//           });
+        if (!session) throw new Error("Session not found");
 
-//           if (access && refresh) {
-//             config.headers.Authorization = `Bearer ${access}`;
-//             axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + access;
-//             await setCookie(JWT_KEY, refresh);
-//           }
-//         } catch (error) {
-//           if (isAxiosError(error)) {
-//             if (error.response?.status === 401) {
-//               await deleteCookie(JWT_KEY);
-//             }
-//           }
-//         }
-//       }
-//     } catch (error) {
-//       return Promise.reject(error);
-//     }
+        config.headers.Authorization = `Bearer ${session}`;
+        axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + session;
+      }
+    } catch (error) {
+      return Promise.reject(error);
+    }
 
-//     return config;
-//   },
-//   (error) => Promise.reject(error)
-// );
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 axiosPrivate.interceptors.response.use(
   (response) => response,

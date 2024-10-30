@@ -54,6 +54,8 @@ export const authorization: MiddlewareFactory = (next) => {
     const pathname = req.nextUrl.pathname;
     const session = req.cookies.get(SESSION_KEY)?.value;
 
+    console.log(session, "sesssion");
+
     const isProtectedPath = protectedPaths.some((path) => pathname.startsWith(path));
     const isExternalPath = externalPaths.some((path) => pathname.startsWith(path));
 
@@ -70,6 +72,8 @@ export const authorization: MiddlewareFactory = (next) => {
     if (isProtectedPath && !user) {
       return redirect({ req, pathname: authPaths.signin, origin: pathname });
     }
+
+    console.log(user);
 
     if (user && !user.complete_profile) {
       return redirect({ req, pathname: authPaths.completeProfile, origin: pathname });
