@@ -41,7 +41,7 @@ export default function Profile() {
 
   return (
     <main className="flex flex-col gap-10 tablet_768:gap-6">
-      <Typography variant="h6">My Profile</Typography>
+      <Typography variant="h1">My Profile</Typography>
       <Formik
         initialValues={{
           first_name: currentUser?.first_name || "",
@@ -66,7 +66,7 @@ export default function Profile() {
             <div className="flex gap-12 tablet_768:flex-col tablet_768:gap-6">
               <div>
                 <button
-                  className="relative size-40 overflow-hidden rounded-full border border-[#0000001c] bg-[#00000021] tablet_768:size-24"
+                  className="largeMobile_545:!size-24 relative size-40 overflow-hidden rounded-full border border-[#0000001c] bg-[#00000021] tablet_768:size-32"
                   onClick={() => profileImageInputRef.current?.click()}
                 >
                   <Avatar
