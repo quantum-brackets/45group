@@ -7,7 +7,6 @@ import { db } from "~/db";
 import catchAsync from "~/utils/catch-async";
 import { usersTable } from "~/db/schemas/users";
 import { appError } from "~/utils/helpers";
-import { authOptions } from "../../[...nextauth]/route";
 import { COOKIE_MAX_AGE, SESSION_KEY } from "~/utils/constants";
 
 export const POST = catchAsync(async (req: NextRequest) => {

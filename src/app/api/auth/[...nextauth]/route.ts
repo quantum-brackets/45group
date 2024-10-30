@@ -1,11 +1,11 @@
-import NextAuth, { AuthOptions } from "next-auth";
+import NextAuth from "next-auth";
 import { and, eq } from "drizzle-orm";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "~/db";
 import { usersTable } from "~/db/schemas/users";
 import { COOKIE_MAX_AGE, SESSION_KEY } from "~/utils/constants";
 
-export const authOptions: AuthOptions = {
+const handler = NextAuth({
   providers: [
     CredentialsProvider({
       id: "credentials",
@@ -51,8 +51,6 @@ export const authOptions: AuthOptions = {
       return session;
     },
   },
-};
-
-const handler = NextAuth(authOptions);
+});
 
 export { handler as GET, handler as POST };

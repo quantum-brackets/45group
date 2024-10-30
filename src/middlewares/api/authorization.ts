@@ -4,8 +4,6 @@ import { MiddlewareFactory } from "../stack-middlewares";
 import { appError } from "~/utils/helpers";
 import catchAsync from "~/utils/catch-async";
 import { HEADER_DATA_KEY, SESSION_KEY } from "~/utils/constants";
-import axiosInstance from "~/config/axios";
-import { authOptions } from "~/app/api/auth/[...nextauth]/route";
 import { decode } from "next-auth/jwt";
 
 const protectedRoutes = ["/api/users"];
