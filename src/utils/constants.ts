@@ -13,3 +13,5 @@ export const SESSION_KEY = "_session";
 export const phoneRegExp = /^[0-9]{11}$/;
 
 export const HEADER_DATA_KEY = "x-data";
+
+export const HEADER_AUTHORISATION_KEY = "x-authorisation";

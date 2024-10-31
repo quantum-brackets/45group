@@ -1,8 +1,8 @@
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 import { MiddlewareFactory } from "../stack-middlewares";
-import { SESSION_KEY } from "~/utils/constants";
-import UsersService from "~/services/users";
+import { HEADER_AUTHORISATION_KEY, SESSION_KEY } from "~/utils/constants";
 import axiosInstance from "~/config/axios";
+import { authHeader } from "~/utils/helpers";
 
 const protectedPaths = ["/profile", "/previous-bookings", "/receipts"];
 const externalPaths = ["/booking"];
@@ -10,12 +10,6 @@ const externalPaths = ["/booking"];
 const authPaths = {
   signin: "/signin",
   completeProfile: "/complete-profile",
-};
-
-const cache: {
-  user: User | null;
-} = {
-  user: null,
 };
 
 function redirect({
@@ -39,7 +33,7 @@ async function getUserBySessionToken(token: string | undefined): Promise<User | 
   try {
     const { data: user } = await axiosInstance.get<User>("/api/users/me", {
       headers: {
-        Authorization: `Bearer ${token}`,
+        [HEADER_AUTHORISATION_KEY]: authHeader(token),
       },
     });
 

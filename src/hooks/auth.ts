@@ -3,7 +3,8 @@ import { isAxiosError } from "axios";
 import { setCookie } from "~/app/_actions/util";
 import { axiosPrivate } from "~/config/axios";
 import AuthService from "~/services/auth";
-import { JWT_KEY } from "~/utils/constants";
+import { HEADER_AUTHORISATION_KEY, JWT_KEY } from "~/utils/constants";
+import { authHeader } from "~/utils/helpers";
 import { notifyError } from "~/utils/toast";
 
 export function useSignin() {
@@ -47,7 +48,7 @@ export function useCreateJwt() {
   return useMutation({
     mutationFn: AuthService.createJwt,
     onSuccess: async (data) => {
-      axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + data.access;
+      axiosPrivate.defaults.headers.common[HEADER_AUTHORISATION_KEY] = authHeader(data.access);
       await setCookie(JWT_KEY, data.refresh);
     },
   });

@@ -5,7 +5,7 @@ import * as Yup from "yup";
 import { db } from "~/db";
 import { usersTable } from "~/db/schemas/users";
 import catchAsync from "~/utils/catch-async";
-import { HEADER_DATA_KEY, SESSION_KEY } from "~/utils/constants";
+import { HEADER_AUTHORISATION_KEY, HEADER_DATA_KEY, SESSION_KEY } from "~/utils/constants";
 import { appError } from "~/utils/helpers";
 import axiosInstance from "~/config/axios";
 
@@ -48,7 +48,7 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
 
 export const GET = catchAsync(async (req: NextRequest) => {
   const sessionToken =
-    req.cookies.get(SESSION_KEY)?.value || req.headers.get("Authorization")?.split(" ")[1];
+    req.cookies.get(SESSION_KEY)?.value || req.headers.get(HEADER_AUTHORISATION_KEY)?.split(" ")[1];
   if (!sessionToken) {
     return appError({ status: 401, error: "No session provided" });
   }

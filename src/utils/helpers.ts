@@ -66,3 +66,8 @@ export const signJwt = {
       expiresIn: "14d",
     }),
 };
+
+export const authHeader = (tokenValue: string) => {
+  if (!tokenValue) throw new Error("No authorisation token provided");
+  return `Bearer ${tokenValue}`;
+};
