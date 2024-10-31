@@ -36,8 +36,6 @@ axiosPrivate.interceptors.request.use(
           return config;
         }
 
-        if (!session) throw new Error("Session not found");
-
         const authHeaderValue = authHeader(session);
         config.headers[HEADER_AUTHORISATION_KEY] = authHeaderValue;
         axiosPrivate.defaults.headers.common[HEADER_AUTHORISATION_KEY] = authHeaderValue;
@@ -48,20 +46,6 @@ axiosPrivate.interceptors.request.use(
 
     return config;
   },
-  (error) => Promise.reject(error)
-);
-
-axiosPrivate.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error?.config;
-
-    if (!originalRequest) {
-      return Promise.reject(error);
-    }
-
-    return Promise.reject(error);
-  }
 );
 
 export default axiosInstance;

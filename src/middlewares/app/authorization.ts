@@ -1,8 +1,8 @@
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 import { MiddlewareFactory } from "../stack-middlewares";
 import { HEADER_AUTHORISATION_KEY, SESSION_KEY } from "~/utils/constants";
-import axiosInstance from "~/config/axios";
 import { authHeader } from "~/utils/helpers";
+import axiosInstance from "~/config/axios";
 
 const protectedPaths = ["/profile", "/previous-bookings", "/receipts"];
 const externalPaths = ["/booking"];
