@@ -4,7 +4,7 @@ import { NextMiddlewareResult } from "next/dist/server/web/types";
 
 const catchAsync = (
   fn:
-    | ((req: NextRequest) => Promise<any>)
+    | ((req: NextRequest, { params }?: any) => Promise<any>)
     | ((req: NextRequest, _next: NextFetchEvent) => Promise<NextMiddlewareResult>)
 ) => {
   return async (req: NextRequest, next: NextFetchEvent) => {
