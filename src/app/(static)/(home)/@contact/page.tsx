@@ -13,13 +13,13 @@ export default function Contact() {
     >
       <main className="mx-auto flex w-[450px] justify-between gap-8 largeMobile:!w-full largeMobile:flex-col tablet_768:w-[90%]">
         <div className="flex flex-col items-center">
-          <h6 className="text-xs font-black largeLaptop:text-sm">Email</h6>
+          <h6 className="text-xs font-semibold largeLaptop:text-sm">Email</h6>
           <Link href={"mailto:" + email} className="hover:underline">
             <small className="largeLaptop:text-sm">{email}</small>
           </Link>
         </div>
         <div className="flex flex-col items-center">
-          <h6 className="text-xs font-black largeLaptop:text-sm">Phone</h6>
+          <h6 className="text-xs font-semibold largeLaptop:text-sm">Phone</h6>
           <Link href={"tel:" + tel} className="hover:underline">
             <small className="largeLaptop:text-sm">{tel}</small>
           </Link>
