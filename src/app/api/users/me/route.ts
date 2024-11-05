@@ -5,9 +5,8 @@ import * as Yup from "yup";
 import { db } from "~/db";
 import { usersTable } from "~/db/schemas/users";
 import catchAsync from "~/utils/catch-async";
-import { HEADER_DATA_KEY, SESSION_KEY } from "~/utils/constants";
+import { HEADER_DATA_KEY } from "~/utils/constants";
 import { appError } from "~/utils/helpers";
-import axiosInstance from "~/config/axios";
 
 export const PATCH = catchAsync(async (req: NextRequest) => {
   const userId = req.headers.get(HEADER_DATA_KEY) as string;
@@ -47,20 +46,6 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
 });
 
 export const GET = catchAsync(async (req: NextRequest) => {
-  const sessionToken =
-    req.cookies.get(SESSION_KEY)?.value || req.headers.get("Authorization")?.split(" ")[1];
-  if (!sessionToken) {
-    return appError({ status: 401, error: "No session provided" });
-  }
-
-  const {
-    data: { user_id },
-  } = await axiosInstance.post("/api/utils/decode", { session: sessionToken });
-
-  if (!user_id) {
-    return appError({ status: 401, error: "Invalid session" });
-  }
-
   const userId = req.headers.get(HEADER_DATA_KEY) as string;
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));

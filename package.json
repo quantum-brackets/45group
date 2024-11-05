@@ -13,6 +13,7 @@
     "drizzle-studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.682.0",
     "@emotion/cache": "^11.13.1",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
@@ -20,6 +21,7 @@
     "@mui/material": "^5.16.7",
     "@mui/material-nextjs": "^5.16.6",
     "@mui/x-date-pickers": "^7.19.0",
+    "@react-email/components": "^0.0.25",
     "@tanstack/react-query": "^5.52.0",
     "axios": "^1.7.7",
     "clsx": "^2.1.1",
