@@ -7,6 +7,7 @@ import { usersTable } from "~/db/schemas/users";
 import { otpsTable } from "~/db/schemas/otps";
 import { appError, hashValue } from "~/utils/helpers";
 import { sendEmail } from "~/config/resend";
+import RequestOtpTemplate from "~/emails/request-otp";
 
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -40,9 +41,12 @@ export const POST = catchAsync(async (req: NextRequest) => {
   });
 
   await sendEmail({
-    to: [email],
+    to: email,
     subject: "45Group - Request OTP",
-    text: otp,
+    react: RequestOtpTemplate({
+      code: otp,
+      previewText: "Your one-time password (OTP) for 45Group account verification is ready...",
+    }),
   });
 
   return NextResponse.json({
