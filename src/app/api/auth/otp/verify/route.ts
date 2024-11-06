@@ -7,6 +7,7 @@ import catchAsync from "~/utils/catch-async";
 import { otpsTable } from "~/db/schemas/otps";
 import { appError, hashValue } from "~/utils/helpers";
 import { sendEmail } from "~/config/resend";
+import WelcomeTemplate from "~/emails/welcome";
 
 export const POST = catchAsync(async (req: NextRequest) => {
   const body = await req.json();
@@ -64,7 +65,10 @@ export const POST = catchAsync(async (req: NextRequest) => {
     await sendEmail({
       to: email,
       subject: "Welcome to 45Group",
-      text: "Hello and Welcome",
+      react: WelcomeTemplate({
+        previewText:
+          "We're excited to have you join our platform where you can discover and book the finest lodges, events, and...",
+      }),
     });
   }
 

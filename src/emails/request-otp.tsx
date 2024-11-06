@@ -4,7 +4,7 @@ import BaseTemplate from "./base";
 
 type Props = {
   previewText: string;
-  code: number;
+  code: string;
 };
 
 export default function RequestOtpTemplate({ previewText, code }: Props) {
