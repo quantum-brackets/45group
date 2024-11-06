@@ -18,7 +18,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <header className="border-b-1.5 border-zinc-300/60">
         <div className="mx-auto flex items-center justify-between p-4 py-1">
           <div className="flex items-center gap-5">
-            <IconButton className="hidden tablet:block" onClick={() => setOpenSidebar(true)}>
+            <IconButton className="!hidden tablet:!block" onClick={() => setOpenSidebar(true)}>
               <Image
                 src={MenuIcon}
                 width={22}

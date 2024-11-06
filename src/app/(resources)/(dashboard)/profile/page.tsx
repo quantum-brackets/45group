@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { Avatar, Skeleton, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { Formik } from "formik";
@@ -13,6 +13,7 @@ import { useUpdateMe } from "~/hooks/users";
 import { notifySuccess } from "~/utils/toast";
 import UsersService from "~/services/users";
 import PhoneNumberField from "~/components/fields/phone-number-field";
+import { compareObjectValues } from "~/utils/helpers";
 
 const validationSchema = Yup.object({
   first_name: Yup.string().optional(),
@@ -35,6 +36,18 @@ export default function Profile() {
 
   const { mutateAsync: updateMe } = useUpdateMe();
 
+  const initialValues = useMemo(
+    () => ({
+      first_name: currentUser?.first_name || "",
+      last_name: currentUser?.last_name || "",
+      image: currentUser?.image || "",
+      email: currentUser?.email || "",
+      phone: currentUser?.phone || "",
+      image_base64: "",
+    }),
+    [currentUser]
+  );
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
@@ -43,16 +56,10 @@ export default function Profile() {
     <main className="flex flex-col gap-10 tablet_768:gap-6">
       <Typography variant="h1">My Profile</Typography>
       <Formik
-        initialValues={{
-          first_name: currentUser?.first_name || "",
-          last_name: currentUser?.last_name || "",
-          image: currentUser?.image || "",
-          email: currentUser?.email || "",
-          phone: currentUser?.phone || "",
-        }}
+        initialValues={initialValues}
         validationSchema={validationSchema}
-        onSubmit={async ({ email: _, image: __, ...data }) => {
-          await updateMe(data, {
+        onSubmit={async ({ email: _, image_base64: __, ...data }) => {
+          await updateMe(compareObjectValues(initialValues, data), {
             onSuccess: () => {
               notifySuccess({ message: "Profile updated successfully" });
             },
@@ -66,16 +73,10 @@ export default function Profile() {
             <div className="flex gap-12 tablet_768:flex-col tablet_768:gap-6">
               <div>
                 <button
-                  className="largeMobile_545:!size-24 relative size-40 overflow-hidden rounded-full border border-[#0000001c] bg-[#00000021] tablet_768:size-32"
+                  className="relative size-40 overflow-hidden rounded-full border border-[#0000001c] bg-[#00000021] largeMobile_545:!size-24 tablet_768:size-32"
                   onClick={() => profileImageInputRef.current?.click()}
                 >
-                  <Avatar
-                    className="!size-full"
-                    src={
-                      (values as typeof initialValues & { image_base64: string }).image_base64 ||
-                      values.image
-                    }
-                  >
+                  <Avatar className="!size-full" src={values.image_base64 || values.image}>
                     <IoPerson className={"size-[40%]"} />
                   </Avatar>
                   <div className="absolute bottom-0 flex h-[40%] w-full items-center justify-center bg-black/35">

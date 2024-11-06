@@ -66,3 +66,18 @@ export const signJwt = {
       expiresIn: "14d",
     }),
 };
+
+export function compareObjectValues(
+  initialValues: Record<string, any>,
+  newValues: Record<string, any>
+) {
+  return Object.keys(initialValues).reduce(
+    (acc, key) => {
+      if (initialValues[key] !== newValues[key]) {
+        acc[key] = newValues[key];
+      }
+      return acc;
+    },
+    {} as Record<string, any>
+  );
+}
