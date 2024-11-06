@@ -63,7 +63,7 @@ export default function EmailForm({ showOtp }: Props) {
       validateOnBlur={false}
     >
       {({ handleSubmit }) => (
-        <form onSubmit={handleSubmit} className="flex w-full flex-col gap-5">
+        <form onSubmit={handleSubmit} className="flex w-full flex-col gap-5" method="POST">
           <div className="flex flex-col gap-4">
             <FormField
               name="email"

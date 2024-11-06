@@ -55,9 +55,10 @@ export default function CompleteProfile({
               last_name: "",
               phone: "",
               image: "",
+              image_base64: "",
             }}
             validationSchema={validationSchema}
-            onSubmit={async ({ image: _, ...data }, { resetForm }) => {
+            onSubmit={async ({ image_base64: _, ...data }, { resetForm }) => {
               await updateMe(
                 {
                   ...data,
@@ -74,19 +75,13 @@ export default function CompleteProfile({
             }}
             validateOnBlur={false}
           >
-            {({ handleSubmit, isSubmitting, setFieldValue, values, initialValues }) => {
+            {({ handleSubmit, isSubmitting, setFieldValue, values }) => {
               return (
                 <form onSubmit={handleSubmit} className="flex w-full flex-col gap-5">
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-6">
                       <div className="!size-28 overflow-hidden rounded-full border border-black/15 bg-black/15">
-                        <Avatar
-                          className="!size-full"
-                          src={
-                            (values as typeof initialValues & { image_base64: string })
-                              .image_base64 || values.image
-                          }
-                        >
+                        <Avatar className="!size-full" src={values.image_base64}>
                           <IoPerson className={"size-[40%]"} />
                         </Avatar>
                       </div>
