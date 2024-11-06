@@ -2,36 +2,55 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { isValidPhoneNumber } from "libphonenumber-js";
 import * as Yup from "yup";
+import { readFile } from "fs/promises";
 import { db } from "~/db";
 import { usersTable } from "~/db/schemas/users";
 import catchAsync from "~/utils/catch-async";
 import { HEADER_DATA_KEY } from "~/utils/constants";
 import { appError } from "~/utils/helpers";
+import { uploadFileToS3 } from "~/utils/s3";
 
 export const PATCH = catchAsync(async (req: NextRequest) => {
   const userId = req.headers.get(HEADER_DATA_KEY) as string;
+  const url = new URL(req.url);
 
-  const body = await req.json();
+  const formData = await req.formData();
+  const body = Object.fromEntries(formData);
 
   const schema = Yup.object({
     first_name: Yup.string().trim().optional(),
     last_name: Yup.string().trim().optional(),
     phone: Yup.string()
-      .optional()
       .test("valid-phone", "Please enter a valid phone number", (value) => {
-        if (!value) return false;
-        return isValidPhoneNumber(value);
-      }),
+        return !value || isValidPhoneNumber(value);
+      })
+      .optional(),
     complete_profile: Yup.boolean().optional(),
+    image: Yup.mixed().optional(),
   });
-  const validatedData = await schema.validate(
+
+  const { image, ...validatedData } = await schema.validate(
     { ...body },
     { abortEarly: false, stripUnknown: true }
   );
 
+  let imageUrl = null;
+  if (image) {
+    const filename = `profiles/${(image as File).name}`;
+
+    const arrayBuffer = await (image as File).arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const { VersionId } = await uploadFileToS3(buffer, filename);
+    imageUrl = `${url.protocol}//${url.host}/api/assets/${filename}?versionId=${VersionId}`;
+  }
+
   const [updatedUser] = await db
     .update(usersTable)
-    .set(validatedData)
+    .set({
+      ...validatedData,
+      image: imageUrl,
+    })
     .where(eq(usersTable.id, userId))
     .returning();
 
@@ -44,7 +63,6 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
 
   return NextResponse.json(updatedUser);
 });
-
 export const GET = catchAsync(async (req: NextRequest) => {
   const userId = req.headers.get(HEADER_DATA_KEY) as string;
 

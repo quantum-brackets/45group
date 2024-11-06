@@ -75,7 +75,7 @@ export default function OTPForm({ email, origin }: Props) {
         validateOnBlur={false}
       >
         {({ handleSubmit, values }) => (
-          <form onSubmit={handleSubmit} className="flex w-full flex-col gap-5">
+          <form onSubmit={handleSubmit} className="flex w-full flex-col gap-5" method="POST">
             <OTPField name="otp" required length={OTP_LENGTH} />
             <Button
               type="submit"
