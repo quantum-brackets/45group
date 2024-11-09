@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import Image from "next/image";
+import { captureException } from "@sentry/nextjs";
 import { ThemeProvider } from "@mui/material/styles";
 import theme from "./theme";
 import Button from "~/components/button";
@@ -15,7 +17,9 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  console.error(error);
+  useEffect(() => {
+    captureException(error);
+  }, [error]);
 
   return (
     <html>
