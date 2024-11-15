@@ -81,3 +81,9 @@ export function compareObjectValues(
     {} as Record<string, any>
   );
 }
+
+export function filterPrivateValues<T>(values: T) {
+  return Object.fromEntries(
+    Object.entries(values as any).filter(([key]) => !key.startsWith("_"))
+  ) as T;
+}

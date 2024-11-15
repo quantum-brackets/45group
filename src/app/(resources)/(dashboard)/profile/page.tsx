@@ -13,7 +13,7 @@ import { useUpdateMe } from "~/hooks/users";
 import { notifySuccess } from "~/utils/toast";
 import UsersService from "~/services/users";
 import PhoneNumberField from "~/components/fields/phone-number-field";
-import { compareObjectValues } from "~/utils/helpers";
+import { compareObjectValues, filterPrivateValues } from "~/utils/helpers";
 
 const validationSchema = Yup.object({
   first_name: Yup.string().optional(),
@@ -43,7 +43,6 @@ export default function Profile() {
       image: currentUser?.image || "",
       email: currentUser?.email || "",
       phone: currentUser?.phone || "",
-      image_base64: "",
     }),
     [currentUser]
   );
@@ -58,8 +57,10 @@ export default function Profile() {
       <Formik
         initialValues={initialValues}
         validationSchema={validationSchema}
-        onSubmit={async ({ email: _, image_base64: __, ...data }) => {
-          await updateMe(compareObjectValues(initialValues, data), {
+        onSubmit={async ({ email: _, ...values }) => {
+          const submissionValues = filterPrivateValues(values);
+
+          await updateMe(compareObjectValues(initialValues, submissionValues), {
             onSuccess: () => {
               notifySuccess({ message: "Profile updated successfully" });
             },
@@ -76,7 +77,13 @@ export default function Profile() {
                   className="relative size-40 overflow-hidden rounded-full border border-[#0000001c] bg-[#00000021] largeMobile_545:!size-24 tablet_768:size-32"
                   onClick={() => profileImageInputRef.current?.click()}
                 >
-                  <Avatar className="!size-full" src={values.image_base64 || values.image}>
+                  <Avatar
+                    className="!size-full"
+                    src={
+                      (values as typeof values & { _image_base64?: string })._image_base64 ||
+                      values.image
+                    }
+                  >
                     <IoPerson className={"size-[40%]"} />
                   </Avatar>
                   <div className="absolute bottom-0 flex h-[40%] w-full items-center justify-center bg-black/35">
@@ -95,7 +102,7 @@ export default function Profile() {
                       reader.readAsDataURL(file);
                       reader.onload = () => {
                         setFieldValue("image", file);
-                        setFieldValue(`image_base64`, reader.result);
+                        setFieldValue(`_image_base64`, reader.result);
                       };
                     }
                   }}
