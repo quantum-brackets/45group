@@ -1,10 +1,9 @@
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 import { MiddlewareFactory } from "../stack-middlewares";
 import { SESSION_KEY } from "~/utils/constants";
-import UsersService from "~/services/users";
 import axiosInstance from "~/config/axios";
 
-const protectedPaths = ["/profile", "/previous-bookings", "/receipts"];
+const protectedPaths = ["/profile", "/previous-bookings", "/receipts", "/complete-profile"];
 const externalPaths = ["/booking"];
 
 const authPaths = {
@@ -65,13 +64,13 @@ export const authorization: MiddlewareFactory = (next) => {
       return redirect({ req, pathname: authPaths.signin, origin: pathname });
     }
 
-    const user = await getUserBySessionToken(session);
+    cache.user = await getUserBySessionToken(session);
 
-    if (isProtectedPath && !user) {
+    if (isProtectedPath && !cache.user) {
       return redirect({ req, pathname: authPaths.signin, origin: pathname });
     }
 
-    if (user && !user.complete_profile) {
+    if (cache.user && !cache.user.complete_profile) {
       return redirect({ req, pathname: authPaths.completeProfile, origin: pathname });
     }
 

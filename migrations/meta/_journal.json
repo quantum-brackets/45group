@@ -5,36 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1729432175228,
-      "tag": "0000_confused_starjammers",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1729514806786,
-      "tag": "0001_gorgeous_the_leader",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1730908868306,
-      "tag": "0002_bumpy_blindfold",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1730978536963,
-      "tag": "0003_mighty_inhumans",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1730982233819,
-      "tag": "0004_volatile_captain_cross",
+      "when": 1731684393786,
+      "tag": "0000_flippant_prodigy",
       "breakpoints": true
     }
   ]

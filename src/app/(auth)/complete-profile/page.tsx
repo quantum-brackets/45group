@@ -13,6 +13,7 @@ import FormField from "~/components/fields/form-field";
 import Logo from "~/components/logo";
 import { useUpdateMe } from "~/hooks/users";
 import PhoneNumberField from "~/components/fields/phone-number-field";
+import { filterPrivateValues } from "~/utils/helpers";
 
 const validationSchema = Yup.object({
   first_name: Yup.string().required("First name is required"),
@@ -55,13 +56,14 @@ export default function CompleteProfile({
               last_name: "",
               phone: "",
               image: "",
-              image_base64: "",
             }}
             validationSchema={validationSchema}
-            onSubmit={async ({ image_base64: _, ...data }, { resetForm }) => {
+            onSubmit={async (values, { resetForm }) => {
+              const submissionValues = filterPrivateValues(values);
+
               await updateMe(
                 {
-                  ...data,
+                  ...submissionValues,
                   complete_profile: true,
                 },
                 {
@@ -81,7 +83,10 @@ export default function CompleteProfile({
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-6">
                       <div className="!size-28 overflow-hidden rounded-full border border-black/15 bg-black/15">
-                        <Avatar className="!size-full" src={values.image_base64}>
+                        <Avatar
+                          className="!size-full"
+                          src={(values as typeof values & { _image_base64?: string })._image_base64}
+                        >
                           <IoPerson className={"size-[40%]"} />
                         </Avatar>
                       </div>
@@ -116,7 +121,7 @@ export default function CompleteProfile({
                             reader.readAsDataURL(file);
                             reader.onload = () => {
                               setFieldValue("image", file);
-                              setFieldValue(`image_base64`, reader.result);
+                              setFieldValue(`_image_base64`, reader.result);
                             };
                           }
                         }}
