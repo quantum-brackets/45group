@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import clsx, { ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import * as Yup from "yup";
 import jwt from "jsonwebtoken";
 import { DEFAULT_CURRENCY_CODE } from "./constants";
 
@@ -80,6 +81,12 @@ export function compareObjectValues(
     },
     {} as Record<string, any>
   );
+}
+
+export async function validateSchema({ object, data }: { object: Yup.AnyObject; data: any }) {
+  const schema = Yup.object(object);
+
+  return await schema.validate({ ...data }, { abortEarly: false, stripUnknown: true });
 }
 
 export function filterPrivateValues<T>(values: T) {
