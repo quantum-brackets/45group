@@ -44,7 +44,13 @@ export default function ToFilter() {
             className="!w-full !cursor-pointer"
             onClick={(e) => (anchorEl ? setAnchorEl(null) : setAnchorEl(e.currentTarget))}
           />
-          <Popper open={open} anchorEl={anchorEl} placement="bottom-start" transition>
+          <Popper
+            open={open}
+            anchorEl={anchorEl}
+            placement="bottom-start"
+            transition
+            className="tablet:!z-[2000]"
+          >
             {({ TransitionProps }) => (
               <Fade {...TransitionProps} timeout={350}>
                 <Paper className="!p-0">

@@ -1,11 +1,19 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ClickAwayListener, Fade, OutlinedInput, Paper, Popper } from "@mui/material";
+import {
+  ClickAwayListener,
+  Fade,
+  OutlinedInput,
+  Paper,
+  Popper,
+  useMediaQuery,
+} from "@mui/material";
 import { FaMinus, FaPlus } from "react-icons/fa6";
 import debounce from "lodash.debounce";
 import Button from "~/components/button";
+import theme from "~/app/theme";
 
 type Props = {
   groupQuery?: string;
@@ -15,6 +23,7 @@ type Props = {
 const groupFilters = ["adults", "children", "seniors"];
 
 const GroupFilter = forwardRef(({ groupQuery, autoApply = true }: Props, ref) => {
+  const isTablet = useMediaQuery(theme.breakpoints.down(900));
   const searchParams = useSearchParams();
 
   const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
@@ -55,13 +64,13 @@ const GroupFilter = forwardRef(({ groupQuery, autoApply = true }: Props, ref) =>
   );
 
   useEffect(() => {
-    if (autoApply) {
+    if (autoApply && !isTablet) {
       debouncedSetGroup(tempGroupState);
     }
     return () => {
       debouncedSetGroup.cancel();
     };
-  }, [debouncedSetGroup, tempGroupState, autoApply]);
+  }, [debouncedSetGroup, tempGroupState, autoApply, isTablet]);
 
   const groupCount = useMemo(() => {
     return Object.values(tempGroupState).reduce((sum, val) => sum + val, 0);
@@ -71,12 +80,12 @@ const GroupFilter = forwardRef(({ groupQuery, autoApply = true }: Props, ref) =>
     setAnchorEl(null);
   }
 
-  const handleApplyFilter = () => {
+  const handleApplyFilter = useCallback(() => {
     debouncedSetGroup(tempGroupState);
     debouncedSetGroup.flush();
 
     onClose();
-  };
+  }, [debouncedSetGroup, tempGroupState]);
 
   useImperativeHandle(ref, () => ({
     triggerApplyFilter: handleApplyFilter,
@@ -108,7 +117,7 @@ const GroupFilter = forwardRef(({ groupQuery, autoApply = true }: Props, ref) =>
           anchorEl={anchorEl}
           placement="bottom-start"
           transition
-          className="!z-[2000]"
+          className="tablet:!z-[2000]"
         >
           {({ TransitionProps }) => (
             <Fade {...TransitionProps} timeout={350}>

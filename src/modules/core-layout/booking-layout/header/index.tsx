@@ -29,7 +29,11 @@ const sortData = [
   },
 ];
 
-export default function Header() {
+type Props = {
+  openMobileDrawer: () => void;
+};
+
+export default function Header({ openMobileDrawer }: Props) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
@@ -98,7 +102,7 @@ export default function Header() {
   }
 
   return (
-    <header className="flex w-full items-center justify-between gap-8 border-b-1.5 border-zinc-300/60 p-2 px-8 tablet:px-4 largeTabletAndBelow:px-4 [@media(max-width:500px)]:justify-start">
+    <header className="flex w-full items-center justify-between gap-8 border-b-1.5 border-zinc-300/60 p-2 px-4 [@media(max-width:500px)]:justify-start">
       <p className="text-nowrap text-sm text-zinc-500 tablet_768:text-xs [@media(max-width:500px)]:self-start">
         <span className="text-base tablet_768:text-sm">{bookings?.length || 0}</span> results
       </p>
@@ -114,7 +118,10 @@ export default function Header() {
             />
           </div>
         </div>
-        <button className="hidden items-center gap-2 text-xs tablet:flex">
+        <button
+          className="hidden items-center gap-2 text-xs tablet:flex"
+          onClick={openMobileDrawer}
+        >
           <FiFilter />
           <span>Filter</span>
         </button>
