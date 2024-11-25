@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { DialogContent, DialogTitle } from "@mui/material";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Formik } from "formik";
 import { isAxiosError } from "axios";
 import Modal from "~/components/modal";
@@ -14,6 +14,7 @@ import Button from "~/components/button";
 import AuthService from "~/services/auth";
 import { cn } from "~/utils/helpers";
 import { notifyError } from "~/utils/toast";
+import { IoCheckmarkCircle } from "react-icons/io5";
 
 type Props = {
   onClose: () => void;
@@ -54,6 +55,8 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
     },
   });
 
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     if (count > 0 && count < 60) {
       const timer = setTimeout(() => setCount(count - 1), 1000);
@@ -63,15 +66,21 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
 
   const startCountdown = useCallback(() => setCount(59), []);
 
-  const renderStepHeader = (stepNumber: number) => (
-    <p
-      className={
-        "flex size-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-sm text-white"
-      }
-    >
-      {stepNumber}
-    </p>
-  );
+  const renderStepHeader = (stepNumber: number) => {
+    if (currentStep > stepNumber) {
+      return <IoCheckmarkCircle className="size-6 flex-shrink-0 text-green-700" />;
+    }
+
+    return (
+      <p
+        className={
+          "flex size-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-sm text-white"
+        }
+      >
+        {stepNumber}
+      </p>
+    );
+  };
 
   const renderOtpResend = (otpEmail: string, isCurrentStep: boolean) => {
     if (!isCurrentStep) return null;
@@ -134,7 +143,7 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
             enableReinitialize
             validationSchema={validationSchema.step1}
           >
-            {({ handleSubmit, submitForm, isSubmitting, handleChange, setFieldValue, values }) => (
+            {({ handleSubmit, submitForm, isSubmitting, setFieldValue }) => (
               <form
                 method="POST"
                 onSubmit={handleSubmit}
@@ -187,7 +196,7 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
             validateOnBlur={false}
             validationSchema={validationSchema.step2}
           >
-            {({ handleSubmit }) => (
+            {({ handleSubmit, isSubmitting }) => (
               <form
                 method="POST"
                 onSubmit={handleSubmit}
@@ -200,8 +209,8 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
                   <small>Enter your new address</small>
                   {currentStep === 2 && (
                     <div className="flex flex-col gap-2">
-                      <FormField name="new_email" type="email" required />
-                      <Button type="submit" className="w-fit">
+                      <FormField name="new_email" disabled={isSubmitting} type="email" required />
+                      <Button type="submit" loading={isSubmitting} className="w-fit">
                         Continue
                       </Button>
                     </div>
@@ -215,6 +224,8 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
               otp: "",
             }}
             onSubmit={async ({ otp }) => {
+              console.log(otp, newEmail);
+
               if (!newEmail) return;
 
               await verifyOtp(
@@ -224,8 +235,11 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
                     await changeEmail(
                       { new_email: newEmail },
                       {
-                        onSuccess: () => {
-                          changeCurrentStep(3);
+                        onSuccess: async () => {
+                          await queryClient.invalidateQueries({
+                            queryKey: ["current-user"],
+                          });
+                          onClose();
                         },
                       }
                     );
@@ -234,9 +248,9 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
               );
             }}
             validateOnBlur={false}
-            validationSchema={validationSchema.step2}
+            validationSchema={validationSchema.step3}
           >
-            {({ handleSubmit, submitForm }) => (
+            {({ handleSubmit, submitForm, setFieldValue, isSubmitting }) => (
               <form
                 method="POST"
                 onSubmit={handleSubmit}
@@ -247,18 +261,23 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
                 {renderStepHeader(3)}
                 <div className="flex flex-col gap-2">
                   <small>
-                    Verify your new email address
+                    Verify your new email address: <span className="font-semibold">{newEmail}</span>
                     {newEmail && renderOtpResend(newEmail, currentStep === 3)}
                   </small>
                   {currentStep === 3 && (
                     <OTPField
                       name="otp"
                       required
+                      TextFieldsProps={{
+                        disabled: isSubmitting,
+                      }}
                       className="ml-0 !gap-4"
                       length={OTP_LENGTH}
                       onChange={async (value) => {
-                        if (value.length !== OTP_LENGTH) return;
-                        await submitForm();
+                        await setFieldValue("otp", value);
+                        if (value.length === OTP_LENGTH) {
+                          await submitForm();
+                        }
                       }}
                     />
                   )}

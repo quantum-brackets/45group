@@ -10,7 +10,6 @@ type Props = MuiOtpInputProps &
     label?: string;
     labelProps?: InputLabelProps;
     required?: boolean;
-    autoSubmit?: boolean;
   };
 
 export default function OTPField({
@@ -19,7 +18,6 @@ export default function OTPField({
   labelProps,
   required,
   TextFieldsProps,
-  autoSubmit = false,
   sx,
   ...props
 }: Props) {
