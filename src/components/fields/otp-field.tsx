@@ -10,6 +10,7 @@ type Props = MuiOtpInputProps &
     label?: string;
     labelProps?: InputLabelProps;
     required?: boolean;
+    autoSubmit?: boolean;
   };
 
 export default function OTPField({
@@ -18,12 +19,13 @@ export default function OTPField({
   labelProps,
   required,
   TextFieldsProps,
+  autoSubmit = false,
   sx,
   ...props
 }: Props) {
   return (
-    <Field {...props}>
-      {({ field, meta, form }: FieldProps) => (
+    <Field name={props.name}>
+      {({ field, form }: FieldProps) => (
         <div className="flex w-full flex-col gap-1">
           {label && (
             <div className="flex w-full items-center justify-between">
@@ -39,6 +41,10 @@ export default function OTPField({
           )}
           <MuiOtpInput
             {...field}
+            onChange={(value) => {
+              if (value === field.value) return;
+              form.setFieldValue(props.name, value);
+            }}
             {...props}
             autoFocus
             validateChar={(char) => /^\d+$/.test(char)}
@@ -46,10 +52,6 @@ export default function OTPField({
               "mx-auto mediumMobile:!gap-[8px] largeMobile:w-full largeMobile:gap-[10px]",
               className
             )}
-            onChange={(value) => {
-              if (value === field.value) return;
-              form.setFieldValue(props.name, value);
-            }}
             TextFieldsProps={{
               variant: "outlined",
               className: " [@media(max-width:660px)]:w-fit",

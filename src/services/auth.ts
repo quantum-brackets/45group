@@ -1,4 +1,4 @@
-import axiosInstance from "~/config/axios";
+import axiosInstance, { axiosPrivate } from "~/config/axios";
 
 class AuthService {
   static signin = async (data: { email: string }) => {
@@ -39,6 +39,21 @@ class AuthService {
 
   static createSession = async (data: Record<"email", string>) => {
     const { data: response } = await axiosInstance.post<any>("/api/auth/session/create", data);
+
+    return response;
+  };
+
+  static changeEmailAddress = async (data: Record<"current_email" | "new_email", string>) => {
+    const { data: response } = await axiosPrivate.post<any>("/api/auth/reset-email/update", data);
+
+    return response;
+  };
+
+  static verifyResetEmailOtp = async (data: Record<"email" | "otp", string>) => {
+    const { data: response } = await axiosPrivate.post<any>(
+      "/api/auth/reset-email/verify-otp",
+      data
+    );
 
     return response;
   };

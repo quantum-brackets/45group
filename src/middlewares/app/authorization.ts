@@ -70,9 +70,11 @@ export const authorization: MiddlewareFactory = (next) => {
       return redirect({ req, pathname: authPaths.signin, origin: pathname });
     }
 
-    if (cache.user && !cache.user.complete_profile) {
+    if (cache.user && !cache.user.complete_profile && pathname !== authPaths.completeProfile) {
       return redirect({ req, pathname: authPaths.completeProfile, origin: pathname });
     }
+
+    //! make it possible to not access the complete profile page when after the user has completed their profile
 
     return next(req, _next);
   };
