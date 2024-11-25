@@ -58,3 +58,14 @@ export function useCreateSession() {
     mutationFn: AuthService.createSession,
   });
 }
+
+export function useLogout() {
+  return useMutation({
+    mutationFn: AuthService.logout,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        notifyError({ message: "Error occured while logging out" });
+      }
+    },
+  });
+}

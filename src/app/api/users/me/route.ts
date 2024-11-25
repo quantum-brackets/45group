@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { isValidPhoneNumber } from "libphonenumber-js";
 import * as Yup from "yup";
-import { readFile } from "fs/promises";
 import { db } from "~/db";
 import { usersTable } from "~/db/schemas/users";
 import catchAsync from "~/utils/catch-async";
@@ -63,6 +62,7 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
 
   return NextResponse.json(updatedUser);
 });
+
 export const GET = catchAsync(async (req: NextRequest) => {
   const userId = req.headers.get(HEADER_DATA_KEY) as string;
 

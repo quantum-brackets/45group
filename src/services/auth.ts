@@ -57,6 +57,12 @@ class AuthService {
 
     return response;
   };
+
+  static logout = async () => {
+    const { data: response } = await axiosInstance.post<any>("/api/auth/logout");
+
+    return response;
+  };
 }
 
 export default AuthService;
