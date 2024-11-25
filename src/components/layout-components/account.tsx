@@ -29,8 +29,8 @@ const links = [
     open: false,
     sublink: [
       {
-        text: "Change email",
-        href: "/change-email",
+        text: "Account",
+        href: "/account-settings",
       },
     ],
   },

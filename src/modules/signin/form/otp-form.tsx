@@ -8,6 +8,7 @@ import nProgress from "nprogress";
 import { useVerifyOtp, useRequestOtp, useCreateSession } from "~/hooks/auth";
 import OTPField from "~/components/fields/otp-field";
 import Button from "~/components/button";
+import { notifySuccess } from "~/utils/toast";
 
 type Props = {
   email: string;
@@ -56,6 +57,7 @@ export default function OTPForm({ email, origin }: Props) {
                   { email },
                   {
                     onSuccess: () => {
+                      notifySuccess({ message: "Signed in successfully" });
                       resetForm();
                       nProgress.start();
                       router.push(origin || "/booking");

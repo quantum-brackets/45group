@@ -125,7 +125,7 @@ export default function Header({ openMobileDrawer }: Props) {
           <FiFilter />
           <span>Filter</span>
         </button>
-        <div className="flex items-center gap-2 tablet_768:hidden largeLaptop:gap-4">
+        <div className="flex items-center gap-2 largeLaptop:gap-4">
           <p className="text-xs largeLaptop:text-sm">Sort By:</p>
           <button className="flex items-center gap-2" onClick={(e) => setAnchorEl(e.currentTarget)}>
             <p className="whitespace-nowrap text-xs text-primary largeLaptop:text-sm">
