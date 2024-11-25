@@ -4,15 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { DialogContent, DialogTitle } from "@mui/material";
 import { useMutation } from "@tanstack/react-query";
 import { Formik } from "formik";
+import { isAxiosError } from "axios";
 import Modal from "~/components/modal";
 import * as Yup from "yup";
 import OTPField from "~/components/fields/otp-field";
-import { useRequestOtp } from "~/hooks/auth";
+import { useRequestOtp, useVerifyOtp } from "~/hooks/auth";
 import FormField from "~/components/fields/form-field";
 import Button from "~/components/button";
 import AuthService from "~/services/auth";
 import { cn } from "~/utils/helpers";
-import { isAxiosError } from "axios";
 import { notifyError } from "~/utils/toast";
 
 type Props = {
@@ -25,8 +25,7 @@ const OTP_LENGTH = 6;
 const validationSchema = {
   step1: Yup.object({
     otp: Yup.string()
-      .matches(/^\d{6}$/, "OTP must be exactly 6 digits")
-      // .length(OTP_LENGTH, `OTP must be ${OTP_LENGTH} digits`)
+      .length(OTP_LENGTH, `OTP must be ${OTP_LENGTH} digits`)
       .required("OTP is required"),
   }),
   step2: Yup.object({
@@ -45,16 +44,9 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
   const [newEmail, setNewEmail] = useState<string | null>(null);
 
   const { mutateAsync: requestOtp, isPending: requestIsPending } = useRequestOtp();
-  const { mutateAsync: verifyResetEmailOtp } = useMutation({
-    mutationFn: AuthService.verifyResetEmailOtp,
-    onError: (error) => {
-      if (isAxiosError(error)) {
-        notifyError({ message: error.response?.data.error });
-      }
-    },
-  });
-  const { mutateAsync: changeEmailAddress } = useMutation({
-    mutationFn: AuthService.changeEmailAddress,
+  const { mutateAsync: verifyOtp } = useVerifyOtp();
+  const { mutateAsync: changeEmail } = useMutation({
+    mutationFn: AuthService.changeEmail,
     onError: (error) => {
       if (isAxiosError(error)) {
         notifyError({ message: error.response?.data.error });
@@ -130,7 +122,7 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
               otp: "",
             }}
             onSubmit={async (values) => {
-              await verifyResetEmailOtp(
+              await verifyOtp(
                 { ...values, email },
                 {
                   onSuccess: () => {
@@ -225,12 +217,12 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
             onSubmit={async ({ otp }) => {
               if (!newEmail) return;
 
-              await verifyResetEmailOtp(
+              await verifyOtp(
                 { email: newEmail, otp },
                 {
                   onSuccess: async () => {
-                    await changeEmailAddress(
-                      { new_email: newEmail, current_email: email },
+                    await changeEmail(
+                      { new_email: newEmail },
                       {
                         onSuccess: () => {
                           changeCurrentStep(3);
@@ -266,8 +258,6 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
                       length={OTP_LENGTH}
                       onChange={async (value) => {
                         if (value.length !== OTP_LENGTH) return;
-                        console.log(value);
-
                         await submitForm();
                       }}
                     />
