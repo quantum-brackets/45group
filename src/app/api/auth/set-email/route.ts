@@ -7,15 +7,14 @@ import catchAsync from "~/utils/catch-async";
 import { appError, validateSchema } from "~/utils/helpers";
 import { sendEmail } from "~/config/resend";
 import EmailChangeConfirmation from "~/emails/email-change-confirmation";
+import { HEADER_DATA_KEY } from "~/utils/constants";
 
 export const POST = catchAsync(async (req: NextRequest) => {
+  const userId = req.headers.get(HEADER_DATA_KEY) as string;
   const body = await req.json();
 
-  const { current_email, new_email } = await validateSchema({
+  const { new_email } = await validateSchema({
     object: {
-      current_email: Yup.string()
-        .email("Invalid current email address")
-        .required("Current email is required"),
       new_email: Yup.string().email("Invalid new email address").required("New email is required"),
     },
     data: body,
@@ -33,13 +32,13 @@ export const POST = catchAsync(async (req: NextRequest) => {
   const [updatedUser] = await db
     .update(usersTable)
     .set({ email: new_email })
-    .where(eq(usersTable.email, current_email))
+    .where(eq(usersTable.id, userId))
     .returning();
 
   if (!updatedUser) {
     return appError({
       status: 404,
-      error: "No user found with the provided current email.",
+      error: "No user found.",
     });
   }
 

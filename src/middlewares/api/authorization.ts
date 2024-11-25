@@ -5,7 +5,7 @@ import catchAsync from "~/utils/catch-async";
 import { HEADER_DATA_KEY, SESSION_KEY } from "~/utils/constants";
 import axiosInstance from "~/config/axios";
 
-const protectedRoutes = ["/api/users"];
+const protectedRoutes = ["/api/users", "/api/logout"];
 
 export const authorization: MiddlewareFactory = (next) => {
   return catchAsync(async (req: NextRequest, _next: NextFetchEvent) => {
@@ -18,17 +18,21 @@ export const authorization: MiddlewareFactory = (next) => {
         return appError({ status: 401, error: "No session provided" });
       }
 
-      const {
-        data: { user_id },
-      } = await axiosInstance.post("/api/utils/decode", { session: sessionToken });
+      try {
+        const {
+          data: { user_id },
+        } = await axiosInstance.post("/api/utils/decode", { session: sessionToken });
 
-      if (!user_id) {
+        if (!user_id) {
+          return appError({ status: 401, error: "Invalid session" });
+        }
+
+        const res = NextResponse.next();
+        res.headers.set(HEADER_DATA_KEY, user_id);
+        return res;
+      } catch (error) {
         return appError({ status: 401, error: "Invalid session" });
       }
-
-      const res = NextResponse.next();
-      res.headers.set(HEADER_DATA_KEY, user_id);
-      return res;
     }
     return next(req, _next);
   });

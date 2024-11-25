@@ -8,6 +8,13 @@
       "when": 1731684393786,
       "tag": "0000_flippant_prodigy",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1732550925569,
+      "tag": "0001_silly_captain_universe",
+      "breakpoints": true
     }
   ]
 }

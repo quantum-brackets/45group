@@ -43,17 +43,14 @@ class AuthService {
     return response;
   };
 
-  static changeEmailAddress = async (data: Record<"current_email" | "new_email", string>) => {
-    const { data: response } = await axiosPrivate.post<any>("/api/auth/reset-email/update", data);
+  static changeEmail = async (data: Record<"new_email", string>) => {
+    const { data: response } = await axiosPrivate.post<any>("/api/auth/set-email", data);
 
     return response;
   };
 
-  static verifyResetEmailOtp = async (data: Record<"email" | "otp", string>) => {
-    const { data: response } = await axiosPrivate.post<any>(
-      "/api/auth/reset-email/verify-otp",
-      data
-    );
+  static logout = async () => {
+    const { data: response } = await axiosInstance.post<any>("/api/auth/logout");
 
     return response;
   };

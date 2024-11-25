@@ -9,6 +9,11 @@ import { notifyError } from "~/utils/toast";
 export function useSignin() {
   return useMutation({
     mutationFn: AuthService.signin,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        notifyError({ message: error.response?.data.error });
+      }
+    },
   });
 }
 
@@ -56,5 +61,16 @@ export function useCreateJwt() {
 export function useCreateSession() {
   return useMutation({
     mutationFn: AuthService.createSession,
+  });
+}
+
+export function useLogout() {
+  return useMutation({
+    mutationFn: AuthService.logout,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        notifyError({ message: "Error occured while logging out" });
+      }
+    },
   });
 }
