@@ -16,9 +16,7 @@ const validationSchema = Yup.object({
 });
 
 export default function EmailForm({ showOtp }: Props) {
-  const [isLoading] = useState(false);
-
-  const { mutateAsync: requestOtp } = useRequestOtp();
+  const { mutateAsync: requestOtp, isPending } = useRequestOtp();
 
   return (
     <Formik
@@ -53,7 +51,7 @@ export default function EmailForm({ showOtp }: Props) {
               placeholder="Enter your email"
             />
           </div>
-          <Button type="submit" size="large" loading={isLoading}>
+          <Button type="submit" size="large" loading={isPending}>
             Sign In
           </Button>
         </form>
