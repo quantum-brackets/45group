@@ -4,28 +4,45 @@ import * as Yup from "yup";
 import { db } from "~/db";
 import catchAsync from "~/utils/catch-async";
 import { usersTable } from "~/db/schemas/users";
-import { appError } from "~/utils/helpers";
+import { validateSchema } from "~/utils/helpers";
+import WelcomeTemplate from "~/emails/welcome";
+import { sendEmail } from "~/config/resend";
 
 export const POST = catchAsync(async (req: NextRequest) => {
   const body = await req.json();
 
-  const schema = Yup.object({
-    email: Yup.string().email("Invalid email address").required("Email is required"),
+  const { email } = await validateSchema({
+    object: {
+      email: Yup.string().email("Invalid email address").required("Email is required"),
+    },
+    data: body,
   });
-  const { email } = await schema.validate({ ...body }, { abortEarly: false, stripUnknown: true });
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+  const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
 
-  if (user) {
-    return appError({
-      error: "Email already exist",
-      status: 400,
+  if (!existingUser) {
+    await db.insert(usersTable).values({ email });
+  }
+
+  const currentTime = new Date();
+
+  await db
+    .update(usersTable)
+    .set({ last_login_at: currentTime, is_verified: !existingUser.is_verified ? true : undefined })
+    .where(eq(usersTable.email, email));
+
+  if (!existingUser?.last_login_at) {
+    await sendEmail({
+      to: email,
+      subject: "Welcome to 45Group",
+      react: WelcomeTemplate({
+        previewText:
+          "We're excited to have you join our platform where you can discover and book the finest lodges, events, and...",
+      }),
     });
   }
 
-  await db.insert(usersTable).values({ email });
-
   return NextResponse.json({
-    message: "User created successfully",
+    message: "User signed in successfully",
   });
 });
