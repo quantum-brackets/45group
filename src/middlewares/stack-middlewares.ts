@@ -40,6 +40,9 @@ export function stackMiddlewares(functions: MiddlewareFactory[] = [], index = 0)
     req.cookies.getAll().forEach((cookie) => {
       finalRes.cookies.set(cookie.name, cookie.value);
     });
+    req.headers.forEach((value, key) => {
+      finalRes.headers.set(key, value);
+    });
 
     return finalRes;
   };
