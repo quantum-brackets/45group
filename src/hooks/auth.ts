@@ -9,6 +9,11 @@ import { notifyError } from "~/utils/toast";
 export function useSignin() {
   return useMutation({
     mutationFn: AuthService.signin,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        notifyError({ message: error.response?.data.error });
+      }
+    },
   });
 }
 
