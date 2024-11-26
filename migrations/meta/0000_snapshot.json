@@ -1,5 +1,5 @@
 {
-  "id": "5e5ba7ab-9b7f-4cd8-af6e-b1c1b4a662a6",
+  "id": "d4a48b36-5c15-443a-9f36-6a517592b7ed",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -29,7 +29,7 @@
         },
         "description": {
           "name": "description",
-          "type": "varchar",
+          "type": "varchar(500)",
           "primaryKey": false,
           "notNull": false
         },
@@ -43,7 +43,7 @@
           "name": "status",
           "type": "varchar",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "updated_at": {
           "name": "updated_at",
@@ -61,10 +61,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "availability_resource_id_lodges_id_fk": {
-          "name": "availability_resource_id_lodges_id_fk",
+        "availability_resource_id_resources_id_fk": {
+          "name": "availability_resource_id_resources_id_fk",
           "tableFrom": "availability",
-          "tableTo": "lodges",
+          "tableTo": "resources",
           "columnsFrom": [
             "resource_id"
           ],
@@ -134,19 +134,19 @@
           "name": "check_in_date",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "check_out_date": {
           "name": "check_out_date",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "status": {
           "name": "status",
           "type": "varchar",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "updated_at": {
           "name": "updated_at",
@@ -177,10 +177,10 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "bookings_resource_id_lodges_id_fk": {
-          "name": "bookings_resource_id_lodges_id_fk",
+        "bookings_resource_id_resources_id_fk": {
+          "name": "bookings_resource_id_resources_id_fk",
           "tableFrom": "bookings",
-          "tableTo": "lodges",
+          "tableTo": "resources",
           "columnsFrom": [
             "resource_id"
           ],
@@ -228,207 +228,6 @@
           "type": "varchar",
           "primaryKey": false,
           "notNull": true
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "public.lodges_facilities": {
-      "name": "lodges_facilities",
-      "schema": "",
-      "columns": {
-        "lodge_id": {
-          "name": "lodge_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "facility_id": {
-          "name": "facility_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "lodges_facilities_lodge_id_lodges_id_fk": {
-          "name": "lodges_facilities_lodge_id_lodges_id_fk",
-          "tableFrom": "lodges_facilities",
-          "tableTo": "lodges",
-          "columnsFrom": [
-            "lodge_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "lodges_facilities_facility_id_rules_id_fk": {
-          "name": "lodges_facilities_facility_id_rules_id_fk",
-          "tableFrom": "lodges_facilities",
-          "tableTo": "rules",
-          "columnsFrom": [
-            "facility_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "lodges_facilities_lodge_id_facility_id_pk": {
-          "name": "lodges_facilities_lodge_id_facility_id_pk",
-          "columns": [
-            "lodge_id",
-            "facility_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {}
-    },
-    "public.lodges_rules": {
-      "name": "lodges_rules",
-      "schema": "",
-      "columns": {
-        "lodge_id": {
-          "name": "lodge_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "rule_id": {
-          "name": "rule_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "lodges_rules_lodge_id_lodges_id_fk": {
-          "name": "lodges_rules_lodge_id_lodges_id_fk",
-          "tableFrom": "lodges_rules",
-          "tableTo": "lodges",
-          "columnsFrom": [
-            "lodge_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "lodges_rules_rule_id_rules_id_fk": {
-          "name": "lodges_rules_rule_id_rules_id_fk",
-          "tableFrom": "lodges_rules",
-          "tableTo": "rules",
-          "columnsFrom": [
-            "rule_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "lodges_rules_lodge_id_rule_id_pk": {
-          "name": "lodges_rules_lodge_id_rule_id_pk",
-          "columns": [
-            "lodge_id",
-            "rule_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {}
-    },
-    "public.lodges": {
-      "name": "lodges",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(300)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "location": {
-          "name": "location",
-          "type": "varchar(300)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'draft'"
-        },
-        "thumbnail": {
-          "name": "thumbnail",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "rating": {
-          "name": "rating",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "address": {
-          "name": "address",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
         },
         "updated_at": {
           "name": "updated_at",
@@ -506,10 +305,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "medias_resource_id_lodges_id_fk": {
-          "name": "medias_resource_id_lodges_id_fk",
+        "medias_resource_id_resources_id_fk": {
+          "name": "medias_resource_id_resources_id_fk",
           "tableFrom": "medias",
-          "tableTo": "lodges",
+          "tableTo": "resources",
           "columnsFrom": [
             "resource_id"
           ],
@@ -534,8 +333,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "user_email": {
-          "name": "user_email",
+        "email": {
+          "name": "email",
           "type": "varchar",
           "primaryKey": false,
           "notNull": true
@@ -561,21 +360,7 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {
-        "otps_user_email_users_email_fk": {
-          "name": "otps_user_email_users_email_fk",
-          "tableFrom": "otps",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_email"
-          ],
-          "columnsTo": [
-            "email"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
@@ -594,13 +379,13 @@
           "name": "amount",
           "type": "numeric",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "currency_code": {
           "name": "currency_code",
-          "type": "varchar",
+          "type": "varchar(3)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "region_id": {
           "name": "region_id",
@@ -608,8 +393,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "lodge_id": {
-          "name": "lodge_id",
+        "resource_id": {
+          "name": "resource_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -643,12 +428,12 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "prices_lodge_id_lodges_id_fk": {
-          "name": "prices_lodge_id_lodges_id_fk",
+        "prices_resource_id_resources_id_fk": {
+          "name": "prices_resource_id_resources_id_fk",
           "tableFrom": "prices",
-          "tableTo": "lodges",
+          "tableTo": "resources",
           "columnsFrom": [
-            "lodge_id"
+            "resource_id"
           ],
           "columnsTo": [
             "id"
@@ -686,6 +471,213 @@
         "deleted_at": {
           "name": "deleted_at",
           "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.resource_facilities": {
+      "name": "resource_facilities",
+      "schema": "",
+      "columns": {
+        "resource_id": {
+          "name": "resource_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "facility_id": {
+          "name": "facility_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "resource_facilities_resource_id_resources_id_fk": {
+          "name": "resource_facilities_resource_id_resources_id_fk",
+          "tableFrom": "resource_facilities",
+          "tableTo": "resources",
+          "columnsFrom": [
+            "resource_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "resource_facilities_facility_id_facilities_id_fk": {
+          "name": "resource_facilities_facility_id_facilities_id_fk",
+          "tableFrom": "resource_facilities",
+          "tableTo": "facilities",
+          "columnsFrom": [
+            "facility_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "resource_facilities_resource_id_facility_id_pk": {
+          "name": "resource_facilities_resource_id_facility_id_pk",
+          "columns": [
+            "resource_id",
+            "facility_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {}
+    },
+    "public.resource_rules": {
+      "name": "resource_rules",
+      "schema": "",
+      "columns": {
+        "resource_id": {
+          "name": "resource_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rule_id": {
+          "name": "rule_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "resource_rules_resource_id_resources_id_fk": {
+          "name": "resource_rules_resource_id_resources_id_fk",
+          "tableFrom": "resource_rules",
+          "tableTo": "resources",
+          "columnsFrom": [
+            "resource_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "resource_rules_rule_id_rules_id_fk": {
+          "name": "resource_rules_rule_id_rules_id_fk",
+          "tableFrom": "resource_rules",
+          "tableTo": "rules",
+          "columnsFrom": [
+            "rule_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "resource_rules_resource_id_rule_id_pk": {
+          "name": "resource_rules_resource_id_rule_id_pk",
+          "columns": [
+            "resource_id",
+            "rule_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {}
+    },
+    "public.resources": {
+      "name": "resources",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(300)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location": {
+          "name": "location",
+          "type": "varchar(300)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'draft'"
+        },
+        "thumbnail": {
+          "name": "thumbnail",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rating": {
+          "name": "rating",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "name": "address",
+          "type": "varchar",
           "primaryKey": false,
           "notNull": false
         },
@@ -784,6 +776,13 @@
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'user'"
         },
         "email": {
           "name": "email",

@@ -4,11 +4,42 @@ import { ReactNode, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { IconButton } from "@mui/material";
+import { BsPerson } from "react-icons/bs";
+import { LiaBookSolid } from "react-icons/lia";
+import { IoReceiptOutline, IoSettingsOutline } from "react-icons/io5";
 import Logo from "~/components/logo";
 import Currency from "~/components/layout-components/currency";
 import Account from "~/components/layout-components/account";
-import Sidebar from "~/modules/dashboard-layout/sidebar";
+import Sidebar from "~/components/sidebar";
 import MenuIcon from "~/assets/icons/menu.svg";
+
+const links = [
+  {
+    title: "Previous Bookings",
+    href: "/previous-bookings",
+    icon: LiaBookSolid,
+  },
+  {
+    title: "Receipts",
+    href: "/receipts",
+    icon: IoReceiptOutline,
+  },
+  {
+    title: "Profile",
+    href: "/profile",
+    icon: BsPerson,
+  },
+  {
+    title: "Settings",
+    icon: IoSettingsOutline,
+    subLinks: [
+      {
+        title: "Account",
+        href: "/account-settings",
+      },
+    ],
+  },
+];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [openSidebar, setOpenSidebar] = useState(false);
@@ -38,7 +69,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
       <div className="flex flex-grow">
-        <Sidebar onClose={() => setOpenSidebar(false)} open={openSidebar} />
+        <Sidebar onClose={() => setOpenSidebar(false)} open={openSidebar} links={links} />
         <main className="mx-auto w-full max-w-[1250px] p-6 tablet_768:px-4">{children}</main>
       </div>
     </div>

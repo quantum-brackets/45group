@@ -3,7 +3,13 @@ import { MiddlewareFactory } from "../stack-middlewares";
 import { SESSION_KEY } from "~/utils/constants";
 import axiosInstance from "~/config/axios";
 
-const protectedPaths = ["/profile", "/previous-bookings", "/receipts", "/complete-profile"];
+const protectedPaths = [
+  "/profile",
+  "/previous-bookings",
+  "/receipts",
+  "/complete-profile",
+  "/admin",
+];
 const externalPaths = ["/booking"];
 
 const authPaths = {
@@ -72,6 +78,10 @@ export const authorization: MiddlewareFactory = (next) => {
 
     if (cache.user && !cache.user.complete_profile && pathname !== authPaths.completeProfile) {
       return redirect({ req, pathname: authPaths.completeProfile, origin: pathname });
+    }
+
+    if (pathname.startsWith("/admin") && cache.user?.type !== "admin") {
+      return redirect({ req, pathname: "/404" });
     }
 
     //! make it possible to not access the complete profile page when after the user has completed their profile
