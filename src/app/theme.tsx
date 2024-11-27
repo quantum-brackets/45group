@@ -112,7 +112,7 @@ const theme = createTheme({
     MuiDialogTitle: {
       styleOverrides: {
         root: {
-          fontWeight: 700,
+          fontWeight: 300,
           padding: 0,
           fontSize: "1rem",
         },

@@ -37,7 +37,7 @@ export default function RequestOtpTemplate({ previewText, code }: Props) {
         </Row>
       </Section>
       <Section style={{ ...sectionStyle }}>
-        <Text style={{ ...textStyle, fontWeight: 600, fontSize: "24px" }} className="text-center">
+        <Text style={{ ...textStyle, fontWeight: 600, fontSize: "24px", textAlign: "center" }}>
           {code}
         </Text>
       </Section>

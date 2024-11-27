@@ -1,4 +1,4 @@
-import axiosInstance from "~/config/axios";
+import axiosInstance, { axiosPrivate } from "~/config/axios";
 
 class AuthService {
   static signin = async (data: { email: string }) => {
@@ -39,6 +39,18 @@ class AuthService {
 
   static createSession = async (data: Record<"email", string>) => {
     const { data: response } = await axiosInstance.post<any>("/api/auth/session/create", data);
+
+    return response;
+  };
+
+  static changeEmail = async (data: Record<"new_email", string>) => {
+    const { data: response } = await axiosPrivate.post<any>("/api/auth/set-email", data);
+
+    return response;
+  };
+
+  static logout = async () => {
+    const { data: response } = await axiosInstance.post<any>("/api/auth/logout");
 
     return response;
   };

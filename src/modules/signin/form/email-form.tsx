@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { isAxiosError } from "axios";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import FormField from "~/components/fields/form-field";
 import Button from "~/components/button";
-import { useRequestOtp, useSignin } from "~/hooks/auth";
+import { useRequestOtp } from "~/hooks/auth";
 
 type Props = {
   showOtp: (obj: { open: boolean; email: string | null }) => void;
@@ -17,10 +15,7 @@ const validationSchema = Yup.object({
 });
 
 export default function EmailForm({ showOtp }: Props) {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const { mutateAsync: signin } = useSignin();
-  const { mutateAsync: requestOtp } = useRequestOtp();
+  const { mutateAsync: requestOtp, isPending } = useRequestOtp();
 
   return (
     <Formik
@@ -29,33 +24,15 @@ export default function EmailForm({ showOtp }: Props) {
       }}
       validationSchema={validationSchema}
       onSubmit={async ({ email }, { resetForm }) => {
-        async function requestOtpHandler() {
-          await requestOtp(
-            { email },
-            {
-              onSuccess: () => {
-                showOtp({
-                  open: true,
-                  email,
-                });
-                resetForm();
-              },
-            }
-          );
-        }
-
-        setIsLoading(true);
-        await signin(
+        await requestOtp(
           { email },
           {
-            onSuccess: requestOtpHandler,
-            onError: async (error) => {
-              if (isAxiosError(error)) {
-                if (error.status === 400) {
-                  return await requestOtpHandler();
-                }
-              }
-              setIsLoading(false);
+            onSuccess: () => {
+              showOtp({
+                open: true,
+                email,
+              });
+              resetForm();
             },
           }
         );
@@ -73,7 +50,7 @@ export default function EmailForm({ showOtp }: Props) {
               placeholder="Enter your email"
             />
           </div>
-          <Button type="submit" size="large" loading={isLoading}>
+          <Button type="submit" size="large" loading={isPending}>
             Sign In
           </Button>
         </form>

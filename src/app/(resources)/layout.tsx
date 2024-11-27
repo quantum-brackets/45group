@@ -1,15 +1,15 @@
-"use client";
-
 import { ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import UsersService from "~/services/users";
 
-export default function ResourceLayout({ children }: { children: ReactNode }) {
-  useQuery({
+export default async function ResourceLayout({ children }: { children: ReactNode }) {
+  const queryClient = new QueryClient();
+
+  await queryClient.prefetchQuery({
     queryKey: ["current-user"],
     queryFn: UsersService.getMe,
-    retry: 2,
+    retry: false,
   });
 
-  return <>{children}</>;
+  return <HydrationBoundary state={dehydrate(queryClient)}>{children}</HydrationBoundary>;
 }

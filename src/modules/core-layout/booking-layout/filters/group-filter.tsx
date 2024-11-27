@@ -1,28 +1,36 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ClickAwayListener, debounce, Fade, OutlinedInput, Paper, Popper } from "@mui/material";
+import {
+  ClickAwayListener,
+  Fade,
+  OutlinedInput,
+  Paper,
+  Popper,
+  useMediaQuery,
+} from "@mui/material";
 import { FaMinus, FaPlus } from "react-icons/fa6";
+import debounce from "lodash.debounce";
 import Button from "~/components/button";
+import theme from "~/app/theme";
 
 type Props = {
   groupQuery?: string;
+  autoApply?: boolean;
 };
 
 const groupFilters = ["adults", "children", "seniors"];
 
-export default function GroupFilter({ groupQuery }: Props) {
+const GroupFilter = forwardRef(({ groupQuery, autoApply = true }: Props, ref) => {
+  const isTablet = useMediaQuery(theme.breakpoints.down(900));
   const searchParams = useSearchParams();
 
   const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
-
-  const open = Boolean(anchorEl);
-
-  const [groupState, setGroupState] = useState(() => {
+  const [tempGroupState, setTempGroupState] = useState<Record<string, number>>(() => {
     const initialGroupState = groupFilters.reduce(
       (acc, filter) => {
-        acc[filter as keyof typeof groupState] = 0;
+        acc[filter as keyof typeof tempGroupState] = 0;
         return acc;
       },
       {} as Record<string, number>
@@ -38,10 +46,12 @@ export default function GroupFilter({ groupQuery }: Props) {
     return initialGroupState;
   });
 
+  const open = Boolean(anchorEl);
+
   const debouncedSetGroup = useMemo(
     () =>
-      debounce((group: typeof groupState) => {
-        let values = {} as typeof groupState;
+      debounce((group: typeof tempGroupState) => {
+        let values = {} as typeof tempGroupState;
         for (const _str of groupFilters) {
           const str = _str as keyof typeof group;
           values[str] = group[str] || 0;
@@ -54,30 +64,32 @@ export default function GroupFilter({ groupQuery }: Props) {
   );
 
   useEffect(() => {
-    debouncedSetGroup(groupState);
+    if (autoApply && !isTablet) {
+      debouncedSetGroup(tempGroupState);
+    }
     return () => {
-      debouncedSetGroup.clear();
+      debouncedSetGroup.cancel();
     };
-  }, [debouncedSetGroup, groupState]);
+  }, [debouncedSetGroup, tempGroupState, autoApply, isTablet]);
 
-  const group = useMemo(() => {
-    let stateValue = 0;
-    for (const str of groupFilters) {
-      stateValue += groupState[str as keyof typeof groupState] || 0;
-    }
-
-    let searchValue = 0;
-    if (groupQuery) {
-      for (const filter of groupQuery.split(",")) {
-        searchValue += Number(filter.split("-")[0]);
-      }
-    }
-    return stateValue || searchValue;
-  }, [groupQuery, groupState]);
+  const groupCount = useMemo(() => {
+    return Object.values(tempGroupState).reduce((sum, val) => sum + val, 0);
+  }, [tempGroupState]);
 
   function onClose() {
     setAnchorEl(null);
   }
+
+  const handleApplyFilter = useCallback(() => {
+    debouncedSetGroup(tempGroupState);
+    debouncedSetGroup.flush();
+
+    onClose();
+  }, [debouncedSetGroup, tempGroupState]);
+
+  useImperativeHandle(ref, () => ({
+    triggerApplyFilter: handleApplyFilter,
+  }));
 
   return (
     <ClickAwayListener onClickAway={onClose}>
@@ -95,50 +107,57 @@ export default function GroupFilter({ groupQuery }: Props) {
               },
             },
           }}
-          value={`${group} people`}
+          value={`${groupCount} people`}
           id="group"
           className="!w-full !cursor-pointer"
           onClick={(e) => (anchorEl ? setAnchorEl(null) : setAnchorEl(e.currentTarget))}
         />
-        <Popper open={open} anchorEl={anchorEl} placement="bottom-start" transition>
+        <Popper
+          open={open}
+          anchorEl={anchorEl}
+          placement="bottom-start"
+          transition
+          className="tablet:!z-[2000]"
+        >
           {({ TransitionProps }) => (
             <Fade {...TransitionProps} timeout={350}>
               <Paper className="flex !w-full flex-col gap-6 !p-4">
-                {groupFilters.map((_str, index) => {
-                  const str = _str as keyof typeof groupQuery;
-
-                  return (
-                    <div className="flex items-center gap-3 largeLaptop:gap-5" key={index}>
-                      <div className="flex items-center gap-3 largeLaptop:gap-4">
-                        <Button
-                          className="!w-fit !min-w-0 !p-[6px] largeLaptop:!p-[10px]"
-                          size="small"
-                          variant="outlined"
-                          onClick={() => {
-                            setGroupState((prev) => ({ ...prev, [str]: prev[str] + 1 }));
-                          }}
-                        >
-                          <FaPlus className="text-xs text-black largeLaptop:text-sm" />
-                        </Button>
-                        <p className="text-base font-bold largeLaptop:text-lg">{groupState[str]}</p>
-                        <Button
-                          className="!w-fit !min-w-0 !p-[6px] largeLaptop:!p-[10px]"
-                          variant="outlined"
-                          size="small"
-                          onClick={() => {
-                            setGroupState((prev) => ({
-                              ...prev,
-                              [str]: prev[str] ? prev[str] - 1 : prev[str],
-                            }));
-                          }}
-                        >
-                          <FaMinus className="text-xs text-black largeLaptop:text-sm" />
-                        </Button>
-                      </div>
-                      <p className="text-xs capitalize largeLaptop:text-sm">{str}</p>
+                {groupFilters.map((filter, index) => (
+                  <div className="flex items-center gap-3 largeLaptop:gap-5" key={index}>
+                    <div className="flex items-center gap-3 largeLaptop:gap-4">
+                      <Button
+                        className="!w-fit !min-w-0 !p-[6px] largeLaptop:!p-[10px]"
+                        size="small"
+                        variant="outlined"
+                        onClick={() =>
+                          setTempGroupState((prev) => ({
+                            ...prev,
+                            [filter]: prev[filter] + 1,
+                          }))
+                        }
+                      >
+                        <FaPlus className="text-xs text-black largeLaptop:text-sm" />
+                      </Button>
+                      <p className="text-base font-bold largeLaptop:text-lg">
+                        {tempGroupState[filter]}
+                      </p>
+                      <Button
+                        className="!w-fit !min-w-0 !p-[6px] largeLaptop:!p-[10px]"
+                        variant="outlined"
+                        size="small"
+                        onClick={() =>
+                          setTempGroupState((prev) => ({
+                            ...prev,
+                            [filter]: Math.max(0, prev[filter] - 1),
+                          }))
+                        }
+                      >
+                        <FaMinus className="text-xs text-black largeLaptop:text-sm" />
+                      </Button>
                     </div>
-                  );
-                })}
+                    <p className="text-xs capitalize largeLaptop:text-sm">{filter}</p>
+                  </div>
+                ))}
               </Paper>
             </Fade>
           )}
@@ -146,4 +165,8 @@ export default function GroupFilter({ groupQuery }: Props) {
       </div>
     </ClickAwayListener>
   );
-}
+});
+
+GroupFilter.displayName = "GroupFilter";
+
+export default GroupFilter;

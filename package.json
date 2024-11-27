@@ -22,6 +22,7 @@
     "@mui/material-nextjs": "^5.16.6",
     "@mui/x-date-pickers": "^7.19.0",
     "@react-email/components": "^0.0.25",
+    "@sentry/nextjs": "8",
     "@tanstack/react-query": "^5.52.0",
     "axios": "^1.7.7",
     "clsx": "^2.1.1",
@@ -32,6 +33,7 @@
     "framer-motion": "^11.3.31",
     "jsonwebtoken": "^9.0.2",
     "libphonenumber-js": "^1.11.12",
+    "lodash.debounce": "^4.0.8",
     "mui-one-time-password-input": "^2.0.3",
     "mui-tel-input": "^6.0.1",
     "next": "14.2.5",
@@ -51,6 +53,7 @@
   "devDependencies": {
     "@tanstack/react-query-devtools": "^5.52.0",
     "@types/jsonwebtoken": "^9.0.7",
+    "@types/lodash.debounce": "^4.0.9",
     "@types/node": "^20",
     "@types/nprogress": "^0.2.3",
     "@types/react": "^18",

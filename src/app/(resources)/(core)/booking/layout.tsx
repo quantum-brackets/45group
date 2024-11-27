@@ -1,15 +1,22 @@
-import { ReactNode, Suspense } from "react";
+"use client";
+
+import { ReactNode, Suspense, useState } from "react";
 import { Skeleton } from "@mui/material";
 import Filters from "~/modules/core-layout/booking-layout/filters";
 import Header from "~/modules/core-layout/booking-layout/header";
 
 export default function Layout({ children }: { children: ReactNode }) {
+  const [isMobileDrawerOpen, toggleMobileDrawer] = useState(false);
+
   return (
-    <div className="flex w-full max-w-1700 flex-grow self-center tablet:flex-col">
-      <Suspense>
-        <Filters />
+    <div className="flex w-full max-w-App flex-grow self-center tablet:flex-col">
+      <Suspense fallback={null}>
+        <Filters
+          isMobileDrawerOpen={isMobileDrawerOpen}
+          onCloseMobileDrawer={() => toggleMobileDrawer(false)}
+        />
       </Suspense>
-      <main className="w-[calc(100%-250px)] tablet:!w-full">
+      <main className="w-[calc(100%-300px)] tablet:!w-full largeTabletAndBelow:w-[calc(100%-250px)]">
         <Suspense
           fallback={
             <header className="flex w-full items-center justify-between gap-8 border-b-1.5 p-2 px-8 tablet:px-4">
@@ -21,7 +28,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             </header>
           }
         >
-          <Header />
+          <Header openMobileDrawer={() => toggleMobileDrawer(true)} />
         </Suspense>
         {children}
       </main>

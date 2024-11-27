@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import nProgress from "nprogress";
-import { useVerifyOtp, useRequestOtp, useCreateSession } from "~/hooks/auth";
+import { useVerifyOtp, useRequestOtp, useCreateSession, useSignin } from "~/hooks/auth";
 import OTPField from "~/components/fields/otp-field";
 import Button from "~/components/button";
+import { notifySuccess } from "~/utils/toast";
 
 type Props = {
   email: string;
@@ -27,6 +28,7 @@ export default function OTPForm({ email, origin }: Props) {
   const [count, setCount] = useState(60);
 
   const { mutateAsync: verifyOtp } = useVerifyOtp();
+  const { mutateAsync: signin } = useSignin();
   const { mutateAsync: requestOtp, isPending: requestIsPending } = useRequestOtp();
   const { mutateAsync: createSession } = useCreateSession();
 
@@ -52,16 +54,24 @@ export default function OTPForm({ email, origin }: Props) {
             { email, otp },
             {
               onSuccess: async () => {
-                await createSession(
+                await signin(
                   { email },
                   {
-                    onSuccess: () => {
-                      resetForm();
-                      nProgress.start();
-                      router.push(origin || "/booking");
-                    },
-                    onSettled: () => {
-                      setIsLoading(false);
+                    onSuccess: async () => {
+                      await createSession(
+                        { email },
+                        {
+                          onSuccess: () => {
+                            notifySuccess({ message: "Signed in successfully" });
+                            resetForm();
+                            nProgress.start();
+                            router.push(origin || "/booking");
+                          },
+                          onSettled: () => {
+                            setIsLoading(false);
+                          },
+                        }
+                      );
                     },
                   }
                 );

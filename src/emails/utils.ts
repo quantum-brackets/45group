@@ -1,6 +1,6 @@
 export const sectionStyle = {
   margin: "20px 0px",
-  padding: "20px",
+  padding: "0px",
 };
 
 export const textStyle = {
@@ -8,5 +8,5 @@ export const textStyle = {
 };
 
 export const columnStyle = {
-  padding: "0px 20px",
+  padding: "0px",
 };
