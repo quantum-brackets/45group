@@ -6,7 +6,6 @@ import * as Yup from "yup";
 import { appError } from "./helpers";
 
 function globalErrors(error: any) {
-  // console.error(error, "In global error");
   //? Create mini functions that handle errors
 
   if (error instanceof Yup.ValidationError) {
@@ -73,6 +72,7 @@ function globalErrors(error: any) {
     });
   }
 
+  process.env.NODE_ENV === "production" && console.error(error);
   captureException(error);
   return appError({
     status: 500,
