@@ -50,6 +50,7 @@ export default function Account() {
   const { isLoading, data: currentUser } = useQuery<User>({
     queryKey: ["current-user"],
     queryFn: UsersService.getMe,
+    retry: false,
   });
 
   function onClose() {
