@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { ThemeProvider } from "@mui/material";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
-import * as dotenv from "dotenv";
 import "./globals.css";
 import theme from "./theme";
 import { cn } from "~/utils/helpers";
@@ -11,12 +10,6 @@ import Toast from "~/components/toast";
 import { dancing_script, merriweather } from "~/utils/fonts";
 import AppProgressBar from "~/components/app-progress-bar";
 import LogoutModal from "~/components/logout-modal";
-
-dotenv.config({ path: ".env.local" });
-
-if (!process.env.DATABASE_URL) {
-  dotenv.config({ path: ".env" });
-}
 
 export const metadata: Metadata = {
   title: "45Group",
