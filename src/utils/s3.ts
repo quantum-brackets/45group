@@ -10,8 +10,7 @@ import {
 } from "@aws-sdk/client-s3";
 import * as dotenv from "dotenv";
 
-dotenv.config({ path: ".env.local" });
-dotenv.config({ path: ".env" });
+dotenv.config();
 
 const s3Client = new S3Client({
   region: process.env.AWS_S3_BUCKET_REGION,
@@ -22,6 +21,8 @@ const s3Client = new S3Client({
 } as S3ClientConfig);
 
 export function uploadFileToS3(file: PutObjectCommandInput["Body"], filename: string) {
+  console.log(process.env.AWS_S3_BUCKET_NAME, "process.env.AWS_S3_BUCKET_NAME");
+
   return s3Client.send(
     new PutObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET_NAME,
