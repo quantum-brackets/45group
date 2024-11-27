@@ -30,6 +30,8 @@ export const POST = catchAsync(async (req: NextRequest) => {
     });
   }
 
+  console.log(process.env.NEXTAUTH_SECRET, "process.env.NEXTAUTH_SECRET");
+
   const token = await encode({
     token: {
       id: user.id,
