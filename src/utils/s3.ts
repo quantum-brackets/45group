@@ -18,8 +18,6 @@ const s3Client = new S3Client({
 } as S3ClientConfig);
 
 export function uploadFileToS3(file: PutObjectCommandInput["Body"], filename: string) {
-  console.log(process.env.AWS_S3_BUCKET_NAME, "process.env.AWS_S3_BUCKET_NAME");
-
   return s3Client.send(
     new PutObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET_NAME,
