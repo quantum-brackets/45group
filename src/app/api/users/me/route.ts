@@ -38,12 +38,6 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
     const arrayBuffer = await (image as File).arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    console.log(process.env.AWS_S3_BUCKET_NAME, "process.env.AWS_S3_BUCKET_NAME");
-    console.log(process.env.NODE_ENV, "process.env.NODE_ENV");
-    console.log(process.env.AWS_SECRET_KEY, "process.env.AWS_SECRET_KEY");
-    console.log(process.env.AWS_ACCESS_KEY, "process.env.AWS_ACCESS_KEY");
-    console.log(process.env.AWS_S3_BUCKET_REGION, "process.env.AWS_S3_BUCKET_REGION");
-
     const { VersionId } = await uploadFileToS3(buffer, filename);
     imageUrl = `${url.protocol}//${url.host}/api/assets/${filename}?versionId=${VersionId}`;
   }
