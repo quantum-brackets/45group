@@ -2,6 +2,7 @@ type User = {
   first_name: string;
   last_name: string;
   email: string;
+  type: "user" | "admin";
   image: string;
   phone: string;
   complete_profile: boolean;

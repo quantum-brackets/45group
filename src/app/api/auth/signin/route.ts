@@ -18,17 +18,22 @@ export const POST = catchAsync(async (req: NextRequest) => {
     data: body,
   });
 
+  console.log(email, "email");
+
   const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+  console.log(existingUser, "existingUser");
 
   if (!existingUser) {
     await db.insert(usersTable).values({ email });
   }
 
+  console.log(existingUser, "existingUser", "After insert");
+
   const currentTime = new Date();
 
   await db
     .update(usersTable)
-    .set({ last_login_at: currentTime, is_verified: !existingUser.is_verified ? true : undefined })
+    .set({ last_login_at: currentTime, is_verified: !existingUser?.is_verified ? true : undefined })
     .where(eq(usersTable.email, email));
 
   if (!existingUser?.last_login_at) {

@@ -2,41 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BsPerson } from "react-icons/bs";
-import { LiaBookSolid } from "react-icons/lia";
-import { IoReceiptOutline, IoSettingsOutline } from "react-icons/io5";
+import { IconType } from "react-icons/lib";
 import { cn } from "~/utils/helpers";
 import SidebarDropdown from "./dropdown";
 
-const links = [
-  {
-    title: "Previous Bookings",
-    href: "/previous-bookings",
-    icon: LiaBookSolid,
-  },
-  {
-    title: "Receipts",
-    href: "/receipts",
-    icon: IoReceiptOutline,
-  },
-  {
-    title: "Profile",
-    href: "/profile",
-    icon: BsPerson,
-  },
-  {
-    title: "Settings",
-    icon: IoSettingsOutline,
-    subLinks: [
-      {
-        title: "Account",
-        href: "/account-settings",
-      },
-    ],
-  },
-];
+export type SidebarLinksProps = {
+  links: {
+    title: string;
+    href?: string;
+    icon: IconType;
+    subLinks?: {
+      title: string;
+      href: string;
+    }[];
+  }[];
+};
 
-export default function SidebarLinks() {
+export default function SidebarLinks({ links }: SidebarLinksProps) {
   const pathname = usePathname();
 
   return (
@@ -55,6 +37,8 @@ export default function SidebarLinks() {
               />
             );
           }
+
+          if (!href) return;
 
           return (
             <Link
