@@ -8,9 +8,6 @@ import {
   GetObjectCommand,
   PutObjectCommandInput,
 } from "@aws-sdk/client-s3";
-import * as dotenv from "dotenv";
-
-dotenv.config();
 
 const s3Client = new S3Client({
   region: process.env.AWS_S3_BUCKET_REGION,
