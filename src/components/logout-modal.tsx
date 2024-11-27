@@ -1,12 +1,18 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material";
 import Button from "./button";
 import useAppStore from "~/store/app";
 import Modal from "./modal";
+import { useLogout } from "~/hooks/auth";
 
 export default function LogoutModal() {
+  const router = useRouter();
+
   const { isLogoutModalVisible: open, toggleLogoutModal } = useAppStore();
+
+  const { mutateAsync: logout } = useLogout();
 
   function handleClose() {
     toggleLogoutModal(false);
@@ -25,7 +31,12 @@ export default function LogoutModal() {
           className="!w-fit"
           size="small"
           onClick={async () => {
-            handleClose();
+            await logout(undefined, {
+              onSuccess: () => {
+                handleClose();
+                router.refresh();
+              },
+            });
           }}
         >
           Yes

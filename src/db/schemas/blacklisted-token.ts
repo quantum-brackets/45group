@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const blacklistedTokenTable = pgTable("blacklisted_token", {
   id: uuid("id").primaryKey().defaultRandom(),

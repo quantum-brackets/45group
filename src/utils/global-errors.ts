@@ -1,6 +1,7 @@
 import { isAxiosError } from "axios";
 import { ErrorResponse } from "resend";
 import { JsonWebTokenError, TokenExpiredError } from "jsonwebtoken";
+import { captureException } from "@sentry/nextjs";
 import * as Yup from "yup";
 import { appError } from "./helpers";
 
@@ -72,6 +73,7 @@ function globalErrors(error: any) {
     });
   }
 
+  captureException(error);
   return appError({
     status: 500,
     error: "Internal server error",

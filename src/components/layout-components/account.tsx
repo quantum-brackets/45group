@@ -29,8 +29,8 @@ const links = [
     open: false,
     sublink: [
       {
-        text: "Change email",
-        href: "/change-email",
+        text: "Account",
+        href: "/account-settings",
       },
     ],
   },
@@ -79,7 +79,7 @@ export default function Account() {
             alt={`${currentUser.first_name} ${currentUser.last_name}`}
             src={currentUser.image || ""}
             sx={{ width: 35, height: 35 }}
-            className="!bg-primary"
+            className={cn("border", { "!bg-primary": !currentUser.image })}
           >
             {`${currentUser.first_name?.[0]}${currentUser.last_name?.[0]}`}
           </Avatar>
