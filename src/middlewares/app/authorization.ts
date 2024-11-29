@@ -80,11 +80,13 @@ export const authorization: MiddlewareFactory = (next) => {
       return redirect({ req, pathname: authPaths.completeProfile, origin: pathname });
     }
 
+    if (pathname === authPaths.completeProfile && cache.user?.complete_profile) {
+      return redirect({ req, pathname: "/booking" });
+    }
+
     if (pathname.startsWith("/admin") && cache.user?.type !== "admin") {
       return redirect({ req, pathname: "/404" });
     }
-
-    //! make it possible to not access the complete profile page when after the user has completed their profile
 
     return next(req, _next);
   };

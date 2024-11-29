@@ -1,9 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Drawer, IconButton, MenuItem } from "@mui/material";
+import { useRef } from "react";
+import { Drawer, IconButton } from "@mui/material";
 import { IoClose } from "react-icons/io5";
-import SelectInput from "~/components/inputs/select-input";
 import GroupFilter from "./group-filter";
 import FromFilter from "./from-filter";
 import ToFilter from "./to-filter";
@@ -14,10 +13,9 @@ import TypeFilter from "./type-filter";
 type Props = {
   isOpen: boolean;
   onClose: () => void;
-  group?: string;
 };
 
-export default function MobileFilter({ isOpen, onClose, group }: Props) {
+export default function MobileFilter({ isOpen, onClose }: Props) {
   const groupFilterRef = useRef<{ triggerApplyFilter: () => void } | null>(null);
 
   const handleMobileApplyFilters = () => {
@@ -39,7 +37,7 @@ export default function MobileFilter({ isOpen, onClose, group }: Props) {
         <div className="flex flex-col gap-4">
           <TypeFilter />
           <CityFilter />
-          <GroupFilter ref={groupFilterRef} groupQuery={group} autoApply={false} />
+          <GroupFilter ref={groupFilterRef} autoApply={false} />
           <FromFilter />
           <ToFilter />
         </div>
