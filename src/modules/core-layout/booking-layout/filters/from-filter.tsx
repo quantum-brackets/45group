@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -11,56 +11,64 @@ const DATE_FORMAT = "DD-MM-YYYY";
 
 type Props = {
   autoApply?: boolean;
+  dates: {
+    startDate: Dayjs | null;
+    endDate: Dayjs | null;
+  };
+  updateDate: (date: Dayjs) => void;
 };
 
-const FromFilter = forwardRef(({ autoApply = true }: Props, ref) => {
-  const searchParams = useSearchParams();
-  const startDate = searchParams.get("from");
-  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(
-    startDate ? dayjs(startDate, DATE_FORMAT) : null
-  );
+const FromFilter = forwardRef(
+  ({ autoApply = true, dates: { startDate, endDate }, updateDate }: Props, ref) => {
+    const searchParams = useSearchParams();
+    const startDateQuery = searchParams.get("from");
 
-  function updateStartDateParam(date: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("from", date);
-    window.history.replaceState(null, "", `/booking?${params.toString()}`);
+    const updateStartDateParam = useCallback(
+      (date: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("from", date);
+        window.history.replaceState(null, "", `/booking?${params.toString()}`);
+      },
+      [searchParams]
+    );
+
+    useEffect(() => {
+      startDateQuery && updateDate(dayjs(startDateQuery, DATE_FORMAT));
+    }, [startDateQuery, updateDate]);
+
+    useImperativeHandle(ref, () => ({
+      applyStartDate: () => startDate && updateStartDateParam(startDate.format(DATE_FORMAT)),
+    }));
+
+    return (
+      <div className="flex flex-col gap-2">
+        <label htmlFor="from" className="!text-sm !font-semibold text-info-500">
+          From
+        </label>
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <DatePicker
+            className={"w-full"}
+            sx={{
+              "& .MuiOutlinedInput-input": {
+                padding: "11px 13.5px",
+              },
+            }}
+            disablePast
+            format={DATE_FORMAT}
+            maxDate={endDate || undefined}
+            value={startDate}
+            onChange={(date: Dayjs | null) => {
+              date && updateDate(date);
+              if (autoApply && date) {
+                updateStartDateParam(date.format(DATE_FORMAT));
+              }
+            }}
+          />
+        </LocalizationProvider>
+      </div>
+    );
   }
-
-  useEffect(() => {
-    setSelectedDate(startDate ? dayjs(startDate, DATE_FORMAT) : null);
-  }, [startDate]);
-
-  useImperativeHandle(ref, () => ({
-    applyStartDate: () => selectedDate && updateStartDateParam(selectedDate.format(DATE_FORMAT)),
-  }));
-
-  return (
-    <div className="flex flex-col gap-2">
-      <label htmlFor="from" className="!text-sm !font-semibold text-info-500">
-        From
-      </label>
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <DatePicker
-          className={"w-full"}
-          sx={{
-            "& .MuiOutlinedInput-input": {
-              padding: "11px 13.5px",
-            },
-          }}
-          disablePast
-          format={DATE_FORMAT}
-          value={selectedDate}
-          onChange={(date: Dayjs | null) => {
-            setSelectedDate(date);
-            if (autoApply && date) {
-              updateStartDateParam(date.format(DATE_FORMAT));
-            }
-          }}
-        />
-      </LocalizationProvider>
-    </div>
-  );
-});
+);
 
 FromFilter.displayName = "FromFilter";
 
