@@ -97,7 +97,7 @@ const GroupFilter = forwardRef(({ autoApply = true }: Props, ref) => {
   }, [debouncedSetGroup, tempGroupState]);
 
   useImperativeHandle(ref, () => ({
-    triggerApplyFilter: handleApplyFilter,
+    applyGroup: handleApplyFilter,
   }));
 
   return (

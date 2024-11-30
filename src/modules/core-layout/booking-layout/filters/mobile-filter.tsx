@@ -16,10 +16,14 @@ type Props = {
 };
 
 export default function MobileFilter({ isOpen, onClose }: Props) {
-  const groupFilterRef = useRef<{ triggerApplyFilter: () => void } | null>(null);
+  const groupFilterRef = useRef<{ applyGroup: () => void } | null>(null);
+  const fromFilterRef = useRef<{ applyStartDate: () => void } | null>(null);
+  const toFilterRef = useRef<{ applyEndDate: () => void } | null>(null);
 
   const handleMobileApplyFilters = () => {
-    groupFilterRef.current?.triggerApplyFilter();
+    groupFilterRef.current?.applyGroup();
+    fromFilterRef.current?.applyStartDate();
+    toFilterRef.current?.applyEndDate();
     onClose();
   };
 
@@ -38,8 +42,8 @@ export default function MobileFilter({ isOpen, onClose }: Props) {
           <TypeFilter />
           <CityFilter />
           <GroupFilter ref={groupFilterRef} autoApply={false} />
-          <FromFilter />
-          <ToFilter />
+          <FromFilter autoApply={false} ref={fromFilterRef} />
+          <ToFilter autoApply={false} ref={toFilterRef} />
         </div>
         <Button className="!w-fit self-end" onClick={handleMobileApplyFilters}>
           Apply Filters
