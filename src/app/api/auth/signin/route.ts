@@ -18,16 +18,11 @@ export const POST = catchAsync(async (req: NextRequest) => {
     data: body,
   });
 
-  console.log(email, "email");
-
   const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
-  console.log(existingUser, "existingUser");
 
   if (!existingUser) {
     await db.insert(usersTable).values({ email });
   }
-
-  console.log(existingUser, "existingUser", "After insert");
 
   const currentTime = new Date();
 

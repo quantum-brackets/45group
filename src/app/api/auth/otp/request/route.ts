@@ -33,7 +33,7 @@ export const POST = catchAsync(async (req: NextRequest) => {
 
   await sendEmail({
     to: email,
-    subject: "45Group - Request OTP",
+    subject: `Request OTP: ${otp}`,
     react: RequestOtpTemplate({
       code: otp,
       previewText: "Your one-time password (OTP) for 45Group account verification is ready...",

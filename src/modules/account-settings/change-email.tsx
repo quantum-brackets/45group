@@ -13,7 +13,7 @@ import FormField from "~/components/fields/form-field";
 import Button from "~/components/button";
 import AuthService from "~/services/auth";
 import { cn } from "~/utils/helpers";
-import { notifyError } from "~/utils/toast";
+import { notifyError, notifySuccess } from "~/utils/toast";
 import { IoCheckmarkCircle } from "react-icons/io5";
 
 type Props = {
@@ -224,8 +224,6 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
               otp: "",
             }}
             onSubmit={async ({ otp }) => {
-              console.log(otp, newEmail);
-
               if (!newEmail) return;
 
               await verifyOtp(
@@ -239,6 +237,7 @@ export default function ChangeEmailModal({ onClose, email }: Props) {
                           await queryClient.invalidateQueries({
                             queryKey: ["current-user"],
                           });
+                          notifySuccess({ message: "Your email has been changed succesfully" });
                           onClose();
                         },
                       }
