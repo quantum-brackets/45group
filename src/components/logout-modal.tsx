@@ -12,7 +12,7 @@ export default function LogoutModal() {
 
   const { isLogoutModalVisible: open, toggleLogoutModal } = useAppStore();
 
-  const { mutateAsync: logout } = useLogout();
+  const { mutateAsync: logout, isPending } = useLogout();
 
   function handleClose() {
     toggleLogoutModal(false);
@@ -30,6 +30,7 @@ export default function LogoutModal() {
           color="info"
           className="!w-fit"
           size="small"
+          loading={isPending}
           onClick={async () => {
             await logout(undefined, {
               onSuccess: () => {
@@ -41,7 +42,7 @@ export default function LogoutModal() {
         >
           Yes
         </Button>
-        <Button onClick={handleClose} className="!w-fit" size="small">
+        <Button onClick={handleClose} className="!w-fit" size="small" disabled={isPending}>
           No
         </Button>
       </DialogActions>
