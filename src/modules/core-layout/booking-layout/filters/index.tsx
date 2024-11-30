@@ -1,5 +1,7 @@
 "use client";
 
+import { useCallback, useState } from "react";
+import { Dayjs } from "dayjs";
 import GroupFilter from "./group-filter";
 import FromFilter from "./from-filter";
 import ToFilter from "./to-filter";
@@ -13,6 +15,19 @@ type Props = {
 };
 
 export default function Filters({ isMobileDrawerOpen, onCloseMobileDrawer }: Props) {
+  const [dates, setDates] = useState<Record<"startDate" | "endDate", Dayjs | null>>({
+    startDate: null,
+    endDate: null,
+  });
+
+  const updateStartDate = useCallback((date: Dayjs) => {
+    setDates((prev) => ({ ...prev, startDate: date }));
+  }, []);
+
+  const updateEndDate = useCallback((date: Dayjs) => {
+    setDates((prev) => ({ ...prev, endDate: date }));
+  }, []);
+
   return (
     <>
       <aside className="flex w-[300px] flex-grow flex-col gap-6 border-r-1.5 border-zinc-300/60 p-4 pb-12 pt-8 tablet:hidden tablet:border-b tablet:pt-4 largeTabletAndBelow:w-[250px]">
@@ -21,11 +36,17 @@ export default function Filters({ isMobileDrawerOpen, onCloseMobileDrawer }: Pro
           <TypeFilter />
           <CityFilter />
           <GroupFilter />
-          <FromFilter />
-          <ToFilter />
+          <FromFilter dates={dates} updateDate={updateStartDate} />
+          <ToFilter dates={dates} updateDate={updateEndDate} />
         </div>
       </aside>
-      <MobileFilter isOpen={isMobileDrawerOpen} onClose={onCloseMobileDrawer} />
+      <MobileFilter
+        isOpen={isMobileDrawerOpen}
+        onClose={onCloseMobileDrawer}
+        updateStartDate={updateStartDate}
+        updateEndDate={updateEndDate}
+        dates={dates}
+      />
     </>
   );
 }
