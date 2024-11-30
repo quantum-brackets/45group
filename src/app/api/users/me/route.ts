@@ -39,7 +39,7 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
     const buffer = Buffer.from(arrayBuffer);
 
     const { VersionId } = await uploadFileToS3(buffer, filename);
-    imageUrl = `${url.protocol}//${process.env.BASE_URL}/api/assets/${filename}?versionId=${VersionId}`;
+    imageUrl = `${process.env.BASE_URL}/api/assets/${filename}?versionId=${VersionId}`;
   }
 
   const [updatedUser] = await db
