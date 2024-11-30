@@ -17,8 +17,8 @@ const links = [
     href: "/profile",
   },
   {
-    text: "Bookings",
-    href: "/bookings",
+    text: "Previous Bookings",
+    href: "/previous-bookings",
   },
   {
     text: "Receipts",

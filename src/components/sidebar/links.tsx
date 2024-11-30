@@ -23,12 +23,14 @@ export default function SidebarLinks({ links }: SidebarLinksProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Link
-        href={"/booking"}
-        className="flex items-center justify-center rounded-md bg-black/5 p-3"
-      >
-        <small>Go to Booking</small>
-      </Link>
+      {pathname.startsWith("/admin") && (
+        <Link
+          href={"/booking"}
+          className="flex items-center justify-center rounded-md bg-black/5 p-3"
+        >
+          <small>Go to Booking</small>
+        </Link>
+      )}
       <small className="text-xs font-bold">Menu</small>
       <div className="flex flex-col gap-2">
         {links.map(({ href, title, icon: Icon, subLinks }, index) => {
