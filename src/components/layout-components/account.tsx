@@ -25,6 +25,11 @@ const links = [
     href: "/receipts",
   },
   {
+    text: "Admin Dashboard",
+    href: "/admin/dashboard",
+    isAdmin: true,
+  },
+  {
     text: "Settings",
     open: false,
     sublink: [
@@ -108,6 +113,8 @@ export default function Account() {
                 <div className={"popper-btn flex w-[200px] flex-col"}>
                   {links.map((link, index) => {
                     if (!link.href && !link.sublink) return null;
+
+                    if (link.isAdmin && currentUser.type !== "admin") return null;
 
                     if (link.sublink) {
                       return (
