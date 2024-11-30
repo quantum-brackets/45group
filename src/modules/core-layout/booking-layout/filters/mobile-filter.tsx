@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { Drawer, IconButton } from "@mui/material";
 import { IoClose } from "react-icons/io5";
+import { Dayjs } from "dayjs";
 import GroupFilter from "./group-filter";
 import FromFilter from "./from-filter";
 import ToFilter from "./to-filter";
@@ -13,9 +14,21 @@ import TypeFilter from "./type-filter";
 type Props = {
   isOpen: boolean;
   onClose: () => void;
+  dates: {
+    startDate: Dayjs | null;
+    endDate: Dayjs | null;
+  };
+  updateStartDate: (date: Dayjs) => void;
+  updateEndDate: (date: Dayjs) => void;
 };
 
-export default function MobileFilter({ isOpen, onClose }: Props) {
+export default function MobileFilter({
+  isOpen,
+  onClose,
+  dates,
+  updateEndDate,
+  updateStartDate,
+}: Props) {
   const groupFilterRef = useRef<{ applyGroup: () => void } | null>(null);
   const fromFilterRef = useRef<{ applyStartDate: () => void } | null>(null);
   const toFilterRef = useRef<{ applyEndDate: () => void } | null>(null);
@@ -42,8 +55,13 @@ export default function MobileFilter({ isOpen, onClose }: Props) {
           <TypeFilter />
           <CityFilter />
           <GroupFilter ref={groupFilterRef} autoApply={false} />
-          <FromFilter autoApply={false} ref={fromFilterRef} />
-          <ToFilter autoApply={false} ref={toFilterRef} />
+          <FromFilter
+            autoApply={false}
+            ref={fromFilterRef}
+            dates={dates}
+            updateDate={updateStartDate}
+          />
+          <ToFilter autoApply={false} ref={toFilterRef} dates={dates} updateDate={updateEndDate} />
         </div>
         <Button className="!w-fit self-end" onClick={handleMobileApplyFilters}>
           Apply Filters
