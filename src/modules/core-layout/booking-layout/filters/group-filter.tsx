@@ -16,35 +16,40 @@ import Button from "~/components/button";
 import theme from "~/app/theme";
 
 type Props = {
-  groupQuery?: string;
   autoApply?: boolean;
 };
 
 const groupFilters = ["adults", "children", "seniors"];
 
-const GroupFilter = forwardRef(({ groupQuery, autoApply = true }: Props, ref) => {
+const GroupFilter = forwardRef(({ autoApply = true }: Props, ref) => {
   const isTablet = useMediaQuery(theme.breakpoints.down(900));
   const searchParams = useSearchParams();
 
-  const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
-  const [tempGroupState, setTempGroupState] = useState<Record<string, number>>(() => {
+  const groupQuery = searchParams.get("group") || "";
+
+  const parseGroupQuery = (query: string) => {
     const initialGroupState = groupFilters.reduce(
       (acc, filter) => {
-        acc[filter as keyof typeof tempGroupState] = 0;
+        acc[filter] = 0;
         return acc;
       },
       {} as Record<string, number>
     );
 
-    if (groupQuery) {
-      groupQuery.split(",").forEach((filter) => {
+    if (query) {
+      query.split(",").forEach((filter) => {
         const [val, key] = filter.split("-");
         initialGroupState[key as keyof typeof initialGroupState] = Number(val);
       });
     }
 
     return initialGroupState;
-  });
+  };
+
+  const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
+  const [tempGroupState, setTempGroupState] = useState<Record<string, number>>(() =>
+    parseGroupQuery(groupQuery)
+  );
 
   const open = Boolean(anchorEl);
 
@@ -62,6 +67,10 @@ const GroupFilter = forwardRef(({ groupQuery, autoApply = true }: Props, ref) =>
       }, 500),
     [searchParams]
   );
+
+  useEffect(() => {
+    setTempGroupState(parseGroupQuery(groupQuery));
+  }, [groupQuery]);
 
   useEffect(() => {
     if (autoApply && !isTablet) {
@@ -88,7 +97,7 @@ const GroupFilter = forwardRef(({ groupQuery, autoApply = true }: Props, ref) =>
   }, [debouncedSetGroup, tempGroupState]);
 
   useImperativeHandle(ref, () => ({
-    triggerApplyFilter: handleApplyFilter,
+    applyGroup: handleApplyFilter,
   }));
 
   return (
