@@ -1,27 +1,21 @@
 "use client";
 
-export default function SentryTest() {
-  const testUnhandledError = (): void => {
-    // This will trigger an unhandled error
-    const obj: null = null;
-    (obj as any).nonExistentMethod();
-  };
+import { captureException } from "@sentry/nextjs";
 
-  // // Function to test unhandled error
-  // const testUnhandledError = () => {
-  //   // This will trigger an unhandled error
-  //   const obj = null;
-  //   obj.nonExistentMethod();
-  // };
+export default function SentryTest() {
+  function sendSentryError() {
+    const now = new Date().toLocaleString();
+    captureException(`This is a test error made at ${now}`);
+  }
 
   return (
-    <div>
-      SentryTest
+    <div className="p-4">
+      <h2 className="mb-4 text-xl font-bold">Sentry Test</h2>
       <button
-        onClick={testUnhandledError}
-        className="w-full rounded bg-red-500 px-4 py-2 text-white"
+        onClick={sendSentryError}
+        className="w-full rounded bg-red-500 px-4 py-2 text-white transition-colors hover:bg-red-600"
       >
-        Test Unhandled Error
+        Test Sentry Error
       </button>
     </div>
   );
