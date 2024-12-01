@@ -48,13 +48,15 @@ export default function SidebarLinks({ links }: SidebarLinksProps) {
 
           if (!href) return;
 
+          const match = pathname.startsWith(href);
+
           return (
             <Link
               href={href}
               key={index}
               className={cn("flex items-center gap-4 rounded p-3 px-4", {
-                "hover: bg-primary text-white": pathname === href,
-                "hover:bg-zinc-100": pathname !== href,
+                "hover: bg-primary text-white": match,
+                "hover:bg-zinc-100": !match,
               })}
             >
               <Icon className="text-base largeLaptop:text-lg" />

@@ -53,7 +53,7 @@ export default function FormField({
             {...field}
             {...props}
             sx={{
-              input: {
+              "& input, textarea": {
                 fontSize: "0.8rem",
                 "::placeholder": {
                   fontSize: "0.8rem",
@@ -62,6 +62,7 @@ export default function FormField({
               "& .MuiOutlinedInput-input": {
                 padding: "11px 13.5px",
               },
+              padding: "0px",
             }}
             type={type === "password" ? (showPassword ? "text" : "password") : type}
             endAdornment={
