@@ -44,6 +44,8 @@ export const POST = catchAsync(async (req: NextRequest) => {
 
   res.cookies.set(SESSION_KEY, token, {
     httpOnly: true,
+    sameSite: "strict", // Prevents cross-site access
+    path: "/",
     secure: process.env.NODE_ENV === "production",
     maxAge: COOKIE_MAX_AGE,
   });
