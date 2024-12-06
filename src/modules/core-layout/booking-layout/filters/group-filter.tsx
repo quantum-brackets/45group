@@ -47,9 +47,7 @@ const GroupFilter = forwardRef(({ autoApply = true }: Props, ref) => {
   };
 
   const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
-  const [tempGroupState, setTempGroupState] = useState<Record<string, number>>(() =>
-    parseGroupQuery(groupQuery)
-  );
+  const [tempGroupState, setTempGroupState] = useState<Record<string, number>>({});
 
   const open = Boolean(anchorEl);
 
