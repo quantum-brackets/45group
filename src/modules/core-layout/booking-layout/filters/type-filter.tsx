@@ -1,31 +1,27 @@
-"use client";
-
-import { useCallback } from "react";
-import { useSearchParams } from "next/navigation";
 import { MenuItem } from "@mui/material";
 import SelectInput from "~/components/inputs/select-input";
 
-export default function TypeFilter() {
-  const searchParams = useSearchParams();
+type Props = {
+  updateSearchParams: () => void;
+  autoApply?: boolean;
+  value: string;
+  updateValue: (value: string) => void;
+};
 
-  const type = searchParams.get("type") || "";
-
-  const handleValue = useCallback(
-    (value: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("type", value);
-      window.history.replaceState(null, "", `/booking?${params.toString()}`);
-    },
-    [searchParams]
-  );
-
+export default function TypeFilter({
+  updateSearchParams,
+  autoApply = true,
+  value,
+  updateValue,
+}: Props) {
   return (
     <SelectInput
       label="Type"
-      value={type}
+      value={value}
       onChange={(e) => {
         const value = e.target.value as string;
-        handleValue(value);
+        updateValue(value);
+        if (autoApply) updateSearchParams();
       }}
     >
       <MenuItem value={"rooms"}>Rooms</MenuItem>
