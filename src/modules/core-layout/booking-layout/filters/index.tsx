@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Dayjs } from "dayjs";
 import GroupFilter from "./group-filter";
 import FromFilter from "./from-filter";
@@ -15,37 +16,78 @@ type Props = {
 };
 
 export default function Filters({ isMobileDrawerOpen, onCloseMobileDrawer }: Props) {
-  const [dates, setDates] = useState<Record<"startDate" | "endDate", Dayjs | null>>({
-    startDate: null,
-    endDate: null,
+  const searchParams = useSearchParams();
+
+  const [filters, setFilters] = useState<{
+    type: string;
+    city: string;
+    startDate: string;
+    endDate: string;
+  }>({
+    type: "",
+    city: "",
+    startDate: "",
+    endDate: "",
   });
 
-  const updateStartDate = useCallback((date: Dayjs) => {
-    setDates((prev) => ({ ...prev, startDate: date }));
+  const dates = useMemo(
+    () => ({ endDate: filters.endDate, startDate: filters.startDate }),
+    [filters.endDate, filters.startDate]
+  );
+
+  useEffect(() => {
+    const type = searchParams.get("type") || "";
+    const city = searchParams.get("city") || "";
+    const startDate = searchParams.get("from") || "";
+    const endDate = searchParams.get("to") || "";
+
+    setFilters({
+      type,
+      city,
+      startDate,
+      endDate,
+    });
+  }, [searchParams]);
+
+  const updateSearchParams = useCallback(
+    (key: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set(key, value);
+      window.history.replaceState(null, "", `/booking?${params.toString()}`);
+    },
+    [searchParams]
+  );
+
+  const updateFilters = useCallback((key: keyof typeof filters, date: Dayjs | string) => {
+    setFilters((prev) => ({ ...prev, [key]: date }));
   }, []);
 
-  const updateEndDate = useCallback((date: Dayjs) => {
-    setDates((prev) => ({ ...prev, endDate: date }));
-  }, []);
+  const createFilterProps = useCallback(
+    (key: keyof typeof filters) => ({
+      value: filters[key] as string,
+      updateValue: (value: string) => updateFilters(key, value),
+      updateSearchParams: () => filters[key] && updateSearchParams(key, filters[key] as string),
+    }),
+    [filters, updateFilters, updateSearchParams]
+  );
 
   return (
     <>
       <aside className="flex w-[300px] flex-grow flex-col gap-6 border-r-1.5 border-zinc-300/60 p-4 pb-12 pt-8 tablet:hidden tablet:border-b tablet:pt-4 largeTabletAndBelow:w-[250px]">
         <h2 className="font-semibold text-black/80">Filters:</h2>
         <div className="flex flex-col gap-4 tablet:!w-full tablet:flex-row tablet:overflow-x-auto">
-          <TypeFilter />
-          <CityFilter />
+          <TypeFilter {...createFilterProps("type")} />
+          <CityFilter {...createFilterProps("city")} />
           <GroupFilter />
-          <FromFilter dates={dates} updateDate={updateStartDate} />
-          <ToFilter dates={dates} updateDate={updateEndDate} />
+          <FromFilter dates={dates} {...createFilterProps("startDate")} />
+          <ToFilter dates={dates} {...createFilterProps("endDate")} />
         </div>
       </aside>
       <MobileFilter
         isOpen={isMobileDrawerOpen}
         onClose={onCloseMobileDrawer}
-        updateStartDate={updateStartDate}
-        updateEndDate={updateEndDate}
         dates={dates}
+        createFilterProps={createFilterProps}
       />
     </>
   );

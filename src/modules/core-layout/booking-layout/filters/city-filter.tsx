@@ -1,31 +1,27 @@
-"use client";
-
-import { useCallback } from "react";
-import { useSearchParams } from "next/navigation";
 import { MenuItem } from "@mui/material";
 import SelectInput from "~/components/inputs/select-input";
 
-export default function CityFilter() {
-  const searchParams = useSearchParams();
+type Props = {
+  updateSearchParams: () => void;
+  autoApply?: boolean;
+  value: string;
+  updateValue: (value: string) => void;
+};
 
-  const city = searchParams.get("city") || "";
-
-  const handleValue = useCallback(
-    (value: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("city", value);
-      window.history.replaceState(null, "", `/booking?${params.toString()}`);
-    },
-    [searchParams]
-  );
-
+export default function CityFilter({
+  value,
+  updateValue,
+  updateSearchParams,
+  autoApply = true,
+}: Props) {
   return (
     <SelectInput
       label="City"
-      value={city}
+      value={value}
       onChange={(e) => {
         const value = e.target.value as string;
-        handleValue(value);
+        updateValue(value);
+        if (autoApply) updateSearchParams();
       }}
     >
       <MenuItem value={"abuja"}>Abuja</MenuItem>
