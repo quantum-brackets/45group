@@ -1,23 +1,153 @@
 "use client";
 
-import { MenuItem, Typography } from "@mui/material";
-import { Formik } from "formik";
+import { useRef } from "react";
+import {
+  Checkbox,
+  ClickAwayListener,
+  Collapse,
+  Fade,
+  MenuItem,
+  Paper,
+  Popper,
+  Typography,
+} from "@mui/material";
+import { Formik, FormikHelpers } from "formik";
+import * as Yup from "yup";
 import BackButton from "~/components/back-button";
 import FormField from "~/components/fields/form-field";
 import SelectField from "~/components/fields/select-field";
+import MediaCard from "~/components/resources-form/media-card";
+import { filterPrivateValues } from "~/utils/helpers";
+import { notifyError } from "~/utils/toast";
+import { FaMinus, FaPlus } from "react-icons/fa6";
+import SelectCard from "~/components/resources-form/select-card";
+import FileUploadSection from "~/components/resources-form/file-upload-section";
+import CollapseSection from "~/components/resources-form/collapse-section";
+import { GoKebabHorizontal } from "react-icons/go";
+import AvailabitySection from "~/modules/create-resource/availabity-section";
+
+export type ResourceFormValues = {
+  name: string;
+  location: string;
+  address: string;
+  description: string;
+  type: "lodge" | "event" | "restaurant";
+  thumbnail?: File;
+  _thumbnail_base64?: string;
+  media: File[];
+  _media_base64: string[];
+  _show_rules?: boolean;
+  _show_facilities?: boolean;
+  availabilities: {
+    from: string;
+    to: string;
+    status: "available" | "unavailable";
+  }[];
+  [key: string]: any;
+};
+
+const initialValues: ResourceFormValues = {
+  name: "",
+  location: "",
+  address: "",
+  description: "",
+  type: "lodge",
+  media: [],
+  availabilities: [],
+  _media_base64: [],
+};
+
+const validationSchema = Yup.object({
+  name: Yup.string().required("Name is required"),
+  location: Yup.string().required("Location is required"),
+  address: Yup.string().required("Address is required"),
+  description: Yup.string().required("Description is required"),
+  type: Yup.string().oneOf(["lodge", "event", "restaurant"]).required("Resource type is required"),
+});
 
 export default function CreateResource() {
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleThumbnailSelect = async (
+    files: FileList | null,
+    setFieldValue: FormikHelpers<ResourceFormValues>["setFieldValue"]
+  ) => {
+    const file = files?.[0];
+    if (file) {
+      try {
+        const base64 = await readFileAsBase64(file);
+        setFieldValue("thumbnail", file);
+        setFieldValue("_thumbnail_base64", base64);
+      } catch (error) {
+        notifyError({
+          message: "Failed to process thumbnail image",
+        });
+      }
+    }
+  };
+
+  const handleMediaSelect = async (
+    files: FileList | null,
+    values: ResourceFormValues,
+    setFieldValue: FormikHelpers<ResourceFormValues>["setFieldValue"]
+  ) => {
+    if (!files || files.length === 0) return;
+
+    try {
+      const filePromises = Array.from(files).map(async (file) => ({
+        file,
+        base64: await readFileAsBase64(file),
+      }));
+
+      const results = await Promise.all(filePromises);
+
+      results.forEach(({ file, base64 }) => {
+        console.log(file.name);
+
+        const isExisting = values.media.some(
+          (existingFile) => existingFile.name === file.name && existingFile.size === file.size
+        );
+
+        if (!isExisting) {
+          setFieldValue("media", [...values.media, file]);
+          setFieldValue("_media_base64", [...values._media_base64, base64]);
+        }
+      });
+    } catch (error) {
+      notifyError({
+        message: error instanceof Error ? error.message : "Failed to process media files",
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <header>
         <BackButton href="/resources" text="Back to Resources" />
       </header>
-      <main className="flex flex-col gap-6">
+      <main className="flex flex-col gap-6 pb-8">
         <Typography variant="h1">Create Resource</Typography>
-        <Formik initialValues={{}} onSubmit={async () => {}} validateOnBlur={false}>
-          {({ handleSubmit }) => (
+        <Formik
+          initialValues={initialValues}
+          onSubmit={async (values) => {
+            const submissionValues = filterPrivateValues(values);
+          }}
+          validationSchema={validationSchema}
+          validateOnBlur={false}
+        >
+          {({ handleSubmit, setFieldValue, values }) => (
             <form method="POST" onSubmit={handleSubmit} className="flex flex-col gap-8">
-              <div className="grid grid-cols-2 gap-8 tablet:grid-cols-1">
+              <div className="grid grid-cols-2 gap-8 tablet:grid-cols-1 largeTabletAndBelow:gap-6 [@media(max-width:1060px)]:grid-cols-1">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField name="name" label="Name" required placeholder="Enter a name" />
                   <FormField
@@ -49,38 +179,108 @@ export default function CreateResource() {
                     required
                     name="type"
                     placeholder="Choose a type of resource"
+                    wrapperClassName="col-span-2"
                   >
                     <MenuItem value={"lodge"}>Lodge</MenuItem>
                     <MenuItem value={"event"}>Event</MenuItem>
                     <MenuItem value={"restaurant"}>Restaurant</MenuItem>
                   </SelectField>
+                  <CollapseSection
+                    name="_show_rules"
+                    setFieldValue={setFieldValue}
+                    subtitle="Here you can choose the rules for this resource."
+                    title="Rules"
+                    values={values}
+                    addBtn={{
+                      show: true,
+                      text: "Add a rule",
+                      onClick: () => {},
+                    }}
+                  >
+                    <div className="flex w-full flex-col gap-1">
+                      {Array.from({ length: 5 }).map((_, index) => (
+                        <SelectCard
+                          checked={!!(index % 2)}
+                          onDelete={() => {}}
+                          onChange={() => {}}
+                          key={index}
+                        />
+                      ))}
+                    </div>
+                  </CollapseSection>
+                  <CollapseSection
+                    name="_show_facilities"
+                    setFieldValue={setFieldValue}
+                    subtitle="Here you can choose the facilities this resource offer."
+                    title="Facilities"
+                    values={values}
+                    addBtn={{
+                      show: true,
+                      text: "Add a facility",
+                      onClick: () => {},
+                    }}
+                  >
+                    <div className="flex w-full flex-col gap-1">
+                      {Array.from({ length: 5 }).map((_, index) => (
+                        <SelectCard
+                          checked={!!(index % 2)}
+                          onDelete={() => {}}
+                          onChange={() => {}}
+                          key={index}
+                        />
+                      ))}
+                    </div>
+                  </CollapseSection>
+                  <AvailabitySection values={values} setFieldValue={setFieldValue} />
                 </div>
-                <div className="flex flex-col gap-8">
-                  <div className="flex flex-col gap-4 rounded-md border bg-zinc-50 p-4">
-                    <header className="flex flex-col gap-1">
-                      <h5 className="text-sm">Thumbnail</h5>
-                      <p className="text-xs text-zinc-500">Used to represent your resource.</p>
-                    </header>
-                    <main className="flex min-h-20 cursor-pointer items-center justify-center rounded border border-dashed bg-white p-6 hover:border-primary">
-                      <small className="text-xs text-zinc-600">
-                        Drop your images here, or{" "}
-                        <span className="text-primary">click to browse</span>. Maximum file size:
-                        5MB.
-                      </small>
-                    </main>
+                <div className="flex flex-col gap-6 divide-y">
+                  <div>
+                    <FileUploadSection
+                      title="Thumbnail"
+                      description="Used to represent your resource."
+                      inputRef={thumbnailInputRef}
+                      onFileSelect={(files) => handleThumbnailSelect(files, setFieldValue)}
+                    />
+                    {values.thumbnail && values._thumbnail_base64 && (
+                      <div className="mt-4 flex flex-col gap-2">
+                        <MediaCard
+                          file={values.thumbnail}
+                          base64={values._thumbnail_base64}
+                          onDelete={() => {
+                            setFieldValue("thumbnail", undefined);
+                            setFieldValue("_thumbnail_base64", undefined);
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div className="flex flex-col gap-4 rounded-md border bg-zinc-50 p-4">
-                    <header className="flex flex-col gap-1">
-                      <h5 className="text-sm">Media</h5>
-                      <p className="text-xs text-zinc-500">Add images of resource.</p>
-                    </header>
-                    <main className="flex min-h-20 cursor-pointer items-center justify-center rounded border border-dashed bg-white p-6 hover:border-primary">
-                      <small className="text-xs text-zinc-600">
-                        Drop your images here, or{" "}
-                        <span className="text-primary">click to browse</span>. Maximum file size:
-                        5MB each.
-                      </small>
-                    </main>
+                  <div className="pt-6">
+                    <FileUploadSection
+                      title="Media"
+                      description="Add images of resource."
+                      inputRef={mediaInputRef}
+                      onFileSelect={(files) => handleMediaSelect(files, values, setFieldValue)}
+                      multiple
+                    />
+                    <div className="mt-4 flex flex-col gap-2">
+                      {values.media.map((file, index) => (
+                        <MediaCard
+                          file={file}
+                          base64={values._media_base64[index]}
+                          key={index}
+                          onDelete={() => {
+                            setFieldValue(
+                              "media",
+                              values.media.filter((_, idx) => idx !== index)
+                            );
+                            setFieldValue(
+                              "_media_base64",
+                              values._media_base64.filter((_, idx) => idx !== index)
+                            );
+                          }}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
