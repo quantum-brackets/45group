@@ -10,7 +10,7 @@ import { appError, validateSchema } from "~/utils/helpers";
 import { uploadFileToS3 } from "~/utils/s3";
 
 export const PATCH = catchAsync(async (req: NextRequest) => {
-  const userId = req.cookies.get(HEADER_DATA_KEY)?.value as string;
+  const userId = req.headers.get(HEADER_DATA_KEY) as string;
 
   const formData = await req.formData();
   const body = Object.fromEntries(formData);
@@ -61,7 +61,7 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
 });
 
 export const GET = catchAsync(async (req: NextRequest) => {
-  const userId = req.cookies.get(HEADER_DATA_KEY)?.value as string;
+  const userId = req.headers.get(HEADER_DATA_KEY) as string;
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
 
