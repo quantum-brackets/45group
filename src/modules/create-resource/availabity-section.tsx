@@ -28,6 +28,10 @@ export default function AvailabitySection({ values, setFieldValue }: Props) {
     endDate: null,
   });
 
+  function closeForm() {
+    setFieldValue("_show_availabilities_form", false);
+  }
+
   return (
     <CollapseSection
       name="_show_availabilities"
@@ -135,14 +139,12 @@ export default function AvailabitySection({ values, setFieldValue }: Props) {
             <MenuItem value={"unavailable"}>Unavailable</MenuItem>
           </SelectField>
           <div className="flex w-full items-center justify-between gap-8">
-            <Button
-              type="button"
-              variant="outlined"
-              onClick={() => setFieldValue("_show_availabilities_form", false)}
-            >
+            <Button type="button" variant="outlined" onClick={closeForm}>
               Cancel
             </Button>
-            <Button type="button">Add</Button>
+            <Button type="button" onClick={closeForm}>
+              Add
+            </Button>
           </div>
         </div>
       )}

@@ -22,7 +22,15 @@ export default function MediaCard({ file, base64, onDelete }: Props) {
 
   return (
     <div className="flex w-full gap-4 rounded-md bg-white p-3 transition duration-300 ease-in-out hover:bg-zinc-100">
-      <Image src={base64} alt={file.name} width={70} height={70} />
+      <figure className="relative aspect-square w-[70px]">
+        <Image
+          src={base64}
+          alt={file.name}
+          fill
+          sizes="100%"
+          className="h-full w-full object-contain"
+        />
+      </figure>
       <div className="flex w-full flex-col gap-1 text-xs">
         <small className="">{file.name}</small>
         <small className="text-zinc-600">{formatFileSize(file.size)}</small>
@@ -36,7 +44,13 @@ export default function MediaCard({ file, base64, onDelete }: Props) {
             {({ TransitionProps }) => (
               <Fade {...TransitionProps} timeout={350}>
                 <Paper className="popper-btn">
-                  <button onClick={onDelete} type="button">
+                  <button
+                    onClick={() => {
+                      onDelete();
+                      onClose();
+                    }}
+                    type="button"
+                  >
                     <span>Delete</span>
                   </button>
                 </Paper>

@@ -1,16 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import {
-  Checkbox,
-  ClickAwayListener,
-  Collapse,
-  Fade,
-  MenuItem,
-  Paper,
-  Popper,
-  Typography,
-} from "@mui/material";
+import { MenuItem, Typography } from "@mui/material";
 import { Formik, FormikHelpers } from "formik";
 import * as Yup from "yup";
 import BackButton from "~/components/back-button";
@@ -19,12 +10,10 @@ import SelectField from "~/components/fields/select-field";
 import MediaCard from "~/components/resources-form/media-card";
 import { filterPrivateValues } from "~/utils/helpers";
 import { notifyError } from "~/utils/toast";
-import { FaMinus, FaPlus } from "react-icons/fa6";
-import SelectCard from "~/components/resources-form/select-card";
 import FileUploadSection from "~/components/resources-form/file-upload-section";
-import CollapseSection from "~/components/resources-form/collapse-section";
-import { GoKebabHorizontal } from "react-icons/go";
 import AvailabitySection from "~/modules/create-resource/availabity-section";
+import FacilitiesSection from "~/modules/create-resource/facilities-section";
+import RulesSection from "~/modules/create-resource/rules-section";
 
 export type ResourceFormValues = {
   name: string;
@@ -111,18 +100,22 @@ export default function CreateResource() {
 
       const results = await Promise.all(filePromises);
 
-      results.forEach(({ file, base64 }) => {
-        console.log(file.name);
+      const media: File[] = [];
+      const mediaBase64: string[] = [];
 
+      results.forEach(({ file, base64 }) => {
         const isExisting = values.media.some(
           (existingFile) => existingFile.name === file.name && existingFile.size === file.size
         );
 
         if (!isExisting) {
-          setFieldValue("media", [...values.media, file]);
-          setFieldValue("_media_base64", [...values._media_base64, base64]);
+          media.push(file);
+          mediaBase64.push(base64);
         }
       });
+
+      setFieldValue("media", [...values.media, ...media]);
+      setFieldValue("_media_base64", [...values._media_base64, ...mediaBase64]);
     } catch (error) {
       notifyError({
         message: error instanceof Error ? error.message : "Failed to process media files",
@@ -180,57 +173,14 @@ export default function CreateResource() {
                     name="type"
                     placeholder="Choose a type of resource"
                     wrapperClassName="col-span-2"
+                    className="capitalize"
                   >
                     <MenuItem value={"lodge"}>Lodge</MenuItem>
                     <MenuItem value={"event"}>Event</MenuItem>
                     <MenuItem value={"restaurant"}>Restaurant</MenuItem>
                   </SelectField>
-                  <CollapseSection
-                    name="_show_rules"
-                    setFieldValue={setFieldValue}
-                    subtitle="Here you can choose the rules for this resource."
-                    title="Rules"
-                    values={values}
-                    addBtn={{
-                      show: true,
-                      text: "Add a rule",
-                      onClick: () => {},
-                    }}
-                  >
-                    <div className="flex w-full flex-col gap-1">
-                      {Array.from({ length: 5 }).map((_, index) => (
-                        <SelectCard
-                          checked={!!(index % 2)}
-                          onDelete={() => {}}
-                          onChange={() => {}}
-                          key={index}
-                        />
-                      ))}
-                    </div>
-                  </CollapseSection>
-                  <CollapseSection
-                    name="_show_facilities"
-                    setFieldValue={setFieldValue}
-                    subtitle="Here you can choose the facilities this resource offer."
-                    title="Facilities"
-                    values={values}
-                    addBtn={{
-                      show: true,
-                      text: "Add a facility",
-                      onClick: () => {},
-                    }}
-                  >
-                    <div className="flex w-full flex-col gap-1">
-                      {Array.from({ length: 5 }).map((_, index) => (
-                        <SelectCard
-                          checked={!!(index % 2)}
-                          onDelete={() => {}}
-                          onChange={() => {}}
-                          key={index}
-                        />
-                      ))}
-                    </div>
-                  </CollapseSection>
+                  <RulesSection values={values} setFieldValue={setFieldValue} />
+                  <FacilitiesSection values={values} setFieldValue={setFieldValue} />
                   <AvailabitySection values={values} setFieldValue={setFieldValue} />
                 </div>
                 <div className="flex flex-col gap-6 divide-y">
