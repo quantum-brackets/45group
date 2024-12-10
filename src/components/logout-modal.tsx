@@ -35,7 +35,7 @@ export default function LogoutModal() {
             await logout(undefined, {
               onSuccess: () => {
                 handleClose();
-                router.push("/login");
+                router.push("/signin");
               },
             });
           }}
