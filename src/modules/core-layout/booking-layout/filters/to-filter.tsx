@@ -1,7 +1,5 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers";
@@ -11,29 +9,20 @@ const DATE_FORMAT = "DD-MM-YYYY";
 
 type Props = {
   autoApply?: boolean;
+  dates: {
+    startDate: string | null;
+    endDate: string | null;
+  };
+  updateValue: (date: string) => void;
+  updateSearchParams: () => void;
 };
 
-const ToFilter = forwardRef(({ autoApply = true }: Props, ref) => {
-  const searchParams = useSearchParams();
-  const endDate = searchParams.get("to");
-  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(
-    endDate ? dayjs(endDate, DATE_FORMAT) : null
-  );
-
-  function updateEndDateParam(date: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("to", date);
-    window.history.replaceState(null, "", `/booking?${params.toString()}`);
-  }
-
-  useEffect(() => {
-    setSelectedDate(endDate ? dayjs(endDate, DATE_FORMAT) : null);
-  }, [endDate]);
-
-  useImperativeHandle(ref, () => ({
-    applyEndDate: () => selectedDate && updateEndDateParam(selectedDate.format(DATE_FORMAT)),
-  }));
-
+export default function ToFilter({
+  autoApply = true,
+  dates: { endDate, startDate },
+  updateValue,
+  updateSearchParams,
+}: Props) {
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor="to" className="!text-sm !font-semibold text-info-500">
@@ -49,19 +38,16 @@ const ToFilter = forwardRef(({ autoApply = true }: Props, ref) => {
           }}
           disablePast
           format={DATE_FORMAT}
-          value={selectedDate}
+          value={endDate ? dayjs(endDate, DATE_FORMAT) : null}
+          minDate={startDate ? dayjs(startDate, DATE_FORMAT) : undefined}
           onChange={(date: Dayjs | null) => {
-            setSelectedDate(date);
+            date && updateValue(date.format(DATE_FORMAT));
             if (autoApply && date) {
-              updateEndDateParam(date.format(DATE_FORMAT));
+              updateSearchParams();
             }
           }}
         />
       </LocalizationProvider>
     </div>
   );
-});
-
-ToFilter.displayName = "ToFilter";
-
-export default ToFilter;
+}

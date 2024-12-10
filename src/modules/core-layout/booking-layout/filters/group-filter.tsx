@@ -47,9 +47,7 @@ const GroupFilter = forwardRef(({ autoApply = true }: Props, ref) => {
   };
 
   const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
-  const [tempGroupState, setTempGroupState] = useState<Record<string, number>>(() =>
-    parseGroupQuery(groupQuery)
-  );
+  const [tempGroupState, setTempGroupState] = useState<Record<string, number>>({});
 
   const open = Boolean(anchorEl);
 
@@ -136,22 +134,6 @@ const GroupFilter = forwardRef(({ autoApply = true }: Props, ref) => {
                     <div className="flex items-center gap-3 largeLaptop:gap-4">
                       <Button
                         className="!w-fit !min-w-0 !p-[6px] largeLaptop:!p-[10px]"
-                        size="small"
-                        variant="outlined"
-                        onClick={() =>
-                          setTempGroupState((prev) => ({
-                            ...prev,
-                            [filter]: prev[filter] + 1,
-                          }))
-                        }
-                      >
-                        <FaPlus className="text-xs text-black largeLaptop:text-sm" />
-                      </Button>
-                      <p className="text-base font-bold largeLaptop:text-lg">
-                        {tempGroupState[filter]}
-                      </p>
-                      <Button
-                        className="!w-fit !min-w-0 !p-[6px] largeLaptop:!p-[10px]"
                         variant="outlined"
                         size="small"
                         onClick={() =>
@@ -162,6 +144,22 @@ const GroupFilter = forwardRef(({ autoApply = true }: Props, ref) => {
                         }
                       >
                         <FaMinus className="text-xs text-black largeLaptop:text-sm" />
+                      </Button>
+                      <p className="text-base font-bold largeLaptop:text-lg">
+                        {tempGroupState[filter]}
+                      </p>
+                      <Button
+                        className="!w-fit !min-w-0 !p-[6px] largeLaptop:!p-[10px]"
+                        size="small"
+                        variant="outlined"
+                        onClick={() =>
+                          setTempGroupState((prev) => ({
+                            ...prev,
+                            [filter]: prev[filter] + 1,
+                          }))
+                        }
+                      >
+                        <FaPlus className="text-xs text-black largeLaptop:text-sm" />
                       </Button>
                     </div>
                     <p className="text-xs capitalize largeLaptop:text-sm">{filter}</p>

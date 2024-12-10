@@ -30,8 +30,6 @@ export const POST = catchAsync(async (req: NextRequest) => {
     });
   }
 
-  console.log(process.env.NEXTAUTH_SECRET, "process.env.NEXTAUTH_SECRET");
-
   const token = await encode({
     token: {
       id: user.id,
@@ -46,6 +44,8 @@ export const POST = catchAsync(async (req: NextRequest) => {
 
   res.cookies.set(SESSION_KEY, token, {
     httpOnly: true,
+    sameSite: "strict", // Prevents cross-site access
+    path: "/",
     secure: process.env.NODE_ENV === "production",
     maxAge: COOKIE_MAX_AGE,
   });
