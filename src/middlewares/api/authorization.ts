@@ -27,9 +27,9 @@ export const authorization: MiddlewareFactory = (next) => {
           return appError({ status: 401, error: "Invalid session" });
         }
 
-        const res = NextResponse.next();
-        res.headers.set(HEADER_DATA_KEY, user_id);
-        return res;
+        // const res = NextResponse.next();
+        req.headers.set(HEADER_DATA_KEY, user_id);
+        // return res;
       } catch (error) {
         return appError({ status: 401, error: "Invalid session" });
       }
