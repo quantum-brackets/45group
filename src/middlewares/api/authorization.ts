@@ -22,6 +22,7 @@ export const authorization: MiddlewareFactory = (next, _, data) => {
     });
 
     if (protectedRoutes.some((path) => pathname.startsWith(path))) {
+      console.log(sessionToken, "sessionToken");
       if (!sessionToken) {
         return appError({ status: 401, error: "No session provided" });
       }
