@@ -55,6 +55,7 @@ async function getUserBySessionToken(token: string | undefined): Promise<User | 
         [HEADER_DATA_KEY]: JSON.stringify({
           userId: user_id,
         }),
+        Authorization: `Bearer ${token}`,
       },
     });
 
