@@ -44,15 +44,19 @@ async function getUserBySessionToken(token: string | undefined): Promise<User | 
 
   try {
     console.log("sdpojshdsdoij");
+    const res = await fetch("/api/users/me", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-    // const { data: user } = await axiosInstance.get<User>("/api/users/me", {
-    //   headers: {
-    //     Authorization: `Bearer ${token}`,
-    //   },
-    // });
-    const user = await UsersService.getMe();
+    if (!res.ok) return null;
 
+    const user = await res.json();
     return user;
+    // const user = await UsersService.getMe();
+
+    // return user;
   } catch (error) {
     return null;
   }
@@ -73,10 +77,6 @@ export const authorization: MiddlewareFactory = (next) => {
     if (isProtectedPath && !session) {
       return redirect({ req, pathname: authPaths.signin, origin: pathname });
     }
-
-    // if (req.nextUrl.pathname === "/api/users/me") {
-    //   return NextResponse.next();
-    // }
 
     cache.user = await getUserBySessionToken(session);
 
