@@ -31,9 +31,9 @@ export function stackMiddlewares(
     };
   }
 
-  const res = NextResponse.next();
-  if (Object.keys(data).length > 0) {
-    res.headers.append(HEADER_DATA_KEY, JSON.stringify(data));
-  }
-  return () => res;
+  // const res =
+  // if (Object.keys(data).length > 0) {
+  //   res.headers.append(HEADER_DATA_KEY, JSON.stringify(data));
+  // }
+  return () => NextResponse.next();
 }
