@@ -74,6 +74,12 @@ export const GET = catchAsync(async (req: NextRequest) => {
     console.log(key, value);
   });
 
+  if (!userId)
+    return appError({
+      status: 404,
+      error: "User Id not found",
+    });
+
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
 
   if (!user) {
