@@ -1,6 +1,6 @@
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 import { MiddlewareFactory } from "../stack-middlewares";
-import { SESSION_KEY } from "~/utils/constants";
+import { HEADER_DATA_KEY, SESSION_KEY } from "~/utils/constants";
 import axiosInstance, { axiosPrivate } from "~/config/axios";
 import UsersService from "~/services/users";
 
@@ -44,15 +44,23 @@ async function getUserBySessionToken(token: string | undefined): Promise<User | 
 
   try {
     console.log("sdpojshdsdoij");
-    const res = await fetch("/api/users/me", {
+
+    const {
+      data: { user_id },
+    } = await axiosInstance.post("/api/utils/decode", { session: token });
+
+    if (!user_id) {
+      return null;
+    }
+
+    const { data: user } = await axiosPrivate.get<User>(`/api/users/me`, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        [HEADER_DATA_KEY]: JSON.stringify({
+          userId: user_id,
+        }),
       },
     });
 
-    if (!res.ok) return null;
-
-    const user = await res.json();
     return user;
     // const user = await UsersService.getMe();
 
