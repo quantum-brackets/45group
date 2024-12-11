@@ -94,3 +94,9 @@ export function filterPrivateValues<T>(values: T) {
     Object.entries(values as any).filter(([key]) => !key.startsWith("_"))
   ) as T;
 }
+
+export function formatFileSize(size: number): string {
+  const i: number = Math.floor(Math.log(size) / Math.log(1024));
+
+  return Number((size / Math.pow(1024, i)).toFixed(2)) * 1 + " " + ["B", "KB", "MB", "GB", "TB"][i];
+}

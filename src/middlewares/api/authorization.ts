@@ -10,9 +10,10 @@ const protectedRoutes = ["/api/users", "/api/auth/logout", "/api/auth/set-email"
 export const authorization: MiddlewareFactory = (next, _, data) => {
   return catchAsync(async (req: NextRequest, _next: NextFetchEvent) => {
     const pathname = req.nextUrl.pathname;
-    const sessionToken = req.cookies.get(SESSION_KEY)?.value;
 
     if (protectedRoutes.some((path) => pathname.startsWith(path))) {
+      const sessionToken =
+        req.cookies.get(SESSION_KEY)?.value || req.headers.get("Authorization")?.split(" ")[1];
       if (!sessionToken) {
         return appError({ status: 401, error: "No session provided" });
       }

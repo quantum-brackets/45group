@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { setCookie } from "~/app/_actions/util";
 import { axiosPrivate } from "~/config/axios";
@@ -59,8 +59,14 @@ export function useCreateJwt() {
 }
 
 export function useCreateSession() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: AuthService.createSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["current-user"],
+      });
+    },
   });
 }
 
