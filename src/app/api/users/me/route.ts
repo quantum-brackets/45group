@@ -64,7 +64,7 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
 
 export const GET = catchAsync(async (req: NextRequest) => {
   const middlewareData = req.headers.get(HEADER_DATA_KEY);
-  const { userId } = middlewareData ? JSON.parse(middlewareData) : {};
+  const { userId }: { userId: string } = middlewareData ? JSON.parse(middlewareData) : {};
   console.log(userId);
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
