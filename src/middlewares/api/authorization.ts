@@ -15,6 +15,12 @@ export const authorization: MiddlewareFactory = (next, _, data) => {
       req.headers.get("Authorization")?.split(" ")[1] ||
       req.headers.get("authorization")?.split(" ")[1];
 
+    // Method 2: Using forEach
+    req.headers.forEach((value, key) => {
+      console.log("in middleware");
+      console.log(key, value);
+    });
+
     if (protectedRoutes.some((path) => pathname.startsWith(path))) {
       if (!sessionToken) {
         return appError({ status: 401, error: "No session provided" });

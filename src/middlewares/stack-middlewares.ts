@@ -23,7 +23,8 @@ export function stackMiddlewares(
 
       if (result) {
         if (Object.keys(data).length > 0) {
-          result.headers.append(HEADER_DATA_KEY, JSON.stringify(data));
+          // result.headers.append(HEADER_DATA_KEY, JSON.stringify(data));
+          req.headers.append(HEADER_DATA_KEY, JSON.stringify(data));
         }
         return result;
       }

@@ -65,7 +65,8 @@ export default function OTPForm({ email, origin }: Props) {
                             notifySuccess({ message: "Signed in successfully" });
                             resetForm();
                             nProgress.start();
-                            router.push(origin || "/booking");
+                            // router.push(origin || "/booking");
+                            window.location.href = origin || "/booking";
                           },
                           onSettled: () => {
                             setIsLoading(false);
