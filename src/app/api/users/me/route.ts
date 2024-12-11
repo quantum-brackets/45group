@@ -69,6 +69,11 @@ export const GET = catchAsync(async (req: NextRequest) => {
   const { userId }: { userId: string } = middlewareData ? JSON.parse(middlewareData) : {};
   console.log(userId);
 
+  // Method 2: Using forEach
+  req.headers.forEach((value, key) => {
+    console.log(key, value);
+  });
+
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
 
   if (!user) {
