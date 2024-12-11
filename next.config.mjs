@@ -14,19 +14,6 @@ const nextConfig = {
       },
     ],
   },
-  async headers() {
-    return [
-      {
-        source: "/api/:path*",
-        headers: [
-          {
-            key: "x-data",
-            value: "true",
-          },
-        ],
-      },
-    ];
-  },
 };
 
 export default withSentryConfig(nextConfig, {
