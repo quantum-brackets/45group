@@ -7,7 +7,7 @@ import axiosInstance from "~/config/axios";
 
 const protectedRoutes = ["/api/users", "/api/auth/logout", "/api/auth/set-email"];
 
-export const authorization: MiddlewareFactory = (next) => {
+export const authorization: MiddlewareFactory = (next, _, data) => {
   return catchAsync(async (req: NextRequest, _next: NextFetchEvent) => {
     const pathname = req.nextUrl.pathname;
     const sessionToken =
@@ -27,8 +27,9 @@ export const authorization: MiddlewareFactory = (next) => {
           return appError({ status: 401, error: "Invalid session" });
         }
 
+        data.userId = user_id;
         // const res = NextResponse.next();
-        req.headers.set(HEADER_DATA_KEY, user_id);
+        // res.headers.set(HEADER_DATA_KEY, user_id);
         // return res;
       } catch (error) {
         return appError({ status: 401, error: "Invalid session" });
