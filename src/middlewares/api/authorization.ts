@@ -1,17 +1,16 @@
-import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
+import { NextFetchEvent, NextRequest } from "next/server";
 import { MiddlewareFactory } from "../stack-middlewares";
 import { appError } from "~/utils/helpers";
 import catchAsync from "~/utils/catch-async";
-import { HEADER_DATA_KEY, SESSION_KEY } from "~/utils/constants";
+import { SESSION_KEY } from "~/utils/constants";
 import axiosInstance from "~/config/axios";
 
 const protectedRoutes = ["/api/users", "/api/auth/logout", "/api/auth/set-email"];
 
-export const authorization: MiddlewareFactory = (next) => {
+export const authorization: MiddlewareFactory = (next, _, data) => {
   return catchAsync(async (req: NextRequest, _next: NextFetchEvent) => {
     const pathname = req.nextUrl.pathname;
-    const sessionToken =
-      req.cookies.get(SESSION_KEY)?.value || req.headers.get("Authorization")?.split(" ")[1];
+    const sessionToken = req.cookies.get(SESSION_KEY)?.value;
 
     if (protectedRoutes.some((path) => pathname.startsWith(path))) {
       if (!sessionToken) {
@@ -27,9 +26,7 @@ export const authorization: MiddlewareFactory = (next) => {
           return appError({ status: 401, error: "Invalid session" });
         }
 
-        const res = NextResponse.next();
-        res.headers.set(HEADER_DATA_KEY, user_id);
-        return res;
+        data.userId = user_id;
       } catch (error) {
         return appError({ status: 401, error: "Invalid session" });
       }

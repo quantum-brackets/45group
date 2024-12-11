@@ -26,28 +26,28 @@ export const axiosPrivate = axios.create({
   },
 });
 
-axiosPrivate.interceptors.request.use(
-  async (config) => {
-    try {
-      if (!config.headers.Authorization) {
-        const session = await getCookie(SESSION_KEY);
-        if (!session) {
-          return config;
-        }
+// axiosPrivate.interceptors.request.use(
+//   async (config) => {
+//     try {
+//       if (!config.headers.Authorization) {
+//         const session = await getCookie(SESSION_KEY);
+//         if (!session) {
+//           return config;
+//         }
 
-        if (!session) throw new Error("Session not found");
+//         if (!session) throw new Error("Session not found");
 
-        config.headers.Authorization = `Bearer ${session}`;
-        axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + session;
-      }
-    } catch (error) {
-      return Promise.reject(error);
-    }
+//         config.headers.Authorization = `Bearer ${session}`;
+//         axiosPrivate.defaults.headers.common["Authorization"] = "Bearer " + session;
+//       }
+//     } catch (error) {
+//       return Promise.reject(error);
+//     }
 
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+//     return config;
+//   },
+//   (error) => Promise.reject(error)
+// );
 
 axiosPrivate.interceptors.response.use(
   (response) => response,
