@@ -38,6 +38,8 @@ export const authorization: MiddlewareFactory = (next, _, data) => {
           return appError({ status: 401, error: "Invalid session" });
         }
 
+        console.log(user_id, "user_id");
+
         data.userId = user_id;
         // const res = NextResponse.next();
         // res.headers.set(HEADER_DATA_KEY, user_id);
