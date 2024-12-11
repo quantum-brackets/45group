@@ -9,9 +9,12 @@ import { HEADER_DATA_KEY } from "~/utils/constants";
 import { appError, validateSchema } from "~/utils/helpers";
 import { uploadFileToS3 } from "~/utils/s3";
 
+//! check if user exist first before upload to s3
+
 export const PATCH = catchAsync(async (req: NextRequest) => {
-  const userId = req.headers.get(HEADER_DATA_KEY) as string;
-  const url = new URL(req.url);
+  const middlewareData = req.headers.get(HEADER_DATA_KEY);
+  const { userId }: { userId: string } = middlewareData ? JSON.parse(middlewareData) : {};
+  console.log(userId);
 
   const formData = await req.formData();
   const body = Object.fromEntries(formData);
@@ -62,7 +65,9 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
 });
 
 export const GET = catchAsync(async (req: NextRequest) => {
-  const userId = req.headers.get(HEADER_DATA_KEY) as string;
+  const middlewareData = req.headers.get(HEADER_DATA_KEY);
+  const { userId }: { userId: string } = middlewareData ? JSON.parse(middlewareData) : {};
+  console.log(userId);
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
 
