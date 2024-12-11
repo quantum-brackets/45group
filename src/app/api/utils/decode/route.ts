@@ -26,7 +26,5 @@ export const POST = catchAsync(async (req: NextRequest) => {
     token: session,
   });
 
-  console.log(data?.id, data?.email);
-
   return NextResponse.json({ user_id: data?.id });
 });

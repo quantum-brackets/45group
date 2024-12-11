@@ -14,7 +14,6 @@ import { uploadFileToS3 } from "~/utils/s3";
 export const PATCH = catchAsync(async (req: NextRequest) => {
   const middlewareData = req.headers.get(HEADER_DATA_KEY);
   const { userId }: { userId: string } = middlewareData ? JSON.parse(middlewareData) : {};
-  console.log(userId);
 
   const formData = await req.formData();
   const body = Object.fromEntries(formData);
@@ -67,18 +66,6 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
 export const GET = catchAsync(async (req: NextRequest) => {
   const middlewareData = req.headers.get(HEADER_DATA_KEY);
   const { userId }: { userId: string } = middlewareData ? JSON.parse(middlewareData) : {};
-  console.log(userId);
-
-  // Method 2: Using forEach
-  req.headers.forEach((value, key) => {
-    console.log(key, value);
-  });
-
-  if (!userId)
-    return appError({
-      status: 404,
-      error: "User Id not found",
-    });
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
 

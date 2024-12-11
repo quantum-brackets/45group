@@ -2,7 +2,6 @@ import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 import { MiddlewareFactory } from "../stack-middlewares";
 import { HEADER_DATA_KEY, SESSION_KEY } from "~/utils/constants";
 import axiosInstance, { axiosPrivate } from "~/config/axios";
-import UsersService from "~/services/users";
 
 const protectedPaths = [
   "/profile",
@@ -43,8 +42,6 @@ async function getUserBySessionToken(token: string | undefined): Promise<User | 
   if (!token) return null;
 
   try {
-    console.log("sdpojshdsdoij");
-
     const {
       data: { user_id },
     } = await axiosInstance.post("/api/utils/decode", { session: token });
@@ -62,9 +59,6 @@ async function getUserBySessionToken(token: string | undefined): Promise<User | 
     });
 
     return user;
-    // const user = await UsersService.getMe();
-
-    // return user;
   } catch (error) {
     return null;
   }
