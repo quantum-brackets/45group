@@ -1,7 +1,8 @@
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 import { MiddlewareFactory } from "../stack-middlewares";
 import { SESSION_KEY } from "~/utils/constants";
-import axiosInstance from "~/config/axios";
+import axiosInstance, { axiosPrivate } from "~/config/axios";
+import UsersService from "~/services/users";
 
 const protectedPaths = [
   "/profile",
@@ -42,11 +43,14 @@ async function getUserBySessionToken(token: string | undefined): Promise<User | 
   if (!token) return null;
 
   try {
-    const { data: user } = await axiosInstance.get<User>("/api/users/me", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    console.log("sdpojshdsdoij");
+
+    // const { data: user } = await axiosInstance.get<User>("/api/users/me", {
+    //   headers: {
+    //     Authorization: `Bearer ${token}`,
+    //   },
+    // });
+    const user = await UsersService.getMe();
 
     return user;
   } catch (error) {
