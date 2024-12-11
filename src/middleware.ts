@@ -7,6 +7,15 @@ const middlewares = [apiAuthorization, appAuthorization];
 
 export default stackMiddlewares(middlewares);
 
+// export const config: MiddlewareConfig = {
+//   matcher: ["/((?!_next/static|favicon.ico|icon.svg|assets|data|fonts|db).*)"],
+// };
+
 export const config: MiddlewareConfig = {
-  matcher: ["/((?!_next/static|favicon.ico|icon.svg|assets|data|fonts|db).*)"],
+  matcher: [
+    // Match all API routes
+    "/api/:path*",
+    // Match all other routes except static files
+    "/((?!api|_next/static|favicon.ico|icon.svg|assets|data|fonts|db).*)",
+  ],
 };
