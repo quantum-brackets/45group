@@ -70,6 +70,10 @@ export const authorization: MiddlewareFactory = (next) => {
       return redirect({ req, pathname: authPaths.signin, origin: pathname });
     }
 
+    if (req.nextUrl.pathname === "/api/users/me") {
+      return NextResponse.next();
+    }
+
     cache.user = await getUserBySessionToken(session);
 
     if (isProtectedPath && !cache.user) {
