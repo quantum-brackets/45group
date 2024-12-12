@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import nProgress from "nprogress";
@@ -22,8 +21,6 @@ const validationSchema = Yup.object({
 const OTP_LENGTH = 6;
 
 export default function OTPForm({ email, origin }: Props) {
-  const router = useRouter();
-
   const [isLoading, setIsLoading] = useState(false);
   const [count, setCount] = useState(60);
 
