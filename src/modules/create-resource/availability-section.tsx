@@ -16,11 +16,15 @@ import Button from "~/components/button";
 const DATE_FORMAT = "DD-MM-YYYY";
 
 type Props = {
-  setFieldValue: FormikHelpers<ResourceFormValues>["setFieldValue"];
+  setFieldValue: (
+    field: keyof ResourceFormValues,
+    value: any,
+    shouldValidate?: boolean
+  ) => ReturnType<FormikHelpers<ResourceFormValues>["setFieldValue"]>;
   values: ResourceFormValues;
 };
 
-export default function AvailabitySection({ values, setFieldValue }: Props) {
+export default function AvailabilitySection({ values, setFieldValue }: Props) {
   const [{ startDate, endDate }, setDates] = useState<
     Record<"startDate" | "endDate", string | null>
   >({

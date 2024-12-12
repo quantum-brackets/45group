@@ -8,12 +8,16 @@ import Button from "../button";
 import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
 
 type Props = {
-  name: string;
+  name: keyof ResourceFormValues;
   children: ReactNode;
   title: string;
   values: ResourceFormValues;
   subtitle: string;
-  setFieldValue: FormikHelpers<ResourceFormValues>["setFieldValue"];
+  setFieldValue: (
+    field: keyof ResourceFormValues,
+    value: any,
+    shouldValidate?: boolean
+  ) => ReturnType<FormikHelpers<ResourceFormValues>["setFieldValue"]>;
   addBtn?: {
     show: boolean;
     onClick: () => void;
@@ -44,8 +48,8 @@ export default function CollapseSection({
           <FaPlus className="text-base text-zinc-600" />
         )}
       </button>
-      <Collapse in={values[name]} timeout="auto">
-        <div className="flex flex-col gap-3">
+      <Collapse in={values[name] as boolean} timeout="auto">
+        <div className="flex flex-col gap-6">
           <small className="text-xs text-zinc-500">{subtitle}</small>
           {children}
           {addBtn && addBtn.show && (

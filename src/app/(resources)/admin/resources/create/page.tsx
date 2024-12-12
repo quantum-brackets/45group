@@ -11,29 +11,63 @@ import MediaCard from "~/components/resources-form/media-card";
 import { filterPrivateValues } from "~/utils/helpers";
 import { notifyError } from "~/utils/toast";
 import FileUploadSection from "~/components/resources-form/file-upload-section";
-import AvailabitySection from "~/modules/create-resource/availabity-section";
+import AvailabitySection from "~/modules/create-resource/availability-section";
 import FacilitiesSection from "~/modules/create-resource/facilities-section";
 import RulesSection from "~/modules/create-resource/rules-section";
+import Button from "~/components/button";
+import GroupsSection from "~/modules/create-resource/groups-section";
 
-export type ResourceFormValues = {
-  name: string;
-  location: string;
-  address: string;
-  description: string;
-  type: "lodge" | "event" | "restaurant";
-  thumbnail?: File;
-  _thumbnail_base64?: string;
-  media: File[];
-  _media_base64: string[];
-  _show_rules?: boolean;
+type FacilityFormValues = {
   _show_facilities?: boolean;
+  _show_facility_form?: boolean;
+  _facility?: string;
+};
+
+type RuleFormValues = {
+  _show_facilities?: boolean;
+  _show_rule_form?: boolean;
+  _rule?: string;
+  _show_rules?: boolean;
+};
+
+type AvailabilityFormValues = {
+  _show_availabilities?: boolean;
+  _show_availabilities_form?: boolean;
+  _availity?: string;
+  _availability_anchor_el?: HTMLButtonElement | null;
   availabilities: {
     from: string;
     to: string;
     status: "available" | "unavailable";
   }[];
-  [key: string]: any;
 };
+
+type GroupFormValues = {
+  _show_group_form?: boolean;
+  _show_groups?: boolean;
+  groups?: {
+    [key: string]: number;
+  };
+  _group?: string;
+  existing_groups?: {
+    [key: string]: number;
+  };
+};
+
+export type ResourceFormValues = FacilityFormValues &
+  RuleFormValues &
+  AvailabilityFormValues &
+  GroupFormValues & {
+    name: string;
+    location: string;
+    address: string;
+    description: string;
+    type: "lodge" | "event" | "restaurant";
+    thumbnail?: File;
+    _thumbnail_base64?: string;
+    media: File[];
+    _media_base64: string[];
+  };
 
 const initialValues: ResourceFormValues = {
   name: "",
@@ -128,18 +162,38 @@ export default function CreateResource() {
       <header>
         <BackButton href="/resources" text="Back to Resources" />
       </header>
-      <main className="flex flex-col gap-6 pb-8">
-        <Typography variant="h1">Create Resource</Typography>
-        <Formik
-          initialValues={initialValues}
-          onSubmit={async (values) => {
-            const submissionValues = filterPrivateValues(values);
-          }}
-          validationSchema={validationSchema}
-          validateOnBlur={false}
-        >
-          {({ handleSubmit, setFieldValue, values }) => (
-            <form method="POST" onSubmit={handleSubmit} className="flex flex-col gap-8">
+      <Formik
+        initialValues={initialValues}
+        onSubmit={async (values) => {
+          const submissionValues = filterPrivateValues(values);
+          console.log(submissionValues);
+        }}
+        validationSchema={validationSchema}
+        validateOnBlur={false}
+      >
+        {({ handleSubmit, setFieldValue, values, isSubmitting }) => (
+          <form method="POST" onSubmit={handleSubmit} className="flex flex-col gap-6 pb-8">
+            <header className="flex items-center justify-between gap-8">
+              <Typography variant="h1">Create Resource</Typography>
+              <div className="flex items-center gap-4">
+                <Button
+                  type="submit"
+                  onClick={async () => await setFieldValue("draft", true)}
+                  variant="outlined"
+                  color="info"
+                >
+                  Save as draft
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  onClick={async () => await setFieldValue("draft", false)}
+                >
+                  Publish Resource
+                </Button>
+              </div>
+            </header>
+            <main className="flex flex-col gap-8">
               <div className="grid grid-cols-2 gap-8 tablet:grid-cols-1 largeTabletAndBelow:gap-6 [@media(max-width:1060px)]:grid-cols-1">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField name="name" label="Name" required placeholder="Enter a name" />
@@ -182,6 +236,7 @@ export default function CreateResource() {
                   <RulesSection values={values} setFieldValue={setFieldValue} />
                   <FacilitiesSection values={values} setFieldValue={setFieldValue} />
                   <AvailabitySection values={values} setFieldValue={setFieldValue} />
+                  <GroupsSection values={values} setFieldValue={setFieldValue} />
                 </div>
                 <div className="flex flex-col gap-6 divide-y">
                   <div>
@@ -234,10 +289,10 @@ export default function CreateResource() {
                   </div>
                 </div>
               </div>
-            </form>
-          )}
-        </Formik>
-      </main>
+            </main>
+          </form>
+        )}
+      </Formik>
     </div>
   );
 }

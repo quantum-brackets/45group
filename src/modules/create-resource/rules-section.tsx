@@ -8,7 +8,11 @@ import CollapseSection from "~/components/resources-form/collapse-section";
 import SelectCard from "~/components/resources-form/select-card";
 
 type Props = {
-  setFieldValue: FormikHelpers<ResourceFormValues>["setFieldValue"];
+  setFieldValue: (
+    field: keyof ResourceFormValues,
+    value: any,
+    shouldValidate?: boolean
+  ) => ReturnType<FormikHelpers<ResourceFormValues>["setFieldValue"]>;
   values: ResourceFormValues;
 };
 
