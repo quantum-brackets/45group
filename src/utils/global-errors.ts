@@ -65,6 +65,13 @@ function globalErrors(error: any) {
     }
   }
 
+  if (error instanceof SyntaxError && error.message.includes("Unexpected end of JSON input")) {
+    return appError({
+      status: 400,
+      error: "Malformed JSON input",
+    });
+  }
+
   if (process.env.NODE_ENV === "development") {
     return appError({
       status: 500,
