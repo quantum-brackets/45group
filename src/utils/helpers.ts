@@ -83,10 +83,10 @@ export function compareObjectValues(
   );
 }
 
-export async function validateSchema({ object, data }: { object: Yup.AnyObject; data: any }) {
+export function validateSchema({ object, data }: { object: Yup.AnyObject; data: any }) {
   const schema = Yup.object(object);
 
-  return await schema.validate({ ...data }, { abortEarly: false, stripUnknown: true });
+  return schema.validate({ ...data }, { abortEarly: false, stripUnknown: true });
 }
 
 export function filterPrivateValues<T>(values: T) {
