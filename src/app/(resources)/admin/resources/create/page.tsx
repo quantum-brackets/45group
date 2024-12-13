@@ -20,24 +20,25 @@ import GroupsSection from "~/modules/create-resource/groups-section";
 import ResourcesService from "~/services/resources";
 
 type FacilityFormValues = {
-  _show_facilities?: boolean;
   _show_facility_form?: boolean;
-  _facility?: string;
+  _facility: { name: string; description: string };
+  _show_facilities?: boolean;
+  facilities: (Omit<ResourceFacility, "id" | "created_at" | "updated_at"> & {
+    id?: string;
+    markedForDeletion?: boolean;
+    checked?: boolean;
+  })[];
 };
 
 type RuleFormValues = {
-  _show_facilities?: boolean;
   _show_rule_form?: boolean;
   _rule: { name: string; description: string };
   _show_rules?: boolean;
-  _rules?: ResourceRule[];
   rules: (Omit<ResourceRule, "id" | "created_at" | "updated_at"> & {
     id?: string;
     markedForDeletion?: boolean;
     checked?: boolean;
   })[];
-  new_rules?: { name: string; description: string; checked: boolean }[];
-  deleted_rules?: string[];
 };
 
 type AvailabilityFormValues = {
@@ -64,8 +65,7 @@ type GroupFormValues = {
   };
 };
 
-export type ResourceFormValues = FacilityFormValues &
-  AvailabilityFormValues &
+export type ResourceFormValues = AvailabilityFormValues &
   GroupFormValues & {
     name: string;
     location: string;
@@ -74,6 +74,7 @@ export type ResourceFormValues = FacilityFormValues &
     type: "lodge" | "event" | "restaurant";
     thumbnail?: File;
     rule_form: RuleFormValues;
+    facility_form: FacilityFormValues;
     _thumbnail_base64?: string;
     media: File[];
     _media_base64: string[];
@@ -90,6 +91,13 @@ const initialValues: ResourceFormValues = {
   rule_form: {
     rules: [],
     _rule: {
+      name: "",
+      description: "",
+    },
+  },
+  facility_form: {
+    facilities: [],
+    _facility: {
       name: "",
       description: "",
     },
@@ -281,11 +289,19 @@ export default function CreateResource() {
                     setFieldValue={(field: keyof RuleFormValues, value: any) => {
                       setFieldValue(`rule_form.${String(field)}`, value);
                     }}
-                    setFieldError={(field: string, message: string) => {
+                    setFieldError={(field: keyof RuleFormValues, message: string) => {
                       setFieldError(`rule_form.${String(field)}`, message);
                     }}
                   />
-                  <FacilitiesSection values={values} setFieldValue={setFieldValue} />
+                  <FacilitiesSection
+                    values={values.facility_form}
+                    setFieldValue={(field: keyof FacilityFormValues, value: any) => {
+                      setFieldValue(`facility_form.${String(field)}`, value);
+                    }}
+                    setFieldError={(field: keyof FacilityFormValues, message: string) => {
+                      setFieldError(`facility_form.${String(field)}`, message);
+                    }}
+                  />
                   <AvailabitySection values={values} setFieldValue={setFieldValue} />
                   <GroupsSection values={values} setFieldValue={setFieldValue} />
                 </div>
