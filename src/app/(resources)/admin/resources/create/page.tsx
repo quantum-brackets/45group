@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { MenuItem, Typography } from "@mui/material";
 import { Formik, FormikHelpers } from "formik";
+import { useQueries } from "@tanstack/react-query";
 import * as Yup from "yup";
 import BackButton from "~/components/back-button";
 import FormField from "~/components/fields/form-field";
@@ -16,6 +17,7 @@ import FacilitiesSection from "~/modules/create-resource/facilities-section";
 import RulesSection from "~/modules/create-resource/rules-section";
 import Button from "~/components/button";
 import GroupsSection from "~/modules/create-resource/groups-section";
+import ResourcesService from "~/services/resources";
 
 type FacilityFormValues = {
   _show_facilities?: boolean;
@@ -26,8 +28,16 @@ type FacilityFormValues = {
 type RuleFormValues = {
   _show_facilities?: boolean;
   _show_rule_form?: boolean;
-  _rule?: string;
+  _rule: { name: string; description: string };
   _show_rules?: boolean;
+  _rules?: ResourceRule[];
+  rules: (Omit<ResourceRule, "id" | "created_at" | "updated_at"> & {
+    id?: string;
+    markedForDeletion?: boolean;
+    checked?: boolean;
+  })[];
+  new_rules?: { name: string; description: string; checked: boolean }[];
+  deleted_rules?: string[];
 };
 
 type AvailabilityFormValues = {
@@ -55,7 +65,6 @@ type GroupFormValues = {
 };
 
 export type ResourceFormValues = FacilityFormValues &
-  RuleFormValues &
   AvailabilityFormValues &
   GroupFormValues & {
     name: string;
@@ -64,6 +73,7 @@ export type ResourceFormValues = FacilityFormValues &
     description: string;
     type: "lodge" | "event" | "restaurant";
     thumbnail?: File;
+    rule_form: RuleFormValues;
     _thumbnail_base64?: string;
     media: File[];
     _media_base64: string[];
@@ -77,6 +87,13 @@ const initialValues: ResourceFormValues = {
   type: "lodge",
   media: [],
   availabilities: [],
+  rule_form: {
+    rules: [],
+    _rule: {
+      name: "",
+      description: "",
+    },
+  },
   _media_base64: [],
 };
 
@@ -91,6 +108,27 @@ const validationSchema = Yup.object({
 export default function CreateResource() {
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
+
+  const results = useQueries({
+    queries: [
+      {
+        queryKey: ["resources-rules"],
+        queryFn: ResourcesService.getResourceRules,
+      },
+      {
+        queryKey: ["resources-facilities"],
+        queryFn: ResourcesService.getResourceFacilities,
+      },
+    ],
+  });
+
+  const isLoading = results.some((result) => result.isLoading);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  const [{ data: rules }, { data: _facilities }] = results;
 
   const readFileAsBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -163,15 +201,20 @@ export default function CreateResource() {
         <BackButton href="/resources" text="Back to Resources" />
       </header>
       <Formik
-        initialValues={initialValues}
+        initialValues={{
+          ...initialValues,
+          _facilities,
+          rule_form: { ...initialValues.rule_form, rules: rules as RuleFormValues["rules"] },
+        }}
         onSubmit={async (values) => {
           const submissionValues = filterPrivateValues(values);
           console.log(submissionValues);
         }}
+        enableReinitialize
         validationSchema={validationSchema}
         validateOnBlur={false}
       >
-        {({ handleSubmit, setFieldValue, values, isSubmitting }) => (
+        {({ handleSubmit, setFieldValue, values, isSubmitting, setFieldError }) => (
           <form method="POST" onSubmit={handleSubmit} className="flex flex-col gap-6 pb-8">
             <header className="flex items-center justify-between gap-8">
               <Typography variant="h1">Create Resource</Typography>
@@ -233,7 +276,15 @@ export default function CreateResource() {
                     <MenuItem value={"event"}>Event</MenuItem>
                     <MenuItem value={"restaurant"}>Restaurant</MenuItem>
                   </SelectField>
-                  <RulesSection values={values} setFieldValue={setFieldValue} />
+                  <RulesSection
+                    values={values.rule_form}
+                    setFieldValue={(field: keyof RuleFormValues, value: any) => {
+                      setFieldValue(`rule_form.${String(field)}`, value);
+                    }}
+                    setFieldError={(field: string, message: string) => {
+                      setFieldError(`rule_form.${String(field)}`, message);
+                    }}
+                  />
                   <FacilitiesSection values={values} setFieldValue={setFieldValue} />
                   <AvailabitySection values={values} setFieldValue={setFieldValue} />
                   <GroupsSection values={values} setFieldValue={setFieldValue} />

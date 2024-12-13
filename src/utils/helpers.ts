@@ -89,9 +89,19 @@ export function validateSchema({ object, data }: { object: Yup.AnyObject; data: 
   return schema.validate({ ...data }, { abortEarly: false, stripUnknown: true });
 }
 
-export function filterPrivateValues<T>(values: T) {
+export function filterPrivateValues<T>(values: T): T {
+  if (!values || typeof values !== "object") {
+    return values;
+  }
+
+  if (Array.isArray(values)) {
+    return values.map((item) => filterPrivateValues(item)) as any;
+  }
+
   return Object.fromEntries(
-    Object.entries(values as any).filter(([key]) => !key.startsWith("_"))
+    Object.entries(values as any)
+      .filter(([key]) => !key.startsWith("_"))
+      .map(([key, value]) => [key, filterPrivateValues(value)])
   ) as T;
 }
 
