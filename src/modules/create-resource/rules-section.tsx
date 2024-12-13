@@ -7,8 +7,10 @@ import FormField from "~/components/fields/form-field";
 import CollapseSection from "~/components/resources-form/collapse-section";
 import SelectCard from "~/components/resources-form/select-card";
 
-type Field = keyof ResourceFormValues["rule_form"];
-type Values = ResourceFormValues["rule_form"];
+const FORM_KEY = "rule_form" as const;
+
+type Field = keyof ResourceFormValues[typeof FORM_KEY];
+type Values = ResourceFormValues[typeof FORM_KEY];
 
 type Props = {
   setFieldValue: (field: Field, value: any) => void;
@@ -27,9 +29,9 @@ const RuleForm = memo(({ onSubmit, onClose }: { onSubmit: () => void; onClose: (
       }
     }}
   >
-    <FormField name="rule_form._rule.name" placeholder="Type in a rule" label="Rule" required />
+    <FormField name={`${FORM_KEY}._rule.name`} placeholder="Type in a rule" label="Rule" required />
     <FormField
-      name="rule_form._rule.description"
+      name={`${FORM_KEY}._rule.description`}
       multiline
       rows={3}
       placeholder="Add a description"
@@ -68,7 +70,7 @@ export default function RulesSection({ setFieldValue, values, setFieldError }: P
     closeForm();
   }
 
-  function handleRuleChange(index: number, checked: boolean) {
+  function handleChange(index: number, checked: boolean) {
     const newRules = [...values.rules];
     newRules[index] = { ...newRules[index], checked };
     setFieldValue("rules", newRules);
@@ -91,7 +93,7 @@ export default function RulesSection({ setFieldValue, values, setFieldError }: P
   const visibleRules = values.rules.filter((rule) => !rule.markedForDeletion);
 
   return (
-    <CollapseSection<ResourceFormValues["rule_form"]>
+    <CollapseSection<Values>
       name="_show_rules"
       setFieldValue={setFieldValue}
       subtitle="Here you can choose the rules for this resource."
@@ -112,7 +114,7 @@ export default function RulesSection({ setFieldValue, values, setFieldError }: P
             description={rule.description}
             checked={!!rule.checked}
             onDelete={() => handleDelete(index)}
-            onChange={(checked) => handleRuleChange(index, checked)}
+            onChange={(checked) => handleChange(index, checked)}
             key={index}
           />
         ))}
