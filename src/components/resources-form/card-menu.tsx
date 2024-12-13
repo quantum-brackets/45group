@@ -4,7 +4,11 @@ import { ReactNode, useState } from "react";
 import { ClickAwayListener, Fade, Paper, Popper } from "@mui/material";
 import { GoKebabHorizontal } from "react-icons/go";
 
-export default function CardMenu({ children }: { children: ReactNode }) {
+type Props = {
+  children: ReactNode | ((props: { onClose: () => void }) => ReactNode);
+};
+
+export default function CardMenu({ children }: Props) {
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const open = Boolean(anchorEl);
 
@@ -21,7 +25,11 @@ export default function CardMenu({ children }: { children: ReactNode }) {
         <Popper open={open} anchorEl={anchorEl}>
           {({ TransitionProps }) => (
             <Fade {...TransitionProps} timeout={350}>
-              <Paper className="popper-btn">{children}</Paper>
+              <Paper className="popper-btn">
+                {typeof children === "function"
+                  ? children({ onClose }) // Call the function child with onClose
+                  : children}
+              </Paper>
             </Fade>
           )}
         </Popper>

@@ -7,17 +7,13 @@ import { FaMinus, FaPlus } from "react-icons/fa6";
 import Button from "../button";
 import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
 
-type Props = {
-  name: keyof ResourceFormValues;
+type Props<T> = {
+  name: keyof T;
   children: ReactNode;
   title: string;
-  values: ResourceFormValues;
+  values: T;
   subtitle: string;
-  setFieldValue: (
-    field: keyof ResourceFormValues,
-    value: any,
-    shouldValidate?: boolean
-  ) => ReturnType<FormikHelpers<ResourceFormValues>["setFieldValue"]>;
+  setFieldValue: (field: keyof T, value: any) => void;
   addBtn?: {
     show: boolean;
     onClick: () => void;
@@ -25,7 +21,7 @@ type Props = {
   };
 };
 
-export default function CollapseSection({
+export default function CollapseSection<T>({
   name,
   title,
   subtitle,
@@ -33,7 +29,7 @@ export default function CollapseSection({
   values,
   addBtn,
   setFieldValue,
-}: Props) {
+}: Props<T>) {
   return (
     <div className="col-span-2 mt-2 flex w-full flex-col gap-2">
       <button
