@@ -7,7 +7,7 @@ import { usersTable } from "~/db/schemas/users";
 import catchAsync from "~/utils/catch-async";
 import { HEADER_DATA_KEY } from "~/utils/constants";
 import { appError, validateSchema } from "~/utils/helpers";
-import { uploadFileToS3 } from "~/utils/s3";
+import UploadService from "~/services/upload";
 
 //! check if user exist first before upload to s3
 
@@ -35,13 +35,7 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
 
   let imageUrl = null;
   if (image) {
-    const filename = `profiles/${(image as File).name}`;
-
-    const arrayBuffer = await (image as File).arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const { VersionId } = await uploadFileToS3(buffer, filename);
-    imageUrl = `${process.env.BASE_URL}/api/assets/${filename}?versionId=${VersionId}`;
+    imageUrl = await UploadService.uploadSingle(image, "profiles");
   }
 
   const [updatedUser] = await db
