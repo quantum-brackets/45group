@@ -32,7 +32,7 @@ type FacilityFormValues = {
 
 type RuleFormValues = {
   _show_rule_form?: boolean;
-  _rule: { name: string; description: string };
+  _rule: { name: string; description: string; category: "house_rules" | "cancellations" };
   _show_rules?: boolean;
   rules: (Omit<ResourceRule, "id" | "created_at" | "updated_at"> & {
     id?: string;
@@ -93,6 +93,7 @@ const initialValues: ResourceFormValues = {
     _rule: {
       name: "",
       description: "",
+      category: "house_rules",
     },
   },
   facility_form: {
@@ -136,7 +137,7 @@ export default function CreateResource() {
     return <div>Loading...</div>;
   }
 
-  const [{ data: rules }, { data: _facilities }] = results;
+  const [{ data: rules }, { data: facilities }] = results;
 
   const readFileAsBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -206,12 +207,15 @@ export default function CreateResource() {
   return (
     <div className="flex flex-col gap-4">
       <header>
-        <BackButton href="/resources" text="Back to Resources" />
+        <BackButton href="/admin/resources" text="Back to Resources" />
       </header>
       <Formik
         initialValues={{
           ...initialValues,
-          _facilities,
+          facility_form: {
+            ...initialValues.facility_form,
+            facilities: facilities as FacilityFormValues["facilities"],
+          },
           rule_form: { ...initialValues.rule_form, rules: rules as RuleFormValues["rules"] },
         }}
         onSubmit={async (values) => {

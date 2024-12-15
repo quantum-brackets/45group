@@ -97,7 +97,7 @@ export default function FacilitiesSection({ setFieldValue, values, setFieldError
     }
   }
 
-  const visibleFacilities = values.facilities.filter((facility) => !facility.markedForDeletion);
+  const visibleFacilities = values.facilities?.filter((facility) => !facility.markedForDeletion);
 
   return (
     <CollapseSection
