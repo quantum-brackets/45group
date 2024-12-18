@@ -7,6 +7,7 @@ import { IconButton, Avatar } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { LuLayoutDashboard } from "react-icons/lu";
 import { GrResources } from "react-icons/gr";
+import { TbMap2 } from "react-icons/tb";
 import Logo from "~/components/logo";
 import Sidebar from "~/components/sidebar";
 import UsersService from "~/services/users";
@@ -23,6 +24,11 @@ const links = [
     title: "Resources",
     href: "/admin/resources",
     icon: GrResources,
+  },
+  {
+    title: "Locations",
+    href: "/admin/locations",
+    icon: TbMap2,
   },
 ];
 

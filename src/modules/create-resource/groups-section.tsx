@@ -6,8 +6,8 @@ import { FaMinus, FaPlus } from "react-icons/fa6";
 import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
 import Button from "~/components/button";
 import FormField from "~/components/fields/form-field";
-import CardMenu from "~/components/resources-form/card-menu";
-import CollapseSection from "~/components/resources-form/collapse-section";
+import CardMenu from "~/components/form/resources-form/card-menu";
+import CollapseSection from "~/components/form/resources-form/collapse-section";
 
 type Props = {
   setFieldValue: (
