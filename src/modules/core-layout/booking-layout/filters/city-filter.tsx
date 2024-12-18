@@ -23,6 +23,7 @@ export default function CityFilter({
         updateValue(value);
         if (autoApply) updateSearchParams(value);
       }}
+      emptyText="Select a city"
     >
       <MenuItem value={"abuja"}>Abuja</MenuItem>
       <MenuItem value={"calabar"}>Calabar</MenuItem>
