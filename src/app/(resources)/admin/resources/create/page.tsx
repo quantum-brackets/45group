@@ -10,7 +10,7 @@ import BackButton from "~/components/back-button";
 import FormField from "~/components/fields/form-field";
 import SelectField from "~/components/fields/select-field";
 import MediaCard from "~/components/resources-form/media-card";
-import { filterPrivateValues } from "~/utils/helpers";
+import { cn, filterPrivateValues } from "~/utils/helpers";
 import { notifyError, notifySuccess } from "~/utils/toast";
 import FileUploadSection from "~/components/resources-form/file-upload-section";
 import AvailabitySection from "~/modules/create-resource/availability-section";
@@ -19,6 +19,7 @@ import RulesSection from "~/modules/create-resource/rules-section";
 import Button from "~/components/button";
 import GroupsSection from "~/modules/create-resource/groups-section";
 import ResourcesService from "~/services/resources";
+import LocationForm from "~/modules/create-resource/location-form";
 
 type FacilityFormValues = {
   _show_facility_form?: boolean;
@@ -69,8 +70,10 @@ type GroupFormValues = {
 export type ResourceFormValues = AvailabilityFormValues &
   GroupFormValues & {
     name: string;
-    location: string;
-    address: string;
+    location: {
+      id: string;
+    } | null;
+    _location?: string;
     description: string;
     type: "lodge" | "event" | "restaurant";
     thumbnail?: File;
@@ -84,10 +87,9 @@ export type ResourceFormValues = AvailabilityFormValues &
 
 const initialValues: ResourceFormValues = {
   name: "",
-  location: "",
-  address: "",
   description: "",
   type: "lodge",
+  location: null,
   media: [],
   availabilities: [],
   rule_form: {
@@ -243,143 +245,168 @@ export default function CreateResource() {
         validateOnBlur={false}
       >
         {({ handleSubmit, setFieldValue, values, isSubmitting, setFieldError }) => (
-          <form method="POST" onSubmit={handleSubmit} className="flex flex-col gap-6 pb-8">
+          <form
+            method="POST"
+            onSubmit={handleSubmit}
+            className={cn("flex flex-col pb-8", {
+              "gap-6": values.location,
+              "gap-2": !values.location,
+            })}
+          >
             <header className="flex items-center justify-between gap-8">
               <Typography variant="h1">Create Resource</Typography>
-              <div className="flex items-center gap-4">
-                <Button
-                  type="submit"
-                  onClick={async () => await setFieldValue("publish", false)}
-                  // disabled={values.publish}
-                  variant="outlined"
-                  color="info"
-                  loading={isSubmitting}
-                >
-                  Save as draft
-                </Button>
-                <Button
-                  type="submit"
-                  // disabled={values.publish}
-                  loading={isSubmitting}
-                  onClick={async () => await setFieldValue("publish", true)}
-                >
-                  Publish Resource
-                </Button>
-              </div>
-            </header>
-            <main className="flex flex-col gap-8">
-              <div className="grid grid-cols-2 gap-8 tablet:grid-cols-1 largeTabletAndBelow:gap-6 [@media(max-width:1060px)]:grid-cols-1">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField name="name" label="Name" required placeholder="Enter a name" />
-                  <FormField
-                    name="location"
-                    label="Location"
-                    required
-                    placeholder="Enter a short location"
-                  />
-                  <FormField
-                    name="address"
-                    label="Address"
-                    required
-                    placeholder="Enter a detailed address"
-                    multiline
-                    rows={5}
-                    wrapperClassName="col-span-2"
-                  />
-                  <FormField
-                    name="description"
-                    label="Description"
-                    required
-                    placeholder="Enter a description"
-                    multiline
-                    rows={5}
-                    wrapperClassName="col-span-2"
-                  />
-                  <SelectField
-                    label="Type of resource"
-                    required
-                    name="type"
-                    placeholder="Choose a type of resource"
-                    wrapperClassName="col-span-2"
-                    className="capitalize"
+              {values.location ? (
+                <div className="flex items-center gap-4">
+                  <Button
+                    type="submit"
+                    onClick={async () => await setFieldValue("publish", false)}
+                    // disabled={values.publish}
+                    variant="outlined"
+                    color="info"
+                    loading={isSubmitting}
                   >
-                    <MenuItem value={"lodge"}>Lodge</MenuItem>
-                    <MenuItem value={"event"}>Event</MenuItem>
-                    <MenuItem value={"restaurant"}>Restaurant</MenuItem>
-                  </SelectField>
-                  <RulesSection
-                    values={values.rule_form}
-                    setFieldValue={(field: keyof RuleFormValues, value: any) => {
-                      setFieldValue(`rule_form.${String(field)}`, value);
-                    }}
-                    setFieldError={(field: keyof RuleFormValues, message: string) => {
-                      setFieldError(`rule_form.${String(field)}`, message);
-                    }}
-                  />
-                  <FacilitiesSection
-                    values={values.facility_form}
-                    setFieldValue={(field: keyof FacilityFormValues, value: any) => {
-                      setFieldValue(`facility_form.${String(field)}`, value);
-                    }}
-                    setFieldError={(field: keyof FacilityFormValues, message: string) => {
-                      setFieldError(`facility_form.${String(field)}`, message);
-                    }}
-                  />
-                  <AvailabitySection values={values} setFieldValue={setFieldValue} />
-                  <GroupsSection values={values} setFieldValue={setFieldValue} />
+                    Save as draft
+                  </Button>
+                  <Button
+                    type="submit"
+                    // disabled={values.publish}
+                    loading={isSubmitting}
+                    onClick={async () => await setFieldValue("publish", true)}
+                  >
+                    Publish Resource
+                  </Button>
                 </div>
-                <div className="flex flex-col gap-6 divide-y">
-                  <div>
-                    <FileUploadSection
-                      title="Thumbnail"
-                      description="Used to represent your resource."
-                      inputRef={thumbnailInputRef}
-                      onFileSelect={(files) => handleThumbnailSelect(files, setFieldValue)}
-                    />
-                    {values.thumbnail && values._thumbnail_base64 && (
-                      <div className="mt-4 flex flex-col gap-2">
-                        <MediaCard
-                          file={values.thumbnail}
-                          base64={values._thumbnail_base64}
-                          onDelete={() => {
-                            setFieldValue("thumbnail", undefined);
-                            setFieldValue("_thumbnail_base64", undefined);
-                          }}
-                        />
-                      </div>
-                    )}
+              ) : (
+                <div>
+                  <Button
+                    type="button"
+                    disabled={!values._location}
+                    loading={isSubmitting}
+                    onClick={() =>
+                      values._location && setFieldValue("location", { id: values._location })
+                    } // First find the location then set it
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </header>
+            {values.location ? (
+              <main className="flex flex-col gap-8">
+                <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-4">
+                  <div className="flex justify-between gap-8">
+                    <h5 className="text-sm">Location</h5>
+                    <button
+                      className="text-sm text-primary hover:underline"
+                      onClick={() => {
+                        if (!values.location) return;
+                        setFieldValue("location", null);
+                        setFieldValue("_location", values.location.id);
+                      }}
+                    >
+                      Change
+                    </button>
                   </div>
-                  <div className="pt-6">
-                    <FileUploadSection
-                      title="Media"
-                      description="Add images of resource."
-                      inputRef={mediaInputRef}
-                      onFileSelect={(files) => handleMediaSelect(files, values, setFieldValue)}
-                      multiple
+                  <p className="text-xs text-zinc-700">A very long detailed address.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-8 tablet:grid-cols-1 largeTabletAndBelow:gap-6 [@media(max-width:1060px)]:grid-cols-1">
+                  <div className="flex flex-col gap-4">
+                    <FormField name="name" label="Name" required placeholder="Enter a name" />
+                    <FormField
+                      name="description"
+                      label="Description"
+                      required
+                      placeholder="Enter a description"
+                      multiline
+                      rows={5}
                     />
-                    <div className="mt-4 flex flex-col gap-2">
-                      {values.media.map((file, index) => (
-                        <MediaCard
-                          file={file}
-                          base64={values._media_base64[index]}
-                          key={index}
-                          onDelete={() => {
-                            setFieldValue(
-                              "media",
-                              values.media.filter((_, idx) => idx !== index)
-                            );
-                            setFieldValue(
-                              "_media_base64",
-                              values._media_base64.filter((_, idx) => idx !== index)
-                            );
-                          }}
-                        />
-                      ))}
+                    <SelectField
+                      label="Type of resource"
+                      required
+                      name="type"
+                      placeholder="Choose a type of resource"
+                      className="capitalize"
+                    >
+                      <MenuItem value={"lodge"}>Lodge</MenuItem>
+                      <MenuItem value={"event"}>Event</MenuItem>
+                      <MenuItem value={"restaurant"}>Restaurant</MenuItem>
+                    </SelectField>
+                    <RulesSection
+                      values={values.rule_form}
+                      setFieldValue={(field: keyof RuleFormValues, value: any) => {
+                        setFieldValue(`rule_form.${String(field)}`, value);
+                      }}
+                      setFieldError={(field: keyof RuleFormValues, message: string) => {
+                        setFieldError(`rule_form.${String(field)}`, message);
+                      }}
+                    />
+                    <FacilitiesSection
+                      values={values.facility_form}
+                      setFieldValue={(field: keyof FacilityFormValues, value: any) => {
+                        setFieldValue(`facility_form.${String(field)}`, value);
+                      }}
+                      setFieldError={(field: keyof FacilityFormValues, message: string) => {
+                        setFieldError(`facility_form.${String(field)}`, message);
+                      }}
+                    />
+                    <AvailabitySection values={values} setFieldValue={setFieldValue} />
+                    <GroupsSection values={values} setFieldValue={setFieldValue} />
+                  </div>
+                  <div className="flex flex-col gap-6 divide-y">
+                    <div>
+                      <FileUploadSection
+                        title="Thumbnail"
+                        description="Used to represent your resource."
+                        inputRef={thumbnailInputRef}
+                        onFileSelect={(files) => handleThumbnailSelect(files, setFieldValue)}
+                      />
+                      {values.thumbnail && values._thumbnail_base64 && (
+                        <div className="mt-4 flex flex-col gap-2">
+                          <MediaCard
+                            file={values.thumbnail}
+                            base64={values._thumbnail_base64}
+                            onDelete={() => {
+                              setFieldValue("thumbnail", undefined);
+                              setFieldValue("_thumbnail_base64", undefined);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="pt-6">
+                      <FileUploadSection
+                        title="Media"
+                        description="Add images of resource."
+                        inputRef={mediaInputRef}
+                        onFileSelect={(files) => handleMediaSelect(files, values, setFieldValue)}
+                        multiple
+                      />
+                      <div className="mt-4 flex flex-col gap-2">
+                        {values.media.map((file, index) => (
+                          <MediaCard
+                            file={file}
+                            base64={values._media_base64[index]}
+                            key={index}
+                            onDelete={() => {
+                              setFieldValue(
+                                "media",
+                                values.media.filter((_, idx) => idx !== index)
+                              );
+                              setFieldValue(
+                                "_media_base64",
+                                values._media_base64.filter((_, idx) => idx !== index)
+                              );
+                            }}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </main>
+              </main>
+            ) : (
+              <LocationForm values={values} setFieldValue={setFieldValue} />
+            )}
           </form>
         )}
       </Formik>
