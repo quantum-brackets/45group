@@ -4,8 +4,8 @@ import { memo } from "react";
 import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
 import Button from "~/components/button";
 import FormField from "~/components/fields/form-field";
-import CollapseSection from "~/components/resources-form/collapse-section";
-import SelectCard from "~/components/resources-form/select-card";
+import CollapseSection from "~/components/form/resources-form/collapse-section";
+import SelectCard from "~/components/form/resources-form/select-card";
 
 const FORM_KEY = "facility_form" as const;
 

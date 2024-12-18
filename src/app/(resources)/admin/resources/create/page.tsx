@@ -9,10 +9,10 @@ import { isAxiosError } from "axios";
 import BackButton from "~/components/back-button";
 import FormField from "~/components/fields/form-field";
 import SelectField from "~/components/fields/select-field";
-import MediaCard from "~/components/resources-form/media-card";
+import MediaCard from "~/components/form/media-card";
 import { cn, filterPrivateValues } from "~/utils/helpers";
 import { notifyError, notifySuccess } from "~/utils/toast";
-import FileUploadSection from "~/components/resources-form/file-upload-section";
+import FileUploadCard from "~/components/form/file-upload-section";
 import AvailabitySection from "~/modules/create-resource/availability-section";
 import FacilitiesSection from "~/modules/create-resource/facilities-section";
 import RulesSection from "~/modules/create-resource/rules-section";
@@ -354,7 +354,7 @@ export default function CreateResource() {
                   </div>
                   <div className="flex flex-col gap-6 divide-y">
                     <div>
-                      <FileUploadSection
+                      <FileUploadCard
                         title="Thumbnail"
                         description="Used to represent your resource."
                         inputRef={thumbnailInputRef}
@@ -374,7 +374,7 @@ export default function CreateResource() {
                       )}
                     </div>
                     <div className="pt-6">
-                      <FileUploadSection
+                      <FileUploadCard
                         title="Media"
                         description="Add images of resource."
                         inputRef={mediaInputRef}

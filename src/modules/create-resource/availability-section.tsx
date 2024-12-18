@@ -9,7 +9,7 @@ import dayjs, { Dayjs } from "dayjs";
 import { FormikHelpers } from "formik";
 import { GoKebabHorizontal } from "react-icons/go";
 import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
-import CollapseSection from "~/components/resources-form/collapse-section";
+import CollapseSection from "~/components/form/resources-form/collapse-section";
 import SelectField from "~/components/fields/select-field";
 import Button from "~/components/button";
 

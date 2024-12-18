@@ -1,4 +1,4 @@
-export default function FileUploadSection({
+export default function FileUploadCard({
   title,
   description,
   inputRef,
