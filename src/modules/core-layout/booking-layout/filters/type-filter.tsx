@@ -23,6 +23,7 @@ export default function TypeFilter({
         updateValue(value);
         if (autoApply) updateSearchParams(value);
       }}
+      emptyText="Select a type"
     >
       <MenuItem value={"rooms"}>Rooms</MenuItem>
       <MenuItem value={"events"}>Events</MenuItem>

@@ -271,6 +271,15 @@ const theme = createTheme({
         },
       },
     },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          "&.placeholder": {
+            color: "#94919a",
+          },
+        },
+      },
+    },
   },
 });
 

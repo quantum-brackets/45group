@@ -52,7 +52,11 @@ export default function Filters({ isMobileDrawerOpen, onCloseMobileDrawer }: Pro
   const updateSearchParams = useCallback(
     (key: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      params.set(key, value);
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
       window.history.replaceState(null, "", `/booking?${params.toString()}`);
     },
     [searchParams]
