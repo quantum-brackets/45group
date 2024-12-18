@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef } from "react";
 import { MenuItem, Typography } from "@mui/material";
 import { useMutation } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
@@ -39,8 +38,6 @@ const initialValues: InitialValues = {
 };
 
 export default function CreateLocation() {
-  const mediaInputRef = useRef<HTMLInputElement>(null);
-
   const { mutateAsync: createLocation } = useMutation({
     mutationFn: LocationsService.createLocation,
     onError: (error) => {
@@ -61,7 +58,6 @@ export default function CreateLocation() {
           const submissionValues = filterPrivateValues(values);
 
           if (!media.length) return notifyError({ message: "At least one media must be uploaded" });
-          console.log(submissionValues);
           await createLocation(submissionValues);
         }}
         enableReinitialize
