@@ -9,8 +9,6 @@ import { HEADER_DATA_KEY } from "~/utils/constants";
 import { appError, validateSchema } from "~/utils/helpers";
 import UploadService from "~/services/upload";
 
-//! check if user exist first before upload to s3
-
 export const PATCH = catchAsync(async (req: NextRequest) => {
   const middlewareData = req.headers.get(HEADER_DATA_KEY);
   const { userId }: { userId: string } = middlewareData ? JSON.parse(middlewareData) : {};
@@ -42,7 +40,7 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
     .update(usersTable)
     .set({
       ...validatedData,
-      image: imageUrl,
+      image: imageUrl ?? undefined,
     })
     .where(eq(usersTable.id, userId))
     .returning();

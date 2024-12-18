@@ -58,9 +58,9 @@ export default function Profile() {
         initialValues={initialValues}
         validationSchema={validationSchema}
         onSubmit={async ({ email: _, ...values }) => {
-          const submissionValues = filterPrivateValues(values);
+          const submissionValues = compareObjectValues(initialValues, filterPrivateValues(values));
 
-          await updateMe(compareObjectValues(initialValues, submissionValues), {
+          await updateMe(submissionValues, {
             onSuccess: () => {
               notifySuccess({ message: "Profile updated successfully" });
             },
