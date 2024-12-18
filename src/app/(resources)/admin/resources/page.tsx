@@ -10,7 +10,13 @@ export default function Resources() {
         <Typography variant="h1">Resources</Typography>
         <Button href="/admin/resources/create">Create Resources</Button>
       </header>
-      <div></div>
+      <div className="flex flex-col gap-8">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="rounded-lg bg-primary p-4"></div>
+          <div className="rounded-lg bg-primary p-4"></div>
+        </div>
+        <div></div>
+      </div>
     </main>
   );
 }

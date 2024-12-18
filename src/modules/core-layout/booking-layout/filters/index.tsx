@@ -38,8 +38,8 @@ export default function Filters({ isMobileDrawerOpen, onCloseMobileDrawer }: Pro
   useEffect(() => {
     const type = searchParams.get("type") || "";
     const city = searchParams.get("city") || "";
-    const startDate = searchParams.get("from") || "";
-    const endDate = searchParams.get("to") || "";
+    const startDate = searchParams.get("startDate") || "";
+    const endDate = searchParams.get("endDate") || "";
 
     setFilters({
       type,
@@ -66,7 +66,7 @@ export default function Filters({ isMobileDrawerOpen, onCloseMobileDrawer }: Pro
     (key: keyof typeof filters) => ({
       value: filters[key] as string,
       updateValue: (value: string) => updateFilters(key, value),
-      updateSearchParams: () => filters[key] && updateSearchParams(key, filters[key] as string),
+      updateSearchParams: (value: string) => updateSearchParams(key, value),
     }),
     [filters, updateFilters, updateSearchParams]
   );
@@ -87,6 +87,7 @@ export default function Filters({ isMobileDrawerOpen, onCloseMobileDrawer }: Pro
         isOpen={isMobileDrawerOpen}
         onClose={onCloseMobileDrawer}
         dates={dates}
+        filters={filters}
         createFilterProps={createFilterProps}
       />
     </>

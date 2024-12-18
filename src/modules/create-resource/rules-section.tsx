@@ -1,9 +1,11 @@
 "use client";
 
+import { MenuItem } from "@mui/material";
 import { memo } from "react";
 import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
 import Button from "~/components/button";
 import FormField from "~/components/fields/form-field";
+import SelectField from "~/components/fields/select-field";
 import CollapseSection from "~/components/resources-form/collapse-section";
 import SelectCard from "~/components/resources-form/select-card";
 
@@ -30,6 +32,16 @@ const RuleForm = memo(({ onSubmit, onClose }: { onSubmit: () => void; onClose: (
     }}
   >
     <FormField name={`${FORM_KEY}._rule.name`} placeholder="Type in a rule" label="Rule" required />
+    <SelectField
+      label="Category"
+      required
+      name={`${FORM_KEY}._rule.category`}
+      placeholder="Choose a category"
+      className="capitalize"
+    >
+      <MenuItem value={"house_rules"}>House Rules</MenuItem>
+      <MenuItem value={"cancellations"}>Cancellations</MenuItem>
+    </SelectField>
     <FormField
       name={`${FORM_KEY}._rule.description`}
       multiline
@@ -90,7 +102,7 @@ export default function RulesSection({ setFieldValue, values, setFieldError }: P
     }
   }
 
-  const visibleRules = values.rules.filter((rule) => !rule.markedForDeletion);
+  const visibleRules = values.rules?.filter((rule) => !rule.markedForDeletion);
 
   return (
     <CollapseSection<Values>

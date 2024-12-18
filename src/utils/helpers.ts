@@ -74,7 +74,7 @@ export function compareObjectValues(
 ) {
   return Object.keys(initialValues).reduce(
     (acc, key) => {
-      if (initialValues[key] !== newValues[key]) {
+      if (key in newValues && initialValues[key] !== newValues[key]) {
         acc[key] = newValues[key];
       }
       return acc;
@@ -93,6 +93,8 @@ export function filterPrivateValues<T>(values: T): T {
   if (!values || typeof values !== "object") {
     return values;
   }
+
+  if (values instanceof File) return values;
 
   if (Array.isArray(values)) {
     return values.map((item) => filterPrivateValues(item)) as any;

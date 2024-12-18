@@ -14,6 +14,12 @@ import TypeFilter from "./type-filter";
 type Props = {
   isOpen: boolean;
   onClose: () => void;
+  filters: {
+    type: string;
+    city: string;
+    startDate: string;
+    endDate: string;
+  };
   dates: {
     startDate: string | null;
     endDate: string | null;
@@ -21,22 +27,28 @@ type Props = {
   createFilterProps: (key: "type" | "city" | "startDate" | "endDate") => {
     value: string;
     updateValue: (value: string) => void;
-    updateSearchParams: () => void;
+    updateSearchParams: (value: string) => void;
   };
 };
 
-export default function MobileFilter({ isOpen, onClose, dates, createFilterProps }: Props) {
+export default function MobileFilter({
+  isOpen,
+  onClose,
+  dates,
+  createFilterProps,
+  filters,
+}: Props) {
   const groupFilterRef = useRef<{ applyGroup: () => void } | null>(null);
 
   const handleMobileApplyFilters = useCallback(() => {
     const filterKeys = ["type", "city", "startDate", "endDate"] as const;
     filterKeys.forEach((key) => {
       const filterProps = createFilterProps(key);
-      filterProps.updateSearchParams();
+      filterProps.updateSearchParams(filters[key]);
     });
     groupFilterRef.current?.applyGroup();
     onClose();
-  }, [createFilterProps, onClose]);
+  }, [createFilterProps, filters, onClose]);
 
   return (
     <Drawer className="hidden tablet:block" anchor="bottom" open={isOpen} onClose={onClose}>
