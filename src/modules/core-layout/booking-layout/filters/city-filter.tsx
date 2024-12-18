@@ -2,7 +2,7 @@ import { MenuItem } from "@mui/material";
 import SelectInput from "~/components/inputs/select-input";
 
 type Props = {
-  updateSearchParams: () => void;
+  updateSearchParams: (value: string) => void;
   autoApply?: boolean;
   value: string;
   updateValue: (value: string) => void;
@@ -21,7 +21,7 @@ export default function CityFilter({
       onChange={(e) => {
         const value = e.target.value as string;
         updateValue(value);
-        if (autoApply) updateSearchParams();
+        if (autoApply) updateSearchParams(value);
       }}
     >
       <MenuItem value={"abuja"}>Abuja</MenuItem>

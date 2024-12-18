@@ -13,8 +13,8 @@ type Props = {
     startDate: string | null;
     endDate: string | null;
   };
-  updateValue: (date: string) => void;
-  updateSearchParams: () => void;
+  updateValue: (value: string) => void;
+  updateSearchParams: (value: string) => void;
 };
 
 export default function ToFilter({
@@ -41,9 +41,10 @@ export default function ToFilter({
           value={endDate ? dayjs(endDate, DATE_FORMAT) : null}
           minDate={startDate ? dayjs(startDate, DATE_FORMAT) : undefined}
           onChange={(date: Dayjs | null) => {
-            date && updateValue(date.format(DATE_FORMAT));
-            if (autoApply && date) {
-              updateSearchParams();
+            const value = date ? date.format(DATE_FORMAT) : null;
+            value && updateValue(value);
+            if (autoApply && value) {
+              updateSearchParams(value);
             }
           }}
         />
