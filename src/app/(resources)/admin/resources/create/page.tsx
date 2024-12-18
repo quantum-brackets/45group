@@ -3,14 +3,15 @@
 import { useRef } from "react";
 import { MenuItem, Typography } from "@mui/material";
 import { Formik, FormikHelpers } from "formik";
-import { useQueries } from "@tanstack/react-query";
+import { useMutation, useQueries } from "@tanstack/react-query";
 import * as Yup from "yup";
+import { isAxiosError } from "axios";
 import BackButton from "~/components/back-button";
 import FormField from "~/components/fields/form-field";
 import SelectField from "~/components/fields/select-field";
 import MediaCard from "~/components/resources-form/media-card";
 import { filterPrivateValues } from "~/utils/helpers";
-import { notifyError } from "~/utils/toast";
+import { notifyError, notifySuccess } from "~/utils/toast";
 import FileUploadSection from "~/components/resources-form/file-upload-section";
 import AvailabitySection from "~/modules/create-resource/availability-section";
 import FacilitiesSection from "~/modules/create-resource/facilities-section";
@@ -78,6 +79,7 @@ export type ResourceFormValues = AvailabilityFormValues &
     _thumbnail_base64?: string;
     media: File[];
     _media_base64: string[];
+    publish: boolean;
   };
 
 const initialValues: ResourceFormValues = {
@@ -103,6 +105,7 @@ const initialValues: ResourceFormValues = {
       description: "",
     },
   },
+  publish: false,
   _media_base64: [],
 };
 
@@ -132,6 +135,18 @@ export default function CreateResource() {
   });
 
   const isLoading = results.some((result) => result.isLoading);
+
+  const { mutateAsync: createResource } = useMutation({
+    mutationFn: ResourcesService.createResource,
+    onSuccess: () => {
+      notifySuccess({ message: "Resource successfully created" });
+    },
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        notifyError({ message: error.response?.data.error });
+      }
+    },
+  });
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -221,6 +236,7 @@ export default function CreateResource() {
         onSubmit={async (values) => {
           const submissionValues = filterPrivateValues(values);
           console.log(submissionValues);
+          await createResource(submissionValues);
         }}
         enableReinitialize
         validationSchema={validationSchema}
@@ -233,16 +249,19 @@ export default function CreateResource() {
               <div className="flex items-center gap-4">
                 <Button
                   type="submit"
-                  onClick={async () => await setFieldValue("draft", true)}
+                  onClick={async () => await setFieldValue("publish", false)}
+                  // disabled={values.publish}
                   variant="outlined"
                   color="info"
+                  loading={isSubmitting}
                 >
                   Save as draft
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
-                  onClick={async () => await setFieldValue("draft", false)}
+                  // disabled={values.publish}
+                  loading={isSubmitting}
+                  onClick={async () => await setFieldValue("publish", true)}
                 >
                   Publish Resource
                 </Button>
