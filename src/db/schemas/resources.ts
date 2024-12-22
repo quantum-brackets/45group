@@ -3,6 +3,7 @@ import { relations } from "drizzle-orm";
 import { rulesTable } from "./rules";
 import { mediasTable } from "./media";
 import { facilitiesTable } from "./facilities";
+import { locationsTable } from "./locations";
 
 export const resourcesTable = pgTable("resources", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -20,8 +21,14 @@ export const resourcesTable = pgTable("resources", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
-export const resourceRelations = relations(resourcesTable, ({ many }) => ({
+export const resourceRelations = relations(resourcesTable, ({ many, one }) => ({
   images: many(mediasTable),
+  location: one(locationsTable, {
+    fields: [resourcesTable.location],
+    references: [locationsTable.id],
+  }),
+  rules: many(resourceRulesTable),
+  facilities: many(resourceFacilitiesTable),
 }));
 
 export const resourceRulesTable = pgTable(
