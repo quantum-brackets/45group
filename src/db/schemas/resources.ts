@@ -8,12 +8,14 @@ import { locationsTable } from "./locations";
 export const resourcesTable = pgTable("resources", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 300 }).notNull(),
-  location: varchar("location", { length: 300 }).notNull(),
   type: varchar("type", { enum: ["lodge", "event", "restaurant"] }).notNull(),
   description: varchar("description").notNull(),
   status: varchar("status", { enum: ["draft", "published", "archived", "inactive"] }).default(
     "draft"
   ),
+  location_id: uuid("location_id")
+    .references(() => locationsTable.id)
+    .notNull(),
   thumbnail: varchar("thumbnail").notNull(),
   rating: numeric("rating"),
   address: varchar("address"),
@@ -24,7 +26,7 @@ export const resourcesTable = pgTable("resources", {
 export const resourceRelations = relations(resourcesTable, ({ many, one }) => ({
   images: many(mediasTable),
   location: one(locationsTable, {
-    fields: [resourcesTable.location],
+    fields: [resourcesTable.location_id],
     references: [locationsTable.id],
   }),
   rules: many(resourceRulesTable),
