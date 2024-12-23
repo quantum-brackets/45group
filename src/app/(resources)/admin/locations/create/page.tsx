@@ -9,7 +9,7 @@ import BackButton from "~/components/back-button";
 import Button from "~/components/button";
 import LocationsService from "~/services/locations";
 import { filterPrivateValues } from "~/utils/helpers";
-import { notifyError } from "~/utils/toast";
+import { notifyError, notifySuccess } from "~/utils/toast";
 import MultiMedia from "~/components/form/multi-media";
 import FormField from "~/components/fields/form-field";
 import SelectField from "~/components/fields/select-field";
@@ -17,7 +17,9 @@ import statesData from "~/data/states.json";
 
 const validationSchema = Yup.object({
   name: Yup.string().required("Name is required"),
-  address: Yup.string().required("Address is required"),
+  state: Yup.string().required("State is required"),
+  city: Yup.string().required("City is required"),
+  description: Yup.string().optional(),
 });
 
 type InitialValues = {
@@ -42,7 +44,11 @@ export default function CreateLocation() {
     mutationFn: LocationsService.createLocation,
     onError: (error) => {
       if (isAxiosError(error)) {
-        notifyError({ message: error.response?.data.error });
+        const data = error.response?.data;
+        if (data.errors) {
+          return notifyError({ message: data.errors[0].message });
+        }
+        notifyError({ message: data.error });
       }
     },
   });
@@ -58,9 +64,16 @@ export default function CreateLocation() {
           const submissionValues = filterPrivateValues(values);
 
           if (!media.length) return notifyError({ message: "At least one media must be uploaded" });
-          await createLocation(submissionValues);
+          await createLocation(
+            { ...submissionValues, images: media },
+            {
+              onSuccess: () => {
+                notifySuccess({ message: "Location successfully created" });
+              },
+            }
+          );
         }}
-        enableReinitialize
+        // enableReinitialize
         validationSchema={validationSchema}
         validateOnBlur={false}
       >
