@@ -28,10 +28,19 @@ CREATE TABLE IF NOT EXISTS "bookings" (
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "facilities" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"start_time" timestamp NOT NULL,
-	"end_time" timestamp NOT NULL,
+	"name" varchar(150) NOT NULL,
 	"description" varchar,
-	"status" varchar NOT NULL,
+	"updated_at" timestamp,
+	"created_at" timestamp DEFAULT now(),
+	CONSTRAINT "facilities_name_unique" UNIQUE("name")
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "locations" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" varchar(300) NOT NULL,
+	"state" varchar(100) NOT NULL,
+	"city" varchar(100) NOT NULL,
+	"description" varchar,
 	"updated_at" timestamp,
 	"created_at" timestamp DEFAULT now()
 );
@@ -41,7 +50,8 @@ CREATE TABLE IF NOT EXISTS "medias" (
 	"url" varchar NOT NULL,
 	"type" varchar NOT NULL,
 	"file_type" varchar NOT NULL,
-	"resource_id" uuid NOT NULL,
+	"entity_type" varchar NOT NULL,
+	"entity_id" uuid NOT NULL,
 	"updated_at" timestamp,
 	"created_at" timestamp DEFAULT now(),
 	"metadata" jsonb
@@ -106,9 +116,10 @@ CREATE TABLE IF NOT EXISTS "rules" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(150) NOT NULL,
 	"description" varchar,
-	"category" varchar,
+	"category" varchar NOT NULL,
 	"updated_at" timestamp,
-	"created_at" timestamp DEFAULT now()
+	"created_at" timestamp DEFAULT now(),
+	CONSTRAINT "rules_name_unique" UNIQUE("name")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "users" (
@@ -143,12 +154,6 @@ END $$;
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "bookings" ADD CONSTRAINT "bookings_resource_id_resources_id_fk" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") ON DELETE no action ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "medias" ADD CONSTRAINT "medias_resource_id_resources_id_fk" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

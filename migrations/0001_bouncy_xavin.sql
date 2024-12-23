@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS "entity_idx" ON "medias" USING btree ("entity_type","entity_id");

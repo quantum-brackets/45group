@@ -1,6 +1,6 @@
 {
-  "id": "82c43cd4-9917-4e89-8e51-1c11f62ab85c",
-  "prevId": "8007c5b6-43c0-4cbf-a091-6c8eecd83ca9",
+  "id": "71858c37-d98a-4b05-8fd7-54cc64db20d3",
+  "prevId": "82c43cd4-9917-4e89-8e51-1c11f62ab85c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -315,29 +315,17 @@
           "primaryKey": false,
           "notNull": true
         },
-        "type": {
-          "name": "type",
-          "type": "varchar",
+        "mime_type": {
+          "name": "mime_type",
+          "type": "varchar(100)",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
-        "file_type": {
-          "name": "file_type",
-          "type": "varchar",
+        "size": {
+          "name": "size",
+          "type": "integer",
           "primaryKey": false,
-          "notNull": true
-        },
-        "entity_type": {
-          "name": "entity_type",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "entity_id": {
-          "name": "entity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "updated_at": {
           "name": "updated_at",
@@ -357,10 +345,68 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "location_id": {
+          "name": "location_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resource_id": {
+          "name": "resource_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "medias_user_id_users_id_fk": {
+          "name": "medias_user_id_users_id_fk",
+          "tableFrom": "medias",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "medias_location_id_locations_id_fk": {
+          "name": "medias_location_id_locations_id_fk",
+          "tableFrom": "medias",
+          "tableTo": "locations",
+          "columnsFrom": [
+            "location_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "medias_resource_id_resources_id_fk": {
+          "name": "medias_resource_id_resources_id_fk",
+          "tableFrom": "medias",
+          "tableTo": "resources",
+          "columnsFrom": [
+            "resource_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },

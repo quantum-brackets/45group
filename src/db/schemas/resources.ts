@@ -3,16 +3,19 @@ import { relations } from "drizzle-orm";
 import { rulesTable } from "./rules";
 import { mediasTable } from "./media";
 import { facilitiesTable } from "./facilities";
+import { locationsTable } from "./locations";
 
 export const resourcesTable = pgTable("resources", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 300 }).notNull(),
-  location: varchar("location", { length: 300 }).notNull(),
   type: varchar("type", { enum: ["lodge", "event", "restaurant"] }).notNull(),
   description: varchar("description").notNull(),
   status: varchar("status", { enum: ["draft", "published", "archived", "inactive"] }).default(
     "draft"
   ),
+  location_id: uuid("location_id")
+    .references(() => locationsTable.id)
+    .notNull(),
   thumbnail: varchar("thumbnail").notNull(),
   rating: numeric("rating"),
   address: varchar("address"),
@@ -20,8 +23,14 @@ export const resourcesTable = pgTable("resources", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
-export const resourceRelations = relations(resourcesTable, ({ many }) => ({
+export const resourceRelations = relations(resourcesTable, ({ many, one }) => ({
   images: many(mediasTable),
+  location: one(locationsTable, {
+    fields: [resourcesTable.location_id],
+    references: [locationsTable.id],
+  }),
+  rules: many(resourceRulesTable),
+  facilities: many(resourceFacilitiesTable),
 }));
 
 export const resourceRulesTable = pgTable(

@@ -1,4 +1,5 @@
 import { axiosPrivate } from "~/config/axios";
+import { Location } from "~/db/schemas/locations";
 
 class LocationsService {
   static createLocation = async (data: any) => {
@@ -8,7 +9,7 @@ class LocationsService {
   };
 
   static getLocations = async () => {
-    const { data: response } = await axiosPrivate.get<Location>(`/api/locations`);
+    const { data: response } = await axiosPrivate.get<Location[]>(`/api/locations`);
 
     return response;
   };

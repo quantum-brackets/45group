@@ -10,14 +10,24 @@ class UploadService {
     return `${process.env.BASE_URL}/api/assets/${filename}${versionId ? `?versionId=${versionId}` : ""}`;
   }
 
-  static async uploadSingle(file: File, directory: string): Promise<string> {
+  static async uploadSingle(
+    file: File,
+    directory: string
+  ): Promise<{ url: string; type: string; size: number }> {
     const filename = `${directory}/${file.name}`;
     const buffer = await this.fileToBuffer(file);
     const { VersionId } = await uploadFileToS3(buffer, filename);
-    return this.buildAssetUrl(filename, VersionId);
+    return {
+      url: this.buildAssetUrl(filename, VersionId),
+      size: file.size,
+      type: file.type,
+    };
   }
 
-  static async uploadMultiple(files: File[], directory: string): Promise<string[]> {
+  static async uploadMultiple(
+    files: File[],
+    directory: string
+  ): Promise<{ url: string; type: string; size: number }[]> {
     return Promise.all(files.map((file) => this.uploadSingle(file, directory)));
   }
 }
