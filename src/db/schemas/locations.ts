@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { InferSelectModel, relations } from "drizzle-orm";
 import { timestamp, varchar, pgTable, uuid } from "drizzle-orm/pg-core";
 import { mediasTable } from "./media";
 import { resourcesTable } from "./resources";
@@ -17,3 +17,5 @@ export const locationRelations = relations(locationsTable, ({ many }) => ({
   images: many(mediasTable),
   resources: many(resourcesTable),
 }));
+
+export type Location = InferSelectModel<typeof locationsTable>;
