@@ -83,10 +83,43 @@ export function compareObjectValues(
   );
 }
 
-export function validateSchema({ object, data }: { object: Yup.AnyObject; data: any }) {
+function formDataToObject(formData: FormData): { [key: string]: any } {
+  const obj: { [key: string]: any } = {};
+
+  formData.forEach((value, key) => {
+    const normalizedKey = key.endsWith("[]") ? key.slice(0, -2) : key;
+
+    if (normalizedKey in obj) {
+      if (Array.isArray(obj[normalizedKey])) {
+        obj[normalizedKey].push(value);
+      } else {
+        obj[normalizedKey] = [obj[normalizedKey], value];
+      }
+    } else {
+      obj[normalizedKey] = value;
+    }
+  });
+
+  return obj;
+}
+
+export function validateSchema({
+  object,
+  data,
+  isFormData = false,
+}: {
+  object: Yup.AnyObject;
+  data: any;
+  isFormData?: boolean;
+}) {
   const schema = Yup.object(object);
 
-  return schema.validate({ ...data }, { abortEarly: false, stripUnknown: true });
+  const formDataObject = formDataToObject(data);
+
+  return schema.validate(
+    { ...(isFormData ? formDataObject : data) },
+    { abortEarly: false, stripUnknown: true }
+  ) as any;
 }
 
 export function filterPrivateValues<T>(values: T): T {
