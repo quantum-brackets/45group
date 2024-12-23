@@ -35,7 +35,7 @@ export const POST = catchAsync(async (req: NextRequest) => {
     UploadService.uploadMultiple(images, "resources/media"),
   ]);
 
-  const newResource = await db
+  const [newResource] = await db
     .insert(resourcesTable)
     .values({
       ...(validatedData as any),
