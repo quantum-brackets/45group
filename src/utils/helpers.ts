@@ -114,10 +114,8 @@ export function validateSchema({
 }) {
   const schema = Yup.object(object);
 
-  const formDataObject = formDataToObject(data);
-
   return schema.validate(
-    { ...(isFormData ? formDataObject : data) },
+    { ...(isFormData ? formDataToObject(data) : data) },
     { abortEarly: false, stripUnknown: true }
   ) as any;
 }
