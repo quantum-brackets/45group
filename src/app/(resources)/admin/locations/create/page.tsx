@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { MenuItem, Typography } from "@mui/material";
 import { useMutation } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
+import nProgress from "nprogress";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import BackButton from "~/components/back-button";
@@ -40,6 +42,8 @@ const initialValues: InitialValues = {
 };
 
 export default function CreateLocation() {
+  const router = useRouter();
+
   const { mutateAsync: createLocation } = useMutation({
     mutationFn: LocationsService.createLocation,
     onError: (error) => {
@@ -60,7 +64,7 @@ export default function CreateLocation() {
       </header>
       <Formik
         initialValues={initialValues}
-        onSubmit={async ({ media, ...values }) => {
+        onSubmit={async ({ media, ...values }, { resetForm }) => {
           const submissionValues = filterPrivateValues(values);
 
           if (!media.length) return notifyError({ message: "At least one media must be uploaded" });
@@ -69,6 +73,9 @@ export default function CreateLocation() {
             {
               onSuccess: () => {
                 notifySuccess({ message: "Location successfully created" });
+                nProgress.start();
+                router.push("/admin/locations");
+                resetForm();
               },
             }
           );
@@ -117,7 +124,6 @@ export default function CreateLocation() {
                 <FormField
                   name="description"
                   label="Description"
-                  required
                   placeholder="Enter a description"
                   multiline
                   rows={5}

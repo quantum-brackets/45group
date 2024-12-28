@@ -51,16 +51,34 @@ function globalErrors(error: any) {
   }
 
   if (error?.code === "23505" && error.detail) {
-    const regex = /Key \((\w+)\)=\((.*?)\) already exists\./;
-    const match = error.detail.match(regex);
+    const compositeRegex = /Key \((.*?)\)=\((.*?)\) already exists\./;
+    const match = error.detail.match(compositeRegex);
 
     if (match) {
+      const fields: string[] = match[1].split(", ").map((field: string) => field.trim());
+      const values: string[] = match[2].split(", ").map((value: string) => value.trim());
+
+      if (fields.length > 1) {
+        const readableFields = fields.join(", ");
+        const readableValues = values.join(", ");
+
+        return appError({
+          status: 409,
+          errors: [
+            {
+              field: fields,
+              message: `A record with ${readableFields} (${readableValues}) already exists`,
+            },
+          ],
+        });
+      }
+
       return appError({
         status: 409,
         errors: [
           {
-            field: match[1],
-            message: `"${match[1]}" already exists`,
+            field: fields[0],
+            message: `${fields[0]} "${values[0]}" already exists`,
           },
         ],
       });

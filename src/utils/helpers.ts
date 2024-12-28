@@ -40,7 +40,7 @@ export function appError({
 }: {
   status: number;
   errors?: {
-    field: string | undefined;
+    field: string | string[] | undefined;
     message: string;
   }[];
   error?: string;
