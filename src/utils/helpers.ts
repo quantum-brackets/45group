@@ -40,7 +40,7 @@ export function appError({
 }: {
   status: number;
   errors?: {
-    field: string | undefined;
+    field: string | string[] | undefined;
     message: string;
   }[];
   error?: string;
@@ -114,10 +114,8 @@ export function validateSchema({
 }) {
   const schema = Yup.object(object);
 
-  const formDataObject = formDataToObject(data);
-
   return schema.validate(
-    { ...(isFormData ? formDataObject : data) },
+    { ...(isFormData ? formDataToObject(data) : data) },
     { abortEarly: false, stripUnknown: true }
   ) as any;
 }
@@ -154,3 +152,9 @@ export const readFileAsBase64 = (file: File): Promise<string> => {
     reader.readAsDataURL(file);
   });
 };
+
+export function getNestedValue(obj: Record<string, any>, path: string): any {
+  return path.split(/[.]/).reduce((current, key) => {
+    return current?.[key];
+  }, obj);
+}

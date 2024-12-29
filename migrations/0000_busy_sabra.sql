@@ -42,19 +42,21 @@ CREATE TABLE IF NOT EXISTS "locations" (
 	"city" varchar(100) NOT NULL,
 	"description" varchar,
 	"updated_at" timestamp,
-	"created_at" timestamp DEFAULT now()
+	"created_at" timestamp DEFAULT now(),
+	CONSTRAINT "unique_name_state_city" UNIQUE("name","state","city")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "medias" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"url" varchar NOT NULL,
-	"type" varchar NOT NULL,
-	"file_type" varchar NOT NULL,
-	"entity_type" varchar NOT NULL,
-	"entity_id" uuid NOT NULL,
+	"mime_type" varchar(100),
+	"size" integer,
 	"updated_at" timestamp,
 	"created_at" timestamp DEFAULT now(),
-	"metadata" jsonb
+	"metadata" jsonb,
+	"user_id" uuid,
+	"location_id" uuid,
+	"resource_id" uuid
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "otps" (
@@ -101,10 +103,10 @@ CREATE TABLE IF NOT EXISTS "resource_rules" (
 CREATE TABLE IF NOT EXISTS "resources" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(300) NOT NULL,
-	"location" varchar(300) NOT NULL,
 	"type" varchar NOT NULL,
 	"description" varchar NOT NULL,
 	"status" varchar DEFAULT 'draft',
+	"location_id" uuid NOT NULL,
 	"thumbnail" varchar NOT NULL,
 	"rating" numeric,
 	"address" varchar,
@@ -159,6 +161,24 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
+ ALTER TABLE "medias" ADD CONSTRAINT "medias_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "medias" ADD CONSTRAINT "medias_location_id_locations_id_fk" FOREIGN KEY ("location_id") REFERENCES "public"."locations"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "medias" ADD CONSTRAINT "medias_resource_id_resources_id_fk" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
  ALTER TABLE "prices" ADD CONSTRAINT "prices_region_id_regions_id_fk" FOREIGN KEY ("region_id") REFERENCES "public"."regions"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
@@ -190,6 +210,12 @@ END $$;
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "resource_rules" ADD CONSTRAINT "resource_rules_rule_id_rules_id_fk" FOREIGN KEY ("rule_id") REFERENCES "public"."rules"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "resources" ADD CONSTRAINT "resources_location_id_locations_id_fk" FOREIGN KEY ("location_id") REFERENCES "public"."locations"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

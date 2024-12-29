@@ -64,6 +64,7 @@ export default function FormField({
               },
               padding: "0px",
             }}
+            value={field.value || ""}
             type={type === "password" ? (showPassword ? "text" : "password") : type}
             endAdornment={
               type === "password" && (
