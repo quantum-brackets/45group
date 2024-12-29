@@ -48,3 +48,9 @@ export const POST = catchAsync(async (req: NextRequest) => {
 
   return NextResponse.json(newLocation);
 });
+
+export const GET = catchAsync(async () => {
+  const locations = await db.select().from(locationsTable);
+
+  return NextResponse.json(locations);
+});
