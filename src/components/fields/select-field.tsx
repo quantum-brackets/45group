@@ -6,7 +6,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import { FieldConfig, Field, FieldProps, ErrorMessage } from "formik";
-import { cn } from "~/utils/helpers";
+import { cn, getNestedValue } from "~/utils/helpers";
 
 type Props = MuiSelectProps &
   FieldConfig & {
@@ -45,16 +45,10 @@ export default function SelectField({
             </div>
           )}
           <MuiSelect
-            className={cn(
-              `w-full`,
-              // {
-              //   "font-normal": !props.value,
-              // },
-              className
-            )}
+            className={cn(`w-full`, className)}
             {...field}
             {...props}
-            value={form.values[props.name] ?? ""}
+            value={form.values[props.name] ?? getNestedValue(field.value, props.name) ?? ""}
             sx={{
               "& .MuiSelect-select": {
                 padding: "11px 13.5px",
@@ -67,7 +61,10 @@ export default function SelectField({
               },
             }}
             renderValue={(value) => {
-              return value || "";
+              if (!value) {
+                return <span className="!normal-case !text-gray-500">{props.placeholder}</span>;
+              }
+              return value;
             }}
             displayEmpty={true}
             onChange={(e) => {

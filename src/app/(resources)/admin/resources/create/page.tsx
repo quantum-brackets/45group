@@ -73,8 +73,16 @@ export type ResourceFormValues = AvailabilityFormValues &
     name: string;
     location: {
       id: string;
+      name: string;
+      city: string;
+      state: string;
     } | null;
-    _location?: string;
+    _location?: {
+      id: string;
+      name: string;
+      city: string;
+      state: string;
+    };
     description: string;
     type: "lodge" | "event" | "restaurant";
     thumbnail?: File;
@@ -123,7 +131,10 @@ const validationSchema = Yup.object({
 export default function CreateResource() {
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
 
-  const results = useQueries({
+  const [
+    { data: rules, isLoading: isRulesLoading },
+    { data: facilities, isLoading: isFacilitiesLoading },
+  ] = useQueries({
     queries: [
       {
         queryKey: ["resources-rules"],
@@ -136,8 +147,6 @@ export default function CreateResource() {
     ],
   });
 
-  const isLoading = results.some((result) => result.isLoading);
-
   const { mutateAsync: createResource } = useMutation({
     mutationFn: ResourcesService.createResource,
     onSuccess: () => {
@@ -149,12 +158,6 @@ export default function CreateResource() {
       }
     },
   });
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
-  const [{ data: rules }, { data: facilities }] = results;
 
   const handleThumbnailSelect = async (
     files: FileList | null,
@@ -235,9 +238,9 @@ export default function CreateResource() {
                     type="button"
                     disabled={!values._location}
                     loading={isSubmitting}
-                    onClick={() =>
-                      values._location && setFieldValue("location", { id: values._location })
-                    } // First find the location then set it
+                    onClick={async () =>
+                      values._location && (await setFieldValue("location", { ...values._location }))
+                    }
                   >
                     Next
                   </Button>
@@ -248,19 +251,21 @@ export default function CreateResource() {
               <main className="flex flex-col gap-8">
                 <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-4">
                   <div className="flex justify-between gap-8">
-                    <h5 className="text-sm">Location</h5>
+                    <h5 className="text-sm">{values.location.name}</h5>
                     <button
                       className="text-sm text-primary hover:underline"
                       onClick={() => {
                         if (!values.location) return;
                         setFieldValue("location", null);
-                        setFieldValue("_location", values.location.id);
+                        setFieldValue("_location", values.location);
                       }}
                     >
                       Change
                     </button>
                   </div>
-                  <p className="text-xs text-zinc-700">A very long detailed address.</p>
+                  <p className="text-xs text-zinc-700">
+                    {values.location.city}, {values.location.state}
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-8 tablet:grid-cols-1 largeTabletAndBelow:gap-6 [@media(max-width:1060px)]:grid-cols-1">
                   <div className="flex flex-col gap-4">
@@ -285,6 +290,7 @@ export default function CreateResource() {
                       <MenuItem value={"restaurant"}>Restaurant</MenuItem>
                     </SelectField>
                     <RulesSection
+                      isLoading={isRulesLoading}
                       values={values.rule_form}
                       setFieldValue={(field: keyof RuleFormValues, value: any) => {
                         setFieldValue(`rule_form.${String(field)}`, value);
@@ -294,6 +300,7 @@ export default function CreateResource() {
                       }}
                     />
                     <FacilitiesSection
+                      isLoading={isFacilitiesLoading}
                       values={values.facility_form}
                       setFieldValue={(field: keyof FacilityFormValues, value: any) => {
                         setFieldValue(`facility_form.${String(field)}`, value);

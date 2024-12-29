@@ -1,6 +1,6 @@
 "use client";
 
-import { MenuItem } from "@mui/material";
+import { MenuItem, Skeleton } from "@mui/material";
 import { memo } from "react";
 import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
 import Button from "~/components/button";
@@ -15,6 +15,7 @@ type Field = keyof ResourceFormValues[typeof FORM_KEY];
 type Values = ResourceFormValues[typeof FORM_KEY];
 
 type Props = {
+  isLoading: boolean;
   setFieldValue: (field: Field, value: any) => void;
   setFieldError: (field: Field, message: string) => void;
   values: Values;
@@ -62,7 +63,7 @@ const RuleForm = memo(({ onSubmit, onClose }: { onSubmit: () => void; onClose: (
 
 RuleForm.displayName = "RuleForm";
 
-export default function RulesSection({ setFieldValue, values, setFieldError }: Props) {
+export default function RulesSection({ setFieldValue, values, setFieldError, isLoading }: Props) {
   function closeForm() {
     setFieldValue("_show_rule_form", false);
     setFieldValue("_rule", undefined);
@@ -72,6 +73,11 @@ export default function RulesSection({ setFieldValue, values, setFieldError }: P
     const newRule = values._rule;
     if (values.rules.some((r) => r.name === newRule.name && !r.markedForDeletion)) {
       setFieldError("_rule.name" as Field, "Rule with this name already exists");
+      return;
+    }
+
+    if (!newRule.category) {
+      setFieldError("_rule.category" as Field, "Category is required");
       return;
     }
 
@@ -112,26 +118,36 @@ export default function RulesSection({ setFieldValue, values, setFieldError }: P
       title="Rules"
       values={values}
       addBtn={{
-        show: !values._show_rule_form,
+        show: !isLoading && !values._show_rule_form,
         text: "Add a rule",
         onClick: () => {
           setFieldValue("_show_rule_form", true);
         },
       }}
     >
-      <div className="flex w-full flex-col gap-1">
-        {visibleRules?.map((rule, index) => (
-          <SelectCard
-            name={rule.name}
-            description={rule.description}
-            checked={!!rule.checked}
-            onDelete={() => handleDelete(index)}
-            onChange={(checked) => handleChange(index, checked)}
-            key={index}
-          />
-        ))}
-      </div>
-      {values._show_rule_form && <RuleForm onSubmit={handleSubmit} onClose={closeForm} />}
+      {isLoading ? (
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton className="h-44 w-full" key={index} />
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="flex w-full flex-col gap-1">
+            {visibleRules?.map((rule, index) => (
+              <SelectCard
+                name={rule.name}
+                description={rule.description}
+                checked={!!rule.checked}
+                onDelete={() => handleDelete(index)}
+                onChange={(checked) => handleChange(index, checked)}
+                key={index}
+              />
+            ))}
+          </div>
+          {values._show_rule_form && <RuleForm onSubmit={handleSubmit} onClose={closeForm} />}
+        </>
+      )}
     </CollapseSection>
   );
 }
