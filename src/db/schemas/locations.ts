@@ -12,6 +12,7 @@ export const locationsTable = pgTable(
     city: varchar("city", { length: 100 }).notNull(),
     description: varchar("description"),
     updated_at: timestamp("updated_at"),
+    deleted_at: timestamp("deleted_at"),
     created_at: timestamp("created_at").defaultNow(),
   },
   (table) => ({
