@@ -46,14 +46,7 @@ type RuleFormValues = {
 
 type AvailabilityFormValues = {
   _show_availabilities?: boolean;
-  _show_availabilities_form?: boolean;
-  _availity?: string;
-  _availability_anchor_el?: HTMLButtonElement | null;
-  availabilities: {
-    from: string;
-    to: string;
-    status: "available" | "unavailable";
-  }[];
+  schedule_type: string;
 };
 
 type GroupFormValues = {
@@ -68,31 +61,31 @@ type GroupFormValues = {
   };
 };
 
-export type ResourceFormValues = AvailabilityFormValues &
-  GroupFormValues & {
+export type ResourceFormValues = GroupFormValues & {
+  name: string;
+  location: {
+    id: string;
     name: string;
-    location: {
-      id: string;
-      name: string;
-      city: string;
-      state: string;
-    } | null;
-    _location?: {
-      id: string;
-      name: string;
-      city: string;
-      state: string;
-    };
-    description: string;
-    type: "lodge" | "event" | "restaurant";
-    thumbnail?: File;
-    rule_form: RuleFormValues;
-    facility_form: FacilityFormValues;
-    _thumbnail_base64?: string;
-    media: File[];
-    _media_base64: string[];
-    publish: boolean;
+    city: string;
+    state: string;
+  } | null;
+  _location?: {
+    id: string;
+    name: string;
+    city: string;
+    state: string;
   };
+  description: string;
+  type: "lodge" | "event" | "dining";
+  thumbnail?: File;
+  rule_form: RuleFormValues;
+  facility_form: FacilityFormValues;
+  availability_form: AvailabilityFormValues;
+  _thumbnail_base64?: string;
+  media: File[];
+  _media_base64: string[];
+  publish: boolean;
+};
 
 const initialValues: ResourceFormValues = {
   name: "",
@@ -100,7 +93,9 @@ const initialValues: ResourceFormValues = {
   type: "lodge",
   location: null,
   media: [],
-  availabilities: [],
+  availability_form: {
+    schedule_type: "24/7",
+  },
   rule_form: {
     rules: [],
     _rule: {
@@ -125,7 +120,7 @@ const validationSchema = Yup.object({
   location: Yup.string().required("Location is required"),
   address: Yup.string().required("Address is required"),
   description: Yup.string().required("Description is required"),
-  type: Yup.string().oneOf(["lodge", "event", "restaurant"]).required("Resource type is required"),
+  type: Yup.string().oneOf(["lodge", "event", "dining"]).required("Resource type is required"),
 });
 
 export default function CreateResource() {
@@ -287,7 +282,7 @@ export default function CreateResource() {
                     >
                       <MenuItem value={"lodge"}>Lodge</MenuItem>
                       <MenuItem value={"event"}>Event</MenuItem>
-                      <MenuItem value={"restaurant"}>Restaurant</MenuItem>
+                      <MenuItem value={"dining"}>Dining</MenuItem>
                     </SelectField>
                     <RulesSection
                       isLoading={isRulesLoading}
@@ -309,7 +304,12 @@ export default function CreateResource() {
                         setFieldError(`facility_form.${String(field)}`, message);
                       }}
                     />
-                    <AvailabitySection values={values} setFieldValue={setFieldValue} />
+                    <AvailabitySection
+                      values={values.availability_form}
+                      setFieldValue={(field: keyof AvailabilityFormValues, message: string) => {
+                        setFieldValue(`availability_form.${String(field)}`, message);
+                      }}
+                    />
                     <GroupsSection values={values} setFieldValue={setFieldValue} />
                   </div>
                   <div className="flex flex-col gap-6 divide-y">

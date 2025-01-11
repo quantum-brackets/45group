@@ -14,15 +14,13 @@ class ResourcesService {
   };
 
   static getResourceRules = async () => {
-    const { data: response } = await axiosPrivate.get<ResourceRule[]>(`/api/admin/resources/rules`);
+    const { data: response } = await axiosPrivate.get<ResourceRule[]>(`/api/admin/rules`);
 
     return response;
   };
 
   static getResourceFacilities = async () => {
-    const { data: response } = await axiosPrivate.get<ResourceRule[]>(
-      `/api/admin/resources/facilities`
-    );
+    const { data: response } = await axiosPrivate.get<ResourceRule[]>(`/api/admin/facilities`);
 
     return response;
   };
