@@ -29,14 +29,18 @@ export default function LocationForm({ values, setFieldValue }: Props) {
           ))}
         </div>
       ) : locations?.length ? (
-        <RadioGroup className="flex flex-col gap-1" name="_location" value={values._location}>
+        <RadioGroup
+          className="flex flex-col gap-1"
+          name="_location"
+          value={values._location?.id || ""}
+        >
           {locations.map(({ name, city, state, id }, index) => (
             <div
               key={index}
               className="ase-in-out flex items-start gap-4 rounded-lg p-4 py-3 transition duration-300 hover:bg-black/5"
             >
               <Radio
-                value={index + 1}
+                value={id}
                 onClick={() => setFieldValue("_location", { id, name, city, state })}
               />
               <div className="flex flex-col gap-1">

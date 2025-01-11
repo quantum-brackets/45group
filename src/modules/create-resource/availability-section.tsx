@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, ReactNode, useState } from "react";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers";
-import { ClickAwayListener, Fade, MenuItem, Paper, Popper } from "@mui/material";
+import { ClickAwayListener, Fade, keyframes, MenuItem, Paper, Popper } from "@mui/material";
 import dayjs, { Dayjs } from "dayjs";
 import { FormikHelpers } from "formik";
 import { GoKebabHorizontal } from "react-icons/go";
@@ -12,146 +12,108 @@ import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/pag
 import CollapseSection from "~/components/form/resources-form/collapse-section";
 import SelectField from "~/components/fields/select-field";
 import Button from "~/components/button";
+import { cn } from "~/utils/helpers";
+import DatePickerField from "~/components/fields/date-picker-field";
 
-const DATE_FORMAT = "DD-MM-YYYY";
+const FORM_KEY = "availability_form" as const;
+
+type Field = keyof ResourceFormValues[typeof FORM_KEY];
+type Values = ResourceFormValues[typeof FORM_KEY];
 
 type Props = {
-  setFieldValue: (
-    field: keyof ResourceFormValues,
-    value: any,
-    shouldValidate?: boolean
-  ) => ReturnType<FormikHelpers<ResourceFormValues>["setFieldValue"]>;
-  values: ResourceFormValues;
+  setFieldValue: (field: Field, value: any) => void;
+  values: Values;
+};
+
+const DAY_OF_WEEK = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
+const SCHEDULE_TYPE = ["24/7", "custom", "weekdays", "weekends"] as const;
+
+type DayOfWeeek = (typeof DAY_OF_WEEK)[number];
+type ScheduleType = (typeof SCHEDULE_TYPE)[number];
+
+function DateField({
+  name,
+  label,
+}: {
+  name: DayOfWeeek | Extract<ScheduleType, "weekdays" | "weekends">;
+  label?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={name} className="text-sm capitalize text-zinc-700">
+        {label || name}
+      </label>
+      <div className="flex items-center gap-4" id={name}>
+        <DatePickerField name={`custom.${name}.start`} /> <span>To</span>{" "}
+        <DatePickerField name={`custom.${name}.end`} />
+      </div>
+    </div>
+  );
+}
+
+const components: Record<ScheduleType, ReactNode> = {
+  "24/7": (
+    <div className="flex items-center gap-4">
+      <p>24 Hours</p> <span className="text-xl text-zinc-800">&#8594;</span>{" "}
+      <p>12:00 AM to 11:59 PM</p>
+    </div>
+  ),
+  custom: (
+    <div className="flex flex-col gap-4">
+      {DAY_OF_WEEK.map((day, index) => (
+        <DateField key={index} name={day} />
+      ))}
+    </div>
+  ),
+  weekdays: <DateField name="weekdays" label="Monday to Friday" />,
+  weekends: <DateField name="weekends" label="Saturday and Sunday" />,
 };
 
 export default function AvailabilitySection({ values, setFieldValue }: Props) {
-  const [{ startDate, endDate }, setDates] = useState<
-    Record<"startDate" | "endDate", string | null>
-  >({
-    startDate: null,
-    endDate: null,
-  });
-
-  function closeForm() {
-    setFieldValue("_show_availabilities_form", false);
-  }
+  const [choice, setChoice] = useState<ScheduleType>("24/7");
 
   return (
     <CollapseSection
       name="_show_availabilities"
       setFieldValue={setFieldValue}
-      subtitle="Here you can add the available dates when this resource will be available."
+      subtitle="Select the days and times this resource is available each week."
       title="Availability"
       values={values}
-      addBtn={{
-        show: !values._show_availabilities_form,
-        text: "Add an availability",
-        onClick: () => {
-          setFieldValue("_show_availabilities_form", true);
-        },
-      }}
     >
-      <div className="flex w-full flex-col gap-1">
-        {values.availabilities.map(({ from, status, to }, index) => {
-          const key = "_availability_anchor_el";
-          const open = Boolean(values[key]);
-
-          function onClose() {
-            setFieldValue(key, null);
-          }
-
-          return (
-            <div key={index} className="p-2 transition duration-300 ease-in-out hover:bg-zinc-100">
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-col gap-1">
-                  <p>From: {from}</p>
-                  <p>To: {to}</p>
-                </div>
-                <span>{status}</span>
-              </div>
-              <ClickAwayListener onClickAway={onClose}>
-                <div className="self-center">
-                  <button
-                    onClick={(e) => (open ? onClose() : setFieldValue(key, e.currentTarget))}
-                    type="button"
-                  >
-                    <GoKebabHorizontal className="rotate-90" />
-                  </button>
-                  <Popper open={open} anchorEl={values[key]}>
-                    {({ TransitionProps }) => (
-                      <Fade {...TransitionProps} timeout={350}>
-                        <Paper className="popper-btn">
-                          <button type="button">
-                            <span>Remove</span>
-                          </button>
-                        </Paper>
-                      </Fade>
-                    )}
-                  </Popper>
-                </div>
-              </ClickAwayListener>
-            </div>
-          );
-        })}
-      </div>
-      {values._show_availabilities_form && (
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex w-full items-center gap-4 largeMobile:flex-col">
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DatePicker
-                className={"w-full"}
-                sx={{
-                  "& .MuiOutlinedInput-input": {
-                    padding: "11px 13.5px",
-                  },
-                }}
-                disablePast
-                format={DATE_FORMAT}
-                maxDate={endDate ? dayjs(endDate, DATE_FORMAT) : undefined}
-                value={startDate ? dayjs(startDate, DATE_FORMAT) : null}
-                onChange={(date: Dayjs | null) => {
-                  date && setDates((prev) => ({ ...prev, startDate: date.format(DATE_FORMAT) }));
-                }}
-              />
-            </LocalizationProvider>
-            <small>To</small>
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DatePicker
-                className={"w-full"}
-                sx={{
-                  "& .MuiOutlinedInput-input": {
-                    padding: "11px 13.5px",
-                  },
-                }}
-                disablePast
-                format={DATE_FORMAT}
-                maxDate={startDate ? dayjs(startDate, DATE_FORMAT) : undefined}
-                value={endDate ? dayjs(endDate, DATE_FORMAT) : null}
-                onChange={(date: Dayjs | null) => {
-                  date && setDates((prev) => ({ ...prev, endDate: date.format(DATE_FORMAT) }));
-                }}
-              />
-            </LocalizationProvider>
-          </div>
-          <SelectField
-            label="Status"
-            name="_status"
-            placeholder="Choose a status"
-            className="capitalize"
-          >
-            <MenuItem value={"available"}>Available</MenuItem>
-            <MenuItem value={"unavailable"}>Unavailable</MenuItem>
-          </SelectField>
-          <div className="flex w-full items-center justify-between gap-8">
-            <Button type="button" variant="outlined" onClick={closeForm}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={closeForm}>
-              Add
-            </Button>
-          </div>
+      <div className="flex w-full flex-col gap-4">
+        <div className="flex items-center gap-2">
+          {SCHEDULE_TYPE.map((type, index) => (
+            <button
+              key={index}
+              className={cn("rounded-full bg-zinc-100 p-6 py-2 text-sm capitalize", {
+                "bg-primary text-white": choice === type,
+              })}
+              onClick={() => {
+                const newChoice = type as ScheduleType;
+                setChoice(newChoice);
+                setFieldValue(`schedule_type`, newChoice);
+              }}
+              type="button"
+            >
+              {type}
+            </button>
+          ))}
         </div>
-      )}
+        <div>
+          {Object.entries(components).map(([key, value], index) => {
+            if (key !== choice) return;
+            return <Fragment key={index}>{value}</Fragment>;
+          })}
+        </div>
+      </div>
     </CollapseSection>
   );
 }
