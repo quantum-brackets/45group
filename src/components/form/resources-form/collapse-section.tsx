@@ -2,10 +2,8 @@
 
 import { ReactNode } from "react";
 import { Collapse } from "@mui/material";
-import { FormikHelpers } from "formik";
 import { FaMinus, FaPlus } from "react-icons/fa6";
 import Button from "../../button";
-import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
 
 type Props<T> = {
   name: keyof T;

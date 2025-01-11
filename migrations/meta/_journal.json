@@ -15,6 +15,20 @@
       "when": 1735428480094,
       "tag": "0001_easy_rattler",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1736565878066,
+      "tag": "0002_supreme_shatterstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1736605858147,
+      "tag": "0003_stiff_proteus",
+      "breakpoints": true
     }
   ]
 }
