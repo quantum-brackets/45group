@@ -14,24 +14,30 @@ import { mediasTable } from "./media";
 import { facilitiesTable } from "./facilities";
 import { locationsTable } from "./locations";
 
-export const resourcesTable = pgTable("resources", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: varchar("name", { length: 300 }).notNull(),
-  type: varchar("type", { enum: ["lodge", "event", "dining"] }).notNull(),
-  description: varchar("description").notNull(),
-  status: varchar("status", { enum: ["draft", "published", "archived", "inactive"] }).default(
-    "draft"
-  ),
-  location_id: uuid("location_id")
-    .references(() => locationsTable.id)
-    .notNull(),
-  schedule_type: varchar("schedule_type", {
-    enum: ["24/7", "custom", "weekdays", "weekends"],
-  }).notNull(),
-  thumbnail: varchar("thumbnail").notNull(),
-  updated_at: timestamp("updated_at"),
-  created_at: timestamp("created_at").defaultNow(),
-});
+export const resourcesTable = pgTable(
+  "resources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: varchar("name", { length: 300 }).notNull(),
+    type: varchar("type", { enum: ["lodge", "event", "dining"] }).notNull(),
+    description: varchar("description").notNull(),
+    status: varchar("status", { enum: ["draft", "published", "archived", "inactive"] }).default(
+      "draft"
+    ),
+    location_id: uuid("location_id")
+      .references(() => locationsTable.id)
+      .notNull(),
+    schedule_type: varchar("schedule_type", {
+      enum: ["24/7", "custom", "weekdays", "weekends"],
+    }).notNull(),
+    thumbnail: varchar("thumbnail").notNull(),
+    updated_at: timestamp("updated_at"),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (t) => ({
+    unique_resource: uniqueIndex("unique_resource").on(t.name, t.type),
+  })
+);
 
 export const resourceRulesTable = pgTable(
   "resource_rules",
