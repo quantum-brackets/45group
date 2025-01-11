@@ -49,60 +49,57 @@ const schema = {
     }),
 };
 
-export const POST = catchAsync(
-  async (req: NextRequest, { params: { id } }: { params: { id: string } }) => {
-    const body = await req.formData();
-    body.append("location_id", id);
+export const POST = catchAsync(async (req: NextRequest) => {
+  const body = await req.formData();
 
-    const { publish, thumbnail, schedules, images, ...validatedData } = await validateSchema({
-      object: schema,
-      isFormData: true,
-      data: body,
+  const { publish, thumbnail, schedules, images, ...validatedData } = await validateSchema({
+    object: schema,
+    isFormData: true,
+    data: body,
+  });
+
+  const [newResource] = await db
+    .insert(resourcesTable)
+    .values({
+      ...(validatedData as any),
+      status: publish ? "published" : "draft",
+      thumbnail: "/pending-upload/" + Date.now() + "-" + thumbnail.name,
+    })
+    .returning();
+
+  if (!newResource)
+    return appError({
+      status: 422,
+      error: "Error processing request",
     });
 
-    const [newResource] = await db
-      .insert(resourcesTable)
-      .values({
-        ...(validatedData as any),
-        status: publish ? "published" : "draft",
-        thumbnail: "/pending-upload/" + Date.now() + "-" + thumbnail.name,
-      })
-      .returning();
+  const [thumbnailData, imageData] = await Promise.all([
+    UploadService.uploadSingle(thumbnail, "resources/thumbnails"),
+    UploadService.uploadMultiple(images, "resources/media"),
+  ]);
 
-    if (!newResource)
-      return appError({
-        status: 422,
-        error: "Error processing request",
-      });
+  const [[updatedResource]] = await Promise.all([
+    db
+      .update(resourcesTable)
+      .set({ thumbnail: thumbnailData.url })
+      .where(eq(resourcesTable.id, newResource.id))
+      .returning(),
+    db.insert(mediasTable).values(
+      imageData.map(({ type, ...rest }) => ({
+        mimeType: type,
+        resourceId: newResource.id,
+        ...rest,
+      }))
+    ),
+    validatedData.schedule_type !== "24/7" && validatedData.schedules
+      ? db.insert(resourceSchedulesTable).values(
+          (validatedData.schedules as any[]).map((schedule) => ({
+            ...schedule,
+            resourceId: newResource.id,
+          }))
+        )
+      : Promise.resolve(),
+  ]);
 
-    const [thumbnailData, imageData] = await Promise.all([
-      UploadService.uploadSingle(thumbnail, "resources/thumbnails"),
-      UploadService.uploadMultiple(images, "resources/media"),
-    ]);
-
-    const [[updatedResource]] = await Promise.all([
-      db
-        .update(resourcesTable)
-        .set({ thumbnail: thumbnailData.url })
-        .where(eq(resourcesTable.id, newResource.id))
-        .returning(),
-      db.insert(mediasTable).values(
-        imageData.map(({ type, ...rest }) => ({
-          mimeType: type,
-          resourceId: newResource.id,
-          ...rest,
-        }))
-      ),
-      validatedData.schedule_type !== "24/7" && validatedData.schedules
-        ? db.insert(resourceSchedulesTable).values(
-            (validatedData.schedules as any[]).map((schedule) => ({
-              ...schedule,
-              resourceId: newResource.id,
-            }))
-          )
-        : Promise.resolve(),
-    ]);
-
-    return NextResponse.json(updatedResource);
-  }
-);
+  return NextResponse.json(updatedResource);
+});
