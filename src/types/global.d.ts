@@ -57,3 +57,8 @@ type Resource = {
   name: string;
   rules: ResourceRule[];
 };
+
+type Pagination<T> = {
+  count: number;
+  data: T[];
+};

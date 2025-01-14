@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, Suspense, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { IconButton, Avatar } from "@mui/material";
@@ -74,7 +74,9 @@ export default function AdminDashboardLayout({ children }: { children: ReactNode
       </header>
       <div className="flex flex-grow">
         <Sidebar onClose={() => toggleSidebar(false)} open={openSidebar} links={links} />
-        <main className="mx-auto w-full max-w-[1250px] p-6 tablet_768:px-4">{children}</main>
+        <main className="mx-auto w-[calc(100%-250px)] max-w-[1250px] p-6 tablet_768:px-4 largeLaptop:w-[calc(100%-300px)]">
+          <Suspense fallback={null}>{children}</Suspense>
+        </main>
       </div>
     </div>
   );
