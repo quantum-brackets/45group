@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import * as Yup from "yup";
 import { db } from "~/db";
 import catchAsync from "~/utils/catch-async";
@@ -102,4 +102,44 @@ export const POST = catchAsync(async (req: NextRequest) => {
   ]);
 
   return NextResponse.json(updatedResource);
+});
+
+export const GET = catchAsync(async (req: NextRequest) => {
+  const searchParams = req.nextUrl.searchParams;
+
+  const { limit, offset } = await validateSchema({
+    object: {
+      limit: Yup.number()
+        .optional()
+        .transform((value) => (isNaN(value) ? undefined : value))
+        .integer("Limit must be an integer"),
+      offset: Yup.number()
+        .optional()
+        .transform((value) => (isNaN(value) ? undefined : value))
+        .integer("Offset must be an integer"),
+    },
+    data: {
+      limit: searchParams.get("limit") !== null ? parseInt(searchParams.get("limit")!) : undefined,
+      offset:
+        searchParams.get("offset") !== null ? parseInt(searchParams.get("offset")!) : undefined,
+    },
+  });
+
+  if (limit === undefined || offset === undefined) {
+    const locations = await db
+      .select()
+      .from(resourcesTable)
+      .orderBy(asc(resourcesTable.created_at));
+    return NextResponse.json(locations);
+  }
+
+  const [data, [count]] = await Promise.all([
+    db.select().from(resourcesTable).limit(limit).offset(offset),
+    db.select({ count: sql`CAST(count(*) AS INTEGER)` }).from(resourcesTable),
+  ]);
+
+  return NextResponse.json({
+    data,
+    ...count,
+  });
 });
