@@ -35,6 +35,15 @@ CREATE TABLE IF NOT EXISTS "facilities" (
 	CONSTRAINT "facilities_name_unique" UNIQUE("name")
 );
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "groups" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" varchar(150) NOT NULL,
+	"num" integer NOT NULL,
+	"updated_at" timestamp,
+	"created_at" timestamp DEFAULT now(),
+	CONSTRAINT "groups_name_unique" UNIQUE("name")
+);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "locations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(300) NOT NULL,
@@ -42,6 +51,7 @@ CREATE TABLE IF NOT EXISTS "locations" (
 	"city" varchar(100) NOT NULL,
 	"description" varchar,
 	"updated_at" timestamp,
+	"deleted_at" timestamp,
 	"created_at" timestamp DEFAULT now(),
 	CONSTRAINT "unique_name_state_city" UNIQUE("name","state","city")
 );
@@ -86,11 +96,28 @@ CREATE TABLE IF NOT EXISTS "regions" (
 	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "resource_blocks" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"resource_id" uuid NOT NULL,
+	"reason" text,
+	"start_time" time NOT NULL,
+	"end_time" time NOT NULL,
+	"block_type" varchar NOT NULL,
+	"recurring" varchar
+);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "resource_facilities" (
 	"resource_id" uuid NOT NULL,
 	"facility_id" uuid NOT NULL,
 	"created_at" timestamp DEFAULT now(),
 	CONSTRAINT "resource_facilities_resource_id_facility_id_pk" PRIMARY KEY("resource_id","facility_id")
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "resource_groups" (
+	"resource_id" uuid NOT NULL,
+	"group_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now(),
+	CONSTRAINT "resource_groups_resource_id_group_id_pk" PRIMARY KEY("resource_id","group_id")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "resource_rules" (
@@ -100,6 +127,14 @@ CREATE TABLE IF NOT EXISTS "resource_rules" (
 	CONSTRAINT "resource_rules_resource_id_rule_id_pk" PRIMARY KEY("resource_id","rule_id")
 );
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "resource_schedules" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"resource_id" uuid NOT NULL,
+	"start_time" time NOT NULL,
+	"end_time" time NOT NULL,
+	"day_of_week" varchar NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "resources" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(300) NOT NULL,
@@ -107,9 +142,8 @@ CREATE TABLE IF NOT EXISTS "resources" (
 	"description" varchar NOT NULL,
 	"status" varchar DEFAULT 'draft',
 	"location_id" uuid NOT NULL,
+	"schedule_type" varchar NOT NULL,
 	"thumbnail" varchar NOT NULL,
-	"rating" numeric,
-	"address" varchar,
 	"updated_at" timestamp,
 	"created_at" timestamp DEFAULT now()
 );
@@ -191,7 +225,13 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "resource_facilities" ADD CONSTRAINT "resource_facilities_resource_id_resources_id_fk" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "resource_blocks" ADD CONSTRAINT "resource_blocks_resource_id_resources_id_fk" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "resource_facilities" ADD CONSTRAINT "resource_facilities_resource_id_resources_id_fk" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -203,7 +243,19 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "resource_rules" ADD CONSTRAINT "resource_rules_resource_id_resources_id_fk" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "resource_groups" ADD CONSTRAINT "resource_groups_resource_id_resources_id_fk" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "resource_groups" ADD CONSTRAINT "resource_groups_group_id_groups_id_fk" FOREIGN KEY ("group_id") REFERENCES "public"."groups"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "resource_rules" ADD CONSTRAINT "resource_rules_resource_id_resources_id_fk" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -215,7 +267,16 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
+ ALTER TABLE "resource_schedules" ADD CONSTRAINT "resource_schedules_resource_id_resources_id_fk" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
  ALTER TABLE "resources" ADD CONSTRAINT "resources_location_id_locations_id_fk" FOREIGN KEY ("location_id") REFERENCES "public"."locations"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "unique_day_of_week" ON "resource_schedules" USING btree ("resource_id","day_of_week");--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "unique_resource" ON "resources" USING btree ("name","type");

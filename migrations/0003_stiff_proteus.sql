@@ -1,1 +1,0 @@
-CREATE UNIQUE INDEX IF NOT EXISTS "unique_resource" ON "resources" USING btree ("name","type");
