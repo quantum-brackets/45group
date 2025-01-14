@@ -13,6 +13,7 @@ import { rulesTable } from "./rules";
 import { mediasTable } from "./media";
 import { facilitiesTable } from "./facilities";
 import { locationsTable } from "./locations";
+import { groupsTable } from "./groups";
 
 export const resourcesTable = pgTable(
   "resources",
@@ -68,6 +69,22 @@ export const resourceFacilitiesTable = pgTable(
   },
   (t) => ({
     pk: primaryKey({ columns: [t.resource_id, t.facility_id] }),
+  })
+);
+
+export const resourceGroupsTable = pgTable(
+  "resource_groups",
+  {
+    resource_id: uuid("resource_id")
+      .references(() => resourcesTable.id, { onDelete: "cascade" })
+      .notNull(),
+    group_id: uuid("group_id")
+      .references(() => groupsTable.id)
+      .notNull(),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.resource_id, t.group_id] }),
   })
 );
 
@@ -134,6 +151,17 @@ export const resourceFacilitiesRelations = relations(resourceFacilitiesTable, ({
   }),
   facility: one(facilitiesTable, {
     fields: [resourceFacilitiesTable.facility_id],
+    references: [facilitiesTable.id],
+  }),
+}));
+
+export const resourceGroupsRelations = relations(resourceGroupsTable, ({ one }) => ({
+  resource: one(resourcesTable, {
+    fields: [resourceGroupsTable.resource_id],
+    references: [resourcesTable.id],
+  }),
+  group: one(facilitiesTable, {
+    fields: [resourceGroupsTable.group_id],
     references: [facilitiesTable.id],
   }),
 }));
