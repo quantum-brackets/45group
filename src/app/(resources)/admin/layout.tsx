@@ -74,7 +74,9 @@ export default function AdminDashboardLayout({ children }: { children: ReactNode
       </header>
       <div className="flex flex-grow">
         <Sidebar onClose={() => toggleSidebar(false)} open={openSidebar} links={links} />
-        <main className="mx-auto w-full max-w-[1250px] p-6 tablet_768:px-4">{children}</main>
+        <main className="mx-auto w-[calc(100%-250px)] max-w-[1250px] p-6 tablet_768:px-4 largeLaptop:w-[calc(100%-300px)]">
+          {children}
+        </main>
       </div>
     </div>
   );
