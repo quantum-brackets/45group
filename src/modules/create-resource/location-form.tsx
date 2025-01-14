@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
 import NoDataIllustration from "~/assets/illustrations/no-data.png";
 import LocationsService from "~/services/locations";
+import { Location } from "~/db/schemas/locations";
 
 type Props = {
   setFieldValue: (field: keyof ResourceFormValues, value: any) => void;
@@ -16,7 +17,7 @@ type Props = {
 export default function LocationForm({ values, setFieldValue }: Props) {
   const { data: locations, isLoading } = useQuery({
     queryKey: ["locations"],
-    queryFn: LocationsService.getLocations,
+    queryFn: () => LocationsService.getLocations<Location[]>(),
   });
 
   return (
