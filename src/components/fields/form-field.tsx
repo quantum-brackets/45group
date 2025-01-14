@@ -25,6 +25,7 @@ export default function FormField({
   color,
   required,
   sx,
+  startAdornment,
   label,
   type,
   labelProps,
@@ -61,11 +62,13 @@ export default function FormField({
               },
               "& .MuiOutlinedInput-input": {
                 padding: "11px 13.5px",
+                paddingLeft: startAdornment ? "0px" : undefined,
               },
               padding: "0px",
             }}
             value={field.value || ""}
             type={type === "password" ? (showPassword ? "text" : "password") : type}
+            startAdornment={<div className="px-2">{startAdornment}</div>}
             endAdornment={
               type === "password" && (
                 <IconButton
