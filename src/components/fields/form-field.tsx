@@ -68,7 +68,9 @@ export default function FormField({
             }}
             value={field.value || ""}
             type={type === "password" ? (showPassword ? "text" : "password") : type}
-            startAdornment={<div className="px-2">{startAdornment}</div>}
+            startAdornment={
+              startAdornment ? <div className="px-2">{startAdornment}</div> : undefined
+            }
             endAdornment={
               type === "password" && (
                 <IconButton
