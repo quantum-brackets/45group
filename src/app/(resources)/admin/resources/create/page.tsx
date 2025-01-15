@@ -61,7 +61,7 @@ type GroupFormValues = {
   };
 };
 
-export type ResourceFormValues = GroupFormValues & {
+export type ResourceFormValues = {
   name: string;
   location: {
     id: string;
@@ -81,6 +81,7 @@ export type ResourceFormValues = GroupFormValues & {
   rule_form: RuleFormValues;
   facility_form: FacilityFormValues;
   availability_form: AvailabilityFormValues;
+  group_form: GroupFormValues;
   _thumbnail_base64?: string;
   media: File[];
   _media_base64: string[];
@@ -111,6 +112,9 @@ const initialValues: ResourceFormValues = {
       description: "",
     },
   },
+  group_form: {
+    groups: {},
+  },
   publish: false,
   _media_base64: [],
 };
@@ -129,6 +133,7 @@ export default function CreateResource() {
   const [
     { data: rules, isLoading: isRulesLoading },
     { data: facilities, isLoading: isFacilitiesLoading },
+    { data: groups, isLoading: isGroupsLoading },
   ] = useQueries({
     queries: [
       {
@@ -138,6 +143,10 @@ export default function CreateResource() {
       {
         queryKey: ["resources-facilities"],
         queryFn: ResourcesService.getResourceFacilities,
+      },
+      {
+        queryKey: ["resources-groups"],
+        queryFn: ResourcesService.getResourceGroups,
       },
     ],
   });
@@ -185,6 +194,16 @@ export default function CreateResource() {
             facilities: facilities as FacilityFormValues["facilities"],
           },
           rule_form: { ...initialValues.rule_form, rules: rules as RuleFormValues["rules"] },
+          group_form: {
+            ...initialValues.group_form,
+            groups: groups?.reduce(
+              (acc, group) => ({
+                ...acc,
+                [group.name]: group.num,
+              }),
+              {}
+            ),
+          },
         }}
         onSubmit={async (values) => {
           const submissionValues = filterPrivateValues(values);
@@ -310,7 +329,16 @@ export default function CreateResource() {
                         setFieldValue(`availability_form.${String(field)}`, message);
                       }}
                     />
-                    <GroupsSection values={values} setFieldValue={setFieldValue} />
+                    <GroupsSection
+                      isLoading={isGroupsLoading}
+                      values={values.group_form}
+                      setFieldValue={(field: keyof GroupFormValues, message: string) => {
+                        setFieldValue(`group_form.${String(field)}`, message);
+                      }}
+                      setFieldError={(field: keyof GroupFormValues, message: string) => {
+                        setFieldError(`group_form.${String(field)}`, message);
+                      }}
+                    />
                   </div>
                   <div className="flex flex-col gap-6 divide-y">
                     <div>

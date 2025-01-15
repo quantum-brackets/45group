@@ -1,3 +1,4 @@
+import { InferSelectModel } from "drizzle-orm";
 import { integer, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const groupsTable = pgTable("groups", {
@@ -7,3 +8,5 @@ export const groupsTable = pgTable("groups", {
   updated_at: timestamp("updated_at"),
   created_at: timestamp("created_at").defaultNow(),
 });
+
+export type ResourceGroup = InferSelectModel<typeof groupsTable>;
