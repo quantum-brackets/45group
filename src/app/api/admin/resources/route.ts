@@ -4,7 +4,13 @@ import * as Yup from "yup";
 import { db } from "~/db";
 import catchAsync from "~/utils/catch-async";
 import { appError, validateSchema } from "~/utils/helpers";
-import { resourceSchedulesTable, resourcesTable } from "~/db/schemas/resources";
+import {
+  resourceFacilitiesTable,
+  resourceGroupsTable,
+  resourceRulesTable,
+  resourceSchedulesTable,
+  resourcesTable,
+} from "~/db/schemas/resources";
 import UploadService from "~/services/upload";
 import YupValidation from "~/utils/yup-validations";
 import { mediasTable } from "~/db/schemas/media";
@@ -47,16 +53,20 @@ const schema = {
       then: (schema) => schema.required("`schedules` is required when `schedule_type` is not 24/7"),
       otherwise: (schema) => schema.notRequired(),
     }),
+  rules: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
+  facilities: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
+  groups: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
 };
 
 export const POST = catchAsync(async (req: NextRequest) => {
   const body = await req.formData();
 
-  const { publish, thumbnail, schedules, images, ...validatedData } = await validateSchema({
-    object: schema,
-    isFormData: true,
-    data: body,
-  });
+  const { publish, thumbnail, schedules, images, facilities, rules, groups, ...validatedData } =
+    await validateSchema({
+      object: schema,
+      isFormData: true,
+      data: body,
+    });
 
   const [newResource] = await db
     .insert(resourcesTable)
@@ -84,6 +94,34 @@ export const POST = catchAsync(async (req: NextRequest) => {
       .set({ thumbnail: thumbnailData.url })
       .where(eq(resourcesTable.id, newResource.id))
       .returning(),
+
+    rules?.length
+      ? db.insert(resourceRulesTable).values(
+          rules.map((rule_id: string) => ({
+            resource_id: newResource.id,
+            rule_id,
+          }))
+        )
+      : Promise.resolve(),
+
+    facilities?.length
+      ? db.insert(resourceFacilitiesTable).values(
+          facilities.map((facility_id: string) => ({
+            resource_id: newResource.id,
+            facility_id,
+          }))
+        )
+      : Promise.resolve(),
+
+    groups?.length
+      ? db.insert(resourceGroupsTable).values(
+          groups.map((group_id: string) => ({
+            resource_id: newResource.id,
+            group_id,
+          }))
+        )
+      : Promise.resolve(),
+
     db.insert(mediasTable).values(
       imageData.map(({ type, ...rest }) => ({
         mimeType: type,
@@ -91,6 +129,7 @@ export const POST = catchAsync(async (req: NextRequest) => {
         ...rest,
       }))
     ),
+
     validatedData.schedule_type !== "24/7" && validatedData.schedules
       ? db.insert(resourceSchedulesTable).values(
           (validatedData.schedules as any[]).map((schedule) => ({
