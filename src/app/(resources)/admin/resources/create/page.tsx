@@ -56,9 +56,7 @@ type GroupFormValues = {
     [key: string]: number;
   };
   _group?: string;
-  existing_groups?: {
-    [key: string]: number;
-  };
+  existing_groups?: string[];
 };
 
 export type ResourceFormValues = {
@@ -114,6 +112,7 @@ const initialValues: ResourceFormValues = {
   },
   group_form: {
     groups: {},
+    _group: "",
   },
   publish: false,
   _media_base64: [],
@@ -121,8 +120,6 @@ const initialValues: ResourceFormValues = {
 
 const validationSchema = Yup.object({
   name: Yup.string().required("Name is required"),
-  location: Yup.string().required("Location is required"),
-  address: Yup.string().required("Address is required"),
   description: Yup.string().required("Description is required"),
   type: Yup.string().oneOf(["lodge", "event", "dining"]).required("Resource type is required"),
 });
@@ -203,6 +200,7 @@ export default function CreateResource() {
               }),
               {}
             ),
+            existing_groups: groups?.map(({ name }) => name),
           },
         }}
         onSubmit={async (values) => {
