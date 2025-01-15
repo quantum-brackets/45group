@@ -1,4 +1,5 @@
 import { axiosPrivate } from "~/config/axios";
+import { ResourceGroup } from "~/db/schemas/groups";
 
 class ResourcesService {
   static createResource = async (data: any) => {
@@ -24,6 +25,12 @@ class ResourcesService {
 
   static getResourceFacilities = async () => {
     const { data: response } = await axiosPrivate.get<ResourceRule[]>(`/api/admin/facilities`);
+
+    return response;
+  };
+
+  static getResourceGroups = async () => {
+    const { data: response } = await axiosPrivate.get<ResourceGroup[]>(`/api/admin/groups`);
 
     return response;
   };

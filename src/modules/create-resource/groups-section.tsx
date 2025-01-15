@@ -1,7 +1,6 @@
 "use client";
 
 import { OutlinedInput } from "@mui/material";
-import { FormikHelpers } from "formik";
 import { FaMinus, FaPlus } from "react-icons/fa6";
 import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
 import Button from "~/components/button";
@@ -9,22 +8,41 @@ import FormField from "~/components/fields/form-field";
 import CardMenu from "~/components/form/resources-form/card-menu";
 import CollapseSection from "~/components/form/resources-form/collapse-section";
 
+const FORM_KEY = "group_form" as const;
+
+type Field = keyof ResourceFormValues[typeof FORM_KEY];
+type Values = ResourceFormValues[typeof FORM_KEY];
+
 type Props = {
-  setFieldValue: (
-    field: keyof ResourceFormValues,
-    value: any,
-    shouldValidate?: boolean
-  ) => ReturnType<FormikHelpers<ResourceFormValues>["setFieldValue"]>;
-  values: ResourceFormValues;
+  isLoading: boolean;
+  setFieldValue: (field: Field, value: any) => void;
+  setFieldError: (field: Field, message: string) => void;
+  values: Values;
 };
 
-export default function GroupsSection({ values, setFieldValue }: Props) {
+export default function GroupsSection({ values, setFieldValue, setFieldError }: Props) {
   function closeForm() {
     setFieldValue("_show_group_form", false);
     setFieldValue("_group", "");
   }
 
-  function onDelete() {}
+  function onDelete(key: string) {
+    const newValues = values.groups;
+    delete newValues?.[key];
+    setFieldValue("groups", newValues);
+  }
+
+  function onSubmit() {
+    if (!values._group) return setFieldError("_group", "Name is required");
+    if (values.groups?.[values._group] !== undefined) {
+      return setFieldError("_group", "Name already exist");
+    }
+    setFieldValue("groups", {
+      ...values.groups,
+      [values._group]: 0,
+    });
+    closeForm();
+  }
 
   return (
     <CollapseSection
@@ -99,9 +117,17 @@ export default function GroupsSection({ values, setFieldValue }: Props) {
                   }
                 />
                 <CardMenu>
-                  <button onClick={onDelete} type="button">
-                    <span>Delete</span>
-                  </button>
+                  {({ onClose }) => (
+                    <button
+                      onClick={() => {
+                        onDelete(key);
+                        onClose();
+                      }}
+                      type="button"
+                    >
+                      <span>Delete</span>
+                    </button>
+                  )}
                 </CardMenu>
               </div>
             </div>
@@ -110,23 +136,17 @@ export default function GroupsSection({ values, setFieldValue }: Props) {
       )}
       {values._show_group_form && (
         <div className="flex flex-col items-center gap-4">
-          <FormField name="_group" placeholder="Type in a name" required label="Group" />
+          <FormField
+            name={`${FORM_KEY}._group`}
+            placeholder="Type in a name"
+            required
+            label="Group"
+          />
           <div className="flex w-full items-center justify-between gap-8">
             <Button type="button" variant="outlined" onClick={closeForm}>
               Cancel
             </Button>
-            <Button
-              disabled={!values._group}
-              type="button"
-              onClick={() => {
-                if (!values._group) return;
-                setFieldValue("groups", {
-                  ...values.groups,
-                  [values._group]: 0,
-                });
-                closeForm();
-              }}
-            >
+            <Button disabled={!values._group} type="button" onClick={onSubmit}>
               Add
             </Button>
           </div>
