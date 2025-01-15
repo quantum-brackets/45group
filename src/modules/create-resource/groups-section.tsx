@@ -1,7 +1,6 @@
 "use client";
 
 import { OutlinedInput } from "@mui/material";
-import { FormikHelpers } from "formik";
 import { FaMinus, FaPlus } from "react-icons/fa6";
 import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
 import Button from "~/components/button";
@@ -137,7 +136,12 @@ export default function GroupsSection({ values, setFieldValue, setFieldError }: 
       )}
       {values._show_group_form && (
         <div className="flex flex-col items-center gap-4">
-          <FormField name="_group" placeholder="Type in a name" required label="Group" />
+          <FormField
+            name={`${FORM_KEY}._group`}
+            placeholder="Type in a name"
+            required
+            label="Group"
+          />
           <div className="flex w-full items-center justify-between gap-8">
             <Button type="button" variant="outlined" onClick={closeForm}>
               Cancel
