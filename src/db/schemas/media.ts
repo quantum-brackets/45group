@@ -12,9 +12,9 @@ export const mediasTable = pgTable("medias", {
   updated_at: timestamp("updated_at"),
   created_at: timestamp("created_at").defaultNow(),
   metadata: jsonb("metadata"),
-  user_id: uuid("user_id").references(() => usersTable.id),
-  location_id: uuid("location_id").references(() => locationsTable.id),
-  resource_id: uuid("resource_id").references(() => resourcesTable.id),
+  user_id: uuid("user_id").references(() => usersTable.id, { onDelete: "cascade" }),
+  location_id: uuid("location_id").references(() => locationsTable.id, { onDelete: "cascade" }),
+  resource_id: uuid("resource_id").references(() => resourcesTable.id, { onDelete: "cascade" }),
 });
 
 export const mediaRelations = relations(mediasTable, ({ one }) => ({
