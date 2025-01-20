@@ -1,7 +1,7 @@
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 import { MiddlewareFactory } from "../stack-middlewares";
 
-const paginatedPaths = ["/admin/locations"];
+const paginatedPaths = ["/admin/locations", "/admin/resources"];
 
 export const pagination: MiddlewareFactory = (next) => {
   return async (req: NextRequest, _next: NextFetchEvent) => {
