@@ -125,7 +125,7 @@ export const POST = catchAsync(async (req: NextRequest) => {
     db.insert(mediasTable).values(
       imageData.map(({ type, ...rest }) => ({
         mimeType: type,
-        resourceId: newResource.id,
+        resource_id: newResource.id,
         ...rest,
       }))
     ),
