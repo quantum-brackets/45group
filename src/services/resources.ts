@@ -23,8 +23,37 @@ class ResourcesService {
     return response;
   };
 
+  static createResourceRule = async (
+    data: Pick<ResourceRule, "name" | "description" | "category">
+  ) => {
+    const { data: response } = await axiosPrivate.post<ResourceRule>(`/api/admin/rules`, data);
+
+    return response;
+  };
+
+  static deleteResourceRule = async (id: string) => {
+    const { data: response } = await axiosPrivate.delete<any>(`/api/admin/rules/${id}`);
+
+    return response;
+  };
+
   static getResourceFacilities = async () => {
-    const { data: response } = await axiosPrivate.get<ResourceRule[]>(`/api/admin/facilities`);
+    const { data: response } = await axiosPrivate.get<ResourceFacility[]>(`/api/admin/facilities`);
+
+    return response;
+  };
+
+  static createResourceFacility = async (data: Pick<ResourceFacility, "name" | "description">) => {
+    const { data: response } = await axiosPrivate.post<ResourceFacility>(
+      `/api/admin/facilities`,
+      data
+    );
+
+    return response;
+  };
+
+  static deleteResourceFacility = async (id: string) => {
+    const { data: response } = await axiosPrivate.get<any>(`/api/admin/facilities/${id}`);
 
     return response;
   };
