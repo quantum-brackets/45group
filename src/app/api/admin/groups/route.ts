@@ -9,23 +9,21 @@ import { groupsTable } from "~/db/schemas/groups";
 export const POST = catchAsync(async (req: NextRequest) => {
   const body = await req.json();
 
-  const { name, num } = await validateSchema({
+  const { name } = await validateSchema({
     object: {
       name: Yup.string().required("`name` is required"),
-      num: Yup.number().integer("`num` must be an integer").required("`num` is required"),
     },
     data: body,
   });
 
-  const newRule = await db
+  const [newGroup] = await db
     .insert(groupsTable)
     .values({
       name,
-      num,
     })
     .returning();
 
-  return NextResponse.json(newRule);
+  return NextResponse.json(newGroup);
 });
 
 export const GET = catchAsync(async () => {
