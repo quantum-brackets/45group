@@ -1,0 +1,1 @@
+ALTER TABLE "resource_groups" ADD COLUMN "num" integer NOT NULL;

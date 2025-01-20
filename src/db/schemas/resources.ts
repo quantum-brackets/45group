@@ -7,6 +7,7 @@ import {
   time,
   uniqueIndex,
   text,
+  integer,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { rulesTable } from "./rules";
@@ -81,6 +82,7 @@ export const resourceGroupsTable = pgTable(
     group_id: uuid("group_id")
       .references(() => groupsTable.id)
       .notNull(),
+    num: integer("num").notNull(),
     created_at: timestamp("created_at").defaultNow(),
   },
   (t) => ({
