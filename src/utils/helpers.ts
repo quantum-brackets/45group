@@ -87,22 +87,48 @@ function formDataToObject(formData: FormData): { [key: string]: any } {
   const obj: { [key: string]: any } = {};
 
   formData.forEach((value, key) => {
-    const normalizedKey = key.endsWith("[]") ? key.slice(0, -2) : key;
+    const nestedMatch = key.match(/^(.+?)\[(\d+)\]\[(.+?)\]$/);
+    const arrayMatch = key.match(/^(.+?)\[(\d+)\]$/);
 
-    if (normalizedKey in obj) {
-      if (Array.isArray(obj[normalizedKey])) {
-        obj[normalizedKey].push(value);
+    if (nestedMatch) {
+      const [_, baseKey, index, property] = nestedMatch;
+      const idx = parseInt(index);
+      if (!(baseKey in obj)) {
+        obj[baseKey] = [];
+      }
+      if (!obj[baseKey][idx]) {
+        obj[baseKey][idx] = {};
+      }
+      obj[baseKey][idx][property] = value;
+    } else if (arrayMatch) {
+      const [_, baseKey, index] = arrayMatch;
+      const idx = parseInt(index);
+      if (!(baseKey in obj)) {
+        obj[baseKey] = [];
+      }
+      obj[baseKey][idx] = value;
+    } else if (key.endsWith("[]")) {
+      const baseKey = key.slice(0, -2);
+      if (baseKey in obj) {
+        obj[baseKey].push(value);
       } else {
-        obj[normalizedKey] = [obj[normalizedKey], value];
+        obj[baseKey] = [value];
       }
     } else {
-      obj[normalizedKey] = value;
+      if (key in obj) {
+        if (Array.isArray(obj[key])) {
+          obj[key].push(value);
+        } else {
+          obj[key] = [obj[key], value];
+        }
+      } else {
+        obj[key] = value;
+      }
     }
   });
 
   return obj;
 }
-
 export function validateSchema({
   object,
   data,
