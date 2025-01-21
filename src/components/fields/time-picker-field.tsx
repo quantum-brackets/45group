@@ -10,6 +10,7 @@ import { cn } from "~/utils/helpers";
 type Props = Omit<TimePickerProps<Dayjs>, "value" | "onChange"> &
   FieldConfig & {
     wrapperClassName?: string;
+
     labelProps?: InputLabelProps;
     required?: boolean;
   };
@@ -21,13 +22,14 @@ export default function TimePickerField({
   sx,
   label,
   format = "hh:mm A",
+  minTime,
+  maxTime,
   labelProps,
   ...props
 }: Props) {
   return (
     <Field {...props}>
       {({ field, form }: FieldProps) => {
-        // Convert the string value to Dayjs object for the TimePicker
         const value = field.value ? dayjs(field.value, format) : null;
 
         return (
@@ -56,8 +58,9 @@ export default function TimePickerField({
                   },
                   ...sx,
                 }}
-                disablePast
                 format={format}
+                maxTime={maxTime ? dayjs(maxTime, format) : undefined}
+                minTime={minTime ? dayjs(minTime, format) : undefined}
                 ampm={true}
                 onChange={(newValue: Dayjs | null) => {
                   const formattedTime = newValue?.format(format) || "";
