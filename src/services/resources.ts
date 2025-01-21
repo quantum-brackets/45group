@@ -1,5 +1,7 @@
 import { axiosPrivate } from "~/config/axios";
+import { ResourceFacility } from "~/db/schemas/facilities";
 import { ResourceGroup } from "~/db/schemas/groups";
+import { ResourceRule } from "~/db/schemas/rules";
 
 class ResourcesService {
   static createResource = async (data: any) => {
@@ -17,22 +19,31 @@ class ResourcesService {
     return response;
   };
 
-  static getResourceRules = async () => {
-    const { data: response } = await axiosPrivate.get<ResourceRule[]>(`/api/admin/rules`);
-
-    return response;
-  };
-
   static createResourceRule = async (
-    data: Pick<ResourceRule, "name" | "description" | "category">
+    data: { name: string; description?: string } & Pick<ResourceRule, "category">
   ) => {
     const { data: response } = await axiosPrivate.post<ResourceRule>(`/api/admin/rules`, data);
 
     return response;
   };
 
-  static deleteResourceRule = async (id: string) => {
-    const { data: response } = await axiosPrivate.delete<any>(`/api/admin/rules/${id}`);
+  static createResourceFacility = async (data: { name: string; description?: string }) => {
+    const { data: response } = await axiosPrivate.post<ResourceFacility>(
+      `/api/admin/facilities`,
+      data
+    );
+
+    return response;
+  };
+
+  static createResourceGroup = async (data: { name: string }) => {
+    const { data: response } = await axiosPrivate.post<ResourceGroup>(`/api/admin/groups`, data);
+
+    return response;
+  };
+
+  static getResourceRules = async () => {
+    const { data: response } = await axiosPrivate.get<ResourceRule[]>(`/api/admin/rules`);
 
     return response;
   };
@@ -43,11 +54,8 @@ class ResourcesService {
     return response;
   };
 
-  static createResourceFacility = async (data: Pick<ResourceFacility, "name" | "description">) => {
-    const { data: response } = await axiosPrivate.post<ResourceFacility>(
-      `/api/admin/facilities`,
-      data
-    );
+  static getResourceGroups = async () => {
+    const { data: response } = await axiosPrivate.get<ResourceGroup[]>(`/api/admin/groups`);
 
     return response;
   };
@@ -58,8 +66,14 @@ class ResourcesService {
     return response;
   };
 
-  static getResourceGroups = async () => {
-    const { data: response } = await axiosPrivate.get<ResourceGroup[]>(`/api/admin/groups`);
+  static deleteResourceRule = async (id: string) => {
+    const { data: response } = await axiosPrivate.delete<any>(`/api/admin/rules/${id}`);
+
+    return response;
+  };
+
+  static deleteResourceGroup = async (id: string) => {
+    const { data: response } = await axiosPrivate.delete<any>(`/api/admin/groups/${id}`);
 
     return response;
   };
