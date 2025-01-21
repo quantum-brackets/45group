@@ -35,13 +35,18 @@ type BookingSearchParams = {
   sort_by?: string;
 };
 
-type Resource = {
-  id: string;
-  name: string;
-  rules: ResourceRule[];
-};
-
 type Pagination<T> = {
   count: number;
   data: T[];
 };
+
+type DayOfWeek = readonly [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+][number];
+type ScheduleType = readonly ["24/7", "custom", "weekdays", "weekends"][number];

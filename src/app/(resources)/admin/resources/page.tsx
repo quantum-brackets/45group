@@ -13,6 +13,7 @@ import DataGrid from "~/components/data-grid";
 import FormField from "~/components/fields/form-field";
 import { useCustomSearchParams } from "~/hooks/utils";
 import ResourcesService from "~/services/resources";
+import { Resource } from "~/db/schemas/resources";
 
 const columns: GridColDef<Resource>[] = [
   {
