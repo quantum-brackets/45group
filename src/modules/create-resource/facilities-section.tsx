@@ -79,7 +79,7 @@ export default function FacilitiesSection({
     }
     setFieldValue("facilities", {
       ...values.facilities,
-      [newFacility.name]: { ...newFacility, checked: false, markedForDeletion: false },
+      [newFacility.name]: { ...newFacility, checked: true, markedForDeletion: false },
     });
     closeForm();
   }

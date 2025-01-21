@@ -78,7 +78,7 @@ export default function RulesSection({ setFieldValue, values, setFieldError, isL
     }
     setFieldValue("rules", {
       ...values.rules,
-      [newRule.name]: { ...newRule, checked: false, markedForDeletion: false },
+      [newRule.name]: { ...newRule, checked: true, markedForDeletion: false },
     });
     closeForm();
   }
