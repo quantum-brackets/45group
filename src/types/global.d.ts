@@ -35,23 +35,6 @@ type BookingSearchParams = {
   sort_by?: string;
 };
 
-type ResourceRule = {
-  id: string;
-  name: string;
-  description?: string;
-  category: string;
-  created_at: string;
-  updated_at?: string;
-};
-
-type ResourceFacility = {
-  id: string;
-  name: string;
-  description?: string;
-  created_at: string;
-  updated_at?: string;
-};
-
 type Resource = {
   id: string;
   name: string;
