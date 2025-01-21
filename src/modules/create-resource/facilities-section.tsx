@@ -72,39 +72,42 @@ export default function FacilitiesSection({
 
   function handleSubmit() {
     const newFacility = values._facility;
-    if (values.facilities.some((r) => r.name === newFacility.name && !r.markedForDeletion)) {
+    if (!newFacility.name) return setFieldError("_facility.name" as Field, "Name is required");
+    if (values.facilities[newFacility.name] !== undefined) {
       setFieldError("_facility.name" as Field, "Facility with this name already exists");
       return;
     }
-
-    setFieldValue("facilities", [
+    setFieldValue("facilities", {
       ...values.facilities,
-      { ...newFacility, checked: false, markedForDeletion: false },
-    ]);
+      [newFacility.name]: { ...newFacility, checked: false, markedForDeletion: false },
+    });
     closeForm();
   }
 
-  function handleChange(index: number, checked: boolean) {
-    const newFacilities = [...values.facilities];
-    newFacilities[index] = { ...newFacilities[index], checked };
-    setFieldValue("facilities", newFacilities);
+  function handleChange(name: string, checked: boolean) {
+    setFieldValue("facilities", {
+      ...values.facilities,
+      [name]: { ...values.facilities[name], checked },
+    });
   }
 
-  function handleDelete(index: number) {
-    const facility = values.facilities[index];
+  function handleDelete(name: string) {
+    const facilities = { ...values.facilities };
+    const facility = values.facilities[name];
     if (facility.id) {
-      const newFacilities = [...values.facilities];
-      newFacilities[index] = { ...facility, markedForDeletion: true };
-      setFieldValue("facilities", newFacilities);
+      setFieldValue("facilities", {
+        ...values.facilities,
+        [name]: { ...facility, markedForDeletion: true },
+      });
     } else {
-      setFieldValue(
-        "facilities",
-        values.facilities.filter((_, i) => i !== index)
-      );
+      delete facilities[name];
+      setFieldValue("facilities", facilities);
     }
   }
 
-  const visibleFacilities = values.facilities?.filter((facility) => !facility.markedForDeletion);
+  const visibleFacilities = values.facilities
+    ? Object.entries(values.facilities).filter(([_, { markedForDeletion }]) => !markedForDeletion)
+    : [];
 
   return (
     <CollapseSection
@@ -130,13 +133,13 @@ export default function FacilitiesSection({
       ) : (
         <>
           <div className="flex w-full flex-col gap-1">
-            {visibleFacilities?.map((facility, index) => (
+            {visibleFacilities?.map(([_, { name, description, checked }], index) => (
               <SelectCard
-                name={facility.name}
-                description={facility.description}
-                checked={!!facility.checked}
-                onDelete={() => handleDelete(index)}
-                onChange={(checked) => handleChange(index, checked)}
+                name={name}
+                description={description}
+                checked={!!checked}
+                onDelete={() => handleDelete(name)}
+                onChange={(checked) => handleChange(name, checked)}
                 key={index}
               />
             ))}
