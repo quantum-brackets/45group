@@ -8,7 +8,7 @@ export const pagination: MiddlewareFactory = (next) => {
     const pathname = req.nextUrl.pathname;
     const url = req.nextUrl;
 
-    if (!paginatedPaths.some((path) => pathname.startsWith(path))) {
+    if (!paginatedPaths.some((path) => pathname === path)) {
       return next(req, _next);
     }
 
