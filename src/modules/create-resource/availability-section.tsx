@@ -1,19 +1,11 @@
 "use client";
 
 import { Fragment, ReactNode, useState } from "react";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { DatePicker } from "@mui/x-date-pickers";
-import { ClickAwayListener, Fade, keyframes, MenuItem, Paper, Popper } from "@mui/material";
-import dayjs, { Dayjs } from "dayjs";
-import { FormikHelpers } from "formik";
-import { GoKebabHorizontal } from "react-icons/go";
 import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
 import CollapseSection from "~/components/form/resources-form/collapse-section";
-import SelectField from "~/components/fields/select-field";
-import Button from "~/components/button";
 import { cn } from "~/utils/helpers";
-import DatePickerField from "~/components/fields/date-picker-field";
+import TimePickerField from "~/components/fields/time-picker-field";
+import { DAY_OF_WEEK, SCHEDULE_TYPE } from "~/utils/constants";
 
 const FORM_KEY = "availability_form" as const;
 
@@ -25,56 +17,64 @@ type Props = {
   values: Values;
 };
 
-const DAY_OF_WEEK = [
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-  "sunday",
-] as const;
-const SCHEDULE_TYPE = ["24/7", "custom", "weekdays", "weekends"] as const;
-
-type DayOfWeeek = (typeof DAY_OF_WEEK)[number];
-type ScheduleType = (typeof SCHEDULE_TYPE)[number];
-
-function DateField({
+function TimeField({
   name,
+  day,
   label,
+  values,
 }: {
-  name: DayOfWeeek | Extract<ScheduleType, "weekdays" | "weekends">;
+  name: Exclude<ScheduleType, "24/7">;
+  day?: DayOfWeek;
   label?: string;
+  values: Values &
+    Partial<
+      Record<
+        Exclude<ScheduleType, "24/7">,
+        | Record<DayOfWeek, Record<"start_time" | "end_time", string>>
+        | Record<"start_time" | "end_time", string>
+      >
+    >;
 }) {
+  const startKey = `${FORM_KEY}.${name}${day ? `.${day}` : ""}.start_time`;
+  const endKey = `${FORM_KEY}.${name}${day ? `.${day}` : ""}.end_time`;
+
+  const dayValues = day && name ? (values[name] as any)?.[day] : (values[name] as any);
+  const minTime = dayValues?.start_time;
+  const maxTime = dayValues?.end_time;
+
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={name} className="text-sm capitalize text-zinc-700">
-        {label || name}
+      <label htmlFor={name} className="text-xs capitalize text-zinc-700">
+        {label || day || name}
       </label>
       <div className="flex items-center gap-4" id={name}>
-        <DatePickerField name={`custom.${name}.start`} /> <span>To</span>{" "}
-        <DatePickerField name={`custom.${name}.end`} />
+        <TimePickerField name={startKey} maxTime={maxTime} /> <span className="text-xs">To</span>{" "}
+        <TimePickerField name={endKey} minTime={minTime} />
       </div>
     </div>
   );
 }
 
-const components: Record<ScheduleType, ReactNode> = {
-  "24/7": (
-    <div className="flex items-center gap-4">
-      <p>24 Hours</p> <span className="text-xl text-zinc-800">&#8594;</span>{" "}
-      <p>12:00 AM to 11:59 PM</p>
-    </div>
-  ),
-  custom: (
-    <div className="flex flex-col gap-4">
-      {DAY_OF_WEEK.map((day, index) => (
-        <DateField key={index} name={day} />
-      ))}
-    </div>
-  ),
-  weekdays: <DateField name="weekdays" label="Monday to Friday" />,
-  weekends: <DateField name="weekends" label="Saturday and Sunday" />,
+const components: Record<ScheduleType, (values: Values) => ReactNode> = {
+  "24/7": () => {
+    return (
+      <div className="flex items-center gap-4">
+        <p>24 Hours</p> <span className="text-xl text-zinc-800">&#8594;</span>{" "}
+        <p>12:00 AM to 11:59 PM</p>
+      </div>
+    );
+  },
+  custom: (values) => {
+    return (
+      <div className="flex flex-col gap-4">
+        {DAY_OF_WEEK.map((day, index) => (
+          <TimeField key={index} day={day} name="custom" values={values} />
+        ))}
+      </div>
+    );
+  },
+  weekdays: (values) => <TimeField name="weekdays" label="Monday to Friday" values={values} />,
+  weekends: (values) => <TimeField name="weekends" label="Saturday and Sunday" values={values} />,
 };
 
 export default function AvailabilitySection({ values, setFieldValue }: Props) {
@@ -108,9 +108,9 @@ export default function AvailabilitySection({ values, setFieldValue }: Props) {
           ))}
         </div>
         <div>
-          {Object.entries(components).map(([key, value], index) => {
+          {Object.entries(components).map(([key, component], index) => {
             if (key !== choice) return;
-            return <Fragment key={index}>{value}</Fragment>;
+            return <Fragment key={index}>{component(values)}</Fragment>;
           })}
         </div>
       </div>
