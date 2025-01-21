@@ -1,4 +1,4 @@
-import { asc, sql } from "drizzle-orm";
+import { asc, ilike, or, count as sqlCount } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import * as Yup from "yup";
 import { db } from "~/db";
@@ -53,7 +53,11 @@ export const POST = catchAsync(async (req: NextRequest) => {
 export const GET = catchAsync(async (req: NextRequest) => {
   const searchParams = req.nextUrl.searchParams;
 
-  const { limit, offset } = await validateSchema({
+  const {
+    limit,
+    offset,
+    q = "",
+  } = await validateSchema({
     object: {
       limit: Yup.number()
         .optional()
@@ -63,25 +67,32 @@ export const GET = catchAsync(async (req: NextRequest) => {
         .optional()
         .transform((value) => (isNaN(value) ? undefined : value))
         .integer("Offset must be an integer"),
+      q: Yup.string().optional(),
     },
     data: {
       limit: searchParams.get("limit") !== null ? parseInt(searchParams.get("limit")!) : undefined,
       offset:
         searchParams.get("offset") !== null ? parseInt(searchParams.get("offset")!) : undefined,
+      q: searchParams.get("q") || undefined,
     },
   });
 
+  const baseQuery = db
+    .select()
+    .from(locationsTable)
+    .where(or(ilike(locationsTable.name, `%${q}%`)));
+
   if (limit === undefined || offset === undefined) {
-    const locations = await db
-      .select()
-      .from(locationsTable)
-      .orderBy(asc(locationsTable.created_at));
+    const locations = await baseQuery.orderBy(asc(locationsTable.created_at));
     return NextResponse.json(locations);
   }
 
   const [data, [count]] = await Promise.all([
-    db.select().from(locationsTable).limit(limit).offset(offset),
-    db.select({ count: sql`CAST(count(*) AS INTEGER)` }).from(locationsTable),
+    baseQuery.limit(limit).offset(offset),
+    db
+      .select({ count: sqlCount() })
+      .from(locationsTable)
+      .where(ilike(locationsTable.name, `%${q}%`)),
   ]);
 
   return NextResponse.json({
