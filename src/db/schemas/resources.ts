@@ -9,7 +9,7 @@ import {
   text,
   integer,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { InferSelectModel, relations } from "drizzle-orm";
 import { rulesTable } from "./rules";
 import { mediasTable } from "./media";
 import { facilitiesTable } from "./facilities";
@@ -40,6 +40,8 @@ export const resourcesTable = pgTable(
     unique_resource: uniqueIndex("unique_resource").on(t.name, t.type),
   })
 );
+
+export type Resource = InferSelectModel<typeof resourcesTable>;
 
 export const resourceRulesTable = pgTable(
   "resource_rules",

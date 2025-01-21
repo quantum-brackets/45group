@@ -14,16 +14,16 @@ import {
 import UploadService from "~/services/upload";
 import YupValidation from "~/utils/yup-validations";
 import { mediasTable } from "~/db/schemas/media";
+import { DAY_OF_WEEK, SCHEDULE_TYPE } from "~/utils/constants";
 
 const resourceType = ["lodge", "event", "dining"];
-const scheduleType = ["24/7", "custom", "weekdays", "weekends"];
-const daysOfWeek = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
 const schedule = Yup.object({
   start_time: Yup.string().required("`start_time` is required"),
   end_time: Yup.string().required("`end_time` is required"),
   day_of_week: Yup.string()
-    .oneOf(daysOfWeek, "`day_of_week` must be one of: " + daysOfWeek.join(", "))
+    .lowercase()
+    .oneOf(DAY_OF_WEEK, "`day_of_week` must be one of: " + DAY_OF_WEEK.join(", "))
     .required("`day_of_week` is required"),
 });
 
@@ -34,7 +34,8 @@ const schema = {
     .oneOf(resourceType, `Type must be one of: ${resourceType.join(", ")}`)
     .required("`type` is required"),
   schedule_type: Yup.string()
-    .oneOf(scheduleType, `schedule_type must be one of: ${scheduleType.join(", ")}`)
+    .lowercase()
+    .oneOf(SCHEDULE_TYPE, `schedule_type must be one of: ${SCHEDULE_TYPE.join(", ")}`)
     .required("`schedule_type` is required"),
   description: Yup.string().required("`description` is required"),
   thumbnail: YupValidation.validateSingleFile({
