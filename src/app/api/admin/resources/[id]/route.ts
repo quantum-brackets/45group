@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
-import * as Yup from "yup";
 import { db } from "~/db";
 import {
   resourceFacilitiesTable,
@@ -10,7 +9,7 @@ import {
 } from "~/db/schemas/resources";
 import catchAsync from "~/utils/catch-async";
 import { appError, validateSchema } from "~/utils/helpers";
-import { resourceSchema } from "../route";
+import { resourceSchema } from "~/utils/yup-schemas/resource";
 
 export const DELETE = catchAsync(async (_: NextRequest, context: { params: { id: string } }) => {
   const resourceId = context.params.id;
