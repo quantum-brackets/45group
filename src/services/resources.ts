@@ -1,6 +1,7 @@
 import { axiosPrivate } from "~/config/axios";
 import { ResourceFacility } from "~/db/schemas/facilities";
 import { ResourceGroup } from "~/db/schemas/groups";
+import { Resource } from "~/db/schemas/resources";
 import { ResourceRule } from "~/db/schemas/rules";
 
 class ResourcesService {
@@ -61,7 +62,7 @@ class ResourcesService {
   };
 
   static deleteResourceFacility = async (id: string) => {
-    const { data: response } = await axiosPrivate.get<any>(`/api/admin/facilities/${id}`);
+    const { data: response } = await axiosPrivate.delete<any>(`/api/admin/facilities/${id}`);
 
     return response;
   };
