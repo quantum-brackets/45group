@@ -21,42 +21,85 @@ import GroupsSection from "~/modules/create-resource/groups-section";
 import ResourcesService from "~/services/resources";
 import LocationForm from "~/modules/create-resource/location-form";
 import MultiMedia from "~/components/form/multi-media";
+import {
+  useCreateResource,
+  useCreateResourceFacility,
+  useCreateResourceGroup,
+  useCreateResourceRule,
+  useDeleteResourceFacility,
+  useDeleteResourceGroup,
+  useDeleteResourceRule,
+  useUpdateResource,
+} from "~/hooks/resources";
+import { ResourceRule } from "~/db/schemas/rules";
+import { DAY_OF_WEEK } from "~/utils/constants";
+import { Resource } from "~/db/schemas/resources";
+import { ResourceFacility } from "~/db/schemas/facilities";
+import { ResourceGroup } from "~/db/schemas/groups";
 
 type FacilityFormValues = {
   _show_facility_form?: boolean;
   _facility: { name: string; description: string };
   _show_facilities?: boolean;
-  facilities: (Omit<ResourceFacility, "id" | "created_at" | "updated_at"> & {
-    id?: string;
-    markedForDeletion?: boolean;
-    checked?: boolean;
-  })[];
+  facilities: Record<
+    string,
+    {
+      id?: string;
+      name: string;
+      markedForDeletion?: boolean;
+      description?: string;
+      checked?: boolean;
+    }
+  >;
 };
 
 type RuleFormValues = {
   _show_rule_form?: boolean;
   _rule: { name: string; description: string; category: "house_rules" | "cancellations" };
   _show_rules?: boolean;
-  rules: (Omit<ResourceRule, "id" | "created_at" | "updated_at"> & {
-    id?: string;
-    markedForDeletion?: boolean;
-    checked?: boolean;
-  })[];
+  rules: Record<
+    string,
+    Pick<ResourceRule, "category"> & {
+      id?: string;
+      name: string;
+      markedForDeletion?: boolean;
+      description?: string;
+      checked?: boolean;
+    }
+  >;
 };
 
 type AvailabilityFormValues = {
   _show_availabilities?: boolean;
-  schedule_type: string;
+  schedule_type: Resource["schedule_type"];
+  custom: Record<
+    DayOfWeek,
+    {
+      start_time: string;
+      end_time: string;
+    }
+  >;
+  weekdays: {
+    start_time: string;
+    end_time: string;
+  };
+  weekends: {
+    start_time: string;
+    end_time: string;
+  };
 };
 
 type GroupFormValues = {
   _show_group_form?: boolean;
   _show_groups?: boolean;
   groups?: {
-    [key: string]: number;
+    [key: string]: {
+      id?: string;
+      value: number;
+      markedForDeletion?: boolean;
+    };
   };
   _group?: string;
-  existing_groups?: string[];
 };
 
 export type ResourceFormValues = {
@@ -94,9 +137,26 @@ const initialValues: ResourceFormValues = {
   media: [],
   availability_form: {
     schedule_type: "24/7",
+    custom: Object.fromEntries(
+      DAY_OF_WEEK.map((day) => [
+        day,
+        {
+          start_time: "12:00 AM",
+          end_time: "11:59 PM",
+        },
+      ])
+    ) as AvailabilityFormValues["custom"],
+    weekdays: {
+      start_time: "12:00 AM",
+      end_time: "11:59 PM",
+    },
+    weekends: {
+      start_time: "12:00 AM",
+      end_time: "11:59 PM",
+    },
   },
   rule_form: {
-    rules: [],
+    rules: {},
     _rule: {
       name: "",
       description: "",
@@ -104,7 +164,7 @@ const initialValues: ResourceFormValues = {
     },
   },
   facility_form: {
-    facilities: [],
+    facilities: {},
     _facility: {
       name: "",
       description: "",
@@ -123,6 +183,20 @@ const validationSchema = Yup.object({
   description: Yup.string().required("Description is required"),
   type: Yup.string().oneOf(["lodge", "event", "dining"]).required("Resource type is required"),
 });
+
+const processDeletedItems = <T extends { markedForDeletion?: boolean }>(
+  items?: Record<string, T>
+): [string, T][] => {
+  if (!items) return [];
+  return Object.entries(items).filter(([_, item]) => item.markedForDeletion);
+};
+
+const processExistingItems = <T extends { id?: string }>(
+  items?: Record<string, T>
+): [string, T][] => {
+  if (!items) return [];
+  return Object.entries(items).filter(([_, item]) => item.id);
+};
 
 export default function CreateResource() {
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
@@ -148,18 +222,6 @@ export default function CreateResource() {
     ],
   });
 
-  const { mutateAsync: createResource } = useMutation({
-    mutationFn: ResourcesService.createResource,
-    onSuccess: () => {
-      notifySuccess({ message: "Resource successfully created" });
-    },
-    onError: (error) => {
-      if (isAxiosError(error)) {
-        notifyError({ message: error.response?.data.error });
-      }
-    },
-  });
-
   const handleThumbnailSelect = async (
     files: FileList | null,
     setFieldValue: FormikHelpers<ResourceFormValues>["setFieldValue"]
@@ -178,35 +240,178 @@ export default function CreateResource() {
     }
   };
 
+  const { mutateAsync: createResource } = useCreateResource();
+  const { mutateAsync: updateResource } = useUpdateResource();
+
+  const { mutateAsync: deleteResourceFacility } = useDeleteResourceFacility();
+  const { mutateAsync: deleteResourceRule } = useDeleteResourceRule();
+  const { mutateAsync: deleteResourceGroup } = useDeleteResourceGroup();
+
+  const { mutateAsync: createResourceFacility } = useCreateResourceFacility();
+  const { mutateAsync: createResourceRule } = useCreateResourceRule();
+  const { mutateAsync: createResourceGroup } = useCreateResourceGroup();
+
   return (
     <div className="flex flex-col gap-4">
       <header>
         <BackButton href="/admin/resources" text="Back to Resources" />
       </header>
       <Formik
-        initialValues={{
-          ...initialValues,
-          facility_form: {
-            ...initialValues.facility_form,
-            facilities: facilities as FacilityFormValues["facilities"],
-          },
-          rule_form: { ...initialValues.rule_form, rules: rules as RuleFormValues["rules"] },
-          group_form: {
-            ...initialValues.group_form,
-            groups: groups?.reduce(
-              (acc, group) => ({
-                ...acc,
-                [group.name]: group.num,
-              }),
-              {}
-            ),
-            existing_groups: groups?.map(({ name }) => name),
-          },
-        }}
+        initialValues={
+          {
+            ...initialValues,
+            facility_form: {
+              ...initialValues.facility_form,
+              facilities: facilities?.reduce(
+                (acc, facility) => ({
+                  ...acc,
+                  [facility.name]: facility,
+                }),
+                {}
+              ),
+            },
+            rule_form: {
+              ...initialValues.rule_form,
+              rules: rules?.reduce(
+                (acc, rule) => ({
+                  ...acc,
+                  [rule.name]: rule,
+                }),
+                {}
+              ),
+            },
+            group_form: {
+              ...initialValues.group_form,
+              groups: groups?.reduce(
+                (acc, group) => ({
+                  ...acc,
+                  [group.name]: {
+                    ...group,
+                    value: 0,
+                  },
+                }),
+                {}
+              ),
+            },
+          } as ResourceFormValues
+        }
         onSubmit={async (values) => {
-          const submissionValues = filterPrivateValues(values);
-          console.log(submissionValues);
-          await createResource(submissionValues);
+          const {
+            rule_form: { rules },
+            facility_form: { facilities },
+            group_form: { groups },
+            media: images,
+            location,
+            availability_form: { schedule_type, custom, weekdays, weekends },
+            ...submissionValues
+          } = filterPrivateValues(values);
+
+          if (!submissionValues.thumbnail) return notifyError({ message: "Thumbnail is required" });
+          if (!images.length) return notifyError({ message: "At least one media is required" });
+
+          let schedules: Record<"start_time" | "end_time" | "day_of_week", string>[] = [];
+
+          switch (schedule_type) {
+            case "custom":
+              schedules = Object.entries(custom).map(([key, value]) => ({
+                ...value,
+                day_of_week: key,
+              }));
+              break;
+            case "weekdays":
+              schedules = DAY_OF_WEEK.slice(0, 5).map((day) => ({ ...weekdays, day_of_week: day }));
+            case "weekends":
+              schedules = DAY_OF_WEEK.slice(-2).map((day) => ({ ...weekends, day_of_week: day }));
+          }
+
+          await createResource({
+            ...submissionValues,
+            images,
+            schedule_type,
+            location_id: location?.id,
+            schedules,
+          });
+
+          const deletedRules = processDeletedItems<(typeof rules)[number]>(rules);
+          const deletedFacilities = processDeletedItems<(typeof facilities)[number]>(facilities);
+          const deletedGroups = processDeletedItems(groups);
+
+          const newRules = rules
+            ? Object.entries(rules).filter(([_, { id, checked }]) => !id && checked)
+            : [];
+          const newFacilities = facilities
+            ? Object.entries(facilities).filter(([_, { id, checked }]) => !id && checked)
+            : [];
+          const newGroups = groups ? Object.entries(groups).filter(([_, { id }]) => !id) : [];
+
+          const oldRules = processExistingItems<(typeof rules)[number]>(rules);
+          const oldFacilities = processExistingItems<(typeof facilities)[number]>(facilities);
+          const oldGroups = processExistingItems(groups);
+
+          const mutations = [
+            ...(deletedRules.length > 0
+              ? deletedRules.map(([_, rule]) => rule.id && deleteResourceRule(rule.id))
+              : [0]),
+            ...(deletedFacilities.length > 0
+              ? deletedFacilities.map(
+                  ([_, facility]) => facility.id && deleteResourceFacility(facility.id)
+                )
+              : [0]),
+            ...(deletedGroups.length > 0
+              ? deletedGroups.map(([_, group]) => group.id && deleteResourceGroup(group.id))
+              : [0]),
+            ...(newRules.length > 0
+              ? newRules.map(([_, { name, description, category }]) =>
+                  createResourceRule({ name, category, description })
+                )
+              : [0]),
+            ...(newFacilities.length > 0
+              ? newFacilities.map(([_, { name, description }]) =>
+                  createResourceFacility({ name, description })
+                )
+              : [0]),
+            ...(newGroups.length > 0
+              ? newGroups.map(([key]) => createResourceGroup({ name: key }))
+              : [0]),
+          ];
+
+          const responses = await Promise.all(mutations);
+
+          const lastThreeRes = responses.slice(-3);
+          const rulesRes = lastThreeRes[0] as ResourceRule[] | 0;
+          const facilitiesRes = lastThreeRes[1] as ResourceFacility[] | 0;
+          const groupsRes = lastThreeRes[2] as ResourceGroup[] | 0;
+
+          const combinedRules = [
+            ...oldRules.map(([_, { id }]) => id),
+            ...(rulesRes ? rulesRes.map(({ id }) => id) : []),
+          ];
+          const combinedFacilities = [
+            ...oldFacilities.map(([_, { id }]) => id),
+            ...(facilitiesRes ? facilitiesRes.map(({ id }) => id) : []),
+          ];
+          const combinedGroups = [
+            ...oldGroups.map(([_, { id, value: num }]) => ({ id, num })),
+            ...(groupsRes
+              ? groupsRes.map(({ id, name }) => {
+                  const num = groups?.[name]?.["value"] || 0;
+                  return { id, num };
+                })
+              : []),
+          ];
+
+          await updateResource(
+            {
+              rules: combinedRules,
+              facilities: combinedFacilities,
+              groups: combinedGroups,
+            },
+            {
+              onSuccess: () => {
+                notifySuccess({ message: "Resource successfully created" });
+              },
+            }
+          );
         }}
         enableReinitialize
         validationSchema={validationSchema}
@@ -227,19 +432,18 @@ export default function CreateResource() {
                 <div className="flex items-center gap-4">
                   <Button
                     type="submit"
-                    onClick={async () => await setFieldValue("publish", false)}
-                    // disabled={values.publish}
+                    disabled={isSubmitting && values.publish}
                     variant="outlined"
                     color="info"
-                    loading={isSubmitting}
+                    loading={isSubmitting && !values.publish}
                   >
                     Save as draft
                   </Button>
                   <Button
                     type="submit"
-                    // disabled={values.publish}
-                    loading={isSubmitting}
-                    onClick={async () => await setFieldValue("publish", true)}
+                    disabled={isSubmitting && !values.publish}
+                    loading={isSubmitting && values.publish}
+                    onClick={() => setFieldValue("publish", true)}
                   >
                     Publish Resource
                   </Button>
@@ -250,8 +454,8 @@ export default function CreateResource() {
                     type="button"
                     disabled={!values._location}
                     loading={isSubmitting}
-                    onClick={async () =>
-                      values._location && (await setFieldValue("location", { ...values._location }))
+                    onClick={() =>
+                      values._location && setFieldValue("location", { ...values._location })
                     }
                   >
                     Next
