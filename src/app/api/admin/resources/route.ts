@@ -27,7 +27,12 @@ const schedule = Yup.object({
     .required("`day_of_week` is required"),
 });
 
-const schema = {
+const group = Yup.object({
+  id: Yup.string().uuid("Must be a valid UUID"),
+  num: Yup.number().required("`num` is required"),
+});
+
+export const resourceSchema = {
   location_id: Yup.string().uuid("Location id not valid"),
   name: Yup.string().required("`name` is required"),
   type: Yup.string()
@@ -42,7 +47,7 @@ const schema = {
     requiredMessage: "`thumbnail` is required",
     fileSizeMessage: "`thumbnail` must be less than 5MB",
   }),
-  publish: Yup.boolean().isTrue().optional(),
+  publish: Yup.boolean().optional(),
   images: YupValidation.validateFiles({
     requiredMessage: "`images` is required",
   }).required("`images` is required`"),
@@ -56,7 +61,7 @@ const schema = {
     }),
   rules: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
   facilities: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
-  groups: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
+  groups: Yup.array().of(group).optional(),
 };
 
 export const POST = catchAsync(async (req: NextRequest) => {
@@ -64,7 +69,7 @@ export const POST = catchAsync(async (req: NextRequest) => {
 
   const { publish, thumbnail, schedules, images, facilities, rules, groups, ...validatedData } =
     await validateSchema({
-      object: schema,
+      object: resourceSchema,
       isFormData: true,
       data: body,
     });
@@ -116,9 +121,10 @@ export const POST = catchAsync(async (req: NextRequest) => {
 
     groups?.length
       ? db.insert(resourceGroupsTable).values(
-          groups.map((group_id: string) => ({
+          groups.map(({ id: group_id, num }: { id: string; num: number }) => ({
             resource_id: newResource.id,
             group_id,
+            num,
           }))
         )
       : Promise.resolve(),
