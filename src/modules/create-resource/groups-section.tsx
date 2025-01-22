@@ -26,10 +26,21 @@ export default function GroupsSection({ values, setFieldValue, setFieldError }: 
     setFieldValue("_group", "");
   }
 
-  function onDelete(key: string) {
-    const newValues = values.groups;
-    delete newValues?.[key];
-    setFieldValue("groups", newValues);
+  function handleDelete(key: string) {
+    const groups = values.groups || {};
+    const group = values.groups?.[key];
+    if (group?.id) {
+      setFieldValue("groups", {
+        ...groups,
+        [key]: {
+          ...groups[key],
+          markedForDeletion: true,
+        },
+      });
+    } else {
+      delete groups[key];
+      setFieldValue("groups", groups);
+    }
   }
 
   function onSubmit() {
@@ -39,10 +50,16 @@ export default function GroupsSection({ values, setFieldValue, setFieldError }: 
     }
     setFieldValue("groups", {
       ...values.groups,
-      [values._group]: 0,
+      [values._group]: {
+        value: 0,
+      },
     });
     closeForm();
   }
+
+  const visibleGroups = values.groups
+    ? Object.entries(values.groups).filter(([_, { markedForDeletion }]) => !markedForDeletion)
+    : [];
 
   return (
     <CollapseSection
@@ -59,83 +76,91 @@ export default function GroupsSection({ values, setFieldValue, setFieldError }: 
         },
       }}
     >
-      {values.groups && (
-        <div className="flex flex-col gap-4">
-          {Object.entries(values.groups).map(([key, value], index) => (
-            <div
-              className="flex w-full items-center justify-between gap-3 largeLaptop:gap-5"
-              key={index}
-            >
-              <p className="text-sm capitalize largeLaptop:text-sm">{key}</p>
-              <div className="flex items-center justify-between gap-4 largeLaptop:gap-4">
-                <OutlinedInput
-                  value={value}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setFieldValue("groups", {
-                      ...values.existing_groups,
-                      ...values.groups,
-                      [key]: value,
-                    });
-                  }}
-                  type="tel"
-                  inputMode="numeric"
-                  endAdornment={
-                    <div className="flex items-center gap-2">
-                      <Button
-                        className="!w-fit !min-w-0 !p-[6px] largeLaptop:!p-[10px]"
-                        variant="text"
-                        size="small"
-                        onClick={() => {
-                          setFieldValue("groups", {
-                            ...values.existing_groups,
-                            ...values.groups,
-                            [key]:
-                              values.groups![key] === 0
-                                ? values.groups![key]
-                                : values.groups![key] - 1,
-                          });
-                        }}
-                      >
-                        <FaMinus className="text-xs text-black largeLaptop:text-sm" />
-                      </Button>
-                      <Button
-                        className="!w-fit !min-w-0 !p-[6px] largeLaptop:!p-[10px]"
-                        size="small"
-                        variant="text"
-                        onClick={() =>
-                          setFieldValue("groups", {
-                            ...values.existing_groups,
-                            ...values.groups,
-                            [key]: values.groups![key] + 1,
-                          })
-                        }
-                      >
-                        <FaPlus className="text-xs text-black largeLaptop:text-sm" />
-                      </Button>
-                    </div>
-                  }
-                />
-                <CardMenu>
-                  {({ onClose }) => (
-                    <button
+      <div className="flex flex-col gap-4">
+        {visibleGroups.map(([key, value], index) => (
+          <div
+            className="flex w-full items-center justify-between gap-3 largeLaptop:gap-5"
+            key={index}
+          >
+            <p className="text-sm largeLaptop:text-sm">{key}</p>
+            <div className="flex items-center justify-between gap-4 largeLaptop:gap-4">
+              <OutlinedInput
+                value={value.value}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFieldValue("groups", {
+                    ...values.groups,
+                    [key]: { value },
+                  });
+                }}
+                type="tel"
+                inputMode="numeric"
+                endAdornment={
+                  <div className="flex items-center gap-2">
+                    <Button
+                      className="!w-fit !min-w-0 !p-[6px] largeLaptop:!p-[10px]"
+                      variant="text"
+                      size="small"
                       onClick={() => {
-                        onDelete(key);
-                        onClose();
+                        const value = values.groups![key].value;
+                        setFieldValue("groups", {
+                          ...values.groups,
+                          [key]: {
+                            ...values.groups?.[key],
+                            value: value === 0 ? value : value - 1,
+                          },
+                        });
                       }}
-                      type="button"
                     >
-                      <span>Delete</span>
-                    </button>
-                  )}
-                </CardMenu>
-              </div>
+                      <FaMinus className="text-xs text-black largeLaptop:text-sm" />
+                    </Button>
+                    <Button
+                      className="!w-fit !min-w-0 !p-[6px] largeLaptop:!p-[10px]"
+                      size="small"
+                      variant="text"
+                      onClick={() =>
+                        setFieldValue("groups", {
+                          ...values.groups,
+                          [key]: {
+                            ...values.groups?.[key],
+                            value: values.groups![key].value + 1,
+                          },
+                        })
+                      }
+                    >
+                      <FaPlus className="text-xs text-black largeLaptop:text-sm" />
+                    </Button>
+                  </div>
+                }
+              />
+              <CardMenu>
+                {({ onClose }) => (
+                  <button
+                    onClick={() => {
+                      handleDelete(key);
+                      onClose();
+                    }}
+                    type="button"
+                  >
+                    <span>Delete</span>
+                  </button>
+                )}
+              </CardMenu>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
       {values._show_group_form && (
-        <div className="flex flex-col items-center gap-4">
+        <div
+          className="flex flex-col items-center gap-4"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              e.stopPropagation();
+              onSubmit();
+            }
+          }}
+        >
           <FormField
             name={`${FORM_KEY}._group`}
             placeholder="Type in a name"

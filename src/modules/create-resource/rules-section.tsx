@@ -1,7 +1,7 @@
 "use client";
 
+import { memo, useCallback } from "react";
 import { MenuItem, Skeleton } from "@mui/material";
-import { memo } from "react";
 import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
 import Button from "~/components/button";
 import FormField from "~/components/fields/form-field";
@@ -71,44 +71,42 @@ export default function RulesSection({ setFieldValue, values, setFieldError, isL
 
   function handleSubmit() {
     const newRule = values._rule;
-    if (values.rules.some((r) => r.name === newRule.name && !r.markedForDeletion)) {
+    if (!newRule.name) return setFieldError("_rule.name" as Field, "Name is required");
+    if (values.rules[newRule.name] !== undefined && !values.rules[newRule.name].markedForDeletion) {
       setFieldError("_rule.name" as Field, "Rule with this name already exists");
       return;
     }
-
-    if (!newRule.category) {
-      setFieldError("_rule.category" as Field, "Category is required");
-      return;
-    }
-
-    setFieldValue("rules", [
+    setFieldValue("rules", {
       ...values.rules,
-      { ...newRule, checked: false, markedForDeletion: false },
-    ]);
+      [newRule.name]: { ...newRule, checked: true, markedForDeletion: false },
+    });
     closeForm();
   }
 
-  function handleChange(index: number, checked: boolean) {
-    const newRules = [...values.rules];
-    newRules[index] = { ...newRules[index], checked };
-    setFieldValue("rules", newRules);
+  function handleChange(name: string, checked: boolean) {
+    setFieldValue("rules", {
+      ...values.rules,
+      [name]: { ...values.rules[name], checked },
+    });
   }
 
-  function handleDelete(index: number) {
-    const rule = values.rules[index];
-    if (rule.id) {
-      const newRules = [...values.rules];
-      newRules[index] = { ...rule, markedForDeletion: true };
-      setFieldValue("rules", newRules);
+  function handleDelete(name: string) {
+    const rules = { ...values.rules };
+    const facility = values.rules[name];
+    if (facility.id) {
+      setFieldValue("rules", {
+        ...values.rules,
+        [name]: { ...facility, markedForDeletion: true },
+      });
     } else {
-      setFieldValue(
-        "rules",
-        values.rules.filter((_, i) => i !== index)
-      );
+      delete rules[name];
+      setFieldValue("rules", rules);
     }
   }
 
-  const visibleRules = values.rules?.filter((rule) => !rule.markedForDeletion);
+  const visibleRules = values.rules
+    ? Object.entries(values.rules).filter(([_, { markedForDeletion }]) => !markedForDeletion)
+    : [];
 
   return (
     <CollapseSection<Values>
@@ -134,13 +132,13 @@ export default function RulesSection({ setFieldValue, values, setFieldError, isL
       ) : (
         <>
           <div className="flex w-full flex-col gap-1">
-            {visibleRules?.map((rule, index) => (
+            {visibleRules?.map(([_, { name, description, checked }], index) => (
               <SelectCard
-                name={rule.name}
-                description={rule.description}
-                checked={!!rule.checked}
-                onDelete={() => handleDelete(index)}
-                onChange={(checked) => handleChange(index, checked)}
+                name={name}
+                description={description}
+                checked={!!checked}
+                onDelete={() => handleDelete(name)}
+                onChange={(checked) => handleChange(name, checked)}
                 key={index}
               />
             ))}

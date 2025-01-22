@@ -12,58 +12,15 @@ import {
   resourcesTable,
 } from "~/db/schemas/resources";
 import UploadService from "~/services/upload";
-import YupValidation from "~/utils/yup-validations";
 import { mediasTable } from "~/db/schemas/media";
-
-const resourceType = ["lodge", "event", "dining"];
-const scheduleType = ["24/7", "custom", "weekdays", "weekends"];
-const daysOfWeek = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-
-const schedule = Yup.object({
-  start_time: Yup.string().required("`start_time` is required"),
-  end_time: Yup.string().required("`end_time` is required"),
-  day_of_week: Yup.string()
-    .oneOf(daysOfWeek, "`day_of_week` must be one of: " + daysOfWeek.join(", "))
-    .required("`day_of_week` is required"),
-});
-
-const schema = {
-  location_id: Yup.string().uuid("Location id not valid"),
-  name: Yup.string().required("`name` is required"),
-  type: Yup.string()
-    .oneOf(resourceType, `Type must be one of: ${resourceType.join(", ")}`)
-    .required("`type` is required"),
-  schedule_type: Yup.string()
-    .oneOf(scheduleType, `schedule_type must be one of: ${scheduleType.join(", ")}`)
-    .required("`schedule_type` is required"),
-  description: Yup.string().required("`description` is required"),
-  thumbnail: YupValidation.validateSingleFile({
-    requiredMessage: "`thumbnail` is required",
-    fileSizeMessage: "`thumbnail` must be less than 5MB",
-  }),
-  publish: Yup.boolean().isTrue().optional(),
-  images: YupValidation.validateFiles({
-    requiredMessage: "`images` is required",
-  }).required("`images` is required`"),
-  schedules: Yup.array()
-    .of(schedule)
-    .min(1, "`schedules` must have at least one schedule")
-    .when("schedule_type", {
-      is: (value: string) => value !== "24/7",
-      then: (schema) => schema.required("`schedules` is required when `schedule_type` is not 24/7"),
-      otherwise: (schema) => schema.notRequired(),
-    }),
-  rules: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
-  facilities: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
-  groups: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
-};
+import { resourceSchema } from "~/utils/yup-schemas/resource";
 
 export const POST = catchAsync(async (req: NextRequest) => {
   const body = await req.formData();
 
   const { publish, thumbnail, schedules, images, facilities, rules, groups, ...validatedData } =
     await validateSchema({
-      object: schema,
+      object: resourceSchema,
       isFormData: true,
       data: body,
     });
@@ -115,9 +72,10 @@ export const POST = catchAsync(async (req: NextRequest) => {
 
     groups?.length
       ? db.insert(resourceGroupsTable).values(
-          groups.map((group_id: string) => ({
+          groups.map(({ id: group_id, num }: { id: string; num: number }) => ({
             resource_id: newResource.id,
             group_id,
+            num,
           }))
         )
       : Promise.resolve(),
@@ -125,7 +83,7 @@ export const POST = catchAsync(async (req: NextRequest) => {
     db.insert(mediasTable).values(
       imageData.map(({ type, ...rest }) => ({
         mimeType: type,
-        resourceId: newResource.id,
+        resource_id: newResource.id,
         ...rest,
       }))
     ),

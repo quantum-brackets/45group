@@ -16,7 +16,7 @@ export const POST = catchAsync(async (req: NextRequest) => {
     data: body,
   });
 
-  const newFacility = await db
+  const [newFacility] = await db
     .insert(facilitiesTable)
     .values({
       name,

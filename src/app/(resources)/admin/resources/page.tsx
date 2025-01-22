@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Typography } from "@mui/material";
+import { Avatar, Chip, Typography } from "@mui/material";
 import { GridColDef } from "@mui/x-data-grid";
 import { useQuery } from "@tanstack/react-query";
 import { Formik } from "formik";
@@ -13,8 +13,33 @@ import DataGrid from "~/components/data-grid";
 import FormField from "~/components/fields/form-field";
 import { useCustomSearchParams } from "~/hooks/utils";
 import ResourcesService from "~/services/resources";
+import { Resource } from "~/db/schemas/resources";
+import { cn } from "~/utils/helpers";
 
 const columns: GridColDef<Resource>[] = [
+  {
+    field: "__",
+    headerName: "",
+    sortable: false,
+    minWidth: 10,
+    renderCell: ({ row: { name, thumbnail } }) => {
+      return (
+        <div className="flex h-full items-center justify-center">
+          <Avatar
+            alt={`${name}`}
+            src={thumbnail || ""}
+            sx={{ width: 45, height: 45 }}
+            className={cn({
+              "!bg-primary": !thumbnail,
+            })}
+            variant="rounded"
+          >
+            {name}
+          </Avatar>
+        </div>
+      );
+    },
+  },
   {
     field: "name",
     headerName: "Name",
@@ -32,6 +57,12 @@ const columns: GridColDef<Resource>[] = [
     headerName: "Status",
     minWidth: 200,
     flex: 1,
+    renderCell: ({ row: { status } }) => {
+      if (status === "published") {
+        return <Chip label="Published" color="success" />;
+      }
+      return <Chip label="Draft" variant="outlined" />;
+    },
   },
   {
     field: "schedule_type",
@@ -43,6 +74,7 @@ const columns: GridColDef<Resource>[] = [
 
 const cards = [
   {
+    title: "Lodge",
     icon: <MdOutlineBedroomChild className="text-base text-white" />,
     status: {
       draft: 50,
@@ -50,6 +82,7 @@ const cards = [
     },
   },
   {
+    title: "Event",
     icon: <MdEvent className="text-base text-white" />,
     status: {
       draft: 50,
@@ -57,6 +90,7 @@ const cards = [
     },
   },
   {
+    title: "Dining",
     icon: <MdRestaurantMenu className="text-base text-white" />,
     status: {
       draft: 50,
@@ -90,9 +124,12 @@ export default function Resources() {
       </header>
       <div className="flex flex-col gap-8">
         <div className="grid grid-cols-3 gap-6">
-          {cards.map(({ icon, status }, index) => (
+          {cards.map(({ title, icon, status }, index) => (
             <div className="flex flex-col gap-8 rounded-lg bg-primary p-4" key={index}>
-              <span className="w-fit rounded bg-white/10 p-1">{icon}</span>
+              <div className="flex items-center gap-2">
+                <span className="w-fit rounded bg-white/10 p-1">{icon}</span>
+                <small className="font-medium text-white">{title}</small>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
                   <h6 className="text-xs text-white">Draft</h6>
@@ -113,12 +150,13 @@ export default function Resources() {
           <div className="flex flex-col gap-4 rounded-lg border-t p-4 pb-0">
             <Formik
               initialValues={{
-                q: "",
+                q,
               }}
+              enableReinitialize
               onSubmit={(values) => {
                 const params = new URLSearchParams(searchParams);
                 for (const [key, value] of Object.entries(values)) {
-                  if (value) params.set(key, value);
+                  params.set(key, value);
                 }
                 window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
               }}
@@ -129,7 +167,7 @@ export default function Resources() {
                     name="q"
                     startAdornment={<FiSearch className="text-xl text-black/70" />}
                     placeholder="Search for resources..."
-                    className="max-w-[250px]"
+                    className="max-w-[300px]"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         submitForm();
@@ -146,6 +184,17 @@ export default function Resources() {
                   loading={isLoading}
                   columns={columns}
                   rowCount={resources?.count}
+                  menuComp={({ row: { id }, handleClose }) => (
+                    <>
+                      <button
+                        onClick={() => {
+                          handleClose();
+                        }}
+                      >
+                        <span>Delete</span>
+                      </button>
+                    </>
+                  )}
                 />
               </Suspense>
             </div>

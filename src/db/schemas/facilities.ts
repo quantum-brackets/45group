@@ -1,3 +1,4 @@
+import { InferSelectModel } from "drizzle-orm";
 import { pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const facilitiesTable = pgTable("facilities", {
@@ -7,3 +8,5 @@ export const facilitiesTable = pgTable("facilities", {
   updated_at: timestamp("updated_at"),
   created_at: timestamp("created_at").defaultNow(),
 });
+
+export type ResourceFacility = InferSelectModel<typeof facilitiesTable>;

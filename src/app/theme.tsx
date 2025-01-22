@@ -280,6 +280,14 @@ const theme = createTheme({
         },
       },
     },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontSize: "0.7rem",
+          height: "26px",
+        },
+      },
+    },
   },
 });
 
