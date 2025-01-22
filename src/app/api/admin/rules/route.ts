@@ -19,7 +19,7 @@ export const POST = catchAsync(async (req: NextRequest) => {
     data: body,
   });
 
-  const newRule = await db
+  const [newRule] = await db
     .insert(rulesTable)
     .values({
       name,
