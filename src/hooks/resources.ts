@@ -8,7 +8,11 @@ export function useCreateResourceRule() {
     mutationFn: ResourcesService.createResourceRule,
     onError: (error) => {
       if (isAxiosError(error)) {
-        notifyError({ message: error.response?.data.error });
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
       }
     },
   });
@@ -19,7 +23,11 @@ export function useCreateResourceGroup() {
     mutationFn: ResourcesService.createResourceGroup,
     onError: (error) => {
       if (isAxiosError(error)) {
-        notifyError({ message: error.response?.data.error });
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
       }
     },
   });
@@ -30,7 +38,11 @@ export function useCreateResourceFacility() {
     mutationFn: ResourcesService.createResourceFacility,
     onError: (error) => {
       if (isAxiosError(error)) {
-        notifyError({ message: error.response?.data.error });
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
       }
     },
   });
@@ -41,7 +53,11 @@ export function useDeleteResourceRule() {
     mutationFn: ResourcesService.deleteResourceRule,
     onError: (error) => {
       if (isAxiosError(error)) {
-        notifyError({ message: error.response?.data.error });
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
       }
     },
   });
@@ -52,7 +68,11 @@ export function useDeleteResourceGroup() {
     mutationFn: ResourcesService.deleteResourceGroup,
     onError: (error) => {
       if (isAxiosError(error)) {
-        notifyError({ message: error.response?.data.error });
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
       }
     },
   });
@@ -63,7 +83,11 @@ export function useDeleteResourceFacility() {
     mutationFn: ResourcesService.deleteResourceFacility,
     onError: (error) => {
       if (isAxiosError(error)) {
-        notifyError({ message: error.response?.data.error });
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
       }
     },
   });
