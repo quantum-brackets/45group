@@ -73,7 +73,10 @@ export default function FacilitiesSection({
   function handleSubmit() {
     const newFacility = values._facility;
     if (!newFacility.name) return setFieldError("_facility.name" as Field, "Name is required");
-    if (values.facilities[newFacility.name] !== undefined) {
+    if (
+      values.facilities[newFacility.name] !== undefined &&
+      !values.facilities[newFacility.name].markedForDeletion
+    ) {
       setFieldError("_facility.name" as Field, "Facility with this name already exists");
       return;
     }

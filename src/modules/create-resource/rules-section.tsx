@@ -72,7 +72,7 @@ export default function RulesSection({ setFieldValue, values, setFieldError, isL
   function handleSubmit() {
     const newRule = values._rule;
     if (!newRule.name) return setFieldError("_rule.name" as Field, "Name is required");
-    if (values.rules[newRule.name] !== undefined) {
+    if (values.rules[newRule.name] !== undefined && !values.rules[newRule.name].markedForDeletion) {
       setFieldError("_rule.name" as Field, "Rule with this name already exists");
       return;
     }
