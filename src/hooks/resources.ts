@@ -3,6 +3,40 @@ import { isAxiosError } from "axios";
 import ResourcesService from "~/services/resources";
 import { notifyError } from "~/utils/toast";
 
+export function useCreateResource() {
+  return useMutation({
+    mutationFn: ResourcesService.createResource,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        if (error.response?.data.error) {
+          return notifyError({ message: error.response?.data.error });
+        }
+        if (error.response?.data.errors?.[0]?.message) {
+          return notifyError({ message: error.response?.data.errors?.[0]?.message });
+        }
+        notifyError({ message: "Error occured while creating resource" });
+      }
+    },
+  });
+}
+
+export function useUpdateResource() {
+  return useMutation({
+    mutationFn: ResourcesService.updateResource,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        if (error.response?.data.error) {
+          return notifyError({ message: error.response?.data.error });
+        }
+        if (error.response?.data.errors?.[0]?.message) {
+          return notifyError({ message: error.response?.data.errors?.[0]?.message });
+        }
+        notifyError({ message: "Error occured while creating resource" });
+      }
+    },
+  });
+}
+
 export function useCreateResourceRule() {
   return useMutation({
     mutationFn: ResourcesService.createResourceRule,

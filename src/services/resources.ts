@@ -11,6 +11,12 @@ class ResourcesService {
     return response;
   };
 
+  static updateResource = async (data: any) => {
+    const { data: response } = await axiosPrivate.patchForm<Resource>(`/api/admin/resources`, data);
+
+    return response;
+  };
+
   static getResources = async <T>({ params }: { params?: URLSearchParams } = {}) => {
     const queryString = params ? `?${params.toString()}` : "";
     const { data: response } = await axiosPrivate.get<
