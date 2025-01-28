@@ -11,6 +11,9 @@ export const authorization: MiddlewareFactory = (next, _, data) => {
   return catchAsync(async (req: NextRequest, _next: NextFetchEvent) => {
     const pathname = req.nextUrl.pathname;
 
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-body-size-limit", "10mb");
+
     if (protectedRoutes.some((path) => pathname.startsWith(path))) {
       const sessionToken =
         req.cookies.get(SESSION_KEY)?.value || req.headers.get("Authorization")?.split(" ")[1];
