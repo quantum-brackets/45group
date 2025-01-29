@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useRouter } from "next/navigation";
 import { MenuItem, Typography } from "@mui/material";
 import { Formik, FormikHelpers } from "formik";
 import { useMutation, useQueries } from "@tanstack/react-query";
@@ -200,6 +201,7 @@ const processExistingItems = <T extends { id?: string }>(
 
 export default function CreateResource() {
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   const [
     { data: rules, isLoading: isRulesLoading },
@@ -324,7 +326,7 @@ export default function CreateResource() {
               schedules = DAY_OF_WEEK.slice(-2).map((day) => ({ ...weekends, day_of_week: day }));
           }
 
-          await createResource({
+          const { id: resourceId } = await createResource({
             ...submissionValues,
             images,
             schedule_type,
@@ -348,67 +350,87 @@ export default function CreateResource() {
           const oldFacilities = processExistingItems<(typeof facilities)[number]>(facilities);
           const oldGroups = processExistingItems(groups);
 
-          const mutations = [
-            ...(deletedRules.length > 0
+          const deletedRulesMutations =
+            deletedRules.length > 0
               ? deletedRules.map(([_, rule]) => rule.id && deleteResourceRule(rule.id))
-              : [0]),
-            ...(deletedFacilities.length > 0
+              : [0];
+
+          const deletedFacilitiesMutations =
+            deletedFacilities.length > 0
               ? deletedFacilities.map(
                   ([_, facility]) => facility.id && deleteResourceFacility(facility.id)
                 )
-              : [0]),
-            ...(deletedGroups.length > 0
+              : [0];
+
+          const deletedGroupsMutations =
+            deletedGroups.length > 0
               ? deletedGroups.map(([_, group]) => group.id && deleteResourceGroup(group.id))
-              : [0]),
-            ...(newRules.length > 0
+              : [0];
+
+          const newRulesMutations =
+            newRules.length > 0
               ? newRules.map(([_, { name, description, category }]) =>
                   createResourceRule({ name, category, description })
                 )
-              : [0]),
-            ...(newFacilities.length > 0
+              : [0];
+
+          const newFacilitiesMutations =
+            newFacilities.length > 0
               ? newFacilities.map(([_, { name, description }]) =>
                   createResourceFacility({ name, description })
                 )
-              : [0]),
-            ...(newGroups.length > 0
+              : [0];
+
+          const newGroupsMutations =
+            newGroups.length > 0
               ? newGroups.map(([key]) => createResourceGroup({ name: key }))
-              : [0]),
-          ];
+              : [0];
 
-          const responses = await Promise.all(mutations);
+          const groupedMutations = {
+            rules: [...deletedRulesMutations, ...newRulesMutations],
+            facilities: [...deletedFacilitiesMutations, ...newFacilitiesMutations],
+            groups: [...deletedGroupsMutations, ...newGroupsMutations],
+          };
 
-          const lastThreeRes = responses.slice(-3);
-          const rulesRes = lastThreeRes[0] as ResourceRule[] | 0;
-          const facilitiesRes = lastThreeRes[1] as ResourceFacility[] | 0;
-          const groupsRes = lastThreeRes[2] as ResourceGroup[] | 0;
+          const [rulesRes, facilitiesRes, groupsRes] = await Promise.all([
+            Promise.all(groupedMutations.rules),
+            Promise.all(groupedMutations.facilities),
+            Promise.all(groupedMutations.groups),
+          ]);
 
           const combinedRules = [
             ...oldRules.map(([_, { id }]) => id),
-            ...(rulesRes ? rulesRes.map(({ id }) => id) : []),
+            ...(rulesRes ? rulesRes.filter((value) => !!value).map(({ id }) => id) : []),
           ];
           const combinedFacilities = [
             ...oldFacilities.map(([_, { id }]) => id),
-            ...(facilitiesRes ? facilitiesRes.map(({ id }) => id) : []),
+            ...(facilitiesRes ? facilitiesRes.filter((value) => !!value).map(({ id }) => id) : []),
           ];
           const combinedGroups = [
             ...oldGroups.map(([_, { id, value: num }]) => ({ id, num })),
             ...(groupsRes
-              ? groupsRes.map(({ id, name }) => {
-                  const num = groups?.[name]?.["value"] || 0;
-                  return { id, num };
-                })
+              ? groupsRes
+                  .filter((value) => !!value)
+                  .map(({ id, name }) => {
+                    const num = groups?.[name]?.["value"] || 0;
+                    return { id, num };
+                  })
               : []),
           ];
 
           await updateResource(
             {
-              rules: combinedRules,
-              facilities: combinedFacilities,
-              groups: combinedGroups,
+              id: resourceId,
+              data: {
+                rules: { add: combinedRules },
+                facilities: { add: combinedFacilities },
+                groups: { add: combinedGroups },
+              },
             },
             {
               onSuccess: () => {
                 notifySuccess({ message: "Resource successfully created" });
+                router.push("/admin/resources");
               },
             }
           );

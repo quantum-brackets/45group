@@ -52,34 +52,6 @@ export const POST = catchAsync(async (req: NextRequest) => {
       .where(eq(resourcesTable.id, newResource.id))
       .returning(),
 
-    rules?.length
-      ? db.insert(resourceRulesTable).values(
-          rules.map((rule_id: string) => ({
-            resource_id: newResource.id,
-            rule_id,
-          }))
-        )
-      : Promise.resolve(),
-
-    facilities?.length
-      ? db.insert(resourceFacilitiesTable).values(
-          facilities.map((facility_id: string) => ({
-            resource_id: newResource.id,
-            facility_id,
-          }))
-        )
-      : Promise.resolve(),
-
-    groups?.length
-      ? db.insert(resourceGroupsTable).values(
-          groups.map(({ id: group_id, num }: { id: string; num: number }) => ({
-            resource_id: newResource.id,
-            group_id,
-            num,
-          }))
-        )
-      : Promise.resolve(),
-
     db.insert(mediasTable).values(
       imageData.map(({ type, ...rest }) => ({
         mimeType: type,
