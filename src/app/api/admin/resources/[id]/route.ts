@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
+import * as Yup from "yup";
 import { db } from "~/db";
 import {
   resourceFacilitiesTable,
@@ -46,9 +47,18 @@ export const GET = catchAsync(async (_: NextRequest, context: { params: { id: st
 });
 
 const schema = {
-  rules: resourceSchema.rules.optional(),
-  facilities: resourceSchema.facilities.optional(),
-  groups: resourceSchema.groups.optional(),
+  rules: Yup.object({
+    add: resourceSchema.rules,
+    remove: resourceSchema.rules,
+  }).optional(),
+  facilities: Yup.object({
+    add: resourceSchema.facilities,
+    remove: resourceSchema.facilities,
+  }).optional(),
+  groups: Yup.object({
+    add: resourceSchema.groups,
+    remove: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
+  }).optional(),
 };
 
 export const PATCH = catchAsync(async (req: NextRequest, context: { params: { id: string } }) => {
@@ -73,67 +83,90 @@ export const PATCH = catchAsync(async (req: NextRequest, context: { params: { id
     });
 
   await Promise.all([
-    groups?.length
-      ? db
-          .update(resourceGroupsTable)
-          .set(
-            groups.map(({ id: group_id, num }: { id: string; num: number }) => ({
-              resource_id: resource.id,
-              group_id,
-              num,
-            }))
-          )
-          .where(
-            and(
-              eq(resourceGroupsTable.resource_id, resource.id),
-              inArray(
-                resourceGroupsTable.group_id,
-                groups.map(({ id }: { id: string }) => id)
+    Promise.all([
+      rules?.remove?.length
+        ? db
+            .delete(resourceRulesTable)
+            .where(
+              and(
+                eq(resourceRulesTable.resource_id, resource.id),
+                inArray(resourceRulesTable.rule_id, rules.remove)
               )
             )
-          )
-      : Promise.resolve(),
+        : Promise.resolve(),
 
-    facilities?.length
-      ? db
-          .update(resourceFacilitiesTable)
-          .set(
-            facilities.map((facility_id: string) => ({
-              resource_id: resource.id,
-              facility_id,
-            }))
-          )
-          .where(
-            and(
-              eq(resourceFacilitiesTable.resource_id, resource.id),
-              inArray(
-                resourceFacilitiesTable.facility_id,
-                facilities.map(({ id }: { id: string }) => id)
+      facilities?.remove?.length
+        ? db
+            .delete(resourceFacilitiesTable)
+            .where(
+              and(
+                eq(resourceFacilitiesTable.resource_id, resource.id),
+                inArray(resourceFacilitiesTable.facility_id, facilities.remove)
               )
             )
-          )
-      : Promise.resolve(),
+        : Promise.resolve(),
 
-    rules?.length
-      ? db
-          .update(resourceRulesTable)
-          .set(
-            rules.map((rule_id: string) => ({
-              resource_id: resource.id,
-              rule_id,
-            }))
-          )
-          .where(
-            and(
-              eq(resourceRulesTable.resource_id, resource.id),
-              inArray(
-                resourceRulesTable.rule_id,
-                rules.map(({ id }: { id: string }) => id)
+      groups?.remove?.length
+        ? db
+            .delete(resourceGroupsTable)
+            .where(
+              and(
+                eq(resourceGroupsTable.resource_id, resource.id),
+                inArray(resourceGroupsTable.group_id, groups.remove)
               )
             )
-          )
-      : Promise.resolve(),
+        : Promise.resolve(),
+    ]),
+    Promise.all([
+      // Add new rules
+      rules?.add?.length
+        ? db
+            .insert(resourceRulesTable)
+            .values(
+              rules.add.map((rule_id: string) => ({
+                resource_id: resource.id,
+                rule_id,
+              }))
+            )
+            .onConflictDoNothing()
+        : Promise.resolve(),
+
+      // Add new facilities
+      facilities?.add?.length
+        ? db
+            .insert(resourceFacilitiesTable)
+            .values(
+              facilities.add.map((facility_id: string) => ({
+                resource_id: resource.id,
+                facility_id,
+              }))
+            )
+            .onConflictDoNothing()
+        : Promise.resolve(),
+
+      // Add new groups
+      groups?.add?.length
+        ? db
+            .insert(resourceGroupsTable)
+            .values(
+              groups.add.map(({ id: group_id, num }: { id: string; num: number }) => ({
+                resource_id: resource.id,
+                group_id,
+                num,
+              }))
+            )
+            .onConflictDoNothing()
+        : Promise.resolve(),
+    ]),
   ]);
 
-  return NextResponse.json(resource);
+  const [updatedResource] = await db
+    .select()
+    .from(resourcesTable)
+    .leftJoin(resourceRulesTable, eq(resourcesTable.id, resourceRulesTable.resource_id))
+    .leftJoin(resourceFacilitiesTable, eq(resourcesTable.id, resourceFacilitiesTable.resource_id))
+    .leftJoin(resourceGroupsTable, eq(resourcesTable.id, resourceGroupsTable.resource_id))
+    .where(eq(resourcesTable.id, resourceId));
+
+  return NextResponse.json(updatedResource);
 });

@@ -11,8 +11,11 @@ class ResourcesService {
     return response;
   };
 
-  static updateResource = async (data: any) => {
-    const { data: response } = await axiosPrivate.patchForm<Resource>(`/api/admin/resources`, data);
+  static updateResource = async ({ id, data }: { id: string; data: any }) => {
+    const { data: response } = await axiosPrivate.patchForm<Resource>(
+      `/api/admin/resources/${id}`,
+      data
+    );
 
     return response;
   };
