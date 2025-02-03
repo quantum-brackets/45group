@@ -10,6 +10,7 @@ import Toast from "~/components/toast";
 import { dancing_script, merriweather } from "~/utils/fonts";
 import AppProgressBar from "~/components/app-progress-bar";
 import LogoutModal from "~/components/logout-modal";
+import { ConfirmationPromptProvider } from "~/providers/confirmation-prompt";
 
 export const metadata: Metadata = {
   title: "45Group",
@@ -39,10 +40,12 @@ export default function RootLayout({
         <AppRouterCacheProvider>
           <TanstackQueryProvider>
             <ThemeProvider theme={theme}>
-              <Toast />
-              <AppProgressBar />
-              {children}
-              <LogoutModal />
+              <ConfirmationPromptProvider>
+                <Toast />
+                <AppProgressBar />
+                {children}
+                <LogoutModal />
+              </ConfirmationPromptProvider>
             </ThemeProvider>
           </TanstackQueryProvider>
         </AppRouterCacheProvider>
