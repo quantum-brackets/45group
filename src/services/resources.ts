@@ -20,6 +20,12 @@ class ResourcesService {
     return response;
   };
 
+  static deleteResource = async (id: string) => {
+    const { data: response } = await axiosPrivate.delete<Resource>(`/api/admin/resources/${id}`);
+
+    return response;
+  };
+
   static getResources = async <T>({ params }: { params?: URLSearchParams } = {}) => {
     const queryString = params ? `?${params.toString()}` : "";
     const { data: response } = await axiosPrivate.get<

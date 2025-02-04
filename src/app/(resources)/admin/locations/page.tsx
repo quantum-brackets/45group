@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useCallback } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
@@ -14,6 +14,8 @@ import { useCustomSearchParams } from "~/hooks/utils";
 import LocationsService from "~/services/locations";
 import { Location } from "~/db/schemas/locations";
 import FormField from "~/components/fields/form-field";
+import usePrompt from "~/hooks/prompt";
+import { useDeleteLocation } from "~/hooks/locations";
 
 const columns: GridColDef<Location>[] = [
   {
@@ -65,6 +67,25 @@ export default function Locations() {
     },
   });
 
+  const { mutateAsync: deleteLocation, isPending: isDeleting } = useDeleteLocation();
+
+  const prompt = usePrompt();
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      const confirmed = await prompt({
+        title: "Please confirm",
+        description: "Are you sure you want delete this location?",
+        isLoading: isDeleting,
+      });
+
+      if (confirmed) {
+        await deleteLocation(id);
+      }
+    },
+    [deleteLocation, isDeleting, prompt]
+  );
+
   return (
     <main className="flex flex-col gap-8 tablet_768:gap-6">
       <header className="flex items-center justify-between">
@@ -106,11 +127,18 @@ export default function Locations() {
           </Formik>
           <div className="overflow-hidden rounded-lg">
             <Suspense fallback={null}>
-              <DataGrid
+              <DataGrid<Location>
                 rows={locations?.data}
                 loading={isLoading}
                 columns={columns}
                 rowCount={locations?.count}
+                menuComp={({ row: { id } }) => {
+                  return (
+                    <>
+                      <button onClick={() => handleDelete(id)}>Delete</button>
+                    </>
+                  );
+                }}
               />
             </Suspense>
           </div>

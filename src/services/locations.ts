@@ -17,6 +17,18 @@ class LocationsService {
 
     return response;
   };
+
+  static deleteLocation = async (id: string) => {
+    const { data: response } = await axiosPrivate.delete(`/api/admin/locations/${id}`);
+
+    return response;
+  };
+
+  static getLocation = async (id: string) => {
+    const { data: response } = await axiosPrivate.get<Location>(`/api/admin/locations/${id}`);
+
+    return response;
+  };
 }
 
 export default LocationsService;

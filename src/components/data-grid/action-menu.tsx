@@ -27,7 +27,7 @@ export default function ActionMenu<T extends { id: string | number }>({
           >
             <GoKebabHorizontal className="rotate-180" />
           </IconButton>
-          <Popper open={open} anchorEl={anchorEl} transition>
+          <Popper open={open} anchorEl={anchorEl} transition placement="bottom-end">
             {({ TransitionProps }) => (
               <Fade {...TransitionProps}>
                 <Paper>{menuComp?.({ row, handleClose })}</Paper>

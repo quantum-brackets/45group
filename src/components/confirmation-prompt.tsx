@@ -1,6 +1,5 @@
 "use client";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DialogActions, DialogContent, DialogTitle, OutlinedInput } from "@mui/material";
 import Modal from "./modal";
 import Button from "./button";
@@ -12,7 +11,7 @@ type Props = {
   description: string;
   confirmationText?: string;
   isLoading?: boolean;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void> | void;
   onClose: () => void;
 };
 
@@ -26,10 +25,32 @@ export default function ConfirmationPrompt({
   onClose,
 }: Props) {
   const [inputValue, setInputValue] = useState("");
+  const [localLoading, setLocalLoading] = useState(false);
 
   const isConfirmDisabled = confirmationText
-    ? inputValue !== confirmationText || isLoading
-    : isLoading;
+    ? inputValue !== confirmationText || isLoading || localLoading
+    : isLoading || localLoading;
+
+  const handleConfirm = async () => {
+    // If onConfirm is an async function
+    if (onConfirm.constructor.name === "AsyncFunction") {
+      setLocalLoading(true);
+      try {
+        await onConfirm();
+      } finally {
+        setLocalLoading(false);
+      }
+    } else {
+      onConfirm();
+    }
+  };
+
+  useEffect(() => {
+    if (!isLoading && localLoading) {
+      onClose();
+      setLocalLoading(false);
+    }
+  }, [isLoading, localLoading, onClose]);
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -52,15 +73,18 @@ export default function ConfirmationPrompt({
         </DialogContent>
       )}
       <DialogActions>
-        <Button size="small" variant="outlined" onClick={onClose} disabled={isLoading}>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={onClose}
+          disabled={isLoading || localLoading}
+        >
           Cancel
         </Button>
         <Button
           size="small"
-          onClick={() => {
-            onConfirm();
-          }}
-          loading={isLoading}
+          onClick={handleConfirm}
+          loading={isLoading || localLoading}
           disabled={isConfirmDisabled}
         >
           Confirm
