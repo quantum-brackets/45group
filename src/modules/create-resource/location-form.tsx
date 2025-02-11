@@ -36,21 +36,23 @@ export default function LocationForm({ values, setFieldValue }: Props) {
           value={values._location?.id || ""}
         >
           {locations.map(({ name, city, state, id }, index) => (
-            <div
+            <button
               key={index}
               className="ase-in-out flex items-start gap-4 rounded-lg p-4 py-3 transition duration-300 hover:bg-black/5"
+              onClick={() => setFieldValue("_location", { id, name, city, state })}
+              type="button"
             >
               <Radio
                 value={id}
                 onClick={() => setFieldValue("_location", { id, name, city, state })}
               />
               <div className="flex flex-col gap-1">
-                <h4 className="text-sm">{name}</h4>
-                <small className="text-xs text-zinc-600">
+                <h4 className="text-start text-sm">{name}</h4>
+                <small className="text-start text-xs text-zinc-600">
                   {city}, {state}
                 </small>
               </div>
-            </div>
+            </button>
           ))}
         </RadioGroup>
       ) : (

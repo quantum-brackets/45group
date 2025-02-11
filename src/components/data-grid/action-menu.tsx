@@ -23,7 +23,14 @@ export default function ActionMenu<T extends { id: string | number }>({
         <div>
           <IconButton
             size="small"
-            onClick={(e) => (open ? handleClose() : handleClick(e.currentTarget))}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (open) {
+                handleClose();
+              } else {
+                handleClick(e.currentTarget);
+              }
+            }}
           >
             <GoKebabHorizontal className="rotate-180" />
           </IconButton>
