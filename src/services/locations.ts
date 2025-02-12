@@ -29,6 +29,15 @@ class LocationsService {
 
     return response;
   };
+
+  static updateLocation = async ({ id, data }: { id: string; data: any }) => {
+    const { data: response } = await axiosPrivate.post<Location>(
+      `/api/admin/locations/${id}`,
+      data
+    );
+
+    return response;
+  };
 }
 
 export default LocationsService;

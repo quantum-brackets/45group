@@ -1,13 +1,15 @@
 "use client";
 
 import { Suspense, useCallback } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
-import { Typography } from "@mui/material";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { Typography } from "@mui/material";
 import { GridColDef } from "@mui/x-data-grid";
 import { Formik } from "formik";
 import moment from "moment";
-import { FiSearch } from "react-icons/fi";
+import nProgress from "nprogress";
+import { TbTrash } from "react-icons/tb";
+import { FiEdit, FiSearch } from "react-icons/fi";
 import Button from "~/components/button";
 import DataGrid from "~/components/data-grid";
 import { useCustomSearchParams } from "~/hooks/utils";
@@ -53,6 +55,8 @@ const columns: GridColDef<Location>[] = [
 export default function Locations() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
+
   const { q, limit, offset } = useCustomSearchParams(["q", "limit", "offset"]);
 
   const { data: locations, isLoading } = useQuery({
@@ -85,6 +89,11 @@ export default function Locations() {
     },
     [deleteLocation, isDeleting, prompt]
   );
+
+  function goToDetails(id: string) {
+    nProgress.start();
+    router.push(`/admin/locations/${id}`);
+  }
 
   return (
     <main className="flex flex-col gap-8 tablet_768:gap-6">
@@ -132,10 +141,18 @@ export default function Locations() {
                 loading={isLoading}
                 columns={columns}
                 rowCount={locations?.count}
+                onRowClick={({ id }) => goToDetails(id as string)}
                 menuComp={({ row: { id } }) => {
                   return (
                     <>
-                      <button onClick={() => handleDelete(id)}>Delete</button>
+                      <button onClick={() => goToDetails(id)}>
+                        <FiEdit />
+                        <span>Edit</span>
+                      </button>
+                      <button onClick={() => handleDelete(id)}>
+                        <TbTrash />
+                        <span>Delete</span>
+                      </button>
                     </>
                   );
                 }}

@@ -67,6 +67,10 @@ export default function SelectField({
               return value;
             }}
             displayEmpty={true}
+            onClick={(e) => {
+              e.stopPropagation();
+              props.onClick?.(e);
+            }}
             onChange={(e) => {
               const value = e.target.value;
               form.setFieldValue(props.name, value);

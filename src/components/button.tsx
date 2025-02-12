@@ -30,7 +30,8 @@ export default function Button({
           color: "white",
         },
         "&.MuiButton-sizeSmall": {
-          padding: "10px 10px",
+          padding: "4px 8px",
+          minWidth: "0px",
         },
         borderRadius: "8px",
         ...sx,

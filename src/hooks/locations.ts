@@ -22,3 +22,23 @@ export function useDeleteLocation() {
     },
   });
 }
+
+export function useUpdateLocation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: LocationsService.updateLocation,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["locations"], exact: false });
+    },
+  });
+}
