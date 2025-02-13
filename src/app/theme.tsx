@@ -238,7 +238,7 @@ const theme = createTheme({
     MuiPopper: {
       defaultProps: {
         transition: true,
-        placement: "bottom-start",
+        placement: "bottom-end",
       },
       styleOverrides: {
         root: {
