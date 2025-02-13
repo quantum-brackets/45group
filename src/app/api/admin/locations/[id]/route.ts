@@ -5,6 +5,7 @@ import { db } from "~/db";
 import { locationsTable } from "~/db/schemas/locations";
 import catchAsync from "~/utils/catch-async";
 import { appError, validateSchema } from "~/utils/helpers";
+import { mediasTable } from "~/db/schemas/media";
 
 export const DELETE = catchAsync(async (_: NextRequest, context: { params: { id: string } }) => {
   const locationId = context.params.id;
@@ -26,16 +27,37 @@ export const DELETE = catchAsync(async (_: NextRequest, context: { params: { id:
 export const GET = catchAsync(async (_: NextRequest, context: { params: { id: string } }) => {
   const locationId = context.params.id;
 
-  const [location] = await db
-    .select()
+  const locations = await db
+    .select({
+      location: locationsTable,
+      media: mediasTable,
+    })
     .from(locationsTable)
+    .leftJoin(mediasTable, eq(mediasTable.location_id, locationsTable.id))
     .where(eq(locationsTable.id, locationId));
 
-  if (!location)
+  if (!locations.length) {
     return appError({
       status: 404,
       error: "Location not found",
     });
+  }
+
+  const location = locations.reduce(
+    (acc, curr) => {
+      if (!acc.id) {
+        Object.assign(acc, curr.location);
+        acc.medias = [];
+      }
+
+      if (curr.media?.id) {
+        acc.medias.push(curr.media);
+      }
+
+      return acc;
+    },
+    { medias: [] } as any
+  );
 
   return NextResponse.json(location);
 });
