@@ -1,5 +1,5 @@
 import { Resource } from "~/db/schemas/resources";
-import { ResourceRule } from "~/db/schemas/rules";
+import { Rule } from "~/db/schemas/rules";
 
 export type FacilityFormValues = {
   _show_facility_form?: boolean;
@@ -23,7 +23,7 @@ export type RuleFormValues = {
   _show_rules?: boolean;
   rules: Record<
     string,
-    Pick<ResourceRule, "category"> & {
+    Pick<Rule, "category"> & {
       id?: string;
       name: string;
       markedForDeletion?: boolean;
