@@ -18,19 +18,9 @@ import FacilitiesSection from "~/modules/create-resource/facilities-section";
 import RulesSection from "~/modules/create-resource/rules-section";
 import Button from "~/components/button";
 import GroupsSection from "~/modules/create-resource/groups-section";
-import ResourcesService from "~/services/resources";
 import LocationForm from "~/modules/create-resource/location-form";
 import MultiMedia from "~/components/form/multi-media";
-import {
-  useCreateResource,
-  useCreateResourceFacility,
-  useCreateResourceGroup,
-  useCreateResourceRule,
-  useDeleteResourceFacility,
-  useDeleteResourceGroup,
-  useDeleteResourceRule,
-  useUpdateResource,
-} from "~/hooks/resources";
+import { useCreateResource, useUpdateResource } from "~/hooks/resources";
 import { DAY_OF_WEEK } from "~/utils/constants";
 import {
   AvailabilityFormValues,
@@ -39,6 +29,12 @@ import {
   ResourceFormValues,
   RuleFormValues,
 } from "~/types/resource";
+import RuleService from "~/services/rules";
+import FacilityService from "~/services/facilities";
+import GroupService from "~/services/groups";
+import { useCreateFacility, useDeleteFacility } from "~/hooks/facilities";
+import { useCreateRule, useDeleteRule } from "~/hooks/rules";
+import { useCreateGroup, useDeleteGroup } from "~/hooks/groups";
 
 const initialValues: ResourceFormValues = {
   name: "",
@@ -120,16 +116,16 @@ export default function CreateResource() {
   ] = useQueries({
     queries: [
       {
-        queryKey: ["resources-rules"],
-        queryFn: ResourcesService.getResourceRules,
+        queryKey: ["rules"],
+        queryFn: RuleService.getRules,
       },
       {
-        queryKey: ["resources-facilities"],
-        queryFn: ResourcesService.getResourceFacilities,
+        queryKey: ["facilities"],
+        queryFn: FacilityService.getFacilities,
       },
       {
-        queryKey: ["resources-groups"],
-        queryFn: ResourcesService.getResourceGroups,
+        queryKey: ["groups"],
+        queryFn: GroupService.getGroups,
       },
     ],
   });
@@ -155,13 +151,13 @@ export default function CreateResource() {
   const { mutateAsync: createResource } = useCreateResource();
   const { mutateAsync: updateResource } = useUpdateResource();
 
-  const { mutateAsync: deleteResourceFacility } = useDeleteResourceFacility();
-  const { mutateAsync: deleteResourceRule } = useDeleteResourceRule();
-  const { mutateAsync: deleteResourceGroup } = useDeleteResourceGroup();
+  const { mutateAsync: deleteFacility } = useDeleteFacility();
+  const { mutateAsync: deleteRule } = useDeleteRule();
+  const { mutateAsync: deleteGroup } = useDeleteGroup();
 
-  const { mutateAsync: createResourceFacility } = useCreateResourceFacility();
-  const { mutateAsync: createResourceRule } = useCreateResourceRule();
-  const { mutateAsync: createResourceGroup } = useCreateResourceGroup();
+  const { mutateAsync: createFacility } = useCreateFacility();
+  const { mutateAsync: createRule } = useCreateRule();
+  const { mutateAsync: createGroup } = useCreateGroup();
 
   return (
     <div className="flex flex-col gap-4">
@@ -262,39 +258,35 @@ export default function CreateResource() {
 
           const deletedRulesMutations =
             deletedRules.length > 0
-              ? deletedRules.map(([_, rule]) => rule.id && deleteResourceRule(rule.id))
+              ? deletedRules.map(([_, rule]) => rule.id && deleteRule(rule.id))
               : [0];
 
           const deletedFacilitiesMutations =
             deletedFacilities.length > 0
-              ? deletedFacilities.map(
-                  ([_, facility]) => facility.id && deleteResourceFacility(facility.id)
-                )
+              ? deletedFacilities.map(([_, facility]) => facility.id && deleteFacility(facility.id))
               : [0];
 
           const deletedGroupsMutations =
             deletedGroups.length > 0
-              ? deletedGroups.map(([_, group]) => group.id && deleteResourceGroup(group.id))
+              ? deletedGroups.map(([_, group]) => group.id && deleteGroup(group.id))
               : [0];
 
           const newRulesMutations =
             newRules.length > 0
               ? newRules.map(([_, { name, description, category }]) =>
-                  createResourceRule({ name, category, description })
+                  createRule({ name, category, description })
                 )
               : [0];
 
           const newFacilitiesMutations =
             newFacilities.length > 0
               ? newFacilities.map(([_, { name, description }]) =>
-                  createResourceFacility({ name, description })
+                  createFacility({ name, description })
                 )
               : [0];
 
           const newGroupsMutations =
-            newGroups.length > 0
-              ? newGroups.map(([key]) => createResourceGroup({ name: key }))
-              : [0];
+            newGroups.length > 0 ? newGroups.map(([key]) => createGroup({ name: key })) : [0];
 
           const groupedMutations = {
             rules: [...deletedRulesMutations, ...newRulesMutations],
