@@ -25,11 +25,11 @@ export const locationsTable = pgTable(
 );
 
 export const locationRelations = relations(locationsTable, ({ many }) => ({
-  images: many(mediasTable),
+  medias: many(mediasTable),
   resources: many(resourcesTable),
 }));
 
 export type Location = InferSelectModel<typeof locationsTable> & {
-  images?: Media[];
+  medias?: Media[];
   resources?: Resource[];
 };
