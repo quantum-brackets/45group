@@ -4,9 +4,8 @@ import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { MenuItem, Typography } from "@mui/material";
 import { Formik, FormikHelpers } from "formik";
-import { useMutation, useQueries } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import * as Yup from "yup";
-import { isAxiosError } from "axios";
 import BackButton from "~/components/back-button";
 import FormField from "~/components/fields/form-field";
 import SelectField from "~/components/fields/select-field";
@@ -32,103 +31,14 @@ import {
   useDeleteResourceRule,
   useUpdateResource,
 } from "~/hooks/resources";
-import { ResourceRule } from "~/db/schemas/rules";
 import { DAY_OF_WEEK } from "~/utils/constants";
-import { Resource } from "~/db/schemas/resources";
-import { ResourceFacility } from "~/db/schemas/facilities";
-import { ResourceGroup } from "~/db/schemas/groups";
-
-type FacilityFormValues = {
-  _show_facility_form?: boolean;
-  _facility: { name: string; description: string };
-  _show_facilities?: boolean;
-  facilities: Record<
-    string,
-    {
-      id?: string;
-      name: string;
-      markedForDeletion?: boolean;
-      description?: string;
-      checked?: boolean;
-    }
-  >;
-};
-
-type RuleFormValues = {
-  _show_rule_form?: boolean;
-  _rule: { name: string; description: string; category: "house_rules" | "cancellations" };
-  _show_rules?: boolean;
-  rules: Record<
-    string,
-    Pick<ResourceRule, "category"> & {
-      id?: string;
-      name: string;
-      markedForDeletion?: boolean;
-      description?: string;
-      checked?: boolean;
-    }
-  >;
-};
-
-type AvailabilityFormValues = {
-  _show_availabilities?: boolean;
-  schedule_type: Resource["schedule_type"];
-  custom: Record<
-    DayOfWeek,
-    {
-      start_time: string;
-      end_time: string;
-    }
-  >;
-  weekdays: {
-    start_time: string;
-    end_time: string;
-  };
-  weekends: {
-    start_time: string;
-    end_time: string;
-  };
-};
-
-type GroupFormValues = {
-  _show_group_form?: boolean;
-  _show_groups?: boolean;
-  groups?: {
-    [key: string]: {
-      id?: string;
-      value: number;
-      markedForDeletion?: boolean;
-    };
-  };
-  _group?: string;
-};
-
-export type ResourceFormValues = {
-  name: string;
-  location: {
-    id: string;
-    name: string;
-    city: string;
-    state: string;
-  } | null;
-  _location?: {
-    id: string;
-    name: string;
-    city: string;
-    state: string;
-  };
-  description: string;
-  type: "lodge" | "event" | "dining";
-  thumbnail?: File;
-  rule_form: RuleFormValues;
-  facility_form: FacilityFormValues;
-  availability_form: AvailabilityFormValues;
-  group_form: GroupFormValues;
-  _thumbnail_base64?: string;
-  media: File[];
-  _media_base64: string[];
-  publish: boolean;
-};
+import {
+  AvailabilityFormValues,
+  FacilityFormValues,
+  GroupFormValues,
+  ResourceFormValues,
+  RuleFormValues,
+} from "~/types/resource";
 
 const initialValues: ResourceFormValues = {
   name: "",
