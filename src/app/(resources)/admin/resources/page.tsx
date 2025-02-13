@@ -15,7 +15,7 @@ import Button from "~/components/button";
 import DataGrid from "~/components/data-grid";
 import FormField from "~/components/fields/form-field";
 import { useCustomSearchParams } from "~/hooks/utils";
-import ResourcesService from "~/services/resources";
+import ResourceService from "~/services/resources";
 import { Resource } from "~/db/schemas/resources";
 import { cn } from "~/utils/helpers";
 import usePrompt from "~/hooks/prompt";
@@ -152,7 +152,7 @@ export default function Resources() {
         offset: offset.toString(),
         q,
       });
-      return ResourcesService.getResources({ params });
+      return ResourceService.getResources({ params });
     },
   });
 
@@ -177,7 +177,7 @@ export default function Resources() {
 
   function goToDetails(id: string) {
     nProgress.start();
-    router.push(`/admin/locations/${id}`);
+    router.push(`/admin/resources/${id}`);
   }
 
   return (
@@ -248,6 +248,7 @@ export default function Resources() {
                   loading={isLoading}
                   columns={columns}
                   rowCount={resources?.count}
+                  onRowClick={({ id }) => goToDetails(id as string)}
                   menuComp={({ row: { id } }) => (
                     <>
                       <button onClick={() => goToDetails(id)}>
