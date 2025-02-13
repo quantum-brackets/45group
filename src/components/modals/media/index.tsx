@@ -1,20 +1,24 @@
 "use client";
 
-import { DialogActions, DialogContent, DialogTitle } from "@mui/material";
-import Modal from "../modal";
 import { useRef, useState } from "react";
+import { useParams } from "next/navigation";
+import { DialogActions, DialogContent, DialogTitle } from "@mui/material";
+import { useQueryClient } from "@tanstack/react-query";
 import { readFileAsBase64 } from "~/utils/helpers";
 import { notifyError } from "~/utils/toast";
-import Button from "../button";
+import Button from "~/components/button";
+import { Location } from "~/db/schemas/locations";
+import Modal from "~/components/modal";
+import MediaCard from "./card";
 
 type Props = {
   title: string;
   subtitle?: string;
   open: boolean;
-  multiple: boolean;
+  multiple?: boolean;
   handleClose: () => void;
   isLoading: boolean;
-  handleSubmit: () => Promise<void>;
+  handleSubmit: (files: File[], ids: string[]) => Promise<void>;
 };
 
 export default function MediaModal({
@@ -26,8 +30,16 @@ export default function MediaModal({
   isLoading,
   handleSubmit,
 }: Props) {
+  const { id } = useParams<{ id: string }>();
+
   const inputRef = useRef<HTMLInputElement>(null);
-  const [selectedFiles, setSelectedFiles] = useState<{ file: File; base64: string }[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<{ id: string; file: File; base64: string }[]>(
+    []
+  );
+  const [deletedMedias, setDeletedMedias] = useState<string[]>([]);
+
+  const queryClient = useQueryClient();
+  const location = queryClient.getQueryData<Location>(["locations", id]);
 
   const handleMediaSelect = async (files: FileList | null) => {
     if (!files) return;
@@ -49,11 +61,11 @@ export default function MediaModal({
         );
 
         if (!isExisting) {
-          newFiles.push({ file, base64 });
+          newFiles.push({ file, base64, id: crypto.randomUUID() });
         }
       });
 
-      setSelectedFiles(newFiles);
+      setSelectedFiles((prev) => [...prev, ...newFiles]);
     } catch (error) {
       notifyError({
         message: error instanceof Error ? error.message : "Failed to process media files",
@@ -62,8 +74,14 @@ export default function MediaModal({
   };
 
   return (
-    <Modal open={open} onClose={handleClose}>
-      <header>
+    <Modal
+      open={open}
+      onClose={handleClose}
+      exitIcon={{
+        display: true,
+      }}
+    >
+      <header className="mb-2">
         <DialogTitle>{title}</DialogTitle>
         {subtitle && <small>{subtitle}</small>}
       </header>
@@ -88,6 +106,34 @@ export default function MediaModal({
             onChange={(e) => handleMediaSelect(e.target.files)}
           />
         </div>
+        <div className="mt-6 flex flex-col gap-4">
+          <h5 className="text-sm font-medium">Uploads</h5>
+          <div className="flex flex-col gap-2">
+            {selectedFiles.map(({ base64, id: fileId }, index) => (
+              <MediaCard
+                url={base64}
+                key={index}
+                name={location?.name || "media"}
+                handleDelete={() =>
+                  setSelectedFiles((prev) => prev.filter(({ id }) => id !== fileId))
+                }
+              />
+            ))}
+            {location?.medias?.map(({ url, id }) => (
+              <MediaCard
+                url={url}
+                name={location.name}
+                key={id}
+                handleDelete={() =>
+                  setDeletedMedias((prev) => {
+                    const set = new Set([...prev, id]);
+                    return Array.from(set);
+                  })
+                }
+              />
+            ))}
+          </div>
+        </div>
       </DialogContent>
       <DialogActions>
         <Button
@@ -102,12 +148,16 @@ export default function MediaModal({
         </Button>
         <Button
           onClick={async () => {
-            await handleSubmit();
+            await handleSubmit(
+              selectedFiles.map(({ file }) => file),
+              deletedMedias
+            );
             handleClose();
           }}
           className="!w-fit"
           size="small"
           loading={isLoading}
+          disabled={!deletedMedias.length && !selectedFiles.length}
         >
           Save and close
         </Button>
