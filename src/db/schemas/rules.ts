@@ -10,4 +10,4 @@ export const rulesTable = pgTable("rules", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
-export type ResourceRule = InferSelectModel<typeof rulesTable>;
+export type Rule = InferSelectModel<typeof rulesTable>;

@@ -8,4 +8,4 @@ export const groupsTable = pgTable("groups", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
-export type ResourceGroup = InferSelectModel<typeof groupsTable>;
+export type Group = InferSelectModel<typeof groupsTable>;
