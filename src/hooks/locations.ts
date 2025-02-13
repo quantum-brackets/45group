@@ -42,3 +42,43 @@ export function useUpdateLocation() {
     },
   });
 }
+
+export function useUploadLocationMedia() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: LocationsService.uploadMedia,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["locations"], exact: false });
+    },
+  });
+}
+
+export function useDeleteLocationMedia() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: LocationsService.deleteMedia,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["locations"], exact: false });
+    },
+  });
+}

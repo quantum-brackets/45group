@@ -88,9 +88,9 @@ export default function EditModal() {
           enableReinitialize
           validationSchema={validationSchema}
         >
-          {({ setFieldValue, values, handleSubmit }) => (
+          {({ setFieldValue, values, handleSubmit, isSubmitting }) => (
             <form onSubmit={handleSubmit} method={"post"}>
-              <DialogTitle>Edit details</DialogTitle>
+              <DialogTitle className="!mb-2">Edit details</DialogTitle>
               <DialogContent>
                 <div className="flex flex-col gap-4">
                   <FormField name="name" label="Name" placeholder="Enter a name" />
@@ -133,7 +133,9 @@ export default function EditModal() {
                 <Button type="button" variant="outlined" onClick={handleClose}>
                   Cancel
                 </Button>
-                <Button type="submit">Save</Button>
+                <Button type="submit" loading={isSubmitting}>
+                  Save
+                </Button>
               </DialogActions>
             </form>
           )}
