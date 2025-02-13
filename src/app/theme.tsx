@@ -238,7 +238,7 @@ const theme = createTheme({
     MuiPopper: {
       defaultProps: {
         transition: true,
-        placement: "bottom-start",
+        placement: "bottom-end",
       },
       styleOverrides: {
         root: {
@@ -263,7 +263,8 @@ const theme = createTheme({
                 fontSize: "1rem",
               },
               "& > span": {
-                fontSize: "0.75rem",
+                fontSize: "0.8rem",
+                fontWeight: 600,
                 color: "#3f3f46",
               },
             },

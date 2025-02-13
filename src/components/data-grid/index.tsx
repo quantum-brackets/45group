@@ -99,6 +99,9 @@ export default function DataGrid<T extends { id: string }>({
             textTransform: "uppercase",
           },
         },
+        "& .MuiDataGrid-row": {
+          cursor: props.onRowClick ? "pointer" : undefined,
+        },
         "& .MuiDataGrid-overlayWrapper": {
           "& .MuiDataGrid-overlayWrapperInner": {
             backgroundColor: "white",

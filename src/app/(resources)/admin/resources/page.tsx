@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useCallback } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Avatar, Chip, Typography } from "@mui/material";
 import { GridColDef } from "@mui/x-data-grid";
@@ -15,6 +15,8 @@ import { useCustomSearchParams } from "~/hooks/utils";
 import ResourcesService from "~/services/resources";
 import { Resource } from "~/db/schemas/resources";
 import { cn } from "~/utils/helpers";
+import usePrompt from "~/hooks/prompt";
+import { useDeleteResource } from "~/hooks/resources";
 
 const columns: GridColDef<Resource>[] = [
   {
@@ -116,6 +118,25 @@ export default function Resources() {
     },
   });
 
+  const { mutateAsync: deleteResource, isPending: isDeleting } = useDeleteResource();
+
+  const prompt = usePrompt();
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      const confirmed = await prompt({
+        title: "Please confirm",
+        description: "Are you sure you want delete this resource?",
+        isLoading: isDeleting,
+      });
+
+      if (confirmed) {
+        await deleteResource(id);
+      }
+    },
+    [deleteResource, isDeleting, prompt]
+  );
+
   return (
     <main className="flex flex-col gap-10 tablet_768:gap-6">
       <header className="flex items-center justify-between">
@@ -184,13 +205,9 @@ export default function Resources() {
                   loading={isLoading}
                   columns={columns}
                   rowCount={resources?.count}
-                  menuComp={({ row: { id }, handleClose }) => (
+                  menuComp={({ row: { id } }) => (
                     <>
-                      <button
-                        onClick={() => {
-                          handleClose();
-                        }}
-                      >
+                      <button onClick={() => handleDelete(id)}>
                         <span>Delete</span>
                       </button>
                     </>

@@ -14,7 +14,7 @@ export default function BackButton({ text, href }: Props) {
 
   return (
     <button
-      className="flex items-center gap-1 text-zinc-600"
+      className="flex w-fit items-center gap-1 text-zinc-600"
       onClick={() => {
         nProgress.start();
         router.push(href);
