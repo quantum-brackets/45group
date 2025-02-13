@@ -1,12 +1,15 @@
 "use client";
 
 import { Suspense, useCallback } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import Image from "next/image";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Avatar, Chip, Typography } from "@mui/material";
-import { GridColDef } from "@mui/x-data-grid";
+import { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { useQuery } from "@tanstack/react-query";
 import { Formik } from "formik";
-import { FiSearch } from "react-icons/fi";
+import nProgress from "nprogress";
+import { FiEdit, FiSearch } from "react-icons/fi";
+import { TbTrash } from "react-icons/tb";
 import { MdOutlineBedroomChild, MdEvent, MdRestaurantMenu } from "react-icons/md";
 import Button from "~/components/button";
 import DataGrid from "~/components/data-grid";
@@ -27,17 +30,19 @@ const columns: GridColDef<Resource>[] = [
     renderCell: ({ row: { name, thumbnail } }) => {
       return (
         <div className="flex h-full items-center justify-center">
-          <Avatar
-            alt={`${name}`}
-            src={thumbnail || ""}
-            sx={{ width: 45, height: 45 }}
-            className={cn({
+          <figure
+            className={cn("relative size-12 rounded-md border border-zinc-200", {
               "!bg-primary": !thumbnail,
             })}
-            variant="rounded"
           >
-            {name}
-          </Avatar>
+            <Image
+              alt={`${name}`}
+              src={thumbnail || ""}
+              fill
+              sizes="100%"
+              className="h-full w-full object-contain p-[2px]"
+            />
+          </figure>
         </div>
       );
     },
@@ -53,6 +58,37 @@ const columns: GridColDef<Resource>[] = [
     headerName: "Type",
     minWidth: 200,
     flex: 1,
+    renderCell: ({ value }: GridRenderCellParams<Resource, Resource["type"]>) => {
+      switch (value) {
+        case "lodge":
+          return (
+            <Chip
+              label="Rooms"
+              icon={<MdOutlineBedroomChild className="text-base" />}
+              color="info"
+              variant="outlined"
+            />
+          );
+        case "dining":
+          return (
+            <Chip
+              label="Dining"
+              icon={<MdRestaurantMenu className="text-base" />}
+              color="info"
+              variant="outlined"
+            />
+          );
+        default:
+          return (
+            <Chip
+              label="Events"
+              icon={<MdEvent className="text-base" />}
+              color="info"
+              variant="outlined"
+            />
+          );
+      }
+    },
   },
   {
     field: "status",
@@ -76,7 +112,7 @@ const columns: GridColDef<Resource>[] = [
 
 const cards = [
   {
-    title: "Lodge",
+    title: "Rooms",
     icon: <MdOutlineBedroomChild className="text-base text-white" />,
     status: {
       draft: 50,
@@ -84,7 +120,7 @@ const cards = [
     },
   },
   {
-    title: "Event",
+    title: "Events",
     icon: <MdEvent className="text-base text-white" />,
     status: {
       draft: 50,
@@ -104,6 +140,8 @@ const cards = [
 export default function Resources() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
+
   const { q, limit, offset } = useCustomSearchParams(["q", "limit", "offset"]);
 
   const { data: resources, isLoading } = useQuery({
@@ -136,6 +174,11 @@ export default function Resources() {
     },
     [deleteResource, isDeleting, prompt]
   );
+
+  function goToDetails(id: string) {
+    nProgress.start();
+    router.push(`/admin/locations/${id}`);
+  }
 
   return (
     <main className="flex flex-col gap-10 tablet_768:gap-6">
@@ -207,7 +250,12 @@ export default function Resources() {
                   rowCount={resources?.count}
                   menuComp={({ row: { id } }) => (
                     <>
+                      <button onClick={() => goToDetails(id)}>
+                        <FiEdit />
+                        <span>Edit</span>
+                      </button>
                       <button onClick={() => handleDelete(id)}>
+                        <TbTrash />
                         <span>Delete</span>
                       </button>
                     </>
