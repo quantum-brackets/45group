@@ -56,13 +56,12 @@ export const POST = catchAsync(async (req: NextRequest, context: { params: { id:
 
 export const DELETE = catchAsync(async (req: NextRequest, context: { params: { id: string } }) => {
   const locationId = context.params.id;
-  const body = await req.formData();
+  const body = await req.json();
 
   const { media_ids } = await validateSchema({
     object: {
       media_ids: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).required(),
     },
-    isFormData: true,
     data: body,
   });
 
