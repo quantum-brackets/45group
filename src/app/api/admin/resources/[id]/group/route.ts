@@ -2,23 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import * as Yup from "yup";
 import { db } from "~/db";
-import { resourceRulesTable, resourcesTable } from "~/db/schemas/resources";
+import { resourceGroupsTable, resourcesTable } from "~/db/schemas/resources";
 import catchAsync from "~/utils/catch-async";
 import { appError, validateSchema } from "~/utils/helpers";
-
-const schema = {
-  rule_ids: Yup.array()
-    .of(Yup.string().uuid("Must be a valid UUID"))
-    .required("`rule_ids` is required"),
-};
 
 export const POST = catchAsync(async (req: NextRequest, context: { params: { id: string } }) => {
   const resourceId = context.params.id;
   const body = await req.json();
 
-  const { rule_ids } = await validateSchema({
-    object: schema,
-    isFormData: true,
+  const { group_ids } = await validateSchema({
+    object: {
+      group_ids: Yup.array()
+        .of(
+          Yup.object({
+            id: Yup.string().uuid("Must be a valid UUID"),
+            num: Yup.number().required("`num` is required"),
+          })
+        )
+        .required("`group_ids` is required"),
+    },
     data: body,
   });
 
@@ -33,23 +35,25 @@ export const POST = catchAsync(async (req: NextRequest, context: { params: { id:
       error: "Resource not found",
     });
 
-  db.insert(resourceRulesTable).values(
-    rule_ids.map((rule_id: string) => ({
+  db.insert(resourceGroupsTable).values(
+    group_ids.map(({ id: group_id, num }: { id: string; num: number }) => ({
       resource_id: resource.id,
-      rule_id,
+      group_id,
+      num,
     }))
   );
 
-  return NextResponse.json({ message: "Rules successfully associated with the resource." });
+  return NextResponse.json({ message: "Groups successfully associated with the resource." });
 });
 
 export const DELETE = catchAsync(async (req: NextRequest, context: { params: { id: string } }) => {
   const resourceId = context.params.id;
-  const body = await req.formData();
+  const body = await req.json();
 
-  const { rule_ids } = await validateSchema({
-    object: schema,
-    isFormData: true,
+  const { group_ids } = await validateSchema({
+    object: {
+      group_ids: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
+    },
     data: body,
   });
 
@@ -65,14 +69,14 @@ export const DELETE = catchAsync(async (req: NextRequest, context: { params: { i
     });
 
   await db
-    .delete(resourceRulesTable)
+    .delete(resourceGroupsTable)
     .where(
       and(
-        eq(resourceRulesTable.resource_id, resourceId),
-        inArray(resourceRulesTable.rule_id, rule_ids)
+        eq(resourceGroupsTable.resource_id, resourceId),
+        inArray(resourceGroupsTable.group_id, group_ids)
       )
     )
     .execute();
 
-  return NextResponse.json({ message: "Rules successfully removed from the resource." });
+  return NextResponse.json({ message: "Groups successfully removed from the resource." });
 });

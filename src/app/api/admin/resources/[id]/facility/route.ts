@@ -2,23 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import * as Yup from "yup";
 import { db } from "~/db";
-import { resourceRulesTable, resourcesTable } from "~/db/schemas/resources";
+import { resourceFacilitiesTable, resourcesTable } from "~/db/schemas/resources";
 import catchAsync from "~/utils/catch-async";
 import { appError, validateSchema } from "~/utils/helpers";
 
 const schema = {
-  rule_ids: Yup.array()
+  facility_ids: Yup.array()
     .of(Yup.string().uuid("Must be a valid UUID"))
-    .required("`rule_ids` is required"),
+    .required("`facility_ids` is required"),
 };
 
 export const POST = catchAsync(async (req: NextRequest, context: { params: { id: string } }) => {
   const resourceId = context.params.id;
   const body = await req.json();
 
-  const { rule_ids } = await validateSchema({
+  const { facility_ids } = await validateSchema({
     object: schema,
-    isFormData: true,
     data: body,
   });
 
@@ -33,23 +32,22 @@ export const POST = catchAsync(async (req: NextRequest, context: { params: { id:
       error: "Resource not found",
     });
 
-  db.insert(resourceRulesTable).values(
-    rule_ids.map((rule_id: string) => ({
+  db.insert(resourceFacilitiesTable).values(
+    facility_ids.map((facility_id: string) => ({
       resource_id: resource.id,
-      rule_id,
+      facility_id,
     }))
   );
 
-  return NextResponse.json({ message: "Rules successfully associated with the resource." });
+  return NextResponse.json({ message: "Facilities successfully associated with the resource." });
 });
 
 export const DELETE = catchAsync(async (req: NextRequest, context: { params: { id: string } }) => {
   const resourceId = context.params.id;
-  const body = await req.formData();
+  const body = await req.json();
 
-  const { rule_ids } = await validateSchema({
+  const { facility_ids } = await validateSchema({
     object: schema,
-    isFormData: true,
     data: body,
   });
 
@@ -65,14 +63,14 @@ export const DELETE = catchAsync(async (req: NextRequest, context: { params: { i
     });
 
   await db
-    .delete(resourceRulesTable)
+    .delete(resourceFacilitiesTable)
     .where(
       and(
-        eq(resourceRulesTable.resource_id, resourceId),
-        inArray(resourceRulesTable.rule_id, rule_ids)
+        eq(resourceFacilitiesTable.resource_id, resourceId),
+        inArray(resourceFacilitiesTable.facility_id, facility_ids)
       )
     )
     .execute();
 
-  return NextResponse.json({ message: "Rules successfully removed from the resource." });
+  return NextResponse.json({ message: "Facilities successfully removed from the resource." });
 });
