@@ -52,13 +52,13 @@ export default function LocationDetails() {
           <div className="flex flex-col gap-2">
             <h6 className="text-sm font-medium text-zinc-800">Details</h6>
             <div className="flex w-full flex-col gap-2">
-              <p className="flex items-center justify-between gap-8 text-base">
+              <p className="flex items-center justify-between gap-8 text-sm largeLaptop:text-base">
                 <span>State</span>
-                <span className="text-zinc-700">{location.state}</span>
+                <span className="text-zinc-600">{location.state}</span>
               </p>
-              <p className="flex items-center justify-between gap-8 text-base">
+              <p className="flex items-center justify-between gap-8 text-sm largeLaptop:text-base">
                 <span>City</span>
-                <span className="text-zinc-700">{location.city}</span>
+                <span className="text-zinc-600">{location.city}</span>
               </p>
             </div>
           </div>
