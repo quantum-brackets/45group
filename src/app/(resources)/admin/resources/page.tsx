@@ -20,6 +20,7 @@ import { Resource } from "~/db/schemas/resources";
 import { cn } from "~/utils/helpers";
 import usePrompt from "~/hooks/prompt";
 import { useDeleteResource } from "~/hooks/resources";
+import ResourceTypeChip from "~/components/resource/type-chip";
 
 const columns: GridColDef<Resource>[] = [
   {
@@ -58,37 +59,8 @@ const columns: GridColDef<Resource>[] = [
     headerName: "Type",
     minWidth: 200,
     flex: 1,
-    renderCell: ({ value }: GridRenderCellParams<Resource, Resource["type"]>) => {
-      switch (value) {
-        case "lodge":
-          return (
-            <Chip
-              label="Rooms"
-              icon={<MdOutlineBedroomChild className="text-base" />}
-              color="info"
-              variant="outlined"
-            />
-          );
-        case "dining":
-          return (
-            <Chip
-              label="Dining"
-              icon={<MdRestaurantMenu className="text-base" />}
-              color="info"
-              variant="outlined"
-            />
-          );
-        default:
-          return (
-            <Chip
-              label="Events"
-              icon={<MdEvent className="text-base" />}
-              color="info"
-              variant="outlined"
-            />
-          );
-      }
-    },
+    renderCell: ({ value }: GridRenderCellParams<Resource, Resource["type"]>) =>
+      value && <ResourceTypeChip type={value} />,
   },
   {
     field: "status",
