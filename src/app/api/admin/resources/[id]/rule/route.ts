@@ -6,6 +6,10 @@ import { resourceRulesTable, resourcesTable } from "~/db/schemas/resources";
 import catchAsync from "~/utils/catch-async";
 import { appError, validateSchema } from "~/utils/helpers";
 
+type Schema = {
+  rule_ids: string[];
+};
+
 const schema = {
   rule_ids: Yup.array()
     .of(Yup.string().uuid("Must be a valid UUID"))
@@ -16,7 +20,7 @@ export const POST = catchAsync(async (req: NextRequest, context: { params: { id:
   const resourceId = context.params.id;
   const body = await req.json();
 
-  const { rule_ids } = await validateSchema({
+  const { rule_ids } = await validateSchema<Schema>({
     object: schema,
     isFormData: true,
     data: body,
@@ -33,7 +37,7 @@ export const POST = catchAsync(async (req: NextRequest, context: { params: { id:
       error: "Resource not found",
     });
 
-  db.insert(resourceRulesTable).values(
+  await db.insert(resourceRulesTable).values(
     rule_ids.map((rule_id: string) => ({
       resource_id: resource.id,
       rule_id,
@@ -47,7 +51,7 @@ export const DELETE = catchAsync(async (req: NextRequest, context: { params: { i
   const resourceId = context.params.id;
   const body = await req.formData();
 
-  const { rule_ids } = await validateSchema({
+  const { rule_ids } = await validateSchema<Schema>({
     object: schema,
     isFormData: true,
     data: body,

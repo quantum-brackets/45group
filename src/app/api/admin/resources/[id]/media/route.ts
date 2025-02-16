@@ -13,7 +13,9 @@ export const POST = catchAsync(async (req: NextRequest, context: { params: { id:
   const resourceId = context.params.id;
   const body = await req.formData();
 
-  const { medias } = await validateSchema({
+  const { medias } = await validateSchema<{
+    medias: File[];
+  }>({
     object: {
       medias: YupValidation.validateFiles().required("`medias` is required"),
     },
@@ -52,7 +54,9 @@ export const DELETE = catchAsync(async (req: NextRequest, context: { params: { i
   const resourceId = context.params.id;
   const body = await req.json();
 
-  const { media_ids } = await validateSchema({
+  const { media_ids } = await validateSchema<{
+    media_ids: string[];
+  }>({
     object: {
       media_ids: Yup.array()
         .of(Yup.string().uuid("Must be a valid UUID"))

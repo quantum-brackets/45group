@@ -10,7 +10,9 @@ export const POST = catchAsync(async (req: NextRequest, context: { params: { id:
   const resourceId = context.params.id;
   const body = await req.json();
 
-  const { group_ids } = await validateSchema({
+  const { group_ids } = await validateSchema<{
+    group_ids: { id: string; num: number }[];
+  }>({
     object: {
       group_ids: Yup.array()
         .of(
@@ -35,8 +37,8 @@ export const POST = catchAsync(async (req: NextRequest, context: { params: { id:
       error: "Resource not found",
     });
 
-  db.insert(resourceGroupsTable).values(
-    group_ids.map(({ id: group_id, num }: { id: string; num: number }) => ({
+  await db.insert(resourceGroupsTable).values(
+    group_ids.map(({ id: group_id, num }) => ({
       resource_id: resource.id,
       group_id,
       num,
@@ -50,9 +52,13 @@ export const DELETE = catchAsync(async (req: NextRequest, context: { params: { i
   const resourceId = context.params.id;
   const body = await req.json();
 
-  const { group_ids } = await validateSchema({
+  const { group_ids } = await validateSchema<{
+    group_ids: string[];
+  }>({
     object: {
-      group_ids: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
+      group_ids: Yup.array()
+        .of(Yup.string().uuid("Must be a valid UUID"))
+        .required("`group_ids` is required"),
     },
     data: body,
   });
