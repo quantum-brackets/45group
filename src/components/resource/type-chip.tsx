@@ -10,34 +10,31 @@ type Props = {
   className?: string;
 };
 
+const resourceConfig: Record<Resource["type"], { label: string; icon: JSX.Element }> = {
+  lodge: {
+    label: "Rooms",
+    icon: <MdOutlineBedroomChild className={cn("text-base")} />,
+  },
+  dining: {
+    label: "Dining",
+    icon: <MdRestaurantMenu className={cn("text-base")} />,
+  },
+  event: {
+    label: "Events",
+    icon: <MdEvent className={cn("text-base")} />,
+  },
+};
+
 export default function ResourceTypeChip({ type, className }: Props) {
-  switch (type) {
-    case "lodge":
-      return (
-        <Chip
-          label="Rooms"
-          icon={<MdOutlineBedroomChild className={cn("text-base", className)} />}
-          color="info"
-          variant="outlined"
-        />
-      );
-    case "dining":
-      return (
-        <Chip
-          label="Dining"
-          icon={<MdRestaurantMenu className={cn("text-base", className)} />}
-          color="info"
-          variant="outlined"
-        />
-      );
-    default:
-      return (
-        <Chip
-          label="Events"
-          icon={<MdEvent className={cn("text-base", className)} />}
-          color="info"
-          variant="outlined"
-        />
-      );
-  }
+  const { label, icon } = resourceConfig[type];
+
+  return (
+    <Chip
+      label={label}
+      icon={icon}
+      color="info"
+      variant="outlined"
+      className={cn("!justify-end !border-transparent !px-0 [&_span]:!pr-0", className)}
+    />
+  );
 }
