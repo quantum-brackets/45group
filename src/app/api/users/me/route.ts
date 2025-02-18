@@ -16,7 +16,13 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
   const formData = await req.formData();
   const body = Object.fromEntries(formData);
 
-  const { image, ...validatedData } = await validateSchema({
+  const { image, ...validatedData } = await validateSchema<{
+    first_name: string;
+    last_name: string;
+    phone: string;
+    complete_profile: boolean;
+    image: File;
+  }>({
     object: {
       first_name: Yup.string().trim().optional(),
       last_name: Yup.string().trim().optional(),
@@ -40,7 +46,7 @@ export const PATCH = catchAsync(async (req: NextRequest) => {
     .update(usersTable)
     .set({
       ...validatedData,
-      image: imageUrl ?? undefined,
+      image: imageUrl?.url ?? undefined,
     })
     .where(eq(usersTable.id, userId))
     .returning();
