@@ -39,7 +39,7 @@ export default function ResourceStatus({ status }: Props) {
                     id &&
                     updateResource({
                       id,
-                      data: { status: "draft" as Resource["status"] },
+                      data: { status: "draft" as any },
                     })
                   }
                 >

@@ -7,7 +7,7 @@ type ResourcePayload = Omit<
   "id" | "updated_at" | "created_at" | "thumbnail" | "schedules" | "location" | "status"
 > & {
   thumbnail: File;
-  status?: NonNullable<Pick<Resource, "status">>;
+  status?: Pick<Resource, "status">;
   schedules: Record<"start_time" | "end_time" | "day_of_week", string>[];
 };
 

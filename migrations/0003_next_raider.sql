@@ -1,0 +1,1 @@
+ALTER TABLE "resources" ADD COLUMN "handle" varchar NOT NULL;
