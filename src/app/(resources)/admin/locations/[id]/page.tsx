@@ -73,6 +73,7 @@ export default function LocationDetails() {
               title="Media"
               subtitle="Add images of the location."
               multiple
+              medias={location.medias || []}
               open={isMediaModalOpen}
               handleClose={handleMediaClose}
               isLoading={isUploading || isDeleting}

@@ -1,14 +1,24 @@
 import { axiosPrivate } from "~/config/axios";
+import { Media } from "~/db/schemas/media";
 import { Resource } from "~/db/schemas/resources";
 
+type ResourcePayload = Omit<
+  Resource,
+  "id" | "updated_at" | "created_at" | "thumbnail" | "schedules" | "location" | "status"
+> & {
+  thumbnail: File;
+  status?: NonNullable<Pick<Resource, "status">>;
+  schedules: Record<"start_time" | "end_time" | "day_of_week", string>[];
+};
+
 class ResourceService {
-  static createResource = async (data: any) => {
+  static createResource = async (data: ResourcePayload) => {
     const { data: response } = await axiosPrivate.postForm<Resource>(`/api/admin/resources`, data);
 
     return response;
   };
 
-  static updateResource = async ({ id, data }: { id: string; data: any }) => {
+  static updateResource = async ({ id, data }: { id: string; data: Partial<ResourcePayload> }) => {
     const { data: response } = await axiosPrivate.patchForm<Resource>(
       `/api/admin/resources/${id}`,
       data
@@ -34,6 +44,26 @@ class ResourceService {
 
   static getResource = async (id: string) => {
     const { data: response } = await axiosPrivate.get<Resource>(`/api/admin/resources/${id}`);
+
+    return response;
+  };
+
+  static uploadMedia = async ({ id, data }: { id: string; data: { medias: File[] } }) => {
+    const { data: response } = await axiosPrivate.postForm<Media>(
+      `/api/admin/resources/${id}/media`,
+      data
+    );
+
+    return response;
+  };
+
+  static deleteMedia = async ({ id, data }: { id: string; data: { media_ids: string[] } }) => {
+    const { data: response } = await axiosPrivate.delete<Media>(
+      `/api/admin/resources/${id}/media`,
+      {
+        data,
+      }
+    );
 
     return response;
   };

@@ -1,13 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useParams } from "next/navigation";
 import { DialogActions, DialogContent, DialogTitle } from "@mui/material";
-import { useQueryClient } from "@tanstack/react-query";
 import { readFileAsBase64 } from "~/utils/helpers";
 import { notifyError } from "~/utils/toast";
 import Button from "~/components/button";
-import { Location } from "~/db/schemas/locations";
 import Modal from "~/components/modal";
 import MediaCard from "./card";
 
@@ -19,6 +16,7 @@ type Props = {
   handleClose: () => void;
   isLoading: boolean;
   handleSubmit: (files: File[], ids: string[]) => Promise<void>;
+  medias: { url: string; id: string }[];
 };
 
 export default function MediaModal({
@@ -28,18 +26,14 @@ export default function MediaModal({
   subtitle,
   multiple = false,
   isLoading,
+  medias,
   handleSubmit,
 }: Props) {
-  const { id } = useParams<{ id: string }>();
-
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<{ id: string; file: File; base64: string }[]>(
     []
   );
   const [deletedMedias, setDeletedMedias] = useState<string[]>([]);
-
-  const queryClient = useQueryClient();
-  const location = queryClient.getQueryData<Location>(["locations", id]);
 
   const handleMediaSelect = async (files: FileList | null) => {
     if (!files) return;
@@ -113,16 +107,16 @@ export default function MediaModal({
               <MediaCard
                 url={base64}
                 key={index}
-                name={location?.name || "media"}
+                name={"Media"}
                 handleDelete={() =>
                   setSelectedFiles((prev) => prev.filter(({ id }) => id !== fileId))
                 }
               />
             ))}
-            {location?.medias?.map(({ url, id }) => (
+            {medias?.map(({ url, id }) => (
               <MediaCard
                 url={url}
-                name={location.name}
+                name={"Media"}
                 key={id}
                 handleDelete={() =>
                   setDeletedMedias((prev) => {

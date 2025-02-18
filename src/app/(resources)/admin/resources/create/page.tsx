@@ -210,12 +210,14 @@ export default function CreateResource() {
             group_form: { groups },
             media: images,
             location,
+            thumbnail,
             availability_form: { schedule_type, custom, weekdays, weekends },
             ...submissionValues
           } = filterPrivateValues(values);
 
-          if (!submissionValues.thumbnail) return notifyError({ message: "Thumbnail is required" });
+          if (!thumbnail) return notifyError({ message: "Thumbnail is required" });
           if (!images.length) return notifyError({ message: "At least one media is required" });
+          if (!location) return notifyError({ message: "Location not chosen" });
 
           let schedules: Record<"start_time" | "end_time" | "day_of_week", string>[] = [];
 
@@ -232,9 +234,12 @@ export default function CreateResource() {
               schedules = DAY_OF_WEEK.slice(-2).map((day) => ({ ...weekends, day_of_week: day }));
           }
 
+          if (!schedules) return;
+
           const { id: resourceId } = await createResource({
             ...submissionValues,
-            images,
+            // images,
+            thumbnail,
             schedule_type,
             location_id: location?.id,
             schedules,

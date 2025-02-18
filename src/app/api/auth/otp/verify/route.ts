@@ -9,7 +9,7 @@ import { appError, hashValue, validateSchema } from "~/utils/helpers";
 export const POST = catchAsync(async (req: NextRequest) => {
   const body = await req.json();
 
-  const { email, otp } = await validateSchema({
+  const { email, otp } = await validateSchema<{ email: string; otp: string }>({
     object: {
       email: Yup.string().email("Invalid email address").required("Email is required"),
       otp: Yup.string()

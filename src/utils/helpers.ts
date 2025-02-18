@@ -129,7 +129,7 @@ function formDataToObject(formData: FormData): { [key: string]: any } {
 
   return obj;
 }
-export function validateSchema({
+export function validateSchema<T extends any>({
   object,
   data,
   isFormData = false,
@@ -143,7 +143,7 @@ export function validateSchema({
   return schema.validate(
     { ...(isFormData ? formDataToObject(data) : data) },
     { abortEarly: false, stripUnknown: true }
-  ) as any;
+  ) as Promise<T>;
 }
 
 export function filterPrivateValues<T>(values: T): T {

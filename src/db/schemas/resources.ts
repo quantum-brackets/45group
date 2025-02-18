@@ -10,7 +10,7 @@ import {
   integer,
 } from "drizzle-orm/pg-core";
 import { InferSelectModel, relations } from "drizzle-orm";
-import { rulesTable } from "./rules";
+import { Rule, rulesTable } from "./rules";
 import { Media, mediasTable } from "./media";
 import { facilitiesTable } from "./facilities";
 import { locationsTable } from "./locations";
@@ -26,6 +26,7 @@ export const resourcesTable = pgTable(
     status: varchar("status", { enum: ["draft", "published", "archived", "inactive"] }).default(
       "draft"
     ),
+    handle: varchar("handle").notNull(),
     location_id: uuid("location_id")
       .references(() => locationsTable.id)
       .notNull(),
@@ -43,7 +44,7 @@ export const resourcesTable = pgTable(
 
 export type Resource = InferSelectModel<typeof resourcesTable> & {
   medias?: Media[];
-  location: Location;
+  location?: Location;
   schedules?: ResourceSchedule[];
   facilities?: ResourceFacility[];
   rules?: ResourceRule[];
@@ -65,7 +66,10 @@ export const resourceRulesTable = pgTable(
   })
 );
 
-export type ResourceRule = InferSelectModel<typeof resourceRulesTable>;
+export type ResourceRule = InferSelectModel<typeof resourceRulesTable> & {
+  resource?: Resource;
+  rule: Rule;
+};
 
 export const resourceFacilitiesTable = pgTable(
   "resource_facilities",
