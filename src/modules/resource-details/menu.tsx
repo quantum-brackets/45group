@@ -1,16 +1,18 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ClickAwayListener, Fade, IconButton, Paper, Popper } from "@mui/material";
 import { GoKebabHorizontal } from "react-icons/go";
 import { TbTrash } from "react-icons/tb";
+import nProgress from "nprogress";
 import EditModal from "./edit-modal";
 import { useDeleteLocation } from "~/hooks/locations";
 import usePrompt from "~/hooks/prompt";
 
 export default function ResourceDetailsMenu() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
 
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const isOpen = Boolean(anchorEl);
@@ -32,9 +34,11 @@ export default function ResourceDetailsMenu() {
 
       if (confirmed) {
         await deleteLocation(id);
+        router.push("/admin/resources");
+        nProgress.start();
       }
     },
-    [deleteLocation, isDeleting, prompt]
+    [deleteLocation, isDeleting, prompt, router]
   );
 
   return (

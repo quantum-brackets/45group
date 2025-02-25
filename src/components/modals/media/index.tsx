@@ -103,10 +103,10 @@ export default function MediaModal({
         <div className="mt-6 flex flex-col gap-4">
           <h5 className="text-sm font-medium">Uploads</h5>
           <div className="flex flex-col gap-2">
-            {selectedFiles.map(({ base64, id: fileId }, index) => (
+            {selectedFiles.map(({ base64, id: fileId }) => (
               <MediaCard
                 url={base64}
-                key={index}
+                key={fileId}
                 name={"Media"}
                 handleDelete={() =>
                   setSelectedFiles((prev) => prev.filter(({ id }) => id !== fileId))

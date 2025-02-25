@@ -72,6 +72,7 @@ export default function SelectField({
               props.onClick?.(e);
             }}
             onChange={(e, child) => {
+              e.stopPropagation();
               const value = e.target.value;
               form.setFieldValue(props.name, value);
               props.onChange?.(e, child);

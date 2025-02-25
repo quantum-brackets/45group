@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { DialogActions, DialogContent, DialogTitle, MenuItem } from "@mui/material";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import { FiEdit } from "react-icons/fi";
@@ -15,6 +15,8 @@ import { notifySuccess } from "~/utils/toast";
 import Button from "~/components/button";
 import { useUpdateResource } from "~/hooks/resources";
 import { Resource } from "~/db/schemas/resources";
+import LocationsService from "~/services/locations";
+import { Location } from "~/db/schemas";
 
 type InitialValues = {
   name: string;
@@ -57,6 +59,17 @@ export default function EditModal() {
   const resource = queryClient.getQueryData<Resource>(["resources", id]);
 
   const { mutateAsync: updateResource } = useUpdateResource();
+  const { data: locations, isLoading: isLocationLoading } = useQuery({
+    queryKey: ["locations"],
+    queryFn: () => LocationsService.getLocations<Location[]>(),
+  });
+
+  const resourceType = useMemo(() => {
+    return RESOURCE_TYPES.find(({ hidden_value }) => resource?.type === hidden_value)?.value;
+  }, [resource?.type]);
+  const location = useMemo(() => {
+    return locations?.find(({ id }) => resource?.location_id === id);
+  }, [locations, resource?.location_id]);
 
   return (
     <>
@@ -77,8 +90,9 @@ export default function EditModal() {
             {
               name: resource?.name || "",
               description: resource?.description || "",
-              _type: resource?.type,
+              _type: resourceType,
               type: resource?.type || "",
+              _location: location ? `${location.name}, ${location.city}, ${location.state}` : "",
             } as InitialValues
           }
           onSubmit={async (values) => {
@@ -126,6 +140,32 @@ export default function EditModal() {
                         key={index}
                       >
                         {value}
+                      </MenuItem>
+                    ))}
+                  </SelectField>
+                  <SelectField
+                    label="Location"
+                    name="_location"
+                    placeholder="Choose a location"
+                    isLoading={isLocationLoading}
+                    data={locations}
+                    onClick={(e) => e.stopPropagation()}
+                    emptyStateText={"No location found"}
+                  >
+                    {locations?.map(({ name, id, city, state }) => (
+                      <MenuItem
+                        value={`${name}, ${city}, ${state}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFieldValue("location_id", id);
+                        }}
+                        key={id}
+                        className="flex flex-col justify-start"
+                      >
+                        <p>{name}</p>
+                        <small>
+                          {city}, {state}
+                        </small>
                       </MenuItem>
                     ))}
                   </SelectField>

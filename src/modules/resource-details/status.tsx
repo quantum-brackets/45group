@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { ClickAwayListener, Fade, Paper, Popper } from "@mui/material";
+import { useQueryClient } from "@tanstack/react-query";
 import { Resource } from "~/db/schemas/resources";
 import { useUpdateResource } from "~/hooks/resources";
 import ResourceStatusChip from "~/components/resource/status-chip";
@@ -10,6 +11,8 @@ import ResourceStatusChip from "~/components/resource/status-chip";
 type Props = {
   status: Resource["status"];
 };
+
+const RESOURCE_STATUS = ["draft", "published"] as const;
 
 export default function ResourceStatus({ status }: Props) {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +25,9 @@ export default function ResourceStatus({ status }: Props) {
 
   const { mutateAsync: updateResource } = useUpdateResource();
 
+  const queryClient = useQueryClient();
+  const resource = queryClient.getQueryData<Resource>(["resources", id]);
+
   return (
     <ClickAwayListener onClickAway={handleClose}>
       <div>
@@ -32,19 +38,25 @@ export default function ResourceStatus({ status }: Props) {
           {({ TransitionProps }) => (
             <Fade {...TransitionProps}>
               <Paper>
-                <button
-                  onClick={async () => {
-                    if (id) {
-                      await updateResource({
-                        id,
-                        data: { status: "draft" },
-                      });
-                      handleClose();
-                    }
-                  }}
-                >
-                  <ResourceStatusChip status={"draft"} />
-                </button>
+                {RESOURCE_STATUS.map((status, index) => {
+                  if (resource?.status === status) return;
+                  return (
+                    <button
+                      key={index}
+                      onClick={async () => {
+                        if (id) {
+                          handleClose();
+                          await updateResource({
+                            id,
+                            data: { status },
+                          });
+                        }
+                      }}
+                    >
+                      <ResourceStatusChip status={status} />
+                    </button>
+                  );
+                })}
               </Paper>
             </Fade>
           )}

@@ -10,6 +10,7 @@ import ResourceStatus from "~/modules/resource-details/status";
 import ResourceTypeChip from "~/components/resource/type-chip";
 import ResourceMediaSection from "~/modules/resource-details/media-section";
 import RulesSection from "~/modules/resource-details/rules-section";
+import ResourceThumbnailSection from "~/modules/resource-details/thumbnail-section";
 
 export default function ResourceDetails() {
   const { id } = useParams<{ id: string }>();
@@ -73,7 +74,8 @@ export default function ResourceDetails() {
           <RulesSection resource={resource} />
           <RulesSection resource={resource} />
         </div>
-        <div className="flex w-full flex-col gap-6">
+        <div className="gap-6">
+          <ResourceThumbnailSection resource={resource} />
           <ResourceMediaSection resource={resource} />
         </div>
       </main>

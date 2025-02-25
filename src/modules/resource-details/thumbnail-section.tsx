@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { FaRegTrashCan } from "react-icons/fa6";
 import Button from "~/components/button";
 import MediaModal from "~/components/modals/media";
 import { Resource } from "~/db/schemas/resources";
@@ -28,9 +27,6 @@ export default function ResourceThumbnailSection({ resource }: Props) {
           <Button variant="outlined" size="small" onClick={handleThumbnailOpen}>
             Edit
           </Button>
-          <Button variant="outlined" size="small" onClick={handleThumbnailClose}>
-            <FaRegTrashCan />
-          </Button>
         </div>
         <MediaModal
           title="Thumbnail"
@@ -39,7 +35,7 @@ export default function ResourceThumbnailSection({ resource }: Props) {
           open={isThumbnailModalOpen}
           handleClose={handleThumbnailClose}
           isLoading={isUpdating}
-          handleSubmit={async (medias: File[], media_ids: string[]) => {
+          handleSubmit={async (medias: File[], _: string[]) => {
             if (medias.length > 0) {
               await updateResource({
                 id: resource.id,
