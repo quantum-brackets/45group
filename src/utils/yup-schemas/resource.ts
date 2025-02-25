@@ -4,18 +4,13 @@ import { DAY_OF_WEEK, SCHEDULE_TYPE } from "~/utils/constants";
 
 const resourceType = ["lodge", "event", "dining"];
 
-const schedule = Yup.object({
+export const schedule = Yup.object({
   start_time: Yup.string().required("`start_time` is required"),
   end_time: Yup.string().required("`end_time` is required"),
   day_of_week: Yup.string()
     .lowercase()
     .oneOf(DAY_OF_WEEK, "`day_of_week` must be one of: " + DAY_OF_WEEK.join(", "))
     .required("`day_of_week` is required"),
-});
-
-const group = Yup.object({
-  id: Yup.string().uuid("Must be a valid UUID"),
-  num: Yup.number().required("`num` is required"),
 });
 
 export const resourceSchema = {
@@ -34,9 +29,6 @@ export const resourceSchema = {
     fileSizeMessage: "`thumbnail` must be less than 5MB",
   }),
   publish: Yup.boolean().optional(),
-  // images: YupValidation.validateFiles({
-  //   requiredMessage: "`images` is required",
-  // }).required("`images` is required`"),
   schedules: Yup.array()
     .of(schedule)
     .min(1, "`schedules` must have at least one schedule")
@@ -45,7 +37,4 @@ export const resourceSchema = {
       then: (schema) => schema.required("`schedules` is required when `schedule_type` is not 24/7"),
       otherwise: (schema) => schema.notRequired(),
     }),
-  // rules: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
-  // facilities: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
-  // groups: Yup.array().of(group).optional(),
 };

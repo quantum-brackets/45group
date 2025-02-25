@@ -10,7 +10,6 @@ import { FiEdit } from "react-icons/fi";
 import Modal from "~/components/modal";
 import FormField from "~/components/fields/form-field";
 import SelectField from "~/components/fields/select-field";
-import statesData from "~/data/states.json";
 import { filterPrivateValues } from "~/utils/helpers";
 import { notifySuccess } from "~/utils/toast";
 import Button from "~/components/button";
@@ -83,8 +82,6 @@ export default function EditModal() {
             } as InitialValues
           }
           onSubmit={async (values) => {
-            console.log(values);
-
             const submissionValues = filterPrivateValues(values);
             await updateResource(
               {
@@ -96,6 +93,7 @@ export default function EditModal() {
               {
                 onSuccess: () => {
                   notifySuccess({ message: "Resource successfully updated" });
+                  handleClose();
                 },
               }
             );
@@ -103,7 +101,7 @@ export default function EditModal() {
           enableReinitialize
           validationSchema={validationSchema}
         >
-          {({ setFieldValue, values, handleSubmit, isSubmitting }) => (
+          {({ setFieldValue, handleSubmit, isSubmitting }) => (
             <form onSubmit={handleSubmit} method={"post"}>
               <DialogTitle className="!mb-2">Edit details</DialogTitle>
               <DialogContent>
@@ -130,8 +128,6 @@ export default function EditModal() {
                         {value}
                       </MenuItem>
                     ))}
-                    <MenuItem value={"event"}>Event</MenuItem>
-                    <MenuItem value={"dining"}>Dining</MenuItem>
                   </SelectField>
                 </div>
               </DialogContent>

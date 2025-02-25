@@ -1,16 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import * as Yup from "yup";
 import { db } from "~/db";
-import {
-  resourceFacilitiesTable,
-  resourceGroupsTable,
-  resourceRulesTable,
-  resourcesTable,
-} from "~/db/schemas/resources";
+import { Resource, ResourceSchedule, resourcesTable } from "~/db/schemas/resources";
 import catchAsync from "~/utils/catch-async";
 import { appError, validateSchema } from "~/utils/helpers";
-import { resourceSchema } from "~/utils/yup-schemas/resource";
+import UploadService from "~/services/upload";
+import YupValidation from "~/utils/yup-validations";
+import { SCHEDULE_TYPE } from "~/utils/constants";
+import { schedule } from "~/utils/yup-schemas/resource";
+
+const resourceType = ["lodge", "event", "dining"];
+const resourceStatus = ["draft", "published"];
+
+const resourceSchema = {
+  location_id: Yup.string().uuid("Location id not valid").optional(),
+  name: Yup.string().optional(),
+  type: Yup.string()
+    .oneOf(resourceType, `Type must be one of: ${resourceType.join(", ")}`)
+    .optional(),
+  schedule_type: Yup.string()
+    .lowercase()
+    .oneOf(SCHEDULE_TYPE, `schedule_type must be one of: ${SCHEDULE_TYPE.join(", ")}`)
+    .optional(),
+  description: Yup.string().optional(),
+  thumbnail: YupValidation.validateSingleFile({
+    required: false,
+  }),
+  status: Yup.string()
+    .lowercase()
+    .oneOf(resourceStatus, `status must be one of: ${resourceStatus.join(", ")}`)
+    .optional(),
+  schedules: Yup.array()
+    .of(schedule)
+    .min(1, "`schedules` must have at least one schedule")
+    .when("schedule_type", {
+      is: (value: string) => value !== "24/7",
+      otherwise: (schema) => schema.notRequired(),
+    })
+    .optional(),
+};
 
 export const DELETE = catchAsync(async (_: NextRequest, context: { params: { id: string } }) => {
   const resourceId = context.params.id;
@@ -53,26 +82,22 @@ export const GET = catchAsync(async (_: NextRequest, context: { params: { id: st
   return NextResponse.json(resource);
 });
 
-// const schema = {
-//   rules: Yup.object({
-//     add: resourceSchema.rules,
-//     remove: resourceSchema.rules,
-//   }).optional(),
-//   facilities: Yup.object({
-//     add: resourceSchema.facilities,
-//     remove: resourceSchema.facilities,
-//   }).optional(),
-//   groups: Yup.object({
-//     add: resourceSchema.groups,
-//     remove: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
-//   }).optional(),
-// };
-
 export const PATCH = catchAsync(async (req: NextRequest, context: { params: { id: string } }) => {
   const resourceId = context.params.id;
   const body = await req.formData();
 
-  const val = await validateSchema<typeof resourceSchema>({
+  const { thumbnail, ...validatedData } = await validateSchema<
+    Partial<{
+      name: string;
+      type: Resource["type"];
+      location_id: string;
+      thumbnail: File;
+      schedule_type: Resource["schedule_type"];
+      publish: boolean;
+      description: string;
+      schedules: ResourceSchedule[];
+    }>
+  >({
     object: resourceSchema,
     isFormData: true,
     data: body,
@@ -89,91 +114,19 @@ export const PATCH = catchAsync(async (req: NextRequest, context: { params: { id
       error: "Resource not found",
     });
 
-  // await Promise.all([
-  //   Promise.all([
-  //     rules?.remove?.length
-  //       ? db
-  //           .delete(resourceRulesTable)
-  //           .where(
-  //             and(
-  //               eq(resourceRulesTable.resource_id, resource.id),
-  //               inArray(resourceRulesTable.rule_id, rules.remove)
-  //             )
-  //           )
-  //       : Promise.resolve(),
+  let thumbnailData;
 
-  //     facilities?.remove?.length
-  //       ? db
-  //           .delete(resourceFacilitiesTable)
-  //           .where(
-  //             and(
-  //               eq(resourceFacilitiesTable.resource_id, resource.id),
-  //               inArray(resourceFacilitiesTable.facility_id, facilities.remove)
-  //             )
-  //           )
-  //       : Promise.resolve(),
+  if (thumbnail) {
+    thumbnailData = await UploadService.uploadSingle(thumbnail, "resources/thumbnails");
+  }
 
-  //     groups?.remove?.length
-  //       ? db
-  //           .delete(resourceGroupsTable)
-  //           .where(
-  //             and(
-  //               eq(resourceGroupsTable.resource_id, resource.id),
-  //               inArray(resourceGroupsTable.group_id, groups.remove)
-  //             )
-  //           )
-  //       : Promise.resolve(),
-  //   ]),
-  //   Promise.all([
-  //     // Add new rules
-  //     rules?.add?.length
-  //       ? db
-  //           .insert(resourceRulesTable)
-  //           .values(
-  //             rules.add.map((rule_id: string) => ({
-  //               resource_id: resource.id,
-  //               rule_id,
-  //             }))
-  //           )
-  //           .onConflictDoNothing()
-  //       : Promise.resolve(),
-
-  //     // Add new facilities
-  //     facilities?.add?.length
-  //       ? db
-  //           .insert(resourceFacilitiesTable)
-  //           .values(
-  //             facilities.add.map((facility_id: string) => ({
-  //               resource_id: resource.id,
-  //               facility_id,
-  //             }))
-  //           )
-  //           .onConflictDoNothing()
-  //       : Promise.resolve(),
-
-  //     // Add new groups
-  //     groups?.add?.length
-  //       ? db
-  //           .insert(resourceGroupsTable)
-  //           .values(
-  //             groups.add.map(({ id: group_id, num }: { id: string; num: number }) => ({
-  //               resource_id: resource.id,
-  //               group_id,
-  //               num,
-  //             }))
-  //           )
-  //           .onConflictDoNothing()
-  //       : Promise.resolve(),
-  //   ]),
-  // ]);
+  console.log(validatedData);
 
   const [updatedResource] = await db
-    .select()
-    .from(resourcesTable)
-    .leftJoin(resourceRulesTable, eq(resourcesTable.id, resourceRulesTable.resource_id))
-    .leftJoin(resourceFacilitiesTable, eq(resourcesTable.id, resourceFacilitiesTable.resource_id))
-    .leftJoin(resourceGroupsTable, eq(resourcesTable.id, resourceGroupsTable.resource_id))
-    .where(eq(resourcesTable.id, resourceId));
+    .update(resourcesTable)
+    .set({ ...validatedData, thumbnail: thumbnailData?.url })
+    .where(eq(resourcesTable.id, resourceId))
+    .returning();
 
   return NextResponse.json(updatedResource);
 });

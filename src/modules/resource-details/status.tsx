@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { Chip, ClickAwayListener, Fade, Paper, Popper } from "@mui/material";
-import Button from "~/components/button";
+import { ClickAwayListener, Fade, Paper, Popper } from "@mui/material";
 import { Resource } from "~/db/schemas/resources";
-import { cn } from "~/utils/helpers";
 import { useUpdateResource } from "~/hooks/resources";
 import ResourceStatusChip from "~/components/resource/status-chip";
 
@@ -35,13 +33,15 @@ export default function ResourceStatus({ status }: Props) {
             <Fade {...TransitionProps}>
               <Paper>
                 <button
-                  onClick={() =>
-                    id &&
-                    updateResource({
-                      id,
-                      data: { status: "draft" as any },
-                    })
-                  }
+                  onClick={async () => {
+                    if (id) {
+                      await updateResource({
+                        id,
+                        data: { status: "draft" },
+                      });
+                      handleClose();
+                    }
+                  }}
                 >
                   <ResourceStatusChip status={"draft"} />
                 </button>

@@ -22,7 +22,7 @@ type Schema = {
   schedule_type: Resource["schedule_type"];
   publish: boolean;
   description: string;
-  schedules: ResourceSchedule[];
+  schedules: Pick<ResourceSchedule, "start_time" | "end_time" | "day_of_week">[];
 };
 
 export const POST = catchAsync(async (req: NextRequest) => {
@@ -66,7 +66,7 @@ export const POST = catchAsync(async (req: NextRequest) => {
       ? db.insert(resourceSchedulesTable).values(
           schedules.map((schedule) => ({
             ...schedule,
-            resourceId: newResource.id,
+            resource_id: newResource.id,
           }))
         )
       : Promise.resolve(),
