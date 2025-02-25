@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { asc, eq, ilike, or, count as sqlCount } from "drizzle-orm";
+import slugify from "slugify";
 import * as Yup from "yup";
 import { db } from "~/db";
 import catchAsync from "~/utils/catch-async";
@@ -36,7 +37,11 @@ export const POST = catchAsync(async (req: NextRequest) => {
   const [newResource] = await db
     .insert(resourcesTable)
     .values({
-      ...(validatedData as any),
+      ...validatedData,
+      handle: slugify(validatedData.name, {
+        lower: true,
+        strict: true,
+      }),
       status: publish ? "published" : "draft",
       thumbnail: "/pending-upload/" + Date.now() + "-" + thumbnail.name,
     })

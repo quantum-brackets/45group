@@ -34,9 +34,9 @@ export const resourceSchema = {
     fileSizeMessage: "`thumbnail` must be less than 5MB",
   }),
   publish: Yup.boolean().optional(),
-  images: YupValidation.validateFiles({
-    requiredMessage: "`images` is required",
-  }).required("`images` is required`"),
+  // images: YupValidation.validateFiles({
+  //   requiredMessage: "`images` is required",
+  // }).required("`images` is required`"),
   schedules: Yup.array()
     .of(schedule)
     .min(1, "`schedules` must have at least one schedule")
@@ -45,7 +45,7 @@ export const resourceSchema = {
       then: (schema) => schema.required("`schedules` is required when `schedule_type` is not 24/7"),
       otherwise: (schema) => schema.notRequired(),
     }),
-  rules: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
-  facilities: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
-  groups: Yup.array().of(group).optional(),
+  // rules: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
+  // facilities: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).optional(),
+  // groups: Yup.array().of(group).optional(),
 };

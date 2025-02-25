@@ -53,7 +53,8 @@ export function useUpdateResource() {
         return {
           ...old,
           ...data,
-        };
+          status: data.status ?? old.status,
+        } as Resource;
       });
 
       return { previousResource };
@@ -111,6 +112,126 @@ export function useDeleteResourceMedia() {
 
   return useMutation({
     mutationFn: ResourceService.deleteMedia,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["resources"], exact: false });
+    },
+  });
+}
+
+export function useAddResourceRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ResourceService.addRule,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["resources"], exact: false });
+    },
+  });
+}
+
+export function useDeleteResourceRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ResourceService.deleteRule,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["resources"], exact: false });
+    },
+  });
+}
+
+export function useAddResourceFacility() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ResourceService.addFacility,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["resources"], exact: false });
+    },
+  });
+}
+
+export function useDeleteResourceFacility() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ResourceService.deleteFacility,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["resources"], exact: false });
+    },
+  });
+}
+
+export function useAddResourceGroup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ResourceService.addGroup,
+    onError: (error) => {
+      if (isAxiosError(error)) {
+        const errorMsg = error.response?.data.error;
+        if (errorMsg) {
+          return notifyError({ message: errorMsg });
+        }
+        notifyError({ message: error.response?.data.errors?.[0]?.message });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["resources"], exact: false });
+    },
+  });
+}
+
+export function useDeleteResourceGroup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ResourceService.deleteGroup,
     onError: (error) => {
       if (isAxiosError(error)) {
         const errorMsg = error.response?.data.error;

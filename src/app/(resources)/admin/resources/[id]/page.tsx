@@ -63,9 +63,14 @@ export default function ResourceDetails() {
                   <span>Availability</span>
                   <span className="text-zinc-600">{resource.schedule_type}</span>
                 </div>
+                <div className="flex items-center justify-between gap-8 text-sm largeLaptop:text-base">
+                  <span>Location</span>
+                  <span className="text-zinc-600">{resource.location?.name}</span>
+                </div>
               </div>
             </div>
           </section>
+          <RulesSection resource={resource} />
           <RulesSection resource={resource} />
         </div>
         <div className="flex w-full flex-col gap-6">

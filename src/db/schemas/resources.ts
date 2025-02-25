@@ -13,7 +13,7 @@ import { InferSelectModel, relations } from "drizzle-orm";
 import { Rule, rulesTable } from "./rules";
 import { Media, mediasTable } from "./media";
 import { facilitiesTable } from "./facilities";
-import { locationsTable } from "./locations";
+import { Location, locationsTable } from "./locations";
 import { groupsTable } from "./groups";
 
 export const resourcesTable = pgTable(
@@ -147,7 +147,7 @@ export const resourceBlocksTable = pgTable("resource_blocks", {
 export type ResourceBlock = InferSelectModel<typeof resourceBlocksTable>;
 
 export const resourceRelations = relations(resourcesTable, ({ many, one }) => ({
-  images: many(mediasTable),
+  medias: many(mediasTable),
   location: one(locationsTable, {
     fields: [resourcesTable.location_id],
     references: [locationsTable.id],

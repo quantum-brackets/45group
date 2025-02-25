@@ -4,7 +4,7 @@ import { Resource } from "~/db/schemas/resources";
 
 type ResourcePayload = Omit<
   Resource,
-  "id" | "updated_at" | "created_at" | "thumbnail" | "schedules" | "location" | "status"
+  "id" | "updated_at" | "created_at" | "thumbnail" | "schedules" | "location" | "status" | "handle"
 > & {
   thumbnail: File;
   status?: Pick<Resource, "status">;
@@ -60,6 +60,78 @@ class ResourceService {
   static deleteMedia = async ({ id, data }: { id: string; data: { media_ids: string[] } }) => {
     const { data: response } = await axiosPrivate.delete<Media>(
       `/api/admin/resources/${id}/media`,
+      {
+        data,
+      }
+    );
+
+    return response;
+  };
+
+  static deleteRule = async ({ id, data }: { id: string; data: { rule_ids: string[] } }) => {
+    const { data: response } = await axiosPrivate.delete<Media>(`/api/admin/resources/${id}/rule`, {
+      data,
+    });
+
+    return response;
+  };
+
+  static addRule = async ({ id, data }: { id: string; data: { rule_ids: string[] } }) => {
+    const { data: response } = await axiosPrivate.delete<Media>(`/api/admin/resources/${id}/rule`, {
+      data,
+    });
+
+    return response;
+  };
+
+  static deleteFacility = async ({
+    id,
+    data,
+  }: {
+    id: string;
+    data: { facility_ids: string[] };
+  }) => {
+    const { data: response } = await axiosPrivate.delete<Media>(
+      `/api/admin/resources/${id}/facility`,
+      {
+        data,
+      }
+    );
+
+    return response;
+  };
+
+  static addFacility = async ({ id, data }: { id: string; data: { facility_ids: string[] } }) => {
+    const { data: response } = await axiosPrivate.delete<Media>(
+      `/api/admin/resources/${id}/facility`,
+      {
+        data,
+      }
+    );
+
+    return response;
+  };
+
+  static deleteGroup = async ({ id, data }: { id: string; data: { group_ids: string[] } }) => {
+    const { data: response } = await axiosPrivate.delete<Media>(
+      `/api/admin/resources/${id}/group`,
+      {
+        data,
+      }
+    );
+
+    return response;
+  };
+
+  static addGroup = async ({
+    id,
+    data,
+  }: {
+    id: string;
+    data: { group_ids: { id: string; num: number }[] };
+  }) => {
+    const { data: response } = await axiosPrivate.delete<Media>(
+      `/api/admin/resources/${id}/group`,
       {
         data,
       }

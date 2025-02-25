@@ -32,16 +32,17 @@ export const DELETE = catchAsync(async (_: NextRequest, context: { params: { id:
 export const GET = catchAsync(async (_: NextRequest, context: { params: { id: string } }) => {
   const resourceId = context.params.id;
 
-  const [resource] = await db
-    .select()
-    .from(resourcesTable)
-    .where(eq(resourcesTable.id, resourceId));
-
-  // const resource = await db.query.resource.findFirst({
-  //   with: {
-  //     comments: true,
-  //   },
-  // });
+  const resource = await db.query.resourcesTable.findFirst({
+    where: (resource, { eq }) => eq(resource.id, resourceId),
+    with: {
+      facilities: true,
+      medias: true,
+      location: true,
+      groups: true,
+      rules: true,
+      schedules: true,
+    },
+  });
 
   if (!resource)
     return appError({

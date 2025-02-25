@@ -20,7 +20,14 @@ import Button from "~/components/button";
 import GroupsSection from "~/modules/create-resource/groups-section";
 import LocationForm from "~/modules/create-resource/location-form";
 import MultiMedia from "~/components/form/multi-media";
-import { useCreateResource, useUpdateResource } from "~/hooks/resources";
+import {
+  useAddResourceFacility,
+  useAddResourceGroup,
+  useAddResourceRule,
+  useCreateResource,
+  useUpdateResource,
+  useUploadResourceMedia,
+} from "~/hooks/resources";
 import { DAY_OF_WEEK } from "~/utils/constants";
 import {
   AvailabilityFormValues,
@@ -150,6 +157,11 @@ export default function CreateResource() {
 
   const { mutateAsync: createResource } = useCreateResource();
   const { mutateAsync: updateResource } = useUpdateResource();
+  const { mutateAsync: uploadResourceMedia } = useUploadResourceMedia();
+
+  const { mutateAsync: addRule } = useAddResourceRule();
+  const { mutateAsync: addFacility } = useAddResourceFacility();
+  const { mutateAsync: addGroup } = useAddResourceGroup();
 
   const { mutateAsync: deleteFacility } = useDeleteFacility();
   const { mutateAsync: deleteRule } = useDeleteRule();
@@ -208,7 +220,7 @@ export default function CreateResource() {
             rule_form: { rules },
             facility_form: { facilities },
             group_form: { groups },
-            media: images,
+            media: medias,
             location,
             thumbnail,
             availability_form: { schedule_type, custom, weekdays, weekends },
@@ -216,7 +228,7 @@ export default function CreateResource() {
           } = filterPrivateValues(values);
 
           if (!thumbnail) return notifyError({ message: "Thumbnail is required" });
-          if (!images.length) return notifyError({ message: "At least one media is required" });
+          if (!medias.length) return notifyError({ message: "At least one media is required" });
           if (!location) return notifyError({ message: "Location not chosen" });
 
           let schedules: Record<"start_time" | "end_time" | "day_of_week", string>[] = [];
@@ -234,15 +246,17 @@ export default function CreateResource() {
               schedules = DAY_OF_WEEK.slice(-2).map((day) => ({ ...weekends, day_of_week: day }));
           }
 
-          if (!schedules) return;
-
           const { id: resourceId } = await createResource({
             ...submissionValues,
-            // images,
             thumbnail,
             schedule_type,
             location_id: location?.id,
             schedules,
+          });
+
+          await uploadResourceMedia({
+            id: resourceId,
+            data: { medias },
           });
 
           const deletedRules = processDeletedItems<(typeof rules)[number]>(rules);
@@ -261,86 +275,75 @@ export default function CreateResource() {
           const oldFacilities = processExistingItems<(typeof facilities)[number]>(facilities);
           const oldGroups = processExistingItems(groups);
 
-          const deletedRulesMutations =
-            deletedRules.length > 0
+          console.log(oldRules, oldFacilities, oldGroups, "oldies");
+
+          await Promise.all([
+            ...(deletedRules.length > 0
               ? deletedRules.map(([_, rule]) => rule.id && deleteRule(rule.id))
-              : [0];
-
-          const deletedFacilitiesMutations =
-            deletedFacilities.length > 0
+              : []),
+            ...(deletedFacilities.length > 0
               ? deletedFacilities.map(([_, facility]) => facility.id && deleteFacility(facility.id))
-              : [0];
-
-          const deletedGroupsMutations =
-            deletedGroups.length > 0
+              : []),
+            ...(deletedGroups.length > 0
               ? deletedGroups.map(([_, group]) => group.id && deleteGroup(group.id))
-              : [0];
-
-          const newRulesMutations =
-            newRules.length > 0
-              ? newRules.map(([_, { name, description, category }]) =>
-                  createRule({ name, category, description })
-                )
-              : [0];
-
-          const newFacilitiesMutations =
-            newFacilities.length > 0
-              ? newFacilities.map(([_, { name, description }]) =>
-                  createFacility({ name, description })
-                )
-              : [0];
-
-          const newGroupsMutations =
-            newGroups.length > 0 ? newGroups.map(([key]) => createGroup({ name: key })) : [0];
-
-          const groupedMutations = {
-            rules: [...deletedRulesMutations, ...newRulesMutations],
-            facilities: [...deletedFacilitiesMutations, ...newFacilitiesMutations],
-            groups: [...deletedGroupsMutations, ...newGroupsMutations],
-          };
-
-          const [rulesRes, facilitiesRes, groupsRes] = await Promise.all([
-            Promise.all(groupedMutations.rules),
-            Promise.all(groupedMutations.facilities),
-            Promise.all(groupedMutations.groups),
+              : []),
           ]);
 
-          const combinedRules = [
+          const [rulesRes, facilitiesRes, groupsRes] = await Promise.all([
+            newRules.length
+              ? Promise.all(
+                  newRules.map(([_, { name, description, category }]) =>
+                    createRule({ name, category, description })
+                  )
+                )
+              : Promise.resolve([]),
+            newFacilities.length
+              ? Promise.all(
+                  newFacilities.map(([_, { name, description }]) =>
+                    createFacility({ name, description })
+                  )
+                )
+              : Promise.resolve([]),
+            newGroups.length
+              ? Promise.all(newGroups.map(([key]) => createGroup({ name: key })))
+              : Promise.resolve([]),
+          ]);
+
+          const ruleIds = [
             ...oldRules.map(([_, { id }]) => id),
-            ...(rulesRes ? rulesRes.filter((value) => !!value).map(({ id }) => id) : []),
-          ];
-          const combinedFacilities = [
-            ...oldFacilities.map(([_, { id }]) => id),
-            ...(facilitiesRes ? facilitiesRes.filter((value) => !!value).map(({ id }) => id) : []),
-          ];
-          const combinedGroups = [
-            ...oldGroups.map(([_, { id, value: num }]) => ({ id, num })),
-            ...(groupsRes
-              ? groupsRes
-                  .filter((value) => !!value)
-                  .map(({ id, name }) => {
-                    const num = groups?.[name]?.["value"] || 0;
-                    return { id, num };
-                  })
-              : []),
+            ...rulesRes.filter(Boolean).map(({ id }) => id),
           ];
 
-          await updateResource(
-            {
-              id: resourceId,
-              data: {
-                rules: { add: combinedRules },
-                facilities: { add: combinedFacilities },
-                groups: { add: combinedGroups },
-              },
-            },
-            {
-              onSuccess: () => {
-                notifySuccess({ message: "Resource successfully created" });
-                router.push("/admin/resources");
-              },
-            }
-          );
+          const facilityIds = [
+            ...oldFacilities.map(([_, { id }]) => id),
+            ...facilitiesRes.filter(Boolean).map(({ id }) => id),
+          ];
+
+          const groupIds = [
+            ...oldGroups.map(([_, { id, value: num }]) => ({ id, num })),
+            ...groupsRes.filter(Boolean).map(({ id, name }) => ({
+              id,
+              num: groups?.[name]?.["value"] || 0,
+            })),
+          ];
+
+          await Promise.all([
+            rulesRes.length
+              ? addRule({ id: resourceId, data: { rule_ids: ruleIds as string[] } })
+              : Promise.resolve(),
+            facilitiesRes.length
+              ? addFacility({ id: resourceId, data: { facility_ids: facilityIds as string[] } })
+              : Promise.resolve(),
+            groupsRes.length
+              ? addGroup({
+                  id: resourceId,
+                  data: { group_ids: groupIds as { id: string; num: number }[] },
+                })
+              : Promise.resolve(),
+          ]);
+
+          notifySuccess({ message: "Resource successfully created" });
+          router.push("/admin/resources");
         }}
         enableReinitialize
         validationSchema={validationSchema}
