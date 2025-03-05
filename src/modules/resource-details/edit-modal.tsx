@@ -132,6 +132,7 @@ export default function EditModal() {
                     label="Type of resource"
                     name="_type"
                     placeholder="Choose a type of resource"
+                    MenuProps={{ disablePortal: true }}
                   >
                     {RESOURCE_TYPES.map(({ value, hidden_value }, index) => (
                       <MenuItem
@@ -151,6 +152,7 @@ export default function EditModal() {
                     data={locations}
                     onClick={(e) => e.stopPropagation()}
                     emptyStateText={"No location found"}
+                    MenuProps={{ disablePortal: true }}
                   >
                     {locations?.map(({ name, id, city, state }) => (
                       <MenuItem
