@@ -58,6 +58,7 @@ export default function EditModal() {
           display: true,
         }}
         maxWidth={"sm"}
+        disableEnforceFocus
       >
         <Formik
           initialValues={
@@ -95,12 +96,20 @@ export default function EditModal() {
                 <div className="flex flex-col gap-4">
                   <FormField name="name" label="Name" placeholder="Enter a name" />
                   <div className="grid grid-cols-2 gap-4">
-                    <SelectField label="State" name="state" placeholder="Choose a state">
+                    <SelectField
+                      label="State"
+                      name="state"
+                      placeholder="Choose a state"
+                      MenuProps={{ disablePortal: true }}
+                    >
                       {statesData.map(({ state, cities }, index) => (
                         <MenuItem
                           value={state}
                           key={index}
-                          onClick={() => setFieldValue("_cities", cities)}
+                          onClick={() => {
+                            setFieldValue("_cities", cities);
+                            setFieldValue("city", "");
+                          }}
                         >
                           {state}
                         </MenuItem>
@@ -111,6 +120,7 @@ export default function EditModal() {
                       name="city"
                       placeholder="Choose a city"
                       emptyStateText="State has not been selected."
+                      MenuProps={{ disablePortal: true }}
                     >
                       {values._cities &&
                         values._cities.map((city, index) => (

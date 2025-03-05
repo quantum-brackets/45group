@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material";
 import Button from "./button";
 import useAppStore from "~/store/app";
@@ -8,8 +7,6 @@ import Modal from "./modal";
 import { useLogout } from "~/hooks/auth";
 
 export default function LogoutModal() {
-  const router = useRouter();
-
   const { isLogoutModalVisible: open, toggleLogoutModal } = useAppStore();
 
   const { mutateAsync: logout, isPending } = useLogout();
@@ -35,7 +32,7 @@ export default function LogoutModal() {
             await logout(undefined, {
               onSuccess: () => {
                 handleClose();
-                router.push("/signin");
+                window.location.href = "/signin";
               },
             });
           }}

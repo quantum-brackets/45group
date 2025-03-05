@@ -14,7 +14,7 @@ function generateOTP(): string {
 export const POST = catchAsync(async (req: NextRequest) => {
   const body = await req.json();
 
-  const { email } = await validateSchema({
+  const { email } = await validateSchema<{ email: string }>({
     object: {
       email: Yup.string().email("Invalid email address").required("Email is required"),
     },

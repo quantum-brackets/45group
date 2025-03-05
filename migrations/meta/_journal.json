@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1736853543311,
-      "tag": "0000_steep_grim_reaper",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1737323367897,
-      "tag": "0001_lying_retro_girl",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1737323391229,
-      "tag": "0002_demonic_forgotten_one",
+      "when": 1741180497711,
+      "tag": "0000_mushy_garia",
       "breakpoints": true
     }
   ]

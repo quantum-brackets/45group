@@ -12,7 +12,13 @@ import YupValidation from "~/utils/yup-validations";
 export const POST = catchAsync(async (req: NextRequest) => {
   const body = await req.formData();
 
-  const { images, ...validatedData } = await validateSchema({
+  const { images, ...validatedData } = await validateSchema<{
+    name: string;
+    state: string;
+    city: string;
+    description: string;
+    images: File[];
+  }>({
     object: {
       name: Yup.string().required("`name` is required"),
       state: Yup.string().required("`state` is required"),
@@ -57,7 +63,11 @@ export const GET = catchAsync(async (req: NextRequest) => {
     limit,
     offset,
     q = "",
-  } = await validateSchema({
+  } = await validateSchema<{
+    limit: number;
+    offset: number;
+    q: string;
+  }>({
     object: {
       limit: Yup.number()
         .optional()

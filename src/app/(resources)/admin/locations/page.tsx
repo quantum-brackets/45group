@@ -18,6 +18,7 @@ import { Location } from "~/db/schemas/locations";
 import FormField from "~/components/fields/form-field";
 import usePrompt from "~/hooks/prompt";
 import { useDeleteLocation } from "~/hooks/locations";
+import LocationFilter from "~/modules/locations/filter";
 
 const columns: GridColDef<Location>[] = [
   {
@@ -106,34 +107,38 @@ export default function Locations() {
           <h4 className="text-sm">All Locations</h4>
         </header>
         <div className="flex flex-col gap-4 rounded-lg border-t p-4 pb-0">
-          <Formik
-            initialValues={{
-              q: "",
-            }}
-            onSubmit={(values) => {
-              const params = new URLSearchParams(searchParams);
-              for (const [key, value] of Object.entries(values)) {
-                if (value) params.set(key, value);
-              }
-              window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
-            }}
-          >
-            {({ handleSubmit, submitForm }) => (
-              <form onSubmit={handleSubmit}>
-                <FormField
-                  name="q"
-                  startAdornment={<FiSearch className="text-xl text-black/70" />}
-                  placeholder="Search for location..."
-                  className="max-w-[250px]"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      submitForm();
-                    }
-                  }}
-                />
-              </form>
-            )}
-          </Formik>
+          <div className="flex items-center justify-between gap-8">
+            <Formik
+              initialValues={{
+                q,
+              }}
+              onSubmit={(values) => {
+                const params = new URLSearchParams(searchParams);
+                for (const [key, value] of Object.entries(values)) {
+                  if (value) params.set(key, value);
+                }
+                window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+              }}
+              enableReinitialize
+            >
+              {({ handleSubmit, submitForm }) => (
+                <form onSubmit={handleSubmit}>
+                  <FormField
+                    name="q"
+                    startAdornment={<FiSearch className="text-xl text-black/70" />}
+                    placeholder="Search for location..."
+                    className="w-full max-w-[350px]"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        submitForm();
+                      }
+                    }}
+                  />
+                </form>
+              )}
+            </Formik>
+            <LocationFilter />
+          </div>
           <div className="overflow-hidden rounded-lg">
             <Suspense fallback={null}>
               <DataGrid<Location>

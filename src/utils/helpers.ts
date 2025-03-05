@@ -129,7 +129,7 @@ function formDataToObject(formData: FormData): { [key: string]: any } {
 
   return obj;
 }
-export function validateSchema({
+export function validateSchema<T extends any>({
   object,
   data,
   isFormData = false,
@@ -143,7 +143,7 @@ export function validateSchema({
   return schema.validate(
     { ...(isFormData ? formDataToObject(data) : data) },
     { abortEarly: false, stripUnknown: true }
-  ) as any;
+  ) as Promise<T>;
 }
 
 export function filterPrivateValues<T>(values: T): T {
@@ -184,3 +184,17 @@ export function getNestedValue(obj: Record<string, any>, path: string): any {
     return current?.[key];
   }, obj);
 }
+
+export const processDeletedItems = <T extends { markedForDeletion?: boolean }>(
+  items?: Record<string, T>
+): [string, T][] => {
+  if (!items) return [];
+  return Object.entries(items).filter(([_, item]) => item.markedForDeletion);
+};
+
+export const processExistingItems = <T extends { id?: string }>(
+  items?: Record<string, T>
+): [string, T][] => {
+  if (!items) return [];
+  return Object.entries(items).filter(([_, item]) => item.id);
+};

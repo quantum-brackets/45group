@@ -27,53 +27,40 @@ export const DELETE = catchAsync(async (_: NextRequest, context: { params: { id:
 export const GET = catchAsync(async (_: NextRequest, context: { params: { id: string } }) => {
   const locationId = context.params.id;
 
-  const locations = await db
-    .select({
-      location: locationsTable,
-      media: mediasTable,
-    })
-    .from(locationsTable)
-    .leftJoin(mediasTable, eq(mediasTable.location_id, locationsTable.id))
-    .where(eq(locationsTable.id, locationId));
+  const location = await db.query.locationsTable.findFirst({
+    where: (location, { eq }) => eq(location.id, locationId),
+    with: {
+      resources: true,
+      medias: true,
+    },
+  });
 
-  if (!locations.length) {
+  if (!location) {
     return appError({
       status: 404,
       error: "Location not found",
     });
   }
 
-  const location = locations.reduce(
-    (acc, curr) => {
-      if (!acc.id) {
-        Object.assign(acc, curr.location);
-        acc.medias = [];
-      }
-
-      if (curr.media?.id) {
-        acc.medias.push(curr.media);
-      }
-
-      return acc;
-    },
-    { medias: [] } as any
-  );
-
   return NextResponse.json(location);
 });
 
 export const PATCH = catchAsync(async (req: NextRequest, context: { params: { id: string } }) => {
   const locationId = context.params.id;
-  const body = await req.formData();
+  const body = await req.json();
 
-  const validatedData = await validateSchema({
+  const validatedData = await validateSchema<{
+    name: string;
+    state: string;
+    city: string;
+    description: string;
+  }>({
     object: {
       name: Yup.string().optional(),
       state: Yup.string().optional(),
       city: Yup.string().optional(),
       description: Yup.string().optional(),
     },
-    isFormData: true,
     data: body,
   });
 

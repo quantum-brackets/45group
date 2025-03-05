@@ -9,7 +9,9 @@ import { groupsTable } from "~/db/schemas/groups";
 export const POST = catchAsync(async (req: NextRequest) => {
   const body = await req.json();
 
-  const { name } = await validateSchema({
+  const { name } = await validateSchema<{
+    name: string;
+  }>({
     object: {
       name: Yup.string().required("`name` is required"),
     },

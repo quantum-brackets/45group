@@ -1,34 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
 import { asc, eq, ilike, or, count as sqlCount } from "drizzle-orm";
+import slugify from "slugify";
 import * as Yup from "yup";
 import { db } from "~/db";
 import catchAsync from "~/utils/catch-async";
 import { appError, validateSchema } from "~/utils/helpers";
 import {
-  resourceFacilitiesTable,
-  resourceGroupsTable,
-  resourceRulesTable,
+  Resource,
+  ResourceSchedule,
   resourceSchedulesTable,
   resourcesTable,
 } from "~/db/schemas/resources";
 import UploadService from "~/services/upload";
-import { mediasTable } from "~/db/schemas/media";
 import { resourceSchema } from "~/utils/yup-schemas/resource";
+
+type Schema = {
+  name: string;
+  type: Resource["type"];
+  location_id: string;
+  thumbnail: File;
+  schedule_type: Resource["schedule_type"];
+  publish: boolean;
+  description: string;
+  schedules: Pick<ResourceSchedule, "start_time" | "end_time" | "day_of_week">[];
+};
 
 export const POST = catchAsync(async (req: NextRequest) => {
   const body = await req.formData();
 
-  const { publish, thumbnail, schedules, images, facilities, rules, groups, ...validatedData } =
-    await validateSchema({
-      object: resourceSchema,
-      isFormData: true,
-      data: body,
-    });
+  const { publish, thumbnail, schedules, ...validatedData } = await validateSchema<Schema>({
+    object: resourceSchema,
+    isFormData: true,
+    data: body,
+  });
 
   const [newResource] = await db
     .insert(resourcesTable)
     .values({
-      ...(validatedData as any),
+      ...validatedData,
+      handle: slugify(validatedData.name, {
+        lower: true,
+        strict: true,
+      }),
       status: publish ? "published" : "draft",
       thumbnail: "/pending-upload/" + Date.now() + "-" + thumbnail.name,
     })
@@ -40,10 +53,7 @@ export const POST = catchAsync(async (req: NextRequest) => {
       error: "Error processing request",
     });
 
-  const [thumbnailData, imageData] = await Promise.all([
-    UploadService.uploadSingle(thumbnail, "resources/thumbnails"),
-    UploadService.uploadMultiple(images, "resources/media"),
-  ]);
+  const thumbnailData = await UploadService.uploadSingle(thumbnail, "resources/thumbnails");
 
   const [[updatedResource]] = await Promise.all([
     db
@@ -52,19 +62,11 @@ export const POST = catchAsync(async (req: NextRequest) => {
       .where(eq(resourcesTable.id, newResource.id))
       .returning(),
 
-    db.insert(mediasTable).values(
-      imageData.map(({ type, ...rest }) => ({
-        mimeType: type,
-        resource_id: newResource.id,
-        ...rest,
-      }))
-    ),
-
-    validatedData.schedule_type !== "24/7" && validatedData.schedules
+    validatedData.schedule_type !== "24/7" && schedules
       ? db.insert(resourceSchedulesTable).values(
-          (validatedData.schedules as any[]).map((schedule) => ({
+          schedules.map((schedule) => ({
             ...schedule,
-            resourceId: newResource.id,
+            resource_id: newResource.id,
           }))
         )
       : Promise.resolve(),
@@ -80,7 +82,11 @@ export const GET = catchAsync(async (req: NextRequest) => {
     limit,
     offset,
     q = "",
-  } = await validateSchema({
+  } = await validateSchema<{
+    q: string;
+    limit: number;
+    offset: number;
+  }>({
     object: {
       limit: Yup.number()
         .optional()

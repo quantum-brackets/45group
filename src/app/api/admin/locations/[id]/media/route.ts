@@ -13,7 +13,12 @@ export const POST = catchAsync(async (req: NextRequest, context: { params: { id:
   const locationId = context.params.id;
   const body = await req.formData();
 
-  const { medias, name, state, city } = await validateSchema({
+  const { medias, name, state, city } = await validateSchema<{
+    name: string;
+    state: string;
+    city: string;
+    medias: File[];
+  }>({
     object: {
       name: Yup.string().required("`name` is required"),
       state: Yup.string().required("`state` is required"),
@@ -56,13 +61,14 @@ export const POST = catchAsync(async (req: NextRequest, context: { params: { id:
 
 export const DELETE = catchAsync(async (req: NextRequest, context: { params: { id: string } }) => {
   const locationId = context.params.id;
-  const body = await req.formData();
+  const body = await req.json();
 
-  const { media_ids } = await validateSchema({
+  const { media_ids } = await validateSchema<{
+    media_ids: string[];
+  }>({
     object: {
       media_ids: Yup.array().of(Yup.string().uuid("Must be a valid UUID")).required(),
     },
-    isFormData: true,
     data: body,
   });
 

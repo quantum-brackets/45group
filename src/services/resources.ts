@@ -1,17 +1,24 @@
 import { axiosPrivate } from "~/config/axios";
-import { ResourceFacility } from "~/db/schemas/facilities";
-import { ResourceGroup } from "~/db/schemas/groups";
+import { Media } from "~/db/schemas/media";
 import { Resource } from "~/db/schemas/resources";
-import { ResourceRule } from "~/db/schemas/rules";
 
-class ResourcesService {
-  static createResource = async (data: any) => {
+type ResourcePayload = Omit<
+  Resource,
+  "id" | "updated_at" | "created_at" | "thumbnail" | "schedules" | "location" | "status" | "handle"
+> & {
+  thumbnail: File;
+  status?: Resource["status"];
+  schedules: Record<"start_time" | "end_time" | "day_of_week", string>[];
+};
+
+class ResourceService {
+  static createResource = async (data: ResourcePayload) => {
     const { data: response } = await axiosPrivate.postForm<Resource>(`/api/admin/resources`, data);
 
     return response;
   };
 
-  static updateResource = async ({ id, data }: { id: string; data: any }) => {
+  static updateResource = async ({ id, data }: { id: string; data: Partial<ResourcePayload> }) => {
     const { data: response } = await axiosPrivate.patchForm<Resource>(
       `/api/admin/resources/${id}`,
       data
@@ -21,7 +28,7 @@ class ResourcesService {
   };
 
   static deleteResource = async (id: string) => {
-    const { data: response } = await axiosPrivate.delete<Resource>(`/api/admin/resources/${id}`);
+    const { data: response } = await axiosPrivate.delete(`/api/admin/resources/${id}`);
 
     return response;
   };
@@ -35,64 +42,97 @@ class ResourcesService {
     return response;
   };
 
-  static createResourceRule = async (
-    data: { name: string; description?: string } & Pick<ResourceRule, "category">
-  ) => {
-    const { data: response } = await axiosPrivate.post<ResourceRule>(`/api/admin/rules`, data);
+  static getResource = async (id: string) => {
+    const { data: response } = await axiosPrivate.get<Resource>(`/api/admin/resources/${id}`);
 
     return response;
   };
 
-  static createResourceFacility = async (data: { name: string; description?: string }) => {
-    const { data: response } = await axiosPrivate.post<ResourceFacility>(
-      `/api/admin/facilities`,
+  static uploadMedia = async ({ id, data }: { id: string; data: { medias: File[] } }) => {
+    const { data: response } = await axiosPrivate.postForm<Media>(
+      `/api/admin/resources/${id}/media`,
       data
     );
 
     return response;
   };
 
-  static createResourceGroup = async (data: { name: string }) => {
-    const { data: response } = await axiosPrivate.post<ResourceGroup>(`/api/admin/groups`, data);
+  static deleteMedia = async ({ id, data }: { id: string; data: { media_ids: string[] } }) => {
+    const { data: response } = await axiosPrivate.delete<Media>(
+      `/api/admin/resources/${id}/media`,
+      {
+        data,
+      }
+    );
 
     return response;
   };
 
-  static getResourceRules = async () => {
-    const { data: response } = await axiosPrivate.get<ResourceRule[]>(`/api/admin/rules`);
+  static removeRule = async ({ id, data }: { id: string; data: { rule_ids: string[] } }) => {
+    const { data: response } = await axiosPrivate.delete(`/api/admin/resources/${id}/rule`, {
+      data,
+    });
 
     return response;
   };
 
-  static getResourceFacilities = async () => {
-    const { data: response } = await axiosPrivate.get<ResourceFacility[]>(`/api/admin/facilities`);
+  static addRule = async ({ id, data }: { id: string; data: { rule_ids: string[] } }) => {
+    const { data: response } = await axiosPrivate.post(`/api/admin/resources/${id}/rule`, data);
 
     return response;
   };
 
-  static getResourceGroups = async () => {
-    const { data: response } = await axiosPrivate.get<ResourceGroup[]>(`/api/admin/groups`);
+  static deleteFacility = async ({
+    id,
+    data,
+  }: {
+    id: string;
+    data: { facility_ids: string[] };
+  }) => {
+    const { data: response } = await axiosPrivate.delete<Media>(
+      `/api/admin/resources/${id}/facility`,
+      {
+        data,
+      }
+    );
 
     return response;
   };
 
-  static deleteResourceFacility = async (id: string) => {
-    const { data: response } = await axiosPrivate.delete<any>(`/api/admin/facilities/${id}`);
+  static addFacility = async ({ id, data }: { id: string; data: { facility_ids: string[] } }) => {
+    const { data: response } = await axiosPrivate.post<Media>(
+      `/api/admin/resources/${id}/facility`,
+      data
+    );
 
     return response;
   };
 
-  static deleteResourceRule = async (id: string) => {
-    const { data: response } = await axiosPrivate.delete<any>(`/api/admin/rules/${id}`);
+  static deleteGroup = async ({ id, data }: { id: string; data: { group_ids: string[] } }) => {
+    const { data: response } = await axiosPrivate.delete<Media>(
+      `/api/admin/resources/${id}/group`,
+      {
+        data,
+      }
+    );
 
     return response;
   };
 
-  static deleteResourceGroup = async (id: string) => {
-    const { data: response } = await axiosPrivate.delete<any>(`/api/admin/groups/${id}`);
+  static addGroup = async ({
+    id,
+    data,
+  }: {
+    id: string;
+    data: { group_ids: { id: string; num: number }[] };
+  }) => {
+    const { data: response } = await axiosPrivate.post<Media>(
+      `/api/admin/resources/${id}/group`,
+      data
+    );
 
     return response;
   };
 }
 
-export default ResourcesService;
+export default ResourceService;

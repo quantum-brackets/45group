@@ -10,10 +10,10 @@ import {
   integer,
 } from "drizzle-orm/pg-core";
 import { InferSelectModel, relations } from "drizzle-orm";
-import { rulesTable } from "./rules";
-import { mediasTable } from "./media";
+import { Rule, rulesTable } from "./rules";
+import { Media, mediasTable } from "./media";
 import { facilitiesTable } from "./facilities";
-import { locationsTable } from "./locations";
+import { Location, locationsTable } from "./locations";
 import { groupsTable } from "./groups";
 
 export const resourcesTable = pgTable(
@@ -26,6 +26,7 @@ export const resourcesTable = pgTable(
     status: varchar("status", { enum: ["draft", "published", "archived", "inactive"] }).default(
       "draft"
     ),
+    handle: varchar("handle").notNull(),
     location_id: uuid("location_id")
       .references(() => locationsTable.id)
       .notNull(),
@@ -41,7 +42,13 @@ export const resourcesTable = pgTable(
   })
 );
 
-export type Resource = InferSelectModel<typeof resourcesTable>;
+export type Resource = InferSelectModel<typeof resourcesTable> & {
+  medias?: Media[];
+  location?: Location;
+  schedules?: ResourceSchedule[];
+  facilities?: ResourceFacility[];
+  rules?: ResourceRule[];
+};
 
 export const resourceRulesTable = pgTable(
   "resource_rules",
@@ -59,6 +66,11 @@ export const resourceRulesTable = pgTable(
   })
 );
 
+export type ResourceRule = InferSelectModel<typeof resourceRulesTable> & {
+  resource?: Resource;
+  rule: Rule;
+};
+
 export const resourceFacilitiesTable = pgTable(
   "resource_facilities",
   {
@@ -74,6 +86,8 @@ export const resourceFacilitiesTable = pgTable(
     pk: primaryKey({ columns: [t.resource_id, t.facility_id] }),
   })
 );
+
+export type ResourceFacility = InferSelectModel<typeof resourceFacilitiesTable>;
 
 export const resourceGroupsTable = pgTable(
   "resource_groups",
@@ -91,6 +105,8 @@ export const resourceGroupsTable = pgTable(
     pk: primaryKey({ columns: [t.resource_id, t.group_id] }),
   })
 );
+
+export type ResourceGroup = InferSelectModel<typeof resourceGroupsTable>;
 
 export const resourceSchedulesTable = pgTable(
   "resource_schedules",
@@ -110,6 +126,8 @@ export const resourceSchedulesTable = pgTable(
   })
 );
 
+export type ResourceSchedule = InferSelectModel<typeof resourceSchedulesTable>;
+
 export const resourceBlocksTable = pgTable("resource_blocks", {
   id: uuid("id").primaryKey().defaultRandom(),
   resource_id: uuid("resource_id")
@@ -126,14 +144,17 @@ export const resourceBlocksTable = pgTable("resource_blocks", {
   }),
 });
 
+export type ResourceBlock = InferSelectModel<typeof resourceBlocksTable>;
+
 export const resourceRelations = relations(resourcesTable, ({ many, one }) => ({
-  images: many(mediasTable),
+  medias: many(mediasTable),
   location: one(locationsTable, {
     fields: [resourcesTable.location_id],
     references: [locationsTable.id],
   }),
   rules: many(resourceRulesTable),
   facilities: many(resourceFacilitiesTable),
+  groups: many(resourceGroupsTable),
   schedules: many(resourceSchedulesTable),
 }));
 

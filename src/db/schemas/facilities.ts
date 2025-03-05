@@ -9,4 +9,4 @@ export const facilitiesTable = pgTable("facilities", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
-export type ResourceFacility = InferSelectModel<typeof facilitiesTable>;
+export type Facility = InferSelectModel<typeof facilitiesTable>;

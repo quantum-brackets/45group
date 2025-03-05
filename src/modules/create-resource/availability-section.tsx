@@ -1,11 +1,11 @@
 "use client";
 
 import { Fragment, ReactNode, useState } from "react";
-import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
 import CollapseSection from "~/components/form/resources-form/collapse-section";
 import { cn } from "~/utils/helpers";
 import TimePickerField from "~/components/fields/time-picker-field";
 import { DAY_OF_WEEK, SCHEDULE_TYPE } from "~/utils/constants";
+import { ResourceFormValues } from "~/types/resource";
 
 const FORM_KEY = "availability_form" as const;
 

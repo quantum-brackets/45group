@@ -3,12 +3,14 @@ import * as Yup from "yup";
 import { db } from "~/db";
 import catchAsync from "~/utils/catch-async";
 import { validateSchema } from "~/utils/helpers";
-import { rulesTable } from "~/db/schemas/rules";
+import { Rule, rulesTable } from "~/db/schemas/rules";
 
 export const POST = catchAsync(async (req: NextRequest) => {
   const body = await req.json();
 
-  const { name, description, category } = await validateSchema({
+  const { name, description, category } = await validateSchema<
+    Pick<Rule, "name" | "category" | "description">
+  >({
     object: {
       name: Yup.string().required("`name` is required"),
       description: Yup.string().optional(),

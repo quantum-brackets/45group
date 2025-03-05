@@ -13,7 +13,7 @@ export const POST = catchAsync(async (req: NextRequest) => {
   const userId = req.headers.get(HEADER_DATA_KEY) as string;
   const body = await req.json();
 
-  const { new_email } = await validateSchema({
+  const { new_email } = await validateSchema<{ new_email: string }>({
     object: {
       new_email: Yup.string().email("Invalid new email address").required("New email is required"),
     },

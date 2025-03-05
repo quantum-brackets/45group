@@ -4,10 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { Radio, RadioGroup, Skeleton } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { ResourceFormValues } from "~/app/(resources)/admin/resources/create/page";
 import NoDataIllustration from "~/assets/illustrations/no-data.png";
 import LocationsService from "~/services/locations";
 import { Location } from "~/db/schemas/locations";
+import { ResourceFormValues } from "~/types/resource";
 
 type Props = {
   setFieldValue: (field: keyof ResourceFormValues, value: any) => void;

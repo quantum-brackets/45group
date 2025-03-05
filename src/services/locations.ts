@@ -32,7 +32,7 @@ class LocationsService {
   };
 
   static updateLocation = async ({ id, data }: { id: string; data: any }) => {
-    const { data: response } = await axiosPrivate.patchForm<Location>(
+    const { data: response } = await axiosPrivate.patch<Location>(
       `/api/admin/locations/${id}`,
       data
     );

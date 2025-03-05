@@ -4,14 +4,19 @@ import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { MenuItem, Typography } from "@mui/material";
 import { Formik, FormikHelpers } from "formik";
-import { useMutation, useQueries } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import * as Yup from "yup";
-import { isAxiosError } from "axios";
 import BackButton from "~/components/back-button";
 import FormField from "~/components/fields/form-field";
 import SelectField from "~/components/fields/select-field";
 import MediaCard from "~/components/form/media-card";
-import { cn, filterPrivateValues, readFileAsBase64 } from "~/utils/helpers";
+import {
+  cn,
+  filterPrivateValues,
+  processDeletedItems,
+  processExistingItems,
+  readFileAsBase64,
+} from "~/utils/helpers";
 import { notifyError, notifySuccess } from "~/utils/toast";
 import FileUploadCard from "~/components/form/file-upload-card";
 import AvailabitySection from "~/modules/create-resource/availability-section";
@@ -19,116 +24,30 @@ import FacilitiesSection from "~/modules/create-resource/facilities-section";
 import RulesSection from "~/modules/create-resource/rules-section";
 import Button from "~/components/button";
 import GroupsSection from "~/modules/create-resource/groups-section";
-import ResourcesService from "~/services/resources";
 import LocationForm from "~/modules/create-resource/location-form";
 import MultiMedia from "~/components/form/multi-media";
 import {
+  useAddResourceFacility,
+  useAddResourceGroup,
+  useAddResourceRule,
   useCreateResource,
-  useCreateResourceFacility,
-  useCreateResourceGroup,
-  useCreateResourceRule,
-  useDeleteResourceFacility,
-  useDeleteResourceGroup,
-  useDeleteResourceRule,
   useUpdateResource,
+  useUploadResourceMedia,
 } from "~/hooks/resources";
-import { ResourceRule } from "~/db/schemas/rules";
 import { DAY_OF_WEEK } from "~/utils/constants";
-import { Resource } from "~/db/schemas/resources";
-import { ResourceFacility } from "~/db/schemas/facilities";
-import { ResourceGroup } from "~/db/schemas/groups";
-
-type FacilityFormValues = {
-  _show_facility_form?: boolean;
-  _facility: { name: string; description: string };
-  _show_facilities?: boolean;
-  facilities: Record<
-    string,
-    {
-      id?: string;
-      name: string;
-      markedForDeletion?: boolean;
-      description?: string;
-      checked?: boolean;
-    }
-  >;
-};
-
-type RuleFormValues = {
-  _show_rule_form?: boolean;
-  _rule: { name: string; description: string; category: "house_rules" | "cancellations" };
-  _show_rules?: boolean;
-  rules: Record<
-    string,
-    Pick<ResourceRule, "category"> & {
-      id?: string;
-      name: string;
-      markedForDeletion?: boolean;
-      description?: string;
-      checked?: boolean;
-    }
-  >;
-};
-
-type AvailabilityFormValues = {
-  _show_availabilities?: boolean;
-  schedule_type: Resource["schedule_type"];
-  custom: Record<
-    DayOfWeek,
-    {
-      start_time: string;
-      end_time: string;
-    }
-  >;
-  weekdays: {
-    start_time: string;
-    end_time: string;
-  };
-  weekends: {
-    start_time: string;
-    end_time: string;
-  };
-};
-
-type GroupFormValues = {
-  _show_group_form?: boolean;
-  _show_groups?: boolean;
-  groups?: {
-    [key: string]: {
-      id?: string;
-      value: number;
-      markedForDeletion?: boolean;
-    };
-  };
-  _group?: string;
-};
-
-export type ResourceFormValues = {
-  name: string;
-  location: {
-    id: string;
-    name: string;
-    city: string;
-    state: string;
-  } | null;
-  _location?: {
-    id: string;
-    name: string;
-    city: string;
-    state: string;
-  };
-  description: string;
-  type: "lodge" | "event" | "dining";
-  thumbnail?: File;
-  rule_form: RuleFormValues;
-  facility_form: FacilityFormValues;
-  availability_form: AvailabilityFormValues;
-  group_form: GroupFormValues;
-  _thumbnail_base64?: string;
-  media: File[];
-  _media_base64: string[];
-  publish: boolean;
-};
+import {
+  AvailabilityFormValues,
+  FacilityFormValues,
+  GroupFormValues,
+  ResourceFormValues,
+  RuleFormValues,
+} from "~/types/resource";
+import RuleService from "~/services/rules";
+import FacilityService from "~/services/facilities";
+import GroupService from "~/services/groups";
+import { useCreateFacility, useDeleteFacility } from "~/hooks/facilities";
+import { useCreateRule, useDeleteRule } from "~/hooks/rules";
+import { useCreateGroup, useDeleteGroup } from "~/hooks/groups";
 
 const initialValues: ResourceFormValues = {
   name: "",
@@ -185,20 +104,6 @@ const validationSchema = Yup.object({
   type: Yup.string().oneOf(["lodge", "event", "dining"]).required("Resource type is required"),
 });
 
-const processDeletedItems = <T extends { markedForDeletion?: boolean }>(
-  items?: Record<string, T>
-): [string, T][] => {
-  if (!items) return [];
-  return Object.entries(items).filter(([_, item]) => item.markedForDeletion);
-};
-
-const processExistingItems = <T extends { id?: string }>(
-  items?: Record<string, T>
-): [string, T][] => {
-  if (!items) return [];
-  return Object.entries(items).filter(([_, item]) => item.id);
-};
-
 export default function CreateResource() {
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -210,16 +115,16 @@ export default function CreateResource() {
   ] = useQueries({
     queries: [
       {
-        queryKey: ["resources-rules"],
-        queryFn: ResourcesService.getResourceRules,
+        queryKey: ["rules"],
+        queryFn: RuleService.getRules,
       },
       {
-        queryKey: ["resources-facilities"],
-        queryFn: ResourcesService.getResourceFacilities,
+        queryKey: ["facilities"],
+        queryFn: FacilityService.getFacilities,
       },
       {
-        queryKey: ["resources-groups"],
-        queryFn: ResourcesService.getResourceGroups,
+        queryKey: ["groups"],
+        queryFn: GroupService.getGroups,
       },
     ],
   });
@@ -244,14 +149,19 @@ export default function CreateResource() {
 
   const { mutateAsync: createResource } = useCreateResource();
   const { mutateAsync: updateResource } = useUpdateResource();
+  const { mutateAsync: uploadResourceMedia } = useUploadResourceMedia();
 
-  const { mutateAsync: deleteResourceFacility } = useDeleteResourceFacility();
-  const { mutateAsync: deleteResourceRule } = useDeleteResourceRule();
-  const { mutateAsync: deleteResourceGroup } = useDeleteResourceGroup();
+  const { mutateAsync: addRule } = useAddResourceRule();
+  const { mutateAsync: addFacility } = useAddResourceFacility();
+  const { mutateAsync: addGroup } = useAddResourceGroup();
 
-  const { mutateAsync: createResourceFacility } = useCreateResourceFacility();
-  const { mutateAsync: createResourceRule } = useCreateResourceRule();
-  const { mutateAsync: createResourceGroup } = useCreateResourceGroup();
+  const { mutateAsync: deleteFacility } = useDeleteFacility();
+  const { mutateAsync: deleteRule } = useDeleteRule();
+  const { mutateAsync: deleteGroup } = useDeleteGroup();
+
+  const { mutateAsync: createFacility } = useCreateFacility();
+  const { mutateAsync: createRule } = useCreateRule();
+  const { mutateAsync: createGroup } = useCreateGroup();
 
   return (
     <div className="flex flex-col gap-4">
@@ -302,14 +212,16 @@ export default function CreateResource() {
             rule_form: { rules },
             facility_form: { facilities },
             group_form: { groups },
-            media: images,
+            media: medias,
             location,
+            thumbnail,
             availability_form: { schedule_type, custom, weekdays, weekends },
             ...submissionValues
           } = filterPrivateValues(values);
 
-          if (!submissionValues.thumbnail) return notifyError({ message: "Thumbnail is required" });
-          if (!images.length) return notifyError({ message: "At least one media is required" });
+          if (!thumbnail) return notifyError({ message: "Thumbnail is required" });
+          if (!medias.length) return notifyError({ message: "At least one media is required" });
+          if (!location) return notifyError({ message: "Location not chosen" });
 
           let schedules: Record<"start_time" | "end_time" | "day_of_week", string>[] = [];
 
@@ -328,10 +240,15 @@ export default function CreateResource() {
 
           const { id: resourceId } = await createResource({
             ...submissionValues,
-            images,
+            thumbnail,
             schedule_type,
             location_id: location?.id,
             schedules,
+          });
+
+          await uploadResourceMedia({
+            id: resourceId,
+            data: { medias },
           });
 
           const deletedRules = processDeletedItems<(typeof rules)[number]>(rules);
@@ -350,90 +267,75 @@ export default function CreateResource() {
           const oldFacilities = processExistingItems<(typeof facilities)[number]>(facilities);
           const oldGroups = processExistingItems(groups);
 
-          const deletedRulesMutations =
-            deletedRules.length > 0
-              ? deletedRules.map(([_, rule]) => rule.id && deleteResourceRule(rule.id))
-              : [0];
+          console.log(oldRules, oldFacilities, oldGroups, "oldies");
 
-          const deletedFacilitiesMutations =
-            deletedFacilities.length > 0
-              ? deletedFacilities.map(
-                  ([_, facility]) => facility.id && deleteResourceFacility(facility.id)
-                )
-              : [0];
-
-          const deletedGroupsMutations =
-            deletedGroups.length > 0
-              ? deletedGroups.map(([_, group]) => group.id && deleteResourceGroup(group.id))
-              : [0];
-
-          const newRulesMutations =
-            newRules.length > 0
-              ? newRules.map(([_, { name, description, category }]) =>
-                  createResourceRule({ name, category, description })
-                )
-              : [0];
-
-          const newFacilitiesMutations =
-            newFacilities.length > 0
-              ? newFacilities.map(([_, { name, description }]) =>
-                  createResourceFacility({ name, description })
-                )
-              : [0];
-
-          const newGroupsMutations =
-            newGroups.length > 0
-              ? newGroups.map(([key]) => createResourceGroup({ name: key }))
-              : [0];
-
-          const groupedMutations = {
-            rules: [...deletedRulesMutations, ...newRulesMutations],
-            facilities: [...deletedFacilitiesMutations, ...newFacilitiesMutations],
-            groups: [...deletedGroupsMutations, ...newGroupsMutations],
-          };
-
-          const [rulesRes, facilitiesRes, groupsRes] = await Promise.all([
-            Promise.all(groupedMutations.rules),
-            Promise.all(groupedMutations.facilities),
-            Promise.all(groupedMutations.groups),
+          await Promise.all([
+            ...(deletedRules.length > 0
+              ? deletedRules.map(([_, rule]) => rule.id && deleteRule(rule.id))
+              : []),
+            ...(deletedFacilities.length > 0
+              ? deletedFacilities.map(([_, facility]) => facility.id && deleteFacility(facility.id))
+              : []),
+            ...(deletedGroups.length > 0
+              ? deletedGroups.map(([_, group]) => group.id && deleteGroup(group.id))
+              : []),
           ]);
 
-          const combinedRules = [
+          const [rulesRes, facilitiesRes, groupsRes] = await Promise.all([
+            newRules.length
+              ? Promise.all(
+                  newRules.map(([_, { name, description, category }]) =>
+                    createRule({ name, category, description })
+                  )
+                )
+              : Promise.resolve([]),
+            newFacilities.length
+              ? Promise.all(
+                  newFacilities.map(([_, { name, description }]) =>
+                    createFacility({ name, description })
+                  )
+                )
+              : Promise.resolve([]),
+            newGroups.length
+              ? Promise.all(newGroups.map(([key]) => createGroup({ name: key })))
+              : Promise.resolve([]),
+          ]);
+
+          const ruleIds = [
             ...oldRules.map(([_, { id }]) => id),
-            ...(rulesRes ? rulesRes.filter((value) => !!value).map(({ id }) => id) : []),
-          ];
-          const combinedFacilities = [
-            ...oldFacilities.map(([_, { id }]) => id),
-            ...(facilitiesRes ? facilitiesRes.filter((value) => !!value).map(({ id }) => id) : []),
-          ];
-          const combinedGroups = [
-            ...oldGroups.map(([_, { id, value: num }]) => ({ id, num })),
-            ...(groupsRes
-              ? groupsRes
-                  .filter((value) => !!value)
-                  .map(({ id, name }) => {
-                    const num = groups?.[name]?.["value"] || 0;
-                    return { id, num };
-                  })
-              : []),
+            ...rulesRes.filter(Boolean).map(({ id }) => id),
           ];
 
-          await updateResource(
-            {
-              id: resourceId,
-              data: {
-                rules: { add: combinedRules },
-                facilities: { add: combinedFacilities },
-                groups: { add: combinedGroups },
-              },
-            },
-            {
-              onSuccess: () => {
-                notifySuccess({ message: "Resource successfully created" });
-                router.push("/admin/resources");
-              },
-            }
-          );
+          const facilityIds = [
+            ...oldFacilities.map(([_, { id }]) => id),
+            ...facilitiesRes.filter(Boolean).map(({ id }) => id),
+          ];
+
+          const groupIds = [
+            ...oldGroups.map(([_, { id, value: num }]) => ({ id, num })),
+            ...groupsRes.filter(Boolean).map(({ id, name }) => ({
+              id,
+              num: groups?.[name]?.["value"] || 0,
+            })),
+          ];
+
+          await Promise.all([
+            rulesRes.length
+              ? addRule({ id: resourceId, data: { rule_ids: ruleIds as string[] } })
+              : Promise.resolve(),
+            facilitiesRes.length
+              ? addFacility({ id: resourceId, data: { facility_ids: facilityIds as string[] } })
+              : Promise.resolve(),
+            groupsRes.length
+              ? addGroup({
+                  id: resourceId,
+                  data: { group_ids: groupIds as { id: string; num: number }[] },
+                })
+              : Promise.resolve(),
+          ]);
+
+          notifySuccess({ message: "Resource successfully created" });
+          router.push("/admin/resources");
         }}
         enableReinitialize
         validationSchema={validationSchema}
