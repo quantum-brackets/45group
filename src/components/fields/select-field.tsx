@@ -26,6 +26,7 @@ export default function SelectField({
   required,
   data,
   emptyStateText,
+  MenuProps,
   ...props
 }: Props) {
   return (
@@ -77,6 +78,7 @@ export default function SelectField({
               form.setFieldValue(props.name, value);
               props.onChange?.(e, child);
             }}
+            MenuProps={{ disablePortal: true, ...MenuProps }}
           >
             {isLoading || data ? (
               isLoading ? (

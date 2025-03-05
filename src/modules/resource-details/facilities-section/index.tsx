@@ -2,16 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { ClickAwayListener, Fade, IconButton, Paper, Popper } from "@mui/material";
+import { GoKebabHorizontal } from "react-icons/go";
 import { Resource } from "~/db/schemas";
 import { cn } from "~/utils/helpers";
-import { GoKebabHorizontal } from "react-icons/go";
-import EditModal from "./edit-modal";
+// import EditModal from "./edit-modal";
 
 type Props = {
   resource: Resource;
 };
 
-export default function RulesSection({ resource }: Props) {
+export default function FacilitiesSection({ resource }: Props) {
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const isOpen = Boolean(anchorEl);
 
@@ -42,46 +42,27 @@ export default function RulesSection({ resource }: Props) {
             <Popper open={isOpen} anchorEl={anchorEl}>
               {({ TransitionProps }) => (
                 <Fade {...TransitionProps}>
-                  <Paper>
-                    <EditModal />
-                  </Paper>
+                  <Paper>{/* <EditModal /> */}</Paper>
                 </Fade>
               )}
             </Popper>
           </div>
         </ClickAwayListener>
       </header>
-      <main className={cn("flex flex-col gap-4")}>
-        <div className="flex flex-col gap-3">
-          <h5 className="text-sm font-medium">House Rules</h5>
-          {houseRules?.length ? (
-            houseRules.map(({ rule: { name, description, id } }) => (
-              <div key={id} className="flex flex-col gap-1">
-                <small>{name}</small>
-                {description && <small>{description}</small>}
-              </div>
-            ))
-          ) : (
-            <div className="flex h-16 items-center justify-center">
-              <small>No rules found</small>
+      <main className={cn("flex flex-col gap-3")}>
+        <h5 className="text-sm">House Rules</h5>
+        {houseRules?.length ? (
+          houseRules.map(({ rule: { name, description, id } }) => (
+            <div key={id} className="flex flex-col gap-1">
+              <small>{name}</small>
+              {description && <small>{description}</small>}
             </div>
-          )}
-        </div>
-        <div className="flex flex-col gap-3">
-          <h5 className="text-sm font-medium">Cancellation Rules</h5>
-          {cancellationRules?.length ? (
-            cancellationRules.map(({ rule: { name, description, id } }) => (
-              <div key={id} className="flex flex-col gap-1">
-                <small>{name}</small>
-                {description && <small>{description}</small>}
-              </div>
-            ))
-          ) : (
-            <div className="flex h-16 items-center justify-center">
-              <small>No rules found</small>
-            </div>
-          )}
-        </div>
+          ))
+        ) : (
+          <div className="flex h-16 items-center justify-center">
+            <small>No rules found</small>
+          </div>
+        )}
       </main>
     </section>
   );

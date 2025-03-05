@@ -25,10 +25,13 @@ export default function CardMenu({ children }: Props) {
         <Popper open={open} anchorEl={anchorEl}>
           {({ TransitionProps }) => (
             <Fade {...TransitionProps} timeout={350}>
-              <Paper className="popper-btn">
-                {typeof children === "function"
-                  ? children({ onClose }) // Call the function child with onClose
-                  : children}
+              <Paper
+                className="popper-btn"
+                sx={{
+                  zIndex: 99999,
+                }}
+              >
+                {typeof children === "function" ? children({ onClose }) : children}
               </Paper>
             </Fade>
           )}
