@@ -68,8 +68,8 @@ class ResourceService {
     return response;
   };
 
-  static deleteRule = async ({ id, data }: { id: string; data: { rule_ids: string[] } }) => {
-    const { data: response } = await axiosPrivate.delete<Media>(`/api/admin/resources/${id}/rule`, {
+  static removeRule = async ({ id, data }: { id: string; data: { rule_ids: string[] } }) => {
+    const { data: response } = await axiosPrivate.delete(`/api/admin/resources/${id}/rule`, {
       data,
     });
 
@@ -77,9 +77,7 @@ class ResourceService {
   };
 
   static addRule = async ({ id, data }: { id: string; data: { rule_ids: string[] } }) => {
-    const { data: response } = await axiosPrivate.delete<Media>(`/api/admin/resources/${id}/rule`, {
-      data,
-    });
+    const { data: response } = await axiosPrivate.post(`/api/admin/resources/${id}/rule`, data);
 
     return response;
   };
@@ -102,11 +100,9 @@ class ResourceService {
   };
 
   static addFacility = async ({ id, data }: { id: string; data: { facility_ids: string[] } }) => {
-    const { data: response } = await axiosPrivate.delete<Media>(
+    const { data: response } = await axiosPrivate.post<Media>(
       `/api/admin/resources/${id}/facility`,
-      {
-        data,
-      }
+      data
     );
 
     return response;
@@ -130,11 +126,9 @@ class ResourceService {
     id: string;
     data: { group_ids: { id: string; num: number }[] };
   }) => {
-    const { data: response } = await axiosPrivate.delete<Media>(
+    const { data: response } = await axiosPrivate.post<Media>(
       `/api/admin/resources/${id}/group`,
-      {
-        data,
-      }
+      data
     );
 
     return response;

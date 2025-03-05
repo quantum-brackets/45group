@@ -10,7 +10,13 @@ import BackButton from "~/components/back-button";
 import FormField from "~/components/fields/form-field";
 import SelectField from "~/components/fields/select-field";
 import MediaCard from "~/components/form/media-card";
-import { cn, filterPrivateValues, readFileAsBase64 } from "~/utils/helpers";
+import {
+  cn,
+  filterPrivateValues,
+  processDeletedItems,
+  processExistingItems,
+  readFileAsBase64,
+} from "~/utils/helpers";
 import { notifyError, notifySuccess } from "~/utils/toast";
 import FileUploadCard from "~/components/form/file-upload-card";
 import AvailabitySection from "~/modules/create-resource/availability-section";
@@ -97,20 +103,6 @@ const validationSchema = Yup.object({
   description: Yup.string().required("Description is required"),
   type: Yup.string().oneOf(["lodge", "event", "dining"]).required("Resource type is required"),
 });
-
-const processDeletedItems = <T extends { markedForDeletion?: boolean }>(
-  items?: Record<string, T>
-): [string, T][] => {
-  if (!items) return [];
-  return Object.entries(items).filter(([_, item]) => item.markedForDeletion);
-};
-
-const processExistingItems = <T extends { id?: string }>(
-  items?: Record<string, T>
-): [string, T][] => {
-  if (!items) return [];
-  return Object.entries(items).filter(([_, item]) => item.id);
-};
 
 export default function CreateResource() {
   const thumbnailInputRef = useRef<HTMLInputElement>(null);

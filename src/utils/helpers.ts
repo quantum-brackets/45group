@@ -184,3 +184,17 @@ export function getNestedValue(obj: Record<string, any>, path: string): any {
     return current?.[key];
   }, obj);
 }
+
+export const processDeletedItems = <T extends { markedForDeletion?: boolean }>(
+  items?: Record<string, T>
+): [string, T][] => {
+  if (!items) return [];
+  return Object.entries(items).filter(([_, item]) => item.markedForDeletion);
+};
+
+export const processExistingItems = <T extends { id?: string }>(
+  items?: Record<string, T>
+): [string, T][] => {
+  if (!items) return [];
+  return Object.entries(items).filter(([_, item]) => item.id);
+};

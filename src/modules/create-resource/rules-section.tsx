@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback } from "react";
+import { memo } from "react";
 import { MenuItem, Skeleton } from "@mui/material";
 import Button from "~/components/button";
 import FormField from "~/components/fields/form-field";
@@ -19,6 +19,9 @@ type Props = {
   setFieldValue: (field: Field, value: any) => void;
   setFieldError: (field: Field, message: string) => void;
   values: Values;
+  keepOpen?: boolean;
+  title?: string;
+  subtitle?: string;
 };
 
 const RuleForm = memo(({ onSubmit, onClose }: { onSubmit: () => void; onClose: () => void }) => (
@@ -63,7 +66,15 @@ const RuleForm = memo(({ onSubmit, onClose }: { onSubmit: () => void; onClose: (
 
 RuleForm.displayName = "RuleForm";
 
-export default function RulesSection({ setFieldValue, values, setFieldError, isLoading }: Props) {
+export default function RulesSection({
+  setFieldValue,
+  values,
+  setFieldError,
+  isLoading,
+  subtitle = "Here you can choose the rules for this resource.",
+  title = "Rules",
+  ...props
+}: Props) {
   function closeForm() {
     setFieldValue("_show_rule_form", false);
     setFieldValue("_rule", undefined);
@@ -113,8 +124,6 @@ export default function RulesSection({ setFieldValue, values, setFieldError, isL
     <CollapseSection<Values>
       name="_show_rules"
       setFieldValue={setFieldValue}
-      subtitle="Here you can choose the rules for this resource."
-      title="Rules"
       values={values}
       addBtn={{
         show: !isLoading && !values._show_rule_form,
@@ -123,6 +132,9 @@ export default function RulesSection({ setFieldValue, values, setFieldError, isL
           setFieldValue("_show_rule_form", true);
         },
       }}
+      subtitle={subtitle}
+      title={title}
+      {...props}
     >
       {isLoading ? (
         <div className="flex flex-col gap-2">
