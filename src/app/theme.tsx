@@ -76,6 +76,7 @@ const theme = createTheme({
           borderRadius: "4px",
           overflow: "hidden",
           padding: "8px",
+          zIndex: 100,
           "& .MuiMenu-list": {
             padding: "0px",
             "& .MuiMenuItem-root": {

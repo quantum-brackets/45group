@@ -22,7 +22,6 @@ export const POST = catchAsync(async (req: NextRequest, context: { params: { id:
 
   const { rule_ids } = await validateSchema<Schema>({
     object: schema,
-    isFormData: true,
     data: body,
   });
 
@@ -49,11 +48,10 @@ export const POST = catchAsync(async (req: NextRequest, context: { params: { id:
 
 export const DELETE = catchAsync(async (req: NextRequest, context: { params: { id: string } }) => {
   const resourceId = context.params.id;
-  const body = await req.formData();
+  const body = await req.json();
 
   const { rule_ids } = await validateSchema<Schema>({
     object: schema,
-    isFormData: true,
     data: body,
   });
 

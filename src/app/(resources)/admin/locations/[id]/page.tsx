@@ -60,6 +60,10 @@ export default function LocationDetails() {
                 <span>City</span>
                 <span className="text-zinc-600">{location.city}</span>
               </p>
+              <p className="flex items-center justify-between gap-8 text-sm largeLaptop:text-base">
+                <span>Resources</span>
+                <span className="text-zinc-600">{location.resources?.length || 0}</span>
+              </p>
             </div>
           </div>
         </section>

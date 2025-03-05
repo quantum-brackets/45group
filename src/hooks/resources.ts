@@ -147,11 +147,11 @@ export function useAddResourceRule() {
   });
 }
 
-export function useDeleteResourceRule() {
+export function useRemoveResourceRule() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ResourceService.deleteRule,
+    mutationFn: ResourceService.removeRule,
     onError: (error) => {
       if (isAxiosError(error)) {
         const errorMsg = error.response?.data.error;

@@ -68,7 +68,11 @@ export const GET = catchAsync(async (_: NextRequest, context: { params: { id: st
       medias: true,
       location: true,
       groups: true,
-      rules: true,
+      rules: {
+        with: {
+          rule: true,
+        },
+      },
       schedules: true,
     },
   });
@@ -119,8 +123,6 @@ export const PATCH = catchAsync(async (req: NextRequest, context: { params: { id
   if (thumbnail) {
     thumbnailData = await UploadService.uploadSingle(thumbnail, "resources/thumbnails");
   }
-
-  console.log(validatedData);
 
   const [updatedResource] = await db
     .update(resourcesTable)
