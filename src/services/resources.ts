@@ -1,4 +1,4 @@
-import { axiosPrivate } from "~/config/axios";
+import axiosInstance, { axiosPrivate } from "~/config/axios";
 import { Media } from "~/db/schemas/media";
 import { Resource } from "~/db/schemas/resources";
 
@@ -38,6 +38,19 @@ class ResourceService {
     const { data: response } = await axiosPrivate.get<
       T extends Resource[] ? T : Pagination<Resource>
     >(`/api/admin/resources${queryString}`);
+
+    return response;
+  };
+
+  static getPublicResources = async ({ params }: { params?: URLSearchParams } = {}) => {
+    const queryString = params ? `?${params.toString()}` : "";
+    const { data: response } = await axiosInstance.get<Resource[]>(`/api/resources${queryString}`);
+
+    return response;
+  };
+
+  static getPublicResource = async (id: string) => {
+    const { data: response } = await axiosInstance.get(`/api/resources/${id}`);
 
     return response;
   };

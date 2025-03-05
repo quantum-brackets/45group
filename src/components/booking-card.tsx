@@ -1,41 +1,32 @@
 import Image from "next/image";
-import { convertToLocale } from "~/utils/helpers";
+import Link from "next/link";
+import { Resource } from "~/db/schemas";
+import ResourceTypeChip from "./resource/type-chip";
 
 type Props = {
-  booking: Booking;
+  booking: Resource;
 };
 
-export default function BookingCard({ booking: { images, name, amount } }: Props) {
+export default function BookingCard({
+  booking: { name, handle, thumbnail, description, type },
+}: Props) {
   return (
-    <div className="flex rounded-lg border p-4">
-      <div>
-        <figure className="relative aspect-square">
-          {images.slice(0, 3).map((image, index) => (
-            <Image
-              key={index}
-              alt={`${name} image ${index + 1}`}
-              src={image}
-              priority={true}
-              width={150}
-              height={150}
-              className="absolute h-full w-full object-cover"
-            />
-          ))}
-        </figure>
+    <Link className="flex gap-4 rounded-lg border p-4" href={"/booking/" + handle}>
+      <figure className="relative size-[10rem] overflow-hidden rounded-md border">
+        <Image
+          alt={name}
+          src={thumbnail}
+          priority={true}
+          sizes="100%"
+          fill
+          className="absolute h-full w-full object-cover"
+        />
+      </figure>
+      <div className="flex flex-col gap-2">
+        <h5 className="text-base font-semibold">{name}</h5>
+        <ResourceTypeChip type={type} className="!justify-start [&_svg]:!m-0" />
+        <small>{description}</small>
       </div>
-      <div>
-        <h5>{name}</h5>
-      </div>
-      <div className="flex flex-col">
-        <div>
-          <h3>
-            {convertToLocale({
-              amount,
-            })}
-          </h3>
-          <p>per night</p>
-        </div>
-      </div>
-    </div>
+    </Link>
   );
 }

@@ -2,28 +2,22 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 import { debounce, Skeleton } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import BookingCard from "~/components/booking-card";
-import bookingsData from "~/data/bookings.json";
 import NoDataIllustration from "~/assets/illustrations/no-data.png";
+import ResourceService from "~/services/resources";
+import { Resource } from "~/db/schemas";
+import { useCustomSearchParams } from "~/hooks/utils";
 
 export default function BookingItems() {
-  const searchParams = useSearchParams();
+  const [debouncedQ, setDebouncedQ] = useState("");
 
-  const [debouncedQ, setDebouncedQ] = useState<string | undefined>(undefined);
-
-  const params: BookingSearchParams = useMemo(() => {
-    return ["type", "city", "group", "from", "to", "sort_by", "q"].reduce((acc, param) => {
-      acc[param as keyof BookingSearchParams] = searchParams.get(param) || undefined;
-      return acc;
-    }, {} as BookingSearchParams);
-  }, [searchParams]);
+  const params = useCustomSearchParams(["type", "city", "group", "from", "to", "sort_by", "q"]);
 
   const debouncedSetQ = useMemo(
     () =>
-      debounce((value: string | undefined) => {
+      debounce((value: string) => {
         setDebouncedQ(value);
       }, 1000),
     []
@@ -36,14 +30,11 @@ export default function BookingItems() {
     };
   }, [params.q, debouncedSetQ]);
 
-  const { data: bookings, isLoading } = useQuery<Booking[]>({
+  const { data: resources, isLoading } = useQuery<Resource[]>({
     queryKey: ["bookings", { ...params, q: debouncedQ }],
-    queryFn: async () => {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve([] as Booking[]);
-        }, 5000);
-      });
+    queryFn: () => {
+      const newParams = new URLSearchParams({ ...params, q: debouncedQ });
+      return ResourceService.getPublicResources({ params: newParams });
     },
   });
 
@@ -55,7 +46,7 @@ export default function BookingItems() {
     );
   }
 
-  if (!bookings || !bookings.length) {
+  if (!resources || !resources.length) {
     return (
       <div className="flex w-full max-w-App flex-grow flex-col items-center justify-center gap-2 self-center p-8">
         <figure className="w-[30%]">
@@ -69,9 +60,9 @@ export default function BookingItems() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col gap-6 p-4">
-      {bookings.map((booking, index) => (
-        <BookingCard key={index} booking={booking} />
+    <div className="grid w-full grid-cols-2 gap-6 p-8">
+      {resources.map((resource, index) => (
+        <BookingCard key={index} booking={resource} />
       ))}
     </div>
   );
