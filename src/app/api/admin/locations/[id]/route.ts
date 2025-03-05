@@ -27,37 +27,20 @@ export const DELETE = catchAsync(async (_: NextRequest, context: { params: { id:
 export const GET = catchAsync(async (_: NextRequest, context: { params: { id: string } }) => {
   const locationId = context.params.id;
 
-  const locations = await db
-    .select({
-      location: locationsTable,
-      media: mediasTable,
-    })
-    .from(locationsTable)
-    .leftJoin(mediasTable, eq(mediasTable.location_id, locationsTable.id))
-    .where(eq(locationsTable.id, locationId));
+  const location = await db.query.locationsTable.findFirst({
+    where: (location, { eq }) => eq(location.id, locationId),
+    with: {
+      resources: true,
+      medias: true,
+    },
+  });
 
-  if (!locations.length) {
+  if (!location) {
     return appError({
       status: 404,
       error: "Location not found",
     });
   }
-
-  const location = locations.reduce(
-    (acc, curr) => {
-      if (!acc.id) {
-        Object.assign(acc, curr.location);
-        acc.medias = [];
-      }
-
-      if (curr.media?.id) {
-        acc.medias.push(curr.media);
-      }
-
-      return acc;
-    },
-    { medias: [] } as any
-  );
 
   return NextResponse.json(location);
 });
