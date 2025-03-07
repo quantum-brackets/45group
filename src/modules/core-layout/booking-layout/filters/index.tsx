@@ -49,18 +49,15 @@ export default function Filters({ isMobileDrawerOpen, onCloseMobileDrawer }: Pro
     });
   }, [searchParams]);
 
-  const updateSearchParams = useCallback(
-    (key: string, value: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (value) {
-        params.set(key, value);
-      } else {
-        params.delete(key);
-      }
-      window.history.replaceState(null, "", `/booking?${params.toString()}`);
-    },
-    [searchParams]
-  );
+  const updateSearchParams = useCallback((key: string, value: string) => {
+    const params = new URLSearchParams(window.location.search);
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    window.history.replaceState(null, "", `/booking?${params.toString()}`);
+  }, []);
 
   const updateFilters = useCallback((key: keyof typeof filters, date: Dayjs | string) => {
     setFilters((prev) => ({ ...prev, [key]: date }));
@@ -70,7 +67,10 @@ export default function Filters({ isMobileDrawerOpen, onCloseMobileDrawer }: Pro
     (key: keyof typeof filters) => ({
       value: filters[key] as string,
       updateValue: (value: string) => updateFilters(key, value),
-      updateSearchParams: (value: string) => updateSearchParams(key, value),
+      updateSearchParams: (value: string) => {
+        console.log(value);
+        updateSearchParams(key, value);
+      },
     }),
     [filters, updateFilters, updateSearchParams]
   );
@@ -87,13 +87,15 @@ export default function Filters({ isMobileDrawerOpen, onCloseMobileDrawer }: Pro
           <ToFilter dates={dates} {...createFilterProps("endDate")} />
         </div>
       </aside>
-      <MobileFilter
-        isOpen={isMobileDrawerOpen}
-        onClose={onCloseMobileDrawer}
-        dates={dates}
-        filters={filters}
-        createFilterProps={createFilterProps}
-      />
+      {isMobileDrawerOpen && (
+        <MobileFilter
+          isOpen={isMobileDrawerOpen}
+          onClose={onCloseMobileDrawer}
+          dates={dates}
+          filters={filters}
+          createFilterProps={createFilterProps}
+        />
+      )}
     </>
   );
 }
