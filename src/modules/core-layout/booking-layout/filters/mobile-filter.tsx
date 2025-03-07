@@ -3,7 +3,6 @@
 import { useCallback, useRef } from "react";
 import { Drawer, IconButton } from "@mui/material";
 import { IoClose } from "react-icons/io5";
-import { Dayjs } from "dayjs";
 import GroupFilter from "./group-filter";
 import FromFilter from "./from-filter";
 import ToFilter from "./to-filter";
@@ -41,12 +40,12 @@ export default function MobileFilter({
   const groupFilterRef = useRef<{ applyGroup: () => void } | null>(null);
 
   const handleMobileApplyFilters = useCallback(() => {
+    groupFilterRef.current?.applyGroup();
     const filterKeys = ["type", "city", "startDate", "endDate"] as const;
     filterKeys.forEach((key) => {
       const filterProps = createFilterProps(key);
       filterProps.updateSearchParams(filters[key]);
     });
-    groupFilterRef.current?.applyGroup();
     onClose();
   }, [createFilterProps, filters, onClose]);
 

@@ -60,7 +60,7 @@ export default function BookingItems() {
   }
 
   return (
-    <div className="grid w-full grid-cols-2 gap-6 p-8">
+    <div className="grid w-full grid-cols-2 gap-6 p-8 tablet:grid-cols-1">
       {resources.map((resource, index) => (
         <BookingCard key={index} booking={resource} />
       ))}
