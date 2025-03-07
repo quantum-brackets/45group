@@ -49,8 +49,8 @@ class ResourceService {
     return response;
   };
 
-  static getPublicResource = async (id: string) => {
-    const { data: response } = await axiosInstance.get(`/api/resources/${id}`);
+  static getPublicResource = async (slug: string) => {
+    const { data: response } = await axiosInstance.get<Resource>(`/api/resources/${slug}`);
 
     return response;
   };

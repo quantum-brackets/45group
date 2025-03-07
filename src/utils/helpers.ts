@@ -198,3 +198,11 @@ export const processExistingItems = <T extends { id?: string }>(
   if (!items) return [];
   return Object.entries(items).filter(([_, item]) => item.id);
 };
+
+export function textConverter(str: string, maxLen: number) {
+  if (str.length > maxLen) {
+    return str.substring(0, maxLen).split(" ").slice(0, -1).join(" ") + "...";
+  }
+
+  return str;
+}
