@@ -14,6 +14,13 @@ const nextConfig = {
       },
     ],
   },
+  rewrites: async () => [
+    {
+      source: "/api/:path*",
+      destination: `/api/:path*`,
+      verifyTLSCertificates: false,
+    },
+  ],
 };
 
 export default withSentryConfig(nextConfig, {
