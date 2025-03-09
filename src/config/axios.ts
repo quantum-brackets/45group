@@ -2,8 +2,12 @@ import axios from "axios";
 import { getCookie } from "~/app/_actions/util";
 import { SESSION_KEY } from "~/utils/constants";
 
+// const httpsAgent = new https.Agent({
+//   rejectUnauthorized: false, // Ignore certificate validation
+// });
+
 const axiosInstance = axios.create({
-  baseURL: process.env.BASE_URL,
+  // baseURL: process.env.BASE_URL,
   headers: {
     common: {
       Accept: "application/json",
