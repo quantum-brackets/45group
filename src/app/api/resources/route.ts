@@ -6,6 +6,8 @@ import catchAsync from "~/utils/catch-async";
 import { validateSchema } from "~/utils/helpers";
 import { resourcesTable } from "~/db/schemas";
 
+export const dynamic = "force-dynamic";
+
 export const GET = catchAsync(async (req: NextRequest) => {
   const searchParams = req.nextUrl.searchParams;
 

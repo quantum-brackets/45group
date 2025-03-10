@@ -9,7 +9,7 @@ const client = postgres(connectionString, {
   max: process.env.NODE_ENV === "production" ? 20 : 10,
   idle_timeout: process.env.NODE_ENV === "production" ? 60 : 30,
   connect_timeout: 10,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : false,
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
   keep_alive: process.env.NODE_ENV === "production" ? 30 : null,
 });
 
