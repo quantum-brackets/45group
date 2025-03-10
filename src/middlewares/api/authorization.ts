@@ -5,7 +5,7 @@ import catchAsync from "~/utils/catch-async";
 import { SESSION_KEY } from "~/utils/constants";
 import axiosInstance from "~/config/axios";
 
-const protectedRoutes = ["/api/users", "/api/auth/logout", "/api/auth/set-email"];
+const protectedRoutes = ["/api/users", "/api/admin", "/api/auth/logout", "/api/auth/set-email"];
 
 export const authorization: MiddlewareFactory = (next, _, data) => {
   return catchAsync(async (req: NextRequest, _next: NextFetchEvent) => {
