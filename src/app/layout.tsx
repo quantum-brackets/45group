@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { ThemeProvider } from "@mui/material";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
+import { Analytics } from "@vercel/analytics/next"
 import "./globals.css";
 import theme from "./theme";
 import { cn } from "~/utils/helpers";
@@ -44,6 +45,7 @@ export default function RootLayout({
                 <Toast />
                 <AppProgressBar />
                 {children}
+                <Analytics />
                 <LogoutModal />
               </ConfirmationPromptProvider>
             </ThemeProvider>
