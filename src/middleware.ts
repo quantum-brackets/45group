@@ -8,6 +8,7 @@ const middlewares = [apiAuthorization, appAuthorization, pagination];
 
 export default stackMiddlewares(middlewares);
 
+// DOES NOT SEEM TO DO ANYTHING OR SERVE ANY PURPOSE
 export const config: MiddlewareConfig = {
   matcher: ["/api/:path*", "/((?!api|_next/static|favicon.ico|icon.svg|assets|data|fonts|db).*)"],
 };
