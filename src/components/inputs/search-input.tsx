@@ -1,0 +1,32 @@
+import { OutlinedInput, OutlinedInputProps } from "@mui/material";
+import { FiSearch } from "react-icons/fi";
+import { cn } from "~/utils/helpers";
+
+type Props = Omit<OutlinedInputProps, "type" | "startAdornment">;
+
+export default function SearchInput({
+  className,
+  placeholder = "Search here...",
+  sx,
+  ...props
+}: Props) {
+  return (
+    <OutlinedInput
+      type="search"
+      startAdornment={<FiSearch className="text-[21px] !text-zinc-500/85" />}
+      {...props}
+      className={cn("!rounded-md !border-zinc-600", className)}
+      placeholder={placeholder}
+      sx={{
+        "& input": {
+          padding: "12px 14px 12px 10px",
+          fontSize: "0.8rem",
+          "::placeholder": {
+            fontSize: "0.8rem",
+          },
+        },
+        ...sx,
+      }}
+    />
+  );
+}

@@ -9,7 +9,7 @@ export default function Button({
   className,
   sx,
   children,
-  size = "large",
+  size = "medium",
   ...props
 }: LoadingButtonProps) {
   return (
@@ -18,18 +18,20 @@ export default function Button({
       variant={variant}
       size={size}
       className={cn(
+        "!font-medium",
         {
           "opacity-40": loading,
         },
-        `${className}`
+        className
       )}
       sx={{
         textTransform: "none",
-        "&.MuiButton-sizeLarge": {
-          paddingY: "12px",
+        "&.MuiButton-colorPrimary.MuiButton-containedPrimary": {
+          color: "white",
         },
         "&.MuiButton-sizeSmall": {
-          padding: "10px 10px",
+          padding: "4px 8px",
+          minWidth: "0px",
         },
         borderRadius: "8px",
         ...sx,

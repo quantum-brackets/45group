@@ -5,9 +5,22 @@ const config: Config = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/modules/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/emails/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
+      fontFamily: {
+        dancing_script: ["var(--font-dancing-script)"],
+        merriweather: ["var(--font-merriweather)"],
+      },
+      maxWidth: {
+        App: "1900px",
+        1700: "1700px",
+      },
+      borderWidth: {
+        "1.5": "1.5px",
+      },
       colors: {
         primary: {
           DEFAULT: "var(--primary)",
@@ -37,6 +50,19 @@ const config: Config = {
           900: "var(--secondary-900)",
           950: "var(--secondary-950)",
         },
+        info: {
+          DEFAULT: "var(--info)",
+          50: "var(--info-50)",
+          100: "var(--info-100)",
+          200: "var(--info-200)",
+          300: "var(--info-300)",
+          400: "var(--info-400)",
+          500: "var(--info-500)",
+          600: "var(--info-600)",
+          700: "var(--info-700)",
+          800: "var(--info-800)",
+          900: "var(--info-900)",
+        },
       },
       screens: {
         smallMobile: { max: "320px" },
@@ -44,6 +70,10 @@ const config: Config = {
         mediumMobile: { max: "375px" },
 
         largeMobile: { max: "425px" },
+
+        largeMobile_545: { max: "545px" },
+
+        tablet_768: { max: "768px" },
 
         tablet: { max: "900px" },
 

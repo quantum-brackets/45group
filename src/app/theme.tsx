@@ -1,6 +1,9 @@
 "use client";
 
 import { createTheme } from "@mui/material/styles";
+import { MdOutlineRadioButtonUnchecked } from "react-icons/md";
+import { MdOutlineRadioButtonChecked } from "react-icons/md";
+import { merriweather } from "~/utils/fonts";
 
 const theme = createTheme({
   palette: {
@@ -30,6 +33,22 @@ const theme = createTheme({
       800: "#1f5c2f",
       900: "#1b4c29",
     },
+    info: {
+      main: "#52525b",
+      50: "#fafafa",
+      100: "#f4f4f5",
+      200: "#e4e4e7",
+      300: "#d4d4d8",
+      400: "#a1a1aa",
+      500: "#71717a",
+      600: "#52525b",
+      700: "#3f3f46",
+      800: "#27272a",
+      900: "#18181b",
+    },
+  },
+  typography: {
+    fontFamily: merriweather.style.fontFamily,
   },
   components: {
     MuiOutlinedInput: {
@@ -37,14 +56,14 @@ const theme = createTheme({
         root: {
           borderRadius: "6px",
           "& input": {
-            padding: "14px 14px",
-            fontSize: "1rem",
+            padding: "12px 14px 12px 10px",
+            fontSize: "0.8rem",
           },
           "&:hover:not(.Mui-focused) .MuiOutlinedInput-notchedOutline": {
             borderColor: "#78716c",
           },
           "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-            borderWidth: "2px",
+            borderWidth: "1px",
           },
         },
       },
@@ -55,26 +74,46 @@ const theme = createTheme({
           boxShadow: "0 4px 8px 0 rgb(0 0 0 / 0.1)",
           marginTop: "4px",
           borderRadius: "4px",
+          overflow: "hidden",
+          padding: "8px",
+          zIndex: 100,
           "& .MuiMenu-list": {
             padding: "0px",
             "& .MuiMenuItem-root": {
               paddingTop: "8px",
               paddingBottom: "8px",
-              fontSize: "0.85rem",
+              fontSize: "0.8rem",
               "&.Mui-selected": {
-                backgroundColor: "var(--primary-hover)",
-                color: "#fff",
                 transition: "all",
+                color: "var(--primary)",
               },
+            },
+          },
+          "& .popper-btn button": {
+            width: "100%",
+            padding: "8px 16px",
+            fontSize: "0.8rem",
+            color: "#333333",
+            display: "flex",
+            "&:hover": {
+              backgroundColor: "rgb(0 0 0 / 0.05)",
             },
           },
         },
       },
     },
+    MuiRadio: {
+      defaultProps: {
+        size: "medium",
+        color: "primary",
+        icon: <MdOutlineRadioButtonUnchecked />,
+        checkedIcon: <MdOutlineRadioButtonChecked />,
+      },
+    },
     MuiDialogTitle: {
       styleOverrides: {
         root: {
-          fontWeight: 700,
+          fontWeight: 300,
           padding: 0,
           fontSize: "1rem",
         },
@@ -132,6 +171,122 @@ const theme = createTheme({
         },
         root: {
           fontWeight: 600,
+        },
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          marginTop: "0px",
+          padding: "0px",
+          borderRadius: "0px",
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        root: {
+          "& .MuiOutlinedInput-input": {
+            padding: "10px 14px 10px 10px",
+            fontSize: "0.8rem",
+          },
+        },
+      },
+    },
+    MuiPopover: {
+      styleOverrides: {
+        root: {
+          "& .MuiFormControlLabel-label": {
+            fontSize: "0.8rem",
+          },
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          width: "fit-content !important",
+          "& button": {
+            padding: "8px !important",
+          },
+        },
+      },
+    },
+    MuiTypography: {
+      styleOverrides: {
+        h1: {
+          fontSize: "1.25rem",
+          "@media screen and (max-width: 425px) ": {
+            fontSize: "1rem",
+          },
+        },
+      },
+    },
+    MuiSkeleton: {
+      styleOverrides: {
+        root: {
+          transform: "none",
+        },
+      },
+    },
+    MuiAvatar: {
+      styleOverrides: {
+        circular: {
+          fontSize: "1rem",
+        },
+      },
+    },
+    MuiPopper: {
+      defaultProps: {
+        transition: true,
+        placement: "bottom-end",
+      },
+      styleOverrides: {
+        root: {
+          "& .MuiPaper-root": {
+            padding: "6px",
+            borderRadius: "4px",
+            "& > button": {
+              width: "100%",
+              display: "flex",
+              gap: "0.5rem",
+              padding: "1rem",
+              paddingTop: "0.5rem",
+              paddingBottom: "0.5rem",
+              borderRadius: "0.125rem",
+              alignItems: "center",
+              transition: "background-color 0.2s",
+              "&:hover": {
+                backgroundColor: "rgba(0, 0, 0, 0.05)",
+              },
+              "& > svg": {
+                color: "#3f3f46",
+                fontSize: "1rem",
+              },
+              "& > span": {
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                color: "#3f3f46",
+              },
+            },
+          },
+        },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          "&.placeholder": {
+            color: "#94919a",
+          },
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontSize: "0.7rem",
+          height: "26px",
         },
       },
     },

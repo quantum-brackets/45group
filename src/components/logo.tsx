@@ -13,7 +13,7 @@ export default function Logo({ className, ...props }: Props) {
       src={_logo}
       alt="45Group logo"
       priority
-      className={cn(`w-[7rem]`, className)}
+      className={cn(`w-[4rem]`, className)}
     />
   );
 }
