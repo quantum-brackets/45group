@@ -37,7 +37,7 @@ export function BookingForm({ listing }: BookingFormProps) {
           <span className="text-base font-normal text-muted-foreground">/{listing.priceUnit}</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 px-5">
         <div>
           <Label className="font-semibold">Select Dates</Label>
           <div className="text-center text-sm text-muted-foreground p-2 border mt-1 mb-2 rounded-md">
