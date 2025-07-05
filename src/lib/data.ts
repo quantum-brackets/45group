@@ -20,6 +20,7 @@ export const listings: Listing[] = [
       { id: 'r2', author: 'Jane Smith', avatar: 'https://placehold.co/100x100.png', rating: 4, comment: 'Great location and beautiful views. The breakfast could be better.' },
     ],
     features: ['Free WiFi', 'Pool', 'Gym', 'Pet Friendly'],
+    maxGuests: 4,
   },
   {
     id: '2',
@@ -38,6 +39,7 @@ export const listings: Listing[] = [
       { id: 'r3', author: 'Event Planners Inc.', avatar: 'https://placehold.co/100x100.png', rating: 5, comment: 'Our go-to venue for all major corporate events. Flawless execution every time.' },
     ],
     features: ['AV Equipment', 'Catering Available', 'Parking', ' breakout rooms'],
+    maxGuests: 200,
   },
   {
     id: '3',
@@ -55,6 +57,7 @@ export const listings: Listing[] = [
       { id: 'r4', author: 'Foodie Critic', avatar: 'https://placehold.co/100x100.png', rating: 5, comment: 'The best carbonara I have ever had. A true gem in Chicago.' },
     ],
     features: ['Outdoor Seating', 'Full Bar', 'Reservations', 'Vegan Options'],
+    maxGuests: 50,
   },
   {
     id: '4',
@@ -71,6 +74,7 @@ export const listings: Listing[] = [
     rating: 4.6,
     reviews: [],
     features: ['Free WiFi', 'Lake Access', 'Free Breakfast'],
+    maxGuests: 3,
   },
   {
     id: '5',
@@ -86,6 +90,7 @@ export const listings: Listing[] = [
     rating: 5.0,
     reviews: [],
     features: ['Stage', 'Dance Floor', 'Valet Parking', 'Historic Building'],
+    maxGuests: 500,
   },
   {
     id: '6',
@@ -101,6 +106,7 @@ export const listings: Listing[] = [
     rating: 4.5,
     reviews: [],
     features: ['Craft Cocktails', 'Local Ingredients', 'Reservations Recommended'],
+    maxGuests: 40,
   },
 ];
 

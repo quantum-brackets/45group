@@ -20,6 +20,7 @@ export interface Listing {
   rating: number;
   reviews: Review[];
   features: string[];
+  maxGuests: number;
 }
 
 export interface Booking {

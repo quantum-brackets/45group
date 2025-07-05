@@ -34,7 +34,15 @@ export default function Home() {
       );
     }
     
-    // The guest filter is not implemented because there is no guest capacity data on listings.
+    // Filter by guests
+    if (filters.guests) {
+      const numGuests = parseInt(filters.guests, 10);
+      if (!isNaN(numGuests)) {
+        newFilteredListings = newFilteredListings.filter(
+          listing => listing.maxGuests >= numGuests
+        );
+      }
+    }
 
     // Filter by date availability
     if (filters.date?.from) {
