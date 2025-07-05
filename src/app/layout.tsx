@@ -4,7 +4,10 @@ import { Header } from '@/components/common/Header';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'Book45',
+  title: {
+    default: 'Book45',
+    template: '%s | Book45',
+  },
   description: 'Book hotels, event venues, and restaurants locally.',
 };
 

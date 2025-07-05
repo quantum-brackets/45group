@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, Mountain } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 
 const navLinks = [
   { href: '/', label: 'Browse' },
@@ -15,6 +16,11 @@ const navLinks = [
 
 export function Header() {
   const pathname = usePathname();
+  const [appName, setAppName] = useState('');
+
+  useEffect(() => {
+    setAppName('Book45');
+  }, []);
 
   return (
     <header className="bg-card shadow-sm sticky top-0 z-40">
@@ -22,7 +28,7 @@ export function Header() {
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">
             <Mountain className="h-6 w-6 text-primary" />
-            <span className="font-headline">Book45</span>
+            <span className="font-headline">{appName}</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
             {navLinks.map((link) => (
@@ -52,7 +58,7 @@ export function Header() {
               <nav className="grid gap-6 text-lg font-medium p-6">
                 <Link href="/" className="flex items-center gap-2 font-bold text-lg mb-4">
                   <Mountain className="h-6 w-6 text-primary" />
-                  <span className="font-headline">Book45</span>
+                  <span className="font-headline">{appName}</span>
                 </Link>
                 {navLinks.map((link) => (
                   <Link
