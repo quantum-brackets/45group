@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -55,13 +56,16 @@ export function ListingFilters({ onFilterChange }: ListingFiltersProps) {
           </div>
         </div>
         <div className="lg:col-span-1">
-          <Select onValueChange={(value) => setType(value as ListingType | '')} value={type}>
+          <Select
+            onValueChange={(value) => setType(value === "all" ? "" : (value as ListingType))}
+            value={type || "all"}
+          >
             <SelectTrigger>
               <SlidersHorizontal className="mr-2 h-4 w-4 text-muted-foreground" />
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Types</SelectItem>
+              <SelectItem value="all">All Types</SelectItem>
               <SelectItem value="hotel">Hotel</SelectItem>
               <SelectItem value="events">Events</SelectItem>
               <SelectItem value="restaurant">Restaurant</SelectItem>
