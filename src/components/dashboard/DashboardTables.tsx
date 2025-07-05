@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
 import type { Booking, Listing } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 interface DashboardTablesProps {
   listings: Listing[];
@@ -17,6 +18,16 @@ interface DashboardTablesProps {
 
 export function DashboardTables({ listings, bookings }: DashboardTablesProps) {
   const router = useRouter();
+  const { toast } = useToast();
+
+  const handleContactGuest = (booking: Booking) => {
+    toast({
+      title: "Contacting Guest",
+      description: "Opening your default email client.",
+    });
+    // In a real app, you'd have the guest's email. We'll use a placeholder.
+    window.location.href = `mailto:guest-for-${booking.id}@example.com?subject=Regarding your booking for ${booking.listingName}`;
+  };
 
   return (
     <>
@@ -61,8 +72,8 @@ export function DashboardTables({ listings, bookings }: DashboardTablesProps) {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem>View Details</DropdownMenuItem>
-                              <DropdownMenuItem>Contact Guest</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => router.push(`/listing/${booking.listingId}`)}>View Details</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleContactGuest(booking)}>Contact Guest</DropdownMenuItem>
                           </DropdownMenuContent>
                       </DropdownMenu>
                   </TableCell>
