@@ -26,8 +26,14 @@ export async function getListingById(id: string): Promise<Listing | null> {
 }
 
 export async function getAllBookings(): Promise<Booking[]> {
-  const stmt = db.prepare('SELECT * FROM bookings');
+  const stmt = db.prepare('SELECT * FROM bookings ORDER BY startDate DESC');
   return stmt.all() as Booking[];
+}
+
+export async function getBookingById(id: string): Promise<Booking | null> {
+  const stmt = db.prepare('SELECT * FROM bookings WHERE id = ?');
+  const booking = stmt.get(id) as Booking | undefined;
+  return booking || null;
 }
 
 interface FilterValues {
