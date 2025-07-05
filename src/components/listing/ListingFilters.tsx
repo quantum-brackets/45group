@@ -43,7 +43,7 @@ export function ListingFilters() {
     if (guests) params.set('guests', guests); else params.delete('guests');
     if (date?.from) params.set('from', date.from.toISOString()); else params.delete('from');
     if (date?.to) params.set('to', date.to.toISOString()); else params.delete('to');
-    router.push(`/?${params.toString()}`);
+    router.push(`/search?${params.toString()}`);
   };
 
   return (

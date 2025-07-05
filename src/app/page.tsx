@@ -1,61 +1,56 @@
-import { getFilteredListings } from '@/lib/data';
-import { ListingFilters } from '@/components/listing/ListingFilters';
+import { getAllListings } from '@/lib/data';
 import { ListingCard } from '@/components/listing/ListingCard';
-import type { Listing } from '@/lib/types';
-import { DateRange } from 'react-day-picker';
-import { addDays, parseISO } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 
-interface HomeProps {
-  searchParams: {
-    location?: string;
-    type?: string;
-    guests?: string;
-    from?: string;
-    to?: string;
-  };
-}
-
-export default async function Home({ searchParams }: HomeProps) {
-  const filters = {
-    location: searchParams.location || '',
-    type: (searchParams.type as Listing['type']) || '',
-    guests: searchParams.guests || '',
-    date:
-      searchParams.from 
-      ? { from: parseISO(searchParams.from), to: searchParams.to ? parseISO(searchParams.to) : parseISO(searchParams.from) }
-      : undefined,
-  };
-
-  const filteredListings = await getFilteredListings(filters);
+export default async function HomePage() {
+  // Fetch a few featured listings to display
+  const allListings = await getAllListings();
+  const featuredListings = allListings.slice(0, 3);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <header className="mb-8 text-center">
-        <h1 className="text-4xl font-headline font-bold tracking-tight lg:text-5xl">
-          Find Your Perfect Venue
-        </h1>
-        <p className="mt-4 text-lg text-muted-foreground">
-          Discover and book unique hotels, event venues, and restaurants.
-        </p>
-      </header>
-      
-      <section className="mb-12">
-        <ListingFilters />
+    <div>
+      {/* Hero Section */}
+      <section className="bg-card py-20 md:py-32">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-4xl font-headline font-bold tracking-tight lg:text-6xl">
+            Your Perfect Venue Awaits
+          </h1>
+          <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+            From cozy restaurants to grand hotels and event spaces, find and book the perfect spot for any occasion.
+          </p>
+          <div className="mt-8">
+            <Button asChild size="lg">
+              <Link href="/search">
+                Start Searching <ArrowRight className="ml-2" />
+              </Link>
+            </Button>
+          </div>
+        </div>
       </section>
 
-      <section>
-        {filteredListings.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredListings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
-            ))}
-          </div>
-        ) : (
-           <div className="text-center py-16">
-            <h2 className="text-2xl font-semibold">No Listings Found</h2>
-            <p className="text-muted-foreground mt-2">Try adjusting your search filters to find what you're looking for.</p>
-          </div>
-        )}
+      {/* Featured Listings Section */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-headline font-bold text-center mb-8">Featured Venues</h2>
+          {featuredListings.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredListings.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground mt-2">Could not load featured venues at this time.</p>
+            </div>
+          )}
+           <div className="text-center mt-12">
+             <Button asChild variant="outline">
+                <Link href="/search">View All Venues</Link>
+             </Button>
+           </div>
+        </div>
       </section>
     </div>
   );
