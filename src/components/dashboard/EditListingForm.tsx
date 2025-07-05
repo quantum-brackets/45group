@@ -7,6 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { Listing } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import { updateListingAction } from "@/lib/actions";
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -14,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -35,6 +38,7 @@ interface EditListingFormProps {
 export function EditListingForm({ listing }: EditListingFormProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -45,14 +49,22 @@ export function EditListingForm({ listing }: EditListingFormProps) {
   });
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
-    // In a real application, you would send this data to your backend to update the listing.
-    // For this prototype, we'll just show a success message.
-    console.log("Updated listing data:", data);
-    toast({
-      title: "Listing Updated Successfully!",
-      description: `The details for "${data.name}" have been saved.`,
+    startTransition(async () => {
+      const result = await updateListingAction(listing.id, data);
+      if (result.success) {
+        toast({
+          title: "Listing Updated Successfully!",
+          description: result.message,
+        });
+        router.push('/dashboard');
+      } else {
+        toast({
+          title: "Error updating listing",
+          description: result.message || "An unexpected error occurred.",
+          variant: "destructive",
+        });
+      }
     });
-    router.push('/dashboard'); // Redirect back to dashboard after saving
   };
 
   return (
@@ -204,12 +216,14 @@ export function EditListingForm({ listing }: EditListingFormProps) {
             </div>
           </CardContent>
           <CardFooter className="flex justify-end gap-2">
-            <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
-            <Button type="submit">Save Changes</Button>
+            <Button variant="outline" type="button" onClick={() => router.back()} disabled={isPending}>Cancel</Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
           </CardFooter>
         </form>
       </Form>
     </Card>
   );
 }
-
