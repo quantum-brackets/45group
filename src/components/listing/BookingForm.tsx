@@ -37,34 +37,38 @@ export function BookingForm({ listing }: BookingFormProps) {
           <span className="text-base font-normal text-muted-foreground">/{listing.priceUnit}</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 px-5">
+      <CardContent className="space-y-4 px-0">
         <div>
-          <Label className="font-semibold">Select Dates</Label>
-          <div className="text-center text-sm text-muted-foreground p-2 border mt-1 mb-2 rounded-md">
-            {date?.from ? (
-              date.to ? (
-                <>
-                  {format(date.from, "LLL dd, yyyy")} - {format(date.to, "LLL dd, yyyy")}
-                </>
+          <div className="px-6">
+            <Label className="font-semibold">Select Dates</Label>
+            <div className="text-center text-sm text-muted-foreground p-2 border mt-1 mb-2 rounded-md">
+              {date?.from ? (
+                date.to ? (
+                  <>
+                    {format(date.from, "LLL dd, yyyy")} - {format(date.to, "LLL dd, yyyy")}
+                  </>
+                ) : (
+                  format(date.from, "LLL dd, yyyy")
+                )
               ) : (
-                format(date.from, "LLL dd, yyyy")
-              )
-            ) : (
-              <span>Pick your dates</span>
-            )}
+                <span>Pick your dates</span>
+              )}
+            </div>
           </div>
-          <Calendar
-            initialFocus
-            mode="range"
-            defaultMonth={date?.from}
-            selected={date}
-            onSelect={setDate}
-            numberOfMonths={1}
-            className="rounded-md border"
-            disabled={(day) => day < new Date(new Date().setHours(0, 0, 0, 0))}
-          />
+          <div className="flex justify-center">
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={date?.from}
+              selected={date}
+              onSelect={setDate}
+              numberOfMonths={1}
+              className="rounded-md border"
+              disabled={(day) => day < new Date(new Date().setHours(0, 0, 0, 0))}
+            />
+          </div>
         </div>
-        <div>
+        <div className="px-6">
           <Label htmlFor="guests" className="font-semibold">Number of Guests</Label>
           <Input
             id="guests"
@@ -75,11 +79,13 @@ export function BookingForm({ listing }: BookingFormProps) {
             className="mt-1"
           />
         </div>
-        <Button onClick={handleBooking} className="w-full text-lg" size="lg">
-          Book Now
-        </Button>
-        <div className="text-center text-sm text-muted-foreground">
-          You won't be charged yet
+        <div className="px-6 pt-2">
+          <Button onClick={handleBooking} className="w-full text-lg" size="lg">
+            Book Now
+          </Button>
+          <div className="text-center text-sm text-muted-foreground mt-2">
+            You won't be charged yet
+          </div>
         </div>
       </CardContent>
     </Card>
