@@ -26,7 +26,8 @@ export interface Booking {
   id: string;
   listingId: string;
   listingName: string;
-  date: string;
+  startDate: string;
+  endDate: string;
   guests: number;
   status: 'Confirmed' | 'Pending' | 'Cancelled';
 }

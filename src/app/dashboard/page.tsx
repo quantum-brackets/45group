@@ -71,7 +71,7 @@ export default function DashboardPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Venue</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>Dates</TableHead>
                   <TableHead>Guests</TableHead>
                   <TableHead>Status</TableHead>
                    <TableHead><span className="sr-only">Actions</span></TableHead>
@@ -81,7 +81,11 @@ export default function DashboardPage() {
                 {bookings.map((booking) => (
                   <TableRow key={booking.id}>
                     <TableCell className="font-medium">{booking.listingName}</TableCell>
-                    <TableCell>{booking.date}</TableCell>
+                    <TableCell>
+                      {booking.startDate === booking.endDate
+                        ? booking.startDate
+                        : `${booking.startDate} to ${booking.endDate}`}
+                    </TableCell>
                     <TableCell>{booking.guests}</TableCell>
                     <TableCell>
                       <Badge variant={booking.status === 'Confirmed' ? 'default' : 'secondary'} className={booking.status === 'Confirmed' ? 'bg-accent text-accent-foreground' : ''}>

@@ -105,9 +105,9 @@ export const listings: Listing[] = [
 ];
 
 export const bookings: Booking[] = [
-    { id: 'b1', listingId: '1', listingName: 'Grand Hyatt Hotel', date: '2024-08-15', guests: 2, status: 'Confirmed' },
-    { id: 'b2', listingId: '3', listingName: 'La Trattoria', date: '2024-08-10', guests: 4, status: 'Confirmed' },
-    { id: 'b3', listingId: '2', listingName: 'The Lighthouse Center', date: '2024-09-01', guests: 150, status: 'Pending' },
+    { id: 'b1', listingId: '1', listingName: 'Grand Hyatt Hotel', startDate: '2024-08-15', endDate: '2024-08-18', guests: 2, status: 'Confirmed' },
+    { id: 'b2', listingId: '3', listingName: 'La Trattoria', startDate: '2024-08-10', endDate: '2024-08-10', guests: 4, status: 'Confirmed' },
+    { id: 'b3', listingId: '2', listingName: 'The Lighthouse Center', startDate: '2024-09-01', endDate: '2024-09-01', guests: 150, status: 'Pending' },
 ];
 
 export const getListingById = (id: string) => listings.find(l => l.id === id);

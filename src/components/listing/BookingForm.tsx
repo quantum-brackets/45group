@@ -9,13 +9,15 @@ import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast"
 import type { Listing } from '@/lib/types';
 import { PartyPopper } from 'lucide-react';
+import { DateRange } from 'react-day-picker';
+import { format } from 'date-fns';
 
 interface BookingFormProps {
   listing: Listing;
 }
 
 export function BookingForm({ listing }: BookingFormProps) {
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [date, setDate] = useState<DateRange | undefined>();
   const [guests, setGuests] = useState(1);
   const { toast } = useToast();
 
@@ -37,12 +39,26 @@ export function BookingForm({ listing }: BookingFormProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <Label className="font-semibold">Select Date</Label>
+          <Label className="font-semibold">Select Dates</Label>
+          <div className="text-center text-sm text-muted-foreground p-2 border mt-1 mb-2 rounded-md">
+            {date?.from ? (
+              date.to ? (
+                <>
+                  {format(date.from, "LLL dd, yyyy")} - {format(date.to, "LLL dd, yyyy")}
+                </>
+              ) : (
+                format(date.from, "LLL dd, yyyy")
+              )
+            ) : (
+              <span>Pick your dates</span>
+            )}
+          </div>
           <Calendar
-            mode="single"
+            mode="range"
             selected={date}
             onSelect={setDate}
-            className="rounded-md border mt-1"
+            className="rounded-md border"
+            disabled={(day) => day < new Date(new Date().setHours(0, 0, 0, 0))}
           />
         </div>
         <div>
