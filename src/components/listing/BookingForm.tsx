@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast"
 import type { Listing } from '@/lib/types';
-import { PartyPopper } from 'lucide-react';
+import { Loader2, PartyPopper } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
+import { createBookingAction } from '@/lib/actions';
 
 interface BookingFormProps {
   listing: Listing;
@@ -20,12 +21,42 @@ export function BookingForm({ listing }: BookingFormProps) {
   const [date, setDate] = useState<DateRange | undefined>();
   const [guests, setGuests] = useState(1);
   const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
 
   const handleBooking = () => {
-    toast({
-      title: "Booking Confirmed!",
-      description: `Your booking at ${listing.name} has been confirmed.`,
-      action: <div className="p-2 bg-accent rounded-full"><PartyPopper className="h-5 w-5 text-accent-foreground" /></div>,
+    if (!date?.from) {
+        toast({
+            title: "Please select dates",
+            description: "You must select a start and end date for your booking.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    startTransition(async () => {
+        const result = await createBookingAction({
+            listingId: listing.id,
+            listingName: listing.name,
+            startDate: date.from!.toISOString(),
+            endDate: (date.to || date.from)!.toISOString(),
+            guests: guests,
+        });
+
+        if (result.success) {
+            toast({
+                title: "Booking Confirmed!",
+                description: result.message,
+                action: <div className="p-2 bg-accent rounded-full"><PartyPopper className="h-5 w-5 text-accent-foreground" /></div>,
+            });
+            setDate(undefined);
+            setGuests(1);
+        } else {
+            toast({
+                title: "Booking Failed",
+                description: result.message || "An unexpected error occurred.",
+                variant: "destructive",
+            });
+        }
     });
   };
 
@@ -37,7 +68,7 @@ export function BookingForm({ listing }: BookingFormProps) {
           <span className="text-base font-normal text-muted-foreground">/{listing.priceUnit}</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 px-0">
+      <CardContent className="px-0 space-y-4">
         <div>
           <div className="px-6">
             <Label className="font-semibold">Select Dates</Label>
@@ -74,14 +105,15 @@ export function BookingForm({ listing }: BookingFormProps) {
             id="guests"
             type="number"
             min="1"
+            max={listing.maxGuests}
             value={guests}
-            onChange={(e) => setGuests(parseInt(e.target.value, 10))}
+            onChange={(e) => setGuests(parseInt(e.target.value, 10) || 1)}
             className="mt-1"
           />
         </div>
         <div className="px-6 pt-2">
-          <Button onClick={handleBooking} className="w-full text-lg" size="lg">
-            Book Now
+          <Button onClick={handleBooking} disabled={isPending || !date?.from} className="w-full text-lg" size="lg">
+            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Book Now"}
           </Button>
           <div className="text-center text-sm text-muted-foreground mt-2">
             You won't be charged yet

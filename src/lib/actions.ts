@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { db } from './db'
+import { randomUUID } from 'crypto'
 
 const FormSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -63,5 +64,53 @@ export async function updateListingAction(id: string, data: z.infer<typeof FormS
   } catch (error) {
     console.error("Database error:", error);
     return { success: false, message: "Failed to update listing in the database." };
+  }
+}
+
+const CreateBookingSchema = z.object({
+  listingId: z.string(),
+  listingName: z.string(),
+  startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
+  endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
+  guests: z.coerce.number().int().min(1, "At least one guest is required."),
+});
+
+export async function createBookingAction(data: z.infer<typeof CreateBookingSchema>) {
+  const validatedFields = CreateBookingSchema.safeParse(data);
+
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      message: "Invalid data provided.",
+      errors: validatedFields.error.flatten().fieldErrors,
+    }
+  }
+
+  const { listingId, listingName, startDate, endDate, guests } = validatedFields.data;
+
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO bookings (id, listingId, listingName, startDate, endDate, guests, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    stmt.run(
+      randomUUID(),
+      listingId,
+      listingName,
+      new Date(startDate).toISOString().split('T')[0],
+      new Date(endDate).toISOString().split('T')[0],
+      guests,
+      'Confirmed'
+    );
+
+    revalidatePath('/dashboard');
+    revalidatePath('/');
+    
+    return { success: true, message: `Your booking at ${listingName} has been confirmed.` };
+  } catch (error)
+    {
+    console.error("Database error:", error);
+    return { success: false, message: "Failed to create booking in the database." };
   }
 }
