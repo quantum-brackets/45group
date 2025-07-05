@@ -10,9 +10,33 @@ import { MapPin, Users, Calendar as CalendarIcon, SlidersHorizontal, Search } fr
 import { format } from 'date-fns';
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
+import { ListingType } from '@/lib/types';
 
-export function ListingFilters() {
+interface FilterValues {
+  location: string;
+  type: ListingType | '';
+  guests: string;
+  date: DateRange | undefined;
+}
+
+interface ListingFiltersProps {
+  onFilterChange: (filters: FilterValues) => void;
+}
+
+export function ListingFilters({ onFilterChange }: ListingFiltersProps) {
+  const [location, setLocation] = useState('');
+  const [type, setType] = useState<ListingType | ''>('');
+  const [guests, setGuests] = useState('');
   const [date, setDate] = useState<DateRange | undefined>();
+
+  const handleSearch = () => {
+    onFilterChange({
+      location,
+      type,
+      guests,
+      date,
+    });
+  };
 
   return (
     <div className="bg-card p-4 rounded-lg shadow-md border">
@@ -21,16 +45,23 @@ export function ListingFilters() {
           <label htmlFor="location" className="sr-only">Location</label>
           <div className="relative">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input id="location" placeholder="Search by city or location..." className="pl-10" />
+            <Input 
+              id="location" 
+              placeholder="Search by city or location..." 
+              className="pl-10"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
           </div>
         </div>
         <div className="lg:col-span-1">
-          <Select>
+          <Select onValueChange={(value) => setType(value as ListingType | '')} value={type}>
             <SelectTrigger>
               <SlidersHorizontal className="mr-2 h-4 w-4 text-muted-foreground" />
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="">All Types</SelectItem>
               <SelectItem value="hotel">Hotel</SelectItem>
               <SelectItem value="events">Events</SelectItem>
               <SelectItem value="restaurant">Restaurant</SelectItem>
@@ -40,7 +71,14 @@ export function ListingFilters() {
         <div className="lg:col-span-1">
           <div className="relative">
             <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input type="number" placeholder="Guests" className="pl-10" />
+            <Input 
+              type="number" 
+              placeholder="Guests" 
+              className="pl-10"
+              value={guests}
+              min="1"
+              onChange={(e) => setGuests(e.target.value)}
+            />
           </div>
         </div>
         <div className="lg:col-span-2">
@@ -82,7 +120,7 @@ export function ListingFilters() {
             </PopoverContent>
           </Popover>
         </div>
-        <Button className="w-full lg:col-span-1">
+        <Button className="w-full lg:col-span-1" onClick={handleSearch}>
             <Search className="mr-2 h-4 w-4" />
             Search
         </Button>
