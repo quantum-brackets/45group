@@ -35,7 +35,7 @@ export default function DashboardPage() {
                 {listings.map((listing) => (
                   <TableRow key={listing.id}>
                     <TableCell className="font-medium">{listing.name}</TableCell>
-                    <TableCell>{listing.type.replace('-', ' ')}</TableCell>
+                    <TableCell>{listing.type.charAt(0).toUpperCase() + listing.type.slice(1)}</TableCell>
                     <TableCell>{listing.location}</TableCell>
                     <TableCell className="text-right">${listing.price}/{listing.priceUnit}</TableCell>
                     <TableCell className="text-right">

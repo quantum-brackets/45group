@@ -12,19 +12,19 @@ interface ListingCardProps {
 
 const typeIcons = {
   hotel: <BedDouble className="w-4 h-4" />,
-  'event-center': <Building2 className="w-4 h-4" />,
+  events: <Building2 className="w-4 h-4" />,
   restaurant: <Utensils className="w-4 h-4" />,
 };
 
 const typeLabels = {
   hotel: 'Hotel',
-  'event-center': 'Event Center',
+  events: 'Events',
   restaurant: 'Restaurant',
 };
 
 const AITypeHints = {
   hotel: 'hotel room',
-  'event-center': 'event center',
+  events: 'event venue',
   restaurant: 'restaurant dining',
 }
 

@@ -10,7 +10,7 @@ export default function Home() {
           Find Your Perfect Venue
         </h1>
         <p className="mt-4 text-lg text-muted-foreground">
-          Discover and book unique hotels, event centers, and restaurants.
+          Discover and book unique hotels, event venues, and restaurants.
         </p>
       </header>
       

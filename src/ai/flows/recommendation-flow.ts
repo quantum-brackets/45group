@@ -25,7 +25,7 @@ export type RecommendationInput = z.infer<typeof RecommendationInputSchema>;
 
 const RecommendationOutputSchema = z.object({
   venueName: z.string().describe('The name of the recommended venue.'),
-  venueType: z.string().describe('The type of the recommended venue (hotel, event center, restaurant).'),
+  venueType: z.string().describe('The type of the recommended venue (hotel, events, restaurant).'),
   description: z.string().describe('A short description of the recommended venue.'),
   address: z.string().describe('The address of the recommended venue.'),
   contactInformation: z.string().describe('The contact information of the recommended venue.'),
@@ -49,7 +49,7 @@ Availability: {{{availability}}}
 Location: {{{location}}}
 Number of Guests: {{{numberOfGuests}}}
 
-Consider these options: hotel rooms, event centers, and restaurants.
+Consider these options: hotel rooms, event venues, and restaurants.
 
 Respond in the format:
 Venue Name: [Venue Name]

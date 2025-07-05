@@ -23,10 +23,10 @@ export const listings: Listing[] = [
   },
   {
     id: '2',
-    name: 'The Lighthouse Center',
-    type: 'event-center',
+    name: 'The Lighthouse Events',
+    type: 'events',
     location: 'San Francisco, CA',
-    description: 'A modern and spacious event center perfect for weddings, conferences, and corporate events. Features state-of-the-art AV equipment.',
+    description: 'A modern and spacious events venue perfect for weddings, conferences, and corporate events. Features state-of-the-art AV equipment.',
     images: [
       'https://placehold.co/800x600.png',
       'https://placehold.co/800x600.png',
@@ -75,7 +75,7 @@ export const listings: Listing[] = [
   {
     id: '5',
     name: 'The Grand Ballroom',
-    type: 'event-center',
+    type: 'events',
     location: 'Los Angeles, CA',
     description: 'An elegant and historic ballroom, ideal for lavish weddings and galas. Holds up to 500 guests.',
     images: [
@@ -107,7 +107,7 @@ export const listings: Listing[] = [
 export const bookings: Booking[] = [
     { id: 'b1', listingId: '1', listingName: 'Grand Hyatt Hotel', startDate: '2024-08-15', endDate: '2024-08-18', guests: 2, status: 'Confirmed' },
     { id: 'b2', listingId: '3', listingName: 'La Trattoria', startDate: '2024-08-10', endDate: '2024-08-10', guests: 4, status: 'Confirmed' },
-    { id: 'b3', listingId: '2', listingName: 'The Lighthouse Center', startDate: '2024-09-01', endDate: '2024-09-01', guests: 150, status: 'Pending' },
+    { id: 'b3', listingId: '2', listingName: 'The Lighthouse Events', startDate: '2024-09-01', endDate: '2024-09-01', guests: 150, status: 'Pending' },
 ];
 
 export const getListingById = (id: string) => listings.find(l => l.id === id);

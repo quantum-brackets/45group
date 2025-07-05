@@ -1,4 +1,4 @@
-export type ListingType = 'hotel' | 'event-center' | 'restaurant';
+export type ListingType = 'hotel' | 'events' | 'restaurant';
 
 export interface Review {
   id: string;

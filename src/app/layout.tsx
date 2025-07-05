@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
   title: 'BookLocal',
-  description: 'Book hotels, event centers, and restaurants locally.',
+  description: 'Book hotels, event venues, and restaurants locally.',
 };
 
 export default function RootLayout({

@@ -28,11 +28,11 @@ export function ListingFilters() {
           <Select>
             <SelectTrigger>
               <SlidersHorizontal className="mr-2 h-4 w-4 text-muted-foreground" />
-              <SelectValue placeholder="Type of place" />
+              <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="hotel">Hotel</SelectItem>
-              <SelectItem value="event-center">Event Center</SelectItem>
+              <SelectItem value="events">Events</SelectItem>
               <SelectItem value="restaurant">Restaurant</SelectItem>
             </SelectContent>
           </Select>

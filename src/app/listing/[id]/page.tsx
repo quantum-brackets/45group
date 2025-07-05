@@ -10,13 +10,13 @@ import { BedDouble, Building2, CheckCircle, MapPin, Star, Utensils } from 'lucid
 
 const typeIcons = {
   hotel: <BedDouble className="w-5 h-5 mr-2" />,
-  'event-center': <Building2 className="w-5 h-5 mr-2" />,
+  events: <Building2 className="w-5 h-5 mr-2" />,
   restaurant: <Utensils className="w-5 h-5 mr-2" />,
 };
 
 const AITypeHints = {
     hotel: 'hotel room interior',
-    'event-center': 'conference hall',
+    events: 'conference hall',
     restaurant: 'restaurant interior',
 }
 
@@ -73,7 +73,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
               <CardHeader>
                 <CardTitle className="flex items-center">
                   {typeIcons[listing.type]}
-                  About this {listing.type.replace('-', ' ')}
+                  About this {listing.type === 'events' ? 'event' : listing.type}
                 </CardTitle>
               </CardHeader>
               <CardContent>
