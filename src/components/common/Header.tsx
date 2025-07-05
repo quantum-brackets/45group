@@ -12,6 +12,7 @@ const navLinks = [
   { href: '/', label: 'Browse' },
   { href: '/ai-recommendations', label: 'AI Recommendations' },
   { href: '/dashboard', label: 'Dashboard' },
+  { href: '/dashboard/bookings', label: 'Bookings' },
 ];
 
 export function Header() {

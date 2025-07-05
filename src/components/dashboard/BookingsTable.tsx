@@ -1,45 +1,53 @@
-
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
-import type { Listing } from '@/lib/types';
+import type { Booking } from '@/lib/types';
 
-interface DashboardTablesProps {
-  listings: Listing[];
+interface BookingsTableProps {
+  bookings: Booking[];
 }
 
-export function DashboardTables({ listings }: DashboardTablesProps) {
+export function BookingsTable({ bookings }: BookingsTableProps) {
   const router = useRouter();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Manage Listings</CardTitle>
-        <CardDescription>View and manage all property listings.</CardDescription>
+        <CardTitle>All Bookings</CardTitle>
+        <CardDescription>Overview of all bookings.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead className="text-right">Price</TableHead>
-              <TableHead><span className="sr-only">Actions</span></TableHead>
+              <TableHead>Venue</TableHead>
+              <TableHead>Dates</TableHead>
+              <TableHead>Guests</TableHead>
+              <TableHead>Status</TableHead>
+                <TableHead><span className="sr-only">Actions</span></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {listings.map((listing) => (
-              <TableRow key={listing.id}>
-                <TableCell className="font-medium">{listing.name}</TableCell>
-                <TableCell>{listing.type.charAt(0).toUpperCase() + listing.type.slice(1)}</TableCell>
-                <TableCell>{listing.location}</TableCell>
-                <TableCell className="text-right">${listing.price}/{listing.priceUnit}</TableCell>
+            {bookings.map((booking) => (
+              <TableRow key={booking.id}>
+                <TableCell className="font-medium">{booking.listingName}</TableCell>
+                <TableCell>
+                  {booking.startDate === booking.endDate
+                    ? booking.startDate
+                    : `${booking.startDate} to ${booking.endDate}`}
+                </TableCell>
+                <TableCell>{booking.guests}</TableCell>
+                <TableCell>
+                  <Badge variant={booking.status === 'Confirmed' ? 'default' : 'secondary'} className={booking.status === 'Confirmed' ? 'bg-accent text-accent-foreground' : ''}>
+                    {booking.status}
+                  </Badge>
+                </TableCell>
                 <TableCell className="text-right">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -50,9 +58,7 @@ export function DashboardTables({ listings }: DashboardTablesProps) {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-listing/${listing.id}`)}>Edit</DropdownMenuItem>
-                            <DropdownMenuItem>View Bookings</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/dashboard/booking/${booking.id}`)}>View Details</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </TableCell>
