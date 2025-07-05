@@ -54,9 +54,12 @@ export function BookingForm({ listing }: BookingFormProps) {
             )}
           </div>
           <Calendar
+            initialFocus
             mode="range"
+            defaultMonth={date?.from}
             selected={date}
             onSelect={setDate}
+            numberOfMonths={2}
             className="rounded-md border"
             disabled={(day) => day < new Date(new Date().setHours(0, 0, 0, 0))}
           />
