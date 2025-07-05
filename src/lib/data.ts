@@ -1,119 +1,84 @@
-import type { Listing, Booking } from './types';
+import type { Listing, Booking, ListingType } from './types';
+import { db } from './db';
+import { DateRange } from 'react-day-picker';
 
-export const listings: Listing[] = [
-  {
-    id: '1',
-    name: 'Grand Hyatt Hotel',
-    type: 'hotel',
-    location: 'New York, NY',
-    description: 'A luxurious hotel in the heart of Manhattan with stunning city views. Perfect for both business and leisure travelers.',
-    images: [
-      'https://placehold.co/800x600.png',
-      'https://placehold.co/800x600.png',
-      'https://placehold.co/800x600.png',
-    ],
-    price: 350,
-    priceUnit: 'night',
-    rating: 4.8,
-    reviews: [
-      { id: 'r1', author: 'John Doe', avatar: 'https://placehold.co/100x100.png', rating: 5, comment: 'Amazing experience! The staff was incredibly friendly and the room was pristine.' },
-      { id: 'r2', author: 'Jane Smith', avatar: 'https://placehold.co/100x100.png', rating: 4, comment: 'Great location and beautiful views. The breakfast could be better.' },
-    ],
-    features: ['Free WiFi', 'Pool', 'Gym', 'Pet Friendly'],
-    maxGuests: 4,
-  },
-  {
-    id: '2',
-    name: 'The Lighthouse Events',
-    type: 'events',
-    location: 'San Francisco, CA',
-    description: 'A modern and spacious events venue perfect for weddings, conferences, and corporate events. Features state-of-the-art AV equipment.',
-    images: [
-      'https://placehold.co/800x600.png',
-      'https://placehold.co/800x600.png',
-    ],
-    price: 500,
-    priceUnit: 'hour',
-    rating: 4.9,
-    reviews: [
-      { id: 'r3', author: 'Event Planners Inc.', avatar: 'https://placehold.co/100x100.png', rating: 5, comment: 'Our go-to venue for all major corporate events. Flawless execution every time.' },
-    ],
-    features: ['AV Equipment', 'Catering Available', 'Parking', ' breakout rooms'],
-    maxGuests: 200,
-  },
-  {
-    id: '3',
-    name: 'La Trattoria',
-    type: 'restaurant',
-    location: 'Chicago, IL',
-    description: 'Authentic Italian cuisine in a cozy and rustic setting. Known for our homemade pasta and extensive wine list.',
-    images: [
-      'https://placehold.co/800x600.png',
-    ],
-    price: 75,
-    priceUnit: 'person',
-    rating: 4.7,
-    reviews: [
-      { id: 'r4', author: 'Foodie Critic', avatar: 'https://placehold.co/100x100.png', rating: 5, comment: 'The best carbonara I have ever had. A true gem in Chicago.' },
-    ],
-    features: ['Outdoor Seating', 'Full Bar', 'Reservations', 'Vegan Options'],
-    maxGuests: 50,
-  },
-  {
-    id: '4',
-    name: 'Lakeside Inn',
-    type: 'hotel',
-    location: 'Austin, TX',
-    description: 'A charming inn with beautiful lake views. Offers a peaceful retreat from the bustling city.',
-    images: [
-      'https://placehold.co/800x600.png',
-      'https://placehold.co/800x600.png',
-    ],
-    price: 220,
-    priceUnit: 'night',
-    rating: 4.6,
-    reviews: [],
-    features: ['Free WiFi', 'Lake Access', 'Free Breakfast'],
-    maxGuests: 3,
-  },
-  {
-    id: '5',
-    name: 'The Grand Ballroom',
-    type: 'events',
-    location: 'Los Angeles, CA',
-    description: 'An elegant and historic ballroom, ideal for lavish weddings and galas. Holds up to 500 guests.',
-    images: [
-      'https://placehold.co/800x600.png',
-    ],
-    price: 1200,
-    priceUnit: 'hour',
-    rating: 5.0,
-    reviews: [],
-    features: ['Stage', 'Dance Floor', 'Valet Parking', 'Historic Building'],
-    maxGuests: 500,
-  },
-  {
-    id: '6',
-    name: 'The Corner Bistro',
-    type: 'restaurant',
-    location: 'Boston, MA',
-    description: 'A trendy bistro serving modern American cuisine with a focus on local ingredients. Great cocktails.',
-    images: [
-      'https://placehold.co/800x600.png',
-    ],
-    price: 60,
-    priceUnit: 'person',
-    rating: 4.5,
-    reviews: [],
-    features: ['Craft Cocktails', 'Local Ingredients', 'Reservations Recommended'],
-    maxGuests: 40,
-  },
-];
+// Helper to parse listing data from the database
+function parseListing(listing: any): Listing {
+  return {
+    ...listing,
+    images: JSON.parse(listing.images),
+    reviews: JSON.parse(listing.reviews),
+    features: JSON.parse(listing.features),
+  };
+}
 
-export const bookings: Booking[] = [
-    { id: 'b1', listingId: '1', listingName: 'Grand Hyatt Hotel', startDate: '2024-08-15', endDate: '2024-08-18', guests: 2, status: 'Confirmed' },
-    { id: 'b2', listingId: '3', listingName: 'La Trattoria', startDate: '2024-08-10', endDate: '2024-08-10', guests: 4, status: 'Confirmed' },
-    { id: 'b3', listingId: '2', listingName: 'The Lighthouse Events', startDate: '2024-09-01', endDate: '2024-09-01', guests: 150, status: 'Pending' },
-];
+export async function getAllListings(): Promise<Listing[]> {
+  const stmt = db.prepare('SELECT * FROM listings');
+  const listings = stmt.all() as any[];
+  return listings.map(parseListing);
+}
 
-export const getListingById = (id: string) => listings.find(l => l.id === id);
+export async function getListingById(id: string): Promise<Listing | null> {
+  const stmt = db.prepare('SELECT * FROM listings WHERE id = ?');
+  const listing = stmt.get(id) as any;
+  if (!listing) return null;
+  return parseListing(listing);
+}
+
+export async function getAllBookings(): Promise<Booking[]> {
+  const stmt = db.prepare('SELECT * FROM bookings');
+  return stmt.all() as Booking[];
+}
+
+interface FilterValues {
+  location: string;
+  type: ListingType | '';
+  guests: string;
+  date: DateRange | undefined;
+}
+
+export async function getFilteredListings(filters: FilterValues): Promise<Listing[]> {
+  let query = 'SELECT * FROM listings';
+  const whereClauses: string[] = [];
+  const params: (string | number)[] = [];
+
+  if (filters.location) {
+    whereClauses.push('location LIKE ?');
+    params.push(`%${filters.location}%`);
+  }
+  if (filters.type) {
+    whereClauses.push('type = ?');
+    params.push(filters.type);
+  }
+  if (filters.guests) {
+    const numGuests = parseInt(filters.guests, 10);
+    if (!isNaN(numGuests)) {
+      whereClauses.push('maxGuests >= ?');
+      params.push(numGuests);
+    }
+  }
+
+  if (filters.date?.from) {
+    const fromDate = filters.date.from.toISOString().split('T')[0];
+    const toDate = (filters.date.to || filters.date.from).toISOString().split('T')[0];
+    
+    whereClauses.push(`
+      id NOT IN (
+        SELECT listingId FROM bookings
+        WHERE status = 'Confirmed' AND (
+          -- Overlap check: (StartA <= EndB) AND (EndA >= StartB)
+          endDate >= ? AND startDate <= ?
+        )
+      )
+    `);
+    params.push(fromDate, toDate);
+  }
+
+  if (whereClauses.length > 0) {
+    query += ' WHERE ' + whereClauses.join(' AND ');
+  }
+
+  const stmt = db.prepare(query);
+  const listings = stmt.all(...params) as any[];
+  return listings.map(parseListing);
+}

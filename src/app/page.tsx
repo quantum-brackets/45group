@@ -1,73 +1,32 @@
-"use client";
-
-import { useState, useCallback } from 'react';
+import { getFilteredListings } from '@/lib/data';
 import { ListingFilters } from '@/components/listing/ListingFilters';
 import { ListingCard } from '@/components/listing/ListingCard';
-import { listings, bookings } from '@/lib/data';
-import type { Listing, ListingType } from '@/lib/types';
-import type { DateRange } from 'react-day-picker';
+import type { Listing } from '@/lib/types';
+import { DateRange } from 'react-day-picker';
+import { addDays, parseISO } from 'date-fns';
 
-interface FilterValues {
-  location: string;
-  type: ListingType | '';
-  guests: string;
-  date: DateRange | undefined;
+interface HomeProps {
+  searchParams: {
+    location?: string;
+    type?: string;
+    guests?: string;
+    from?: string;
+    to?: string;
+  };
 }
 
-export default function Home() {
-  const [filteredListings, setFilteredListings] = useState<Listing[]>(listings);
+export default async function Home({ searchParams }: HomeProps) {
+  const filters = {
+    location: searchParams.location || '',
+    type: (searchParams.type as Listing['type']) || '',
+    guests: searchParams.guests || '',
+    date:
+      searchParams.from 
+      ? { from: parseISO(searchParams.from), to: searchParams.to ? parseISO(searchParams.to) : parseISO(searchParams.from) }
+      : undefined,
+  };
 
-  const handleFilterChange = useCallback((filters: FilterValues) => {
-    let newFilteredListings = [...listings];
-
-    // Filter by location
-    if (filters.location) {
-      newFilteredListings = newFilteredListings.filter(listing =>
-        listing.location.toLowerCase().includes(filters.location.toLowerCase())
-      );
-    }
-
-    // Filter by type
-    if (filters.type) {
-      newFilteredListings = newFilteredListings.filter(
-        listing => listing.type === filters.type
-      );
-    }
-    
-    // Filter by guests
-    if (filters.guests) {
-      const numGuests = parseInt(filters.guests, 10);
-      if (!isNaN(numGuests)) {
-        newFilteredListings = newFilteredListings.filter(
-          listing => listing.maxGuests >= numGuests
-        );
-      }
-    }
-
-    // Filter by date availability
-    if (filters.date?.from) {
-      const selectedFrom = filters.date.from;
-      // If only a single date is selected, treat it as a one-day range.
-      const selectedTo = filters.date.to || filters.date.from;
-
-      newFilteredListings = newFilteredListings.filter(listing => {
-        // Check for any confirmed booking that overlaps with the selected date range
-        const isUnavailable = bookings.some(booking => {
-          if (booking.listingId !== listing.id || booking.status !== 'Confirmed') {
-            return false;
-          }
-          const bookingFrom = new Date(booking.startDate);
-          const bookingTo = new Date(booking.endDate);
-          
-          // Check for overlap: (StartA <= EndB) and (EndA >= StartB)
-          return selectedFrom <= bookingTo && selectedTo >= bookingFrom;
-        });
-        return !isUnavailable;
-      });
-    }
-
-    setFilteredListings(newFilteredListings);
-  }, []);
+  const filteredListings = await getFilteredListings(filters);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -81,7 +40,7 @@ export default function Home() {
       </header>
       
       <section className="mb-12">
-        <ListingFilters onFilterChange={handleFilterChange} />
+        <ListingFilters />
       </section>
 
       <section>

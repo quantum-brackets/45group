@@ -20,8 +20,8 @@ const AITypeHints = {
     restaurant: 'restaurant interior',
 }
 
-export default function ListingDetailPage({ params }: { params: { id: string } }) {
-  const listing = getListingById(params.id);
+export default async function ListingDetailPage({ params }: { params: { id: string } }) {
+  const listing = await getListingById(params.id);
 
   if (!listing) {
     notFound();

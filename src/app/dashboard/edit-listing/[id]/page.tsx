@@ -3,8 +3,8 @@ import { notFound } from 'next/navigation';
 import { getListingById } from '@/lib/data';
 import { EditListingForm } from '@/components/dashboard/EditListingForm';
 
-export default function EditListingPage({ params }: { params: { id: string } }) {
-  const listing = getListingById(params.id);
+export default async function EditListingPage({ params }: { params: { id: string } }) {
+  const listing = await getListingById(params.id);
 
   if (!listing) {
     notFound();

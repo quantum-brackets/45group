@@ -1,42 +1,49 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { MapPin, Users, Calendar as CalendarIcon, SlidersHorizontal, Search } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { ListingType } from '@/lib/types';
 
-interface FilterValues {
-  location: string;
-  type: ListingType | '';
-  guests: string;
-  date: DateRange | undefined;
-}
+export function ListingFilters() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-interface ListingFiltersProps {
-  onFilterChange: (filters: FilterValues) => void;
-}
-
-export function ListingFilters({ onFilterChange }: ListingFiltersProps) {
   const [location, setLocation] = useState('');
   const [type, setType] = useState<ListingType | ''>('');
   const [guests, setGuests] = useState('');
   const [date, setDate] = useState<DateRange | undefined>();
 
+  useEffect(() => {
+    setLocation(searchParams.get('location') || '');
+    setType((searchParams.get('type') as ListingType) || '');
+    setGuests(searchParams.get('guests') || '');
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
+    if (from) {
+      setDate({ from: parseISO(from), to: to ? parseISO(to) : undefined });
+    } else {
+      setDate(undefined);
+    }
+  }, [searchParams]);
+
   const handleSearch = () => {
-    onFilterChange({
-      location,
-      type,
-      guests,
-      date,
-    });
+    const params = new URLSearchParams(searchParams);
+    if (location) params.set('location', location); else params.delete('location');
+    if (type) params.set('type', type); else params.delete('type');
+    if (guests) params.set('guests', guests); else params.delete('guests');
+    if (date?.from) params.set('from', date.from.toISOString()); else params.delete('from');
+    if (date?.to) params.set('to', date.to.toISOString()); else params.delete('to');
+    router.push(`/?${params.toString()}`);
   };
 
   return (
