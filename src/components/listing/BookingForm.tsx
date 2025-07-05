@@ -59,7 +59,7 @@ export function BookingForm({ listing }: BookingFormProps) {
             defaultMonth={date?.from}
             selected={date}
             onSelect={setDate}
-            numberOfMonths={2}
+            numberOfMonths={1}
             className="rounded-md border"
             disabled={(day) => day < new Date(new Date().setHours(0, 0, 0, 0))}
           />
