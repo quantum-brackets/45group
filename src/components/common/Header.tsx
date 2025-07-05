@@ -22,7 +22,7 @@ export function Header() {
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">
             <Mountain className="h-6 w-6 text-primary" />
-            <span className="font-headline">BookLocal</span>
+            <span className="font-headline">Book45</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
             {navLinks.map((link) => (
@@ -52,7 +52,7 @@ export function Header() {
               <nav className="grid gap-6 text-lg font-medium p-6">
                 <Link href="/" className="flex items-center gap-2 font-bold text-lg mb-4">
                   <Mountain className="h-6 w-6 text-primary" />
-                  <span className="font-headline">BookLocal</span>
+                  <span className="font-headline">Book45</span>
                 </Link>
                 {navLinks.map((link) => (
                   <Link
