@@ -140,3 +140,51 @@
 2025-07-06T18:27:14.315Z - [DB_INIT] Users table seeded.
 2025-07-06T18:27:14.316Z - [DB_INIT] Listings table seeded.
 2025-07-06T18:27:14.323Z - [DB_INIT] Bookings table seeded.
+2025-07-06T18:33:04.079Z - [DB_INIT] Reset flag found or table structure is old. Dropping all tables for reseeding.
+2025-07-06T18:33:04.083Z - [DB_INIT] Database not found or empty. Starting seeding process...
+2025-07-06T18:33:04.085Z - [DB_INIT] Tables created.
+2025-07-06T18:33:04.087Z - [DB_INIT] Hashing password for user: admin@45group.org
+2025-07-06T18:33:04.938Z - [HASH] Hashing password. Salt: 81466bf37c3df1d5a3503f1f7c91deab, Hash: 81466bf37c3df1d5a3503f1f7c91deab:65,191,103,5,177,147,219,25,179,30,222,111,48,241,27,255,126,0,155,204,40,47,183,46,59,136,220,131,180,19,255,125,109,210,67,129,239,21,20,196,82,53,175,7,78,181,68,76,30,167,10,187,60,207,147,215,121,220,67,32,169,252,45,225
+2025-07-06T18:33:04.942Z - [DB_INIT] Hashing password for user: guest@45group.org
+2025-07-06T18:33:05.437Z - [HASH] Hashing password. Salt: b51af869b51866f10e119b7a99e8286a, Hash: b51af869b51866f10e119b7a99e8286a:209,138,160,252,115,53,11,123,37,69,6,145,221,185,94,217,225,69,15,164,19,59,2,68,66,255,243,230,204,249,112,192,38,99,117,47,124,216,25,173,238,87,124,91,124,129,213,144,210,93,251,113,71,146,88,151,160,131,22,56,58,111,161,149
+2025-07-06T18:33:05.442Z - [DB_INIT] Users table seeded.
+2025-07-06T18:33:05.448Z - [DB_INIT] Listings table seeded.
+2025-07-06T18:33:05.455Z - [DB_INIT] Bookings table seeded.
+2025-07-06T18:33:06.431Z - [SETPASS] Error updating password for admin@45group.org: SqliteError: FOREIGN KEY constraint failed
+2025-07-06T18:34:31.852Z - [DB_INIT] Reset flag found or table structure is old. Dropping all tables for reseeding.
+2025-07-06T18:34:31.955Z - [DB_INIT] Database not found or empty. Starting seeding process...
+2025-07-06T18:34:32.305Z - [DB_INIT] Tables created.
+2025-07-06T18:34:32.496Z - [DB_INIT] Hashing password for user: admin@45group.org
+2025-07-06T18:34:33.001Z - [HASH] Hashing password. Salt: 8268b16461a22b61edfba83c22bb97c4, Hash: 8268b16461a22b61edfba83c22bb97c4:217,41,38,45,170,170,101,125,105,178,13,185,186,66,87,54,52,38,87,190,162,224,8,41,48,17,71,162,79,230,225,58,194,44,20,95,117,215,105,231,239,119,132,171,112,19,66,139,163,35,43,189,84,252,227,122,208,226,125,237,99,111,115,167
+2025-07-06T18:34:33.003Z - [DB_INIT] Hashing password for user: guest@45group.org
+2025-07-06T18:34:33.522Z - [HASH] Hashing password. Salt: 79457f33ff842e6cccc8098c043654ea, Hash: 79457f33ff842e6cccc8098c043654ea:43,173,243,46,142,151,78,240,208,97,228,39,83,114,122,226,239,241,193,223,196,113,255,57,171,59,93,189,143,167,85,121,57,143,146,241,208,89,107,154,153,90,164,160,180,254,13,171,81,205,120,67,50,145,165,112,100,19,243,170,12,57,69,125
+2025-07-06T18:34:33.526Z - [DB_INIT] Users table seeded.
+2025-07-06T18:34:33.531Z - [DB_INIT] Listings table seeded.
+2025-07-06T18:34:33.532Z - [DB_INIT] Bookings table seeded.
+2025-07-06T18:35:47.411Z - [DB_INIT] Reset flag found or table structure is old. Dropping all tables for reseeding.
+2025-07-06T18:35:47.483Z - [DB_INIT] Database not found or empty. Starting seeding process...
+2025-07-06T18:35:47.604Z - [DB_INIT] Tables created.
+2025-07-06T18:35:47.746Z - [DB_INIT] Hashing password for user: admin@45group.org
+2025-07-06T18:35:48.242Z - [HASH] Hashing password. Salt: 7aaaeb212564a29c5ed559bedccfef8a, Hash: 7aaaeb212564a29c5ed559bedccfef8a:113,49,159,179,20,227,6,237,191,230,87,109,235,25,98,199,224,177,244,202,107,155,3,124,5,56,118,8,174,133,116,164,246,97,213,92,195,103,187,250,237,192,55,17,179,137,237,7,134,11,200,105,73,2,119,152,3,94,250,97,164,236,194,217
+2025-07-06T18:35:48.247Z - [DB_INIT] Hashing password for user: guest@45group.org
+2025-07-06T18:35:48.769Z - [HASH] Hashing password. Salt: 3102c58d332d6e10abdfcedd85d78127, Hash: 3102c58d332d6e10abdfcedd85d78127:144,74,252,158,55,102,135,167,30,236,106,125,205,163,102,180,165,188,0,217,26,91,31,130,156,39,121,212,161,212,232,82,204,144,121,232,21,21,28,252,0,81,185,253,114,213,63,185,253,204,3,120,236,58,24,4,130,82,50,75,196,69,19,107
+2025-07-06T18:35:48.771Z - [DB_INIT] Users table seeded.
+2025-07-06T18:35:48.775Z - [DB_INIT] Listings table seeded.
+2025-07-06T18:35:48.776Z - [DB_INIT] Bookings table seeded.
+2025-07-06T18:36:33.524Z - [DB_INIT] Reset flag found or table structure is old. Dropping all tables for reseeding.
+2025-07-06T18:36:33.630Z - [DB_INIT] Database not found or empty. Starting seeding process...
+2025-07-06T18:36:34.093Z - [DB_INIT] Tables created.
+2025-07-06T18:36:34.259Z - [DB_INIT] Hashing password for user: admin@45group.org
+2025-07-06T18:36:34.763Z - [HASH] Hashing password. Salt: fecf29e74ce213ace7bbf55740f5faec, Hash: fecf29e74ce213ace7bbf55740f5faec:36,49,59,211,197,12,10,151,255,190,209,183,47,21,68,61,155,157,137,36,192,78,138,170,120,35,198,72,35,130,82,70,81,116,99,24,14,93,130,57,202,23,184,109,113,43,51,50,140,229,38,126,237,34,188,125,2,148,4,178,63,115,204,207
+2025-07-06T18:36:34.764Z - [DB_INIT] Hashing password for user: guest@45group.org
+2025-07-06T18:36:35.299Z - [HASH] Hashing password. Salt: 9862e117f13ba716f75d25dc9e50210d, Hash: 9862e117f13ba716f75d25dc9e50210d:207,105,26,44,65,132,97,191,204,155,22,199,127,116,114,160,200,232,44,146,70,243,60,214,197,253,125,76,90,111,22,243,80,69,31,180,35,37,85,50,178,137,131,251,45,43,201,251,123,93,98,9,196,138,178,25,252,155,3,82,234,3,128,22
+2025-07-06T18:36:35.302Z - [DB_INIT] Users table seeded.
+2025-07-06T18:36:35.306Z - [DB_INIT] Listings table seeded.
+2025-07-06T18:36:35.311Z - [DB_INIT] Bookings table seeded.
+2025-07-06T18:37:10.925Z - [DB_INIT] Reset flag found or table structure is old. Dropping all tables for reseeding.
+2025-07-06T18:37:11.117Z - [DB_INIT] Database not found or empty. Starting seeding process...
+2025-07-06T18:37:11.226Z - [DB_INIT] Tables created.
+2025-07-06T18:37:11.846Z - [HASH] Hashing password. Salt: ff8e01322e96be791379d4d5560dddae, Hash: ff8e01322e96be791379d4d5560dddae:159,155,159,228,44,236,159,248,104,252,171,99,76,99,122,149,213,26,159,161,254,241,189,110,136,96,165,50,65,165,31,124,251,244,49,63,193,249,7,35,102,230,56,146,107,193,216,86,0,150,44,7,238,120,206,171,232,74,24,142,204,15,203,34
+2025-07-06T18:37:12.355Z - [HASH] Hashing password. Salt: 7a0248f9a8b20ca97faa3b22bab18b3c, Hash: 7a0248f9a8b20ca97faa3b22bab18b3c:221,152,204,12,131,179,237,33,176,112,29,119,171,184,28,148,33,242,70,184,42,207,68,38,132,206,77,192,15,102,147,145,211,84,214,96,94,79,208,126,119,50,168,105,202,247,71,152,37,147,27,180,196,30,149,77,130,15,239,233,46,34,177,223
+2025-07-06T18:37:12.356Z - [DB_INIT] All passwords hashed.
+2025-07-06T18:37:12.359Z - [DB_INIT] Seeding transaction completed successfully.

@@ -153,44 +153,60 @@ export async function updatePasswordAction(data: z.infer<typeof UpdatePasswordSc
   const { email, password } = validatedFields.data;
 
   try {
+    // Step 1: Get DB and find user
+    await logToFile(`[SETPASS] Action started for user: ${email}`);
     const db = await getDb();
-    const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as User | undefined;
+    const user = db.prepare('SELECT id, password FROM users WHERE email = ?').get(email) as User | undefined;
+
     if (!user) {
-      await logToFile(`[SETPASS] Attempted to set password for non-existent user: ${email}`);
-      return { error: 'User with that email does not exist.' };
+      await logToFile(`[SETPASS] FAILURE: User with email ${email} not found.`);
+      return { error: `Update failed: User with email "${email}" does not exist.` };
     }
+    await logToFile(`[SETPASS] Found user ${email}. Current hash: ${user.password}`);
 
-    await logToFile(`[SETPASS] Hashing new password for user: ${email}`);
+    // Step 2: Hash new password
+    await logToFile(`[SETPASS] Hashing new password for ${email}.`);
     const hashedPassword = await hashPassword(password);
-    
-    await logToFile(`[SETPASS]   - New Hashed Password: ${hashedPassword}`);
+    await logToFile(`[SETPASS] New hashed password for ${email}: ${hashedPassword}`);
 
-    const stmt = db.prepare('UPDATE users SET password = ? WHERE id = ?');
-    stmt.run(hashedPassword, user.id);
-    await logToFile(`[SETPASS] Successfully updated password for user: ${email} in the database.`);
-    
-    // --- Automatic Verification Step ---
-    await logToFile(`[SETPASS_VERIFY] Immediately verifying new password for ${email}.`);
-    const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id) as User | undefined;
-    
-    if (!updatedUser || !updatedUser.password) {
-      await logToFile(`[SETPASS_VERIFY] Could not retrieve updated user or password from DB for verification.`);
-      return { error: 'Password updated, but failed to re-fetch user for verification.' };
+    // Step 3: Update user password in DB
+    await logToFile(`[SETPASS] Updating password in database for ${email}.`);
+    const stmt = db.prepare('UPDATE users SET password = ? WHERE email = ?');
+    const info = stmt.run(hashedPassword, email);
+    if (info.changes === 0) {
+        await logToFile(`[SETPASS] FAILURE: Database update failed. No rows were changed for email ${email}.`);
+        return { error: 'Database update failed: Could not find user to update.' };
     }
+    await logToFile(`[SETPASS] Database update successful for ${email}. Rows affected: ${info.changes}`);
 
+    // --- Automatic Verification Step ---
+    await logToFile(`[SETPASS_VERIFY] Starting immediate verification for ${email}.`);
+    
+    // Step 4: Re-fetch user to get the newly saved password
+    const updatedUser = db.prepare('SELECT id, password FROM users WHERE email = ?').get(email) as User | undefined;
+    if (!updatedUser || !updatedUser.password) {
+      await logToFile(`[SETPASS_VERIFY] FAILURE: Could not re-fetch user ${email} from DB for verification.`);
+      return { error: 'Verification failed: Password was updated, but user could not be found immediately after.' };
+    }
+    await logToFile(`[SETPASS_VERIFY] Fetched updated user. Verifying password against new hash: ${updatedUser.password}`);
+
+    // Step 5: Verify the plain text password against the new hash
     const passwordsMatch = await verifyPassword(password, updatedUser.password);
 
     if (passwordsMatch) {
       await logToFile(`[SETPASS_VERIFY] SUCCESS: Verification for ${email} passed.`);
       return { success: `Password for ${email} was updated and verified successfully.` };
     } else {
-      await logToFile(`[SETPASS_VERIFY] FAILED: Verification for ${email} failed. The password in the database does not match the one just set.`);
-      return { error: `Password for ${email} was updated, but immediate verification FAILED. This suggests an issue with the hashing or comparison logic.` };
+      await logToFile(`[SETPASS_VERIFY] FAILED: Password mismatch for ${email} after update.`);
+      await logToFile(`[SETPASS_VERIFY]   - Original Password Sent: ${password}`);
+      await logToFile(`[SETPASS_VERIFY]   - Hash in DB after update: ${updatedUser.password}`);
+      return { error: `Verification FAILED: The password for ${email} was updated, but it could not be verified. This indicates a potential problem with the hashing or database logic.` };
     }
 
   } catch (error) {
     console.error(error);
-    await logToFile(`[SETPASS] Error updating password for ${email}: ${error}`);
-    return { error: 'An unexpected error occurred.' };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    await logToFile(`[SETPASS] CRITICAL ERROR for ${email}: ${errorMessage}`);
+    return { error: `An unexpected error occurred during the process: ${errorMessage}` };
   }
 }

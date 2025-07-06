@@ -22,6 +22,7 @@ async function initialize() {
             return db;
         }
         await logToFile('[DB_INIT] Reset flag found or table structure is old. Dropping all tables for reseeding.');
+        newDb.exec('DROP TABLE IF EXISTS temp_users');
         newDb.exec('DROP TABLE IF EXISTS bookings');
         newDb.exec('DROP TABLE IF EXISTS listings');
         newDb.exec('DROP TABLE IF EXISTS users');
@@ -70,76 +71,69 @@ async function initialize() {
     `);
     await logToFile('[DB_INIT] Tables created.');
 
-    // --- Seed Data ---
-    
-    // Seed Users
+    // Step 1: Perform all async operations (password hashing) first.
     const usersWithHashedPasswords = [];
     for (const user of users) {
         if (user.password) {
-            await logToFile(`[DB_INIT] Hashing password for user: ${user.email}`);
             const hashedPassword = await hashPassword(user.password);
             usersWithHashedPasswords.push({ ...user, password: hashedPassword });
         }
     }
-    
-    const insertUser = newDb.prepare(`
-        INSERT INTO users (id, name, email, password, role)
-        VALUES (@id, @name, @email, @password, @role)
-    `);
+    await logToFile('[DB_INIT] All passwords hashed.');
 
-    const insertUsers = newDb.transaction((usersToInsert) => {
-        for (const user of usersToInsert) {
+    // Step 2: Perform all synchronous DB operations within a single transaction.
+    const seed = newDb.transaction(() => {
+        newDb.pragma('foreign_keys = OFF');
+
+        const insertUser = newDb.prepare(`
+            INSERT INTO users (id, name, email, password, role)
+            VALUES (@id, @name, @email, @password, @role)
+        `);
+        for (const user of usersWithHashedPasswords) {
             insertUser.run(user);
         }
-    });
 
-    insertUsers(usersWithHashedPasswords);
-    await logToFile('[DB_INIT] Users table seeded.');
-
-
-    // Seed Listings
-    const insertListing = newDb.prepare(`
-        INSERT INTO listings (id, name, type, location, description, images, price, priceUnit, rating, reviews, features, maxGuests)
-        VALUES (@id, @name, @type, @location, @description, @images, @price, @priceUnit, @rating, @reviews, @features, @maxGuests)
-    `);
-
-    const insertListings = newDb.transaction((listingsToInsert) => {
-        for (const listing of listingsToInsert) {
-        insertListing.run({
-            ...listing,
-            images: JSON.stringify(listing.images),
-            reviews: JSON.stringify(listing.reviews),
-            features: JSON.stringify(listing.features),
-        });
+        const insertListing = newDb.prepare(`
+            INSERT INTO listings (id, name, type, location, description, images, price, priceUnit, rating, reviews, features, maxGuests)
+            VALUES (@id, @name, @type, @location, @description, @images, @price, @priceUnit, @rating, @reviews, @features, @maxGuests)
+        `);
+        for (const listing of listings) {
+            insertListing.run({
+                ...listing,
+                images: JSON.stringify(listing.images),
+                reviews: JSON.stringify(listing.reviews),
+                features: JSON.stringify(listing.features),
+            });
         }
-    });
 
-    insertListings(listings);
-    await logToFile('[DB_INIT] Listings table seeded.');
-
-    // Seed Bookings
-    const insertBooking = newDb.prepare(`
-        INSERT INTO bookings (id, listingId, userId, listingName, startDate, endDate, guests, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertBookings = newDb.transaction((bookingsToInsert) => {
-        for (const booking of bookingsToInsert) {
-        insertBooking.run(
-            booking.id,
-            booking.listingId,
-            booking.userId,
-            booking.listingName,
-            booking.startDate,
-            booking.endDate,
-            booking.guests,
-            booking.status
-        );
+        const insertBooking = newDb.prepare(`
+            INSERT INTO bookings (id, listingId, userId, listingName, startDate, endDate, guests, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        for (const booking of bookings) {
+            insertBooking.run(
+                booking.id,
+                booking.listingId,
+                booking.userId,
+                booking.listingName,
+                booking.startDate,
+                booking.endDate,
+                booking.guests,
+                booking.status
+            );
         }
+        
+        newDb.pragma('foreign_keys = ON');
     });
 
-    insertBookings(bookings);
-    await logToFile('[DB_INIT] Bookings table seeded.');
+    try {
+        seed();
+        await logToFile('[DB_INIT] Seeding transaction completed successfully.');
+    } catch(err) {
+        const error = err as Error;
+        await logToFile(`[DB_INIT] Seeding transaction failed: ${error.message}`);
+        throw error;
+    }
     
     // Remove reset_flag column after seeding
     newDb.exec('DROP TABLE IF EXISTS temp_users');
