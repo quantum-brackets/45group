@@ -6,11 +6,11 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransition, useState } from "react";
 import { login } from "@/lib/auth";
+import { useSearchParams } from "next/navigation";
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 
@@ -18,6 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(1, "Password is required."),
+  from: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -25,12 +26,15 @@ type FormValues = z.infer<typeof formSchema>;
 export function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const from = searchParams.get('from');
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
       password: "",
+      from: from || undefined,
     },
   });
 
@@ -54,6 +58,7 @@ export function LoginForm() {
                 <AlertDescription>{error}</AlertDescription>
             </Alert>
         )}
+        <input type="hidden" {...form.register('from')} />
         <FormField
           control={form.control}
           name="email"

@@ -1,4 +1,3 @@
-
 'use server'
 
 import { z } from 'zod';
@@ -7,12 +6,12 @@ import { createSession } from './session';
 import { redirect } from 'next/navigation';
 import { randomUUID } from 'crypto';
 import type { User } from './types';
-import { logToFile } from './logger';
 import { hashPassword, verifyPassword } from './password';
 
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address.'),
   password: z.string().min(1, 'Password is required.'),
+  from: z.string().optional(),
 });
 
 export async function login(formData: z.infer<typeof LoginSchema>) {
@@ -21,41 +20,30 @@ export async function login(formData: z.infer<typeof LoginSchema>) {
     return { error: 'Invalid fields.' };
   }
 
-  const { email, password } = validatedFields.data;
-  let userRole: User['role'] = 'guest';
+  const { email, password, from } = validatedFields.data;
 
   try {
     const db = await getDb();
-    await logToFile(`[LOGIN] Attempting login for email: ${email}`);
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
     
     if (!user || !user.password) {
-      await logToFile(`[LOGIN] User not found or has no password for email: ${email}`);
       return { error: 'No account found with this email.' };
     }
-    
-    await logToFile(`[LOGIN] User found: ${user.email}. Role: ${user.role}`);
-    
+        
     const passwordsMatch = await verifyPassword(password, user.password);
 
     if (!passwordsMatch) {
-      await logToFile(`[LOGIN] Password mismatch for user: ${email}`);
       return { error: 'Incorrect password.' };
     }
     
-    await logToFile(`[LOGIN] Login successful for user: ${email}. Creating session.`);
     await createSession(user);
-    userRole = user.role;
+    
+    const redirectTo = from || (user.role === 'admin' ? '/admin' : '/bookings');
+    redirect(redirectTo);
 
   } catch (error) {
-    await logToFile(`[LOGIN] An unexpected error occurred during login: ${error}`);
+    console.error(error);
     return { error: 'An unexpected error occurred.' };
-  }
-  
-  if (userRole === 'admin') {
-    redirect('/admin');
-  } else {
-    redirect('/bookings');
   }
 }
 
@@ -86,11 +74,10 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
         const stmt = db.prepare('INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)');
         stmt.run(userId, name, email, hashedPassword, 'guest');
         
-        await logToFile(`[SIGNUP] New user created: ${email}`);
         await createSession({ id: userId, name, email, role: 'guest' });
 
     } catch (error) {
-        await logToFile(`[SIGNUP] Error: ${error}`);
+        console.error(`[SIGNUP] Error: ${error}`);
         return { error: 'An unexpected error occurred during signup.' };
     }
     
