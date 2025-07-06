@@ -292,3 +292,11 @@
 2025-07-06T19:10:18.116Z - [VERIFY] Generated key from input: f3e0ef2e80197463c833d9d4299f239950c76beb1c420050cb26c4d1417ebf0eb6ca95da8ab64b5b18b425a194fc15bfb9bc2bf44cdd2b0434f50f5bc7a8c2d8
 2025-07-06T19:10:18.118Z - [VERIFY] Password match result: true
 2025-07-06T19:10:18.122Z - [LOGIN] Login successful for user: admin@45group.org. Creating session.
+2025-07-06T19:12:44.173Z - [LOGIN] Attempting login for email: admin@45group.org
+2025-07-06T19:12:44.179Z - [LOGIN] User found: admin@45group.org. Role: admin
+2025-07-06T19:12:44.181Z - [VERIFY] Verifying password. Provided hash: 13913a69660b1716182a7c0fccc9c984:f3e0ef2e80197463c833d9d4299f239950c76beb1c420050cb26c4d1417ebf0eb6ca95da8ab64b5b18b425a194fc15bfb9bc2bf44cdd2b0434f50f5bc7a8c2d8
+2025-07-06T19:12:44.250Z - [VERIFY] Salt from hash: 13913a69660b1716182a7c0fccc9c984
+2025-07-06T19:12:44.252Z - [VERIFY] Key from hash: f3e0ef2e80197463c833d9d4299f239950c76beb1c420050cb26c4d1417ebf0eb6ca95da8ab64b5b18b425a194fc15bfb9bc2bf44cdd2b0434f50f5bc7a8c2d8
+2025-07-06T19:12:44.257Z - [VERIFY] Generated key from input: f3e0ef2e80197463c833d9d4299f239950c76beb1c420050cb26c4d1417ebf0eb6ca95da8ab64b5b18b425a194fc15bfb9bc2bf44cdd2b0434f50f5bc7a8c2d8
+2025-07-06T19:12:44.262Z - [VERIFY] Password match result: true
+2025-07-06T19:12:44.263Z - [LOGIN] Login successful for user: admin@45group.org. Creating session.
