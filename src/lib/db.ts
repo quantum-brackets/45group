@@ -3,8 +3,8 @@ import Database from 'better-sqlite3';
 import { listings, bookings, users } from './placeholder-data';
 import { hashPassword } from './password';
 
-// This is a common pattern to cache a database connection in development
-// across Next.js hot reloads.
+// This is a common pattern to cache a database connection
+// across Next.js hot reloads or in serverless environments.
 declare global {
   var dbPromise: Promise<Database.Database> | undefined;
 }
@@ -145,21 +145,14 @@ async function initialize() {
     return newDb;
 }
 
-// In production, we don't want to cache the connection on the global object.
-let dbPromise: Promise<Database.Database> | null = null;
-
+// By caching the database promise on the global object, we avoid re-initializing
+// the database on every request, which is crucial in a development environment
+// with hot-reloading, and a good practice for serverless environments as well.
+// This single, unified approach is more robust than splitting the logic for
+// production and development.
 export async function getDb(): Promise<Database.Database> {
-  if (process.env.NODE_ENV === 'production') {
-    if (!dbPromise) {
-      dbPromise = initialize();
-    }
-    return dbPromise;
-  }
-  
-  // In development, use the global object to avoid re-initializing on every hot reload.
   if (!globalThis.dbPromise) {
     globalThis.dbPromise = initialize();
   }
-
   return globalThis.dbPromise;
 }
