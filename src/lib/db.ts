@@ -10,15 +10,15 @@ async function initialize() {
     const newDb = new Database('data.db');
     newDb.pragma('journal_mode = WAL');
 
-    const marker = newDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='db_init_marker_v3'").get();
+    const marker = newDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='db_init_marker_v4'").get();
     
     if (marker) {
-        console.log('[DB_INIT] Database already initialized with v3 schema. Skipping seeding.');
+        console.log('[DB_INIT] Database already initialized with v4 schema. Skipping seeding.');
         db = newDb;
         return db;
     }
 
-    console.log('[DB_INIT] No v3 init marker found. Starting fresh seed for session management.');
+    console.log('[DB_INIT] No v4 init marker found. Starting fresh seed for session management.');
     
     newDb.exec('DROP TABLE IF EXISTS sessions');
     newDb.exec('DROP TABLE IF EXISTS bookings');
@@ -27,6 +27,7 @@ async function initialize() {
     newDb.exec('DROP TABLE IF EXISTS temp_users');
     newDb.exec('DROP TABLE IF EXISTS db_init_marker');
     newDb.exec('DROP TABLE IF EXISTS db_init_marker_v2');
+    newDb.exec('DROP TABLE IF EXISTS db_init_marker_v3');
 
 
     newDb.exec(`
@@ -135,9 +136,9 @@ async function initialize() {
     console.log('[DB_INIT] All data seeded.');
     
 
-    newDb.exec(`CREATE TABLE db_init_marker_v3 (seeded_at TEXT);`);
-    newDb.prepare('INSERT INTO db_init_marker_v3 VALUES (?)').run(new Date().toISOString());
-    console.log('[DB_INIT] V3 init marker created. Initialization complete.');
+    newDb.exec(`CREATE TABLE db_init_marker_v4 (seeded_at TEXT);`);
+    newDb.prepare('INSERT INTO db_init_marker_v4 VALUES (?)').run(new Date().toISOString());
+    console.log('[DB_INIT] V4 init marker created. Initialization complete.');
 
     db = newDb;
     return db;
