@@ -53,9 +53,8 @@ export async function getSession(): Promise<User | null> {
     const sessionData = stmt.get(sessionId, new Date().toISOString()) as User | undefined;
 
     if (!sessionData) {
-      // The session ID is invalid or expired.
-      // We will delete the cookie to prevent the user from being stuck.
-      cookies().set('session', '', { expires: new Date(0), path: '/' });
+      // The session ID is invalid or expired. We simply return null.
+      // The aggressive cookie deletion has been removed to prevent transient issues from causing a full logout.
       return null;
     }
     
