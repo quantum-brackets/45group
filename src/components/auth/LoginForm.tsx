@@ -6,7 +6,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransition, useState } from "react";
 import { login } from "@/lib/auth";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,6 @@ import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(1, "Password is required."),
-  from: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -26,6 +25,7 @@ type FormValues = z.infer<typeof formSchema>;
 export function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
 
@@ -34,16 +34,19 @@ export function LoginForm() {
     defaultValues: {
       email: "",
       password: "",
-      from: from || undefined,
     },
   });
 
   const onSubmit = (data: FormValues) => {
     setError(null);
     startTransition(async () => {
-      const result = await login(data);
+      const result = await login(data, from);
       if (result?.error) {
         setError(result.error);
+      }
+      if (result?.success && result.redirectTo) {
+        router.push(result.redirectTo);
+        router.refresh();
       }
     });
   };
@@ -58,7 +61,6 @@ export function LoginForm() {
                 <AlertDescription>{error}</AlertDescription>
             </Alert>
         )}
-        <input type="hidden" {...form.register('from')} />
         <FormField
           control={form.control}
           name="email"

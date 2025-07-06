@@ -11,16 +11,15 @@ import { hashPassword, verifyPassword } from './password';
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address.'),
   password: z.string().min(1, 'Password is required.'),
-  from: z.string().optional(),
 });
 
-export async function login(formData: z.infer<typeof LoginSchema>) {
+export async function login(formData: z.infer<typeof LoginSchema>, from: string | null) {
   const validatedFields = LoginSchema.safeParse(formData);
   if (!validatedFields.success) {
     return { error: 'Invalid fields.' };
   }
 
-  const { email, password, from } = validatedFields.data;
+  const { email, password } = validatedFields.data;
 
   try {
     const db = await getDb();
@@ -39,7 +38,7 @@ export async function login(formData: z.infer<typeof LoginSchema>) {
     await createSession(user);
     
     const redirectTo = from || (user.role === 'admin' ? '/admin' : '/bookings');
-    redirect(redirectTo);
+    return { success: true, redirectTo };
 
   } catch (error) {
     console.error(error);
