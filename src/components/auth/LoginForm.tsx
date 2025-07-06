@@ -46,7 +46,6 @@ export function LoginForm() {
       }
       if (result?.success && result.redirectTo) {
         router.push(result.redirectTo);
-        router.refresh();
       }
     });
   };
