@@ -8,26 +8,30 @@ import { MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
-import type { Booking } from '@/lib/types';
+import type { Booking, User } from '@/lib/types';
 
 interface BookingsTableProps {
   bookings: Booking[];
+  session: User | null;
 }
 
-export function BookingsTable({ bookings }: BookingsTableProps) {
+export function BookingsTable({ bookings, session }: BookingsTableProps) {
   const router = useRouter();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>All Bookings</CardTitle>
-        <CardDescription>Overview of all bookings.</CardDescription>
+        <CardTitle>Your Bookings</CardTitle>
+        <CardDescription>
+          {session?.role === 'admin' ? 'An overview of all bookings across all venues.' : 'An overview of your past and upcoming bookings.'}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Venue</TableHead>
+              <TableHead className="hidden sm:table-cell">User</TableHead>
               <TableHead>Dates</TableHead>
               <TableHead>Guests</TableHead>
               <TableHead>Status</TableHead>
@@ -38,6 +42,7 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
             {bookings.map((booking) => (
               <TableRow key={booking.id}>
                 <TableCell className="font-medium">{booking.listingName}</TableCell>
+                <TableCell className="hidden sm:table-cell">{booking.userId}</TableCell>
                 <TableCell>
                   {booking.startDate === booking.endDate
                     ? booking.startDate
@@ -60,6 +65,12 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => router.push(`/booking/${booking.id}`)}>View Details</DropdownMenuItem>
+                             {session?.role === 'admin' && (
+                                <>
+                                 <DropdownMenuItem>Confirm Booking</DropdownMenuItem>
+                                 <DropdownMenuItem className="text-destructive">Cancel Booking</DropdownMenuItem>
+                                </>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </TableCell>

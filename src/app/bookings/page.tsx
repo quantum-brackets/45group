@@ -20,7 +20,7 @@ export default async function BookingsPage() {
       </header>
       <div className="grid gap-8">
         {bookings.length > 0 ? (
-          <BookingsTable bookings={bookings} />
+          <BookingsTable bookings={bookings} session={session} />
         ) : (
           <div className="text-center py-16 border-2 border-dashed rounded-lg">
             <h2 className="text-2xl font-semibold">No Bookings Found</h2>
