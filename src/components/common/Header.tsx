@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, Mountain } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import type { SessionPayload } from '@/lib/types';
+import type { User } from '@/lib/types';
 import { UserNav } from '../auth/UserNav';
 
 const navLinks = [
@@ -17,7 +17,7 @@ const navLinks = [
   { href: '/bookings', label: 'Bookings' },
 ];
 
-export function Header({ session }: { session: SessionPayload | null }) {
+export function Header({ session }: { session: User | null }) {
   const pathname = usePathname();
 
   const visibleNavLinks = navLinks.filter(link => {

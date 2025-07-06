@@ -2,54 +2,76 @@
 'use server'
 
 import 'server-only';
-import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
-import type { SessionPayload, User } from './types';
+import type { User } from './types';
+import { getDb } from './db';
+import { randomUUID } from 'crypto';
+import { logToFile } from './logger';
 
-const secretKey = process.env.SESSION_SECRET || 'fallback-secret-for-session';
-const key = new TextEncoder().encode(secretKey);
+export async function createSession(user: User) {
+  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
+  const sessionId = randomUUID();
 
-export async function encrypt(payload: SessionPayload) {
-  return await new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('1d') // 1 day
-    .sign(key);
+  try {
+      const db = await getDb();
+      const stmt = db.prepare('INSERT INTO sessions (id, userId, expiresAt) VALUES (?, ?, ?)');
+      stmt.run(sessionId, user.id, expires.toISOString());
+
+      cookies().set('session', sessionId, { 
+        expires, 
+        httpOnly: true, 
+        path: '/' 
+      });
+      await logToFile(`[SESSION_CREATE] Session created for user ${user.id} with token ${sessionId}`);
+  } catch (error) {
+      await logToFile(`[SESSION_CREATE] Error creating session for user ${user.id}: ${error}`);
+  }
 }
 
-export async function decrypt(input: string): Promise<SessionPayload | null> {
+export async function getSession(): Promise<User | null> {
+  const sessionId = cookies().get('session')?.value;
+  if (!sessionId) {
+    return null;
+  }
+  
   try {
-    const { payload } = await jwtVerify(input, key, {
-      algorithms: ['HS256'],
-    });
-    return payload as SessionPayload;
+    const db = await getDb();
+    
+    // Join sessions and users table to get user data directly
+    const stmt = db.prepare(`
+      SELECT u.id, u.name, u.email, u.role 
+      FROM sessions s
+      JOIN users u ON s.userId = u.id
+      WHERE s.id = ? AND s.expiresAt > ?
+    `);
+
+    const sessionData = stmt.get(sessionId, new Date().toISOString()) as User | undefined;
+
+    if (!sessionData) {
+      // Session not found or expired, clean up
+      await deleteSession();
+      return null;
+    }
+    
+    return sessionData;
   } catch (error) {
-    console.error('JWT Decryption Error:', error);
+    await logToFile(`[SESSION_GET] Error validating session ${sessionId}: ${error}`);
     return null;
   }
 }
 
-export async function createSession(user: User) {
-  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
-  const sessionPayload: SessionPayload = { 
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    exp: expires.getTime() / 1000,
-  };
-
-  const session = await encrypt(sessionPayload);
-
-  cookies().set('session', session, { expires, httpOnly: true, path: '/' });
-}
-
-export async function getSession(): Promise<SessionPayload | null> {
-  const sessionCookie = cookies().get('session')?.value;
-  if (!sessionCookie) return null;
-  return await decrypt(sessionCookie);
-}
-
 export async function deleteSession() {
+  const sessionId = cookies().get('session')?.value;
+  if (sessionId) {
+    try {
+        const db = await getDb();
+        const stmt = db.prepare('DELETE FROM sessions WHERE id = ?');
+        stmt.run(sessionId);
+        await logToFile(`[SESSION_DELETE] Deleted session ${sessionId} from database.`);
+    } catch (error) {
+        await logToFile(`[SESSION_DELETE] Error deleting session ${sessionId} from database: ${error}`);
+    }
+  }
+  // Always clear the cookie
   cookies().set('session', '', { expires: new Date(0), path: '/' });
 }

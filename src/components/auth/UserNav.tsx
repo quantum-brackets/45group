@@ -13,12 +13,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { logoutAction } from "@/lib/actions"
-import type { SessionPayload } from "@/lib/types"
+import type { User } from "@/lib/types"
 import { LogOut, User as UserIcon } from 'lucide-react'
 import { useTransition } from "react"
 import Link from 'next/link'
 
-export function UserNav({ user }: { user: SessionPayload }) {
+export function UserNav({ user }: { user: User }) {
   const [isPending, startTransition] = useTransition();
 
   const handleLogout = () => {

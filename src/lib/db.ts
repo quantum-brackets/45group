@@ -23,18 +23,19 @@ async function initialize() {
         return db;
     }
 
-    await logToFile('[DB_INIT] No v3 init marker found. Starting fresh seed for password crypto and schema fixes.');
+    await logToFile('[DB_INIT] No v3 init marker found. Starting fresh seed for session management.');
     
     // Drop all tables to ensure a clean slate
+    newDb.exec('DROP TABLE IF EXISTS sessions');
     newDb.exec('DROP TABLE IF EXISTS bookings');
     newDb.exec('DROP TABLE IF EXISTS listings');
     newDb.exec('DROP TABLE IF EXISTS users');
-    newDb.exec('DROP TABLE IF EXISTS temp_users'); // Clean up from previous failed attempts
+    newDb.exec('DROP TABLE IF EXISTS temp_users');
     newDb.exec('DROP TABLE IF EXISTS db_init_marker');
     newDb.exec('DROP TABLE IF EXISTS db_init_marker_v2');
 
 
-    // 1. Create initial tables
+    // 1. Create tables
     newDb.exec(`
     CREATE TABLE users (
         id TEXT PRIMARY KEY,
@@ -61,7 +62,7 @@ async function initialize() {
         maxGuests INTEGER
     );`);
     await logToFile('[DB_INIT] Listings table created.');
-    
+
     newDb.exec(`
     CREATE TABLE bookings (
         id TEXT PRIMARY KEY,
@@ -72,10 +73,20 @@ async function initialize() {
         endDate TEXT NOT NULL,
         guests INTEGER NOT NULL,
         status TEXT NOT NULL,
-        FOREIGN KEY (listingId) REFERENCES listings (id),
-        FOREIGN KEY (userId) REFERENCES users (id)
+        FOREIGN KEY (listingId) REFERENCES listings (id) ON DELETE CASCADE,
+        FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
     );`);
     await logToFile('[DB_INIT] Bookings table created.');
+
+    newDb.exec(`
+    CREATE TABLE sessions (
+        id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL,
+        expiresAt DATETIME NOT NULL,
+        FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
+    );
+    `);
+    await logToFile('[DB_INIT] Sessions table created.');
 
     // 2. Hash all passwords before DB operations
     const usersWithHashedPasswords = await Promise.all(
@@ -103,43 +114,35 @@ async function initialize() {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    try {
-        newDb.pragma('foreign_keys = OFF');
-        await logToFile('[DB_INIT] Foreign keys turned OFF for seeding.');
-        
-        const seedTransaction = newDb.transaction(() => {
-            for (const user of usersWithHashedPasswords) {
-                insertUser.run(user);
-            }
-            for (const listing of listings) {
-                insertListing.run({
-                    ...listing,
-                    images: JSON.stringify(listing.images),
-                    reviews: JSON.stringify(listing.reviews),
-                    features: JSON.stringify(listing.features),
-                });
-            }
-             for (const booking of bookings) {
-                insertBooking.run(
-                    booking.id,
-                    booking.listingId,
-                    booking.userId,
-                    booking.listingName,
-                    booking.startDate,
-                    booking.endDate,
-                    booking.guests,
-                    booking.status
-                );
-            }
-        });
+    const seedTransaction = newDb.transaction(() => {
+        for (const user of usersWithHashedPasswords) {
+            insertUser.run(user);
+        }
+        for (const listing of listings) {
+            insertListing.run({
+                ...listing,
+                images: JSON.stringify(listing.images),
+                reviews: JSON.stringify(listing.reviews),
+                features: JSON.stringify(listing.features),
+            });
+        }
+         for (const booking of bookings) {
+            insertBooking.run(
+                booking.id,
+                booking.listingId,
+                booking.userId,
+                booking.listingName,
+                booking.startDate,
+                booking.endDate,
+                booking.guests,
+                booking.status
+            );
+        }
+    });
 
-        seedTransaction();
-        
-        await logToFile('[DB_INIT] All data seeded.');
-    } finally {
-        newDb.pragma('foreign_keys = ON');
-        await logToFile('[DB_INIT] Foreign keys turned ON.');
-    }
+    seedTransaction();
+    await logToFile('[DB_INIT] All data seeded.');
+    
 
     // 4. Create the final initialization marker
     newDb.exec(`CREATE TABLE db_init_marker_v3 (seeded_at TEXT);`);

@@ -1,25 +1,25 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
-import { decrypt } from '@/lib/session';
-import type { SessionPayload } from '@/lib/types';
+import { getSession } from '@/lib/session';
 
-const protectedRoutes = ['/admin', '/bookings', '/booking', '/edit-listing', '/ai-recommendations'];
-const adminRoutes = ['/admin', '/edit-listing'];
+const protectedRoutes = ['/bookings', '/booking', '/ai-recommendations'];
+const adminRoutes = ['/admin', '/edit-listing', '/dashboard', '/dashboard/booking', '/dashboard/bookings', '/dashboard/edit-listing'];
 const authRoutes = ['/login', '/signup'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Get session from cookie
-  const sessionCookie = request.cookies.get('session')?.value;
-  const session: SessionPayload | null = sessionCookie ? await decrypt(sessionCookie) : null;
+  const session = await getSession();
 
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAdminRoute = adminRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
 
+  // Combine protected and admin routes for the main login check
+  const allProtected = [...protectedRoutes, ...adminRoutes];
+
   // If user is not logged in and tries to access a protected route, block them
-  if (!session && isProtectedRoute) {
+  if (!session && allProtected.some(route => pathname.startsWith(route))) {
     const url = new URL('/forbidden', request.url);
     url.searchParams.set('error', 'Authentication Required');
     url.searchParams.set('message', 'You must be logged in to view this page.');

@@ -1,6 +1,4 @@
 
-import type {JWTPayload} from 'jose';
-
 export type ListingType = 'hotel' | 'events' | 'restaurant';
 
 export interface Review {
@@ -44,5 +42,3 @@ export interface User {
     password?: string;
     role: 'admin' | 'guest';
 }
-
-export interface SessionPayload extends JWTPayload, User {}
