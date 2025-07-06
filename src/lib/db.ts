@@ -57,14 +57,20 @@ async function initialize() {
     `);
 
     // --- Seed Data ---
-
+    console.log('[SEEDING] Starting database seeding process...');
+    
     // Seed Users
     const usersWithHashedPasswords = [];
     for (const user of users) {
         if (user.password) {
+            console.log(`[SEEDING] Hashing password for user: ${user.email}`);
             const salt = Buffer.from(Array.from({ length: 16 }, () => Math.floor(Math.random() * 256)));
             const key = await scryptJs.scrypt(Buffer.from(user.password, 'utf-8'), salt, 16384, 8, 1, 64);
             const hashedPassword = `${salt.toString('hex')}:${(key as Buffer).toString('hex')}`;
+            
+            console.log(`[SEEDING]   - Original Password: ${user.password}`);
+            console.log(`[SEEDING]   - Stored Hash: ${hashedPassword}`);
+
             usersWithHashedPasswords.push({ ...user, password: hashedPassword });
         }
     }
@@ -81,6 +87,7 @@ async function initialize() {
     });
 
     insertUsers(usersWithHashedPasswords);
+    console.log('[SEEDING] Users table seeded.');
 
 
     // Seed Listings
@@ -101,6 +108,7 @@ async function initialize() {
     });
 
     insertListings(listings);
+    console.log('[SEEDING] Listings table seeded.');
 
     // Seed Bookings
     const insertBooking = newDb.prepare(`
@@ -124,7 +132,9 @@ async function initialize() {
     });
 
     insertBookings(bookings);
+    console.log('[SEEDING] Bookings table seeded.');
 
+    console.log('[SEEDING] Database seeding complete.');
     db = newDb;
     return db;
 }

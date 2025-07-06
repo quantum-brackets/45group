@@ -8,6 +8,7 @@ import { createSession } from './session';
 import { redirect } from 'next/navigation';
 import { randomUUID } from 'crypto';
 import type { User } from './types';
+import { timingSafeEqual } from 'crypto';
 
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address.'),
@@ -24,25 +25,46 @@ export async function login(formData: z.infer<typeof LoginSchema>) {
 
   try {
     const db = await getDb();
+    console.log(`[LOGIN] Attempting login for email: ${email}`);
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
     if (!user || !user.password) {
+      console.log(`[LOGIN] User not found or has no password for email: ${email}`);
       return { error: 'Invalid email or password.' };
     }
     
+    console.log(`[LOGIN] User found: ${user.email}. Role: ${user.role}`);
+    console.log(`[LOGIN] Stored password hash from DB: ${user.password}`);
+
     const [salt, storedKey] = user.password.split(':');
     const saltBuffer = Buffer.from(salt, 'hex');
-    const inputKey = await scryptJs.scrypt(Buffer.from(password, 'utf-8'), saltBuffer, 16384, 8, 1, 64);
     
-    const passwordsMatch = await scryptJs.acompare(inputKey as Buffer, Buffer.from(storedKey, 'hex'));
+    console.log(`[LOGIN] Provided password: ${password}`);
+
+    const inputKey = (await scryptJs.scrypt(Buffer.from(password, 'utf-8'), saltBuffer, 16384, 8, 1, 64)) as Buffer;
+    const storedKeyBuffer = Buffer.from(storedKey, 'hex');
+
+    console.log(`[LOGIN] Generated key from input (hex): ${inputKey.toString('hex')}`);
+    console.log(`[LOGIN] Stored key from DB (hex): ${storedKeyBuffer.toString('hex')}`);
+    
+    // Use Node's built-in timingSafeEqual for secure comparison
+    if (inputKey.length !== storedKeyBuffer.length) {
+        console.error('[LOGIN] Key length mismatch. This should not happen and indicates a potential hash corruption.');
+        return { error: 'Invalid email or password.' };
+    }
+
+    const passwordsMatch = timingSafeEqual(inputKey, storedKeyBuffer);
+    console.log(`[LOGIN] Passwords match result (timingSafeEqual): ${passwordsMatch}`);
 
     if (!passwordsMatch) {
+      console.log(`[LOGIN] Password mismatch for user: ${email}`);
       return { error: 'Invalid email or password.' };
     }
     
+    console.log(`[LOGIN] Login successful for user: ${email}. Creating session.`);
     await createSession(user);
 
   } catch (error) {
-    console.error(error);
+    console.error('[LOGIN] An unexpected error occurred during login:', error);
     return { error: 'An unexpected error occurred.' };
   }
   
