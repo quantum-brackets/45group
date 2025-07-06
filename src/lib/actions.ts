@@ -279,7 +279,8 @@ export async function verifySessionByIdAction(sessionId: string) {
             return { error: `Session with ID "${sessionId}" was not found in the database.` };
         }
 
-        if (new Date(sessionRecord.expiresAt) < new Date()) {
+        const expiresAtDate = new Date(sessionRecord.expiresAt);
+        if (expiresAtDate < new Date()) {
              return { error: `Session with ID "${sessionId}" was found but has expired.` };
         }
 
@@ -288,7 +289,13 @@ export async function verifySessionByIdAction(sessionId: string) {
             return { error: `Session is valid, but the associated user (ID: ${sessionRecord.userId}) could not be found.` };
         }
 
-        return { success: `Session ID is valid! User: ${user.email} (${user.role}). Expires at: ${sessionRecord.expiresAt}` };
+        cookies().set('session', sessionId, {
+          expires: expiresAtDate,
+          httpOnly: true,
+          path: '/',
+        });
+
+        return { success: `Session verified and cookie set for user: ${user.email} (${user.role}). You can now navigate to protected routes.` };
     } catch (error) {
         console.error('[VERIFY_SESSION_BY_ID_ACTION_ERROR]', error);
         const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
