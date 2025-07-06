@@ -1,3 +1,4 @@
+
 'use server'
 
 import { z } from 'zod';
@@ -30,33 +31,33 @@ export async function login(formData: z.infer<typeof LoginSchema>, from: string 
   }
 
   const { email, password } = validatedFields.data;
+  let user: User | undefined;
 
   try {
     const db = await getDb();
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
+    user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
     
     if (!user || !user.password) {
-        redirect(getErrorRedirect(from, 'No account found with this email.'));
+        throw new Error('AUTH_INVALID_CREDENTIALS');
     }
         
     const passwordsMatch = await verifyPassword(password, user.password);
 
     if (!passwordsMatch) {
-        redirect(getErrorRedirect(from, 'Incorrect password.'));
+        throw new Error('AUTH_INVALID_CREDENTIALS');
     }
-    
-    await createSession(user);
-    
-    const redirectTo = from || (user.role === 'admin' ? '/admin' : '/bookings');
-    redirect(redirectTo);
-
   } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
-        throw error;
+    if (error instanceof Error && error.message === 'AUTH_INVALID_CREDENTIALS') {
+        redirect(getErrorRedirect(from, 'Incorrect email or password.'));
     }
-    console.error(error);
-    redirect(getErrorRedirect(from, 'An unexpected error occurred.'));
+    console.error('[LOGIN_ERROR]', error);
+    redirect(getErrorRedirect(from, 'An unexpected error occurred during login.'));
   }
+  
+  await createSession(user!);
+  
+  const redirectTo = from || (user!.role === 'admin' ? '/admin' : '/bookings');
+  redirect(redirectTo);
 }
 
 const SignupSchema = z.object({
