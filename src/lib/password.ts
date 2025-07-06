@@ -2,7 +2,7 @@
 'use server';
 
 import * as scryptJs from 'scrypt-js';
-import { timingSafeEqual } from 'crypto';
+import { timingSafeEqual, randomBytes } from 'crypto';
 import { logToFile } from './logger';
 
 const scryptOptions = {
@@ -13,7 +13,7 @@ const scryptOptions = {
 };
 
 export async function hashPassword(password: string): Promise<string> {
-    const salt = Buffer.from(Array.from({ length: 16 }, () => Math.floor(Math.random() * 256)));
+    const salt = randomBytes(16);
     const key = await scryptJs.scrypt(Buffer.from(password, 'utf-8'), salt, scryptOptions.N, scryptOptions.r, scryptOptions.p, scryptOptions.dkLen) as Buffer;
     const hash = `${salt.toString('hex')}:${key.toString('hex')}`;
     await logToFile(`[HASH] Hashing password. Salt: ${salt.toString('hex')}, Hash: ${hash}`);
