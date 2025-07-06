@@ -13,24 +13,22 @@ async function initialize() {
     const newDb = new Database('data.db');
     newDb.pragma('journal_mode = WAL');
 
-    const marker = newDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='db_init_marker_v4'").get();
+    // Check if the users table already exists to determine if we need to seed.
+    // This is more robust than a custom marker table for development environments.
+    const tableCheck = newDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get();
     
-    if (marker) {
-        console.log('[DB_INIT] Database already initialized with v4 schema. Skipping seeding.');
+    if (tableCheck) {
+        console.log('[DB_INIT] Database tables already exist. Skipping seeding.');
         return newDb;
     }
 
-    console.log('[DB_INIT] No v4 init marker found. Starting fresh seed for session management.');
-    
+    console.log('[DB_INIT] No existing tables found. Initializing and seeding database.');
+
+    // Drop tables just in case of a partial, failed initialization
     newDb.exec('DROP TABLE IF EXISTS sessions');
     newDb.exec('DROP TABLE IF EXISTS bookings');
     newDb.exec('DROP TABLE IF EXISTS listings');
     newDb.exec('DROP TABLE IF EXISTS users');
-    newDb.exec('DROP TABLE IF EXISTS temp_users');
-    newDb.exec('DROP TABLE IF EXISTS db_init_marker');
-    newDb.exec('DROP TABLE IF EXISTS db_init_marker_v2');
-    newDb.exec('DROP TABLE IF EXISTS db_init_marker_v3');
-
 
     newDb.exec(`
     CREATE TABLE users (
@@ -135,12 +133,7 @@ async function initialize() {
     });
 
     seedTransaction();
-    console.log('[DB_INIT] All data seeded.');
-    
-
-    newDb.exec(`CREATE TABLE db_init_marker_v4 (seeded_at TEXT);`);
-    newDb.prepare('INSERT INTO db_init_marker_v4 VALUES (?)').run(new Date().toISOString());
-    console.log('[DB_INIT] V4 init marker created. Initialization complete.');
+    console.log('[DB_INIT] All data seeded. Initialization complete.');
 
     return newDb;
 }
