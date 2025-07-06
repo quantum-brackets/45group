@@ -1,6 +1,4 @@
 
-'use server';
-
 import Database from 'better-sqlite3';
 import { listings, bookings, users } from './placeholder-data';
 import { hashPassword } from './password';
@@ -12,8 +10,6 @@ async function initialize() {
     const newDb = new Database('data.db');
     newDb.pragma('journal_mode = WAL');
 
-    // This marker is used to detect if the DB has been initialized with the latest schema.
-    // Changing it will force a re-seed on next run.
     const marker = newDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='db_init_marker_v3'").get();
     
     if (marker) {
@@ -24,7 +20,6 @@ async function initialize() {
 
     console.log('[DB_INIT] No v3 init marker found. Starting fresh seed for session management.');
     
-    // Drop all tables to ensure a clean slate
     newDb.exec('DROP TABLE IF EXISTS sessions');
     newDb.exec('DROP TABLE IF EXISTS bookings');
     newDb.exec('DROP TABLE IF EXISTS listings');
@@ -34,7 +29,6 @@ async function initialize() {
     newDb.exec('DROP TABLE IF EXISTS db_init_marker_v2');
 
 
-    // 1. Create tables
     newDb.exec(`
     CREATE TABLE users (
         id TEXT PRIMARY KEY,
@@ -87,7 +81,6 @@ async function initialize() {
     `);
     console.log('[DB_INIT] Sessions table created.');
 
-    // 2. Hash all passwords before DB operations
     const usersWithHashedPasswords = await Promise.all(
         users.map(async (user) => {
             if (!user.password) throw new Error(`User ${user.email} has no password in placeholder data.`);
@@ -97,7 +90,6 @@ async function initialize() {
     );
     console.log('[DB_INIT] All passwords hashed successfully.');
 
-    // 3. Insert data in a single transaction
     const insertUser = newDb.prepare(`
         INSERT INTO users (id, name, email, password, role)
         VALUES (@id, @name, @email, @password, @role)
@@ -143,7 +135,6 @@ async function initialize() {
     console.log('[DB_INIT] All data seeded.');
     
 
-    // 4. Create the final initialization marker
     newDb.exec(`CREATE TABLE db_init_marker_v3 (seeded_at TEXT);`);
     newDb.prepare('INSERT INTO db_init_marker_v3 VALUES (?)').run(new Date().toISOString());
     console.log('[DB_INIT] V3 init marker created. Initialization complete.');
