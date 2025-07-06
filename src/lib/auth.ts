@@ -3,13 +3,11 @@
 
 import { z } from 'zod';
 import { getDb } from './db';
-import { scrypt, acompare } from 'scrypt-js';
+import * as scryptJs from 'scrypt-js';
 import { createSession } from './session';
 import { redirect } from 'next/navigation';
 import { randomUUID } from 'crypto';
 import type { User } from './types';
-
-const db = getDb();
 
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address.'),
@@ -25,6 +23,7 @@ export async function login(formData: z.infer<typeof LoginSchema>) {
   const { email, password } = validatedFields.data;
 
   try {
+    const db = await getDb();
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
     if (!user || !user.password) {
       return { error: 'Invalid email or password.' };
@@ -32,9 +31,9 @@ export async function login(formData: z.infer<typeof LoginSchema>) {
     
     const [salt, storedKey] = user.password.split(':');
     const saltBuffer = Buffer.from(salt, 'hex');
-    const inputKey = await scrypt.scrypt(Buffer.from(password, 'utf-8'), saltBuffer, 16384, 8, 1, 64);
+    const inputKey = await scryptJs.scrypt(Buffer.from(password, 'utf-8'), saltBuffer, 16384, 8, 1, 64);
     
-    const passwordsMatch = await acompare(inputKey as Buffer, Buffer.from(storedKey, 'hex'));
+    const passwordsMatch = await scryptJs.acompare(inputKey as Buffer, Buffer.from(storedKey, 'hex'));
 
     if (!passwordsMatch) {
       return { error: 'Invalid email or password.' };
@@ -65,13 +64,14 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
     const { name, email, password } = validatedFields.data;
 
     try {
+        const db = await getDb();
         const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
         if (existingUser) {
             return { error: 'A user with this email already exists.' };
         }
 
         const salt = Buffer.from(Array.from({ length: 16 }, () => Math.floor(Math.random() * 256)));
-        const key = await scrypt.scrypt(Buffer.from(password, 'utf-8'), salt, 16384, 8, 1, 64);
+        const key = await scryptJs.scrypt(Buffer.from(password, 'utf-8'), salt, 16384, 8, 1, 64);
         const hashedPassword = `${salt.toString('hex')}:${(key as Buffer).toString('hex')}`;
         const userId = `user-${randomUUID()}`;
 

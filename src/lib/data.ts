@@ -1,9 +1,8 @@
+
 import type { Listing, Booking, ListingType, User } from './types';
 import { getDb } from './db';
 import { DateRange } from 'react-day-picker';
 import { getSession } from '@/lib/session';
-
-const db = getDb();
 
 // Helper to parse listing data from the database
 function parseListing(listing: any): Listing {
@@ -16,18 +15,21 @@ function parseListing(listing: any): Listing {
 }
 
 export async function getUserById(id: string): Promise<User | null> {
+    const db = await getDb();
     const stmt = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?');
     const user = stmt.get(id) as User | undefined;
     return user || null;
 }
 
 export async function getAllListings(): Promise<Listing[]> {
+  const db = await getDb();
   const stmt = db.prepare('SELECT * FROM listings');
   const listings = stmt.all() as any[];
   return listings.map(parseListing);
 }
 
 export async function getListingById(id: string): Promise<Listing | null> {
+  const db = await getDb();
   const stmt = db.prepare('SELECT * FROM listings WHERE id = ?');
   const listing = stmt.get(id) as any;
   if (!listing) return null;
@@ -40,6 +42,7 @@ export async function getAllBookings(): Promise<Booking[]> {
         return [];
     }
 
+    const db = await getDb();
     if (session.role === 'admin') {
         const stmt = db.prepare('SELECT * FROM bookings ORDER BY startDate DESC');
         return stmt.all() as Booking[];
@@ -55,6 +58,7 @@ export async function getBookingById(id: string): Promise<Booking | null> {
         return null;
     }
     
+    const db = await getDb();
     const stmt = db.prepare('SELECT * FROM bookings WHERE id = ?');
     const booking = stmt.get(id) as Booking | undefined;
 
@@ -76,6 +80,7 @@ interface FilterValues {
 }
 
 export async function getFilteredListings(filters: FilterValues): Promise<Listing[]> {
+  const db = await getDb();
   let query = 'SELECT * FROM listings';
   const whereClauses: string[] = [];
   const params: (string | number)[] = [];

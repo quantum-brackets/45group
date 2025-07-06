@@ -8,8 +8,6 @@ import { randomUUID } from 'crypto'
 import { getSession, deleteSession } from './session'
 import { redirect } from 'next/navigation'
 
-const db = getDb();
-
 const FormSchema = z.object({
   name: z.string().min(1, "Name is required."),
   type: z.enum(['hotel', 'events', 'restaurant']),
@@ -41,6 +39,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof FormS
   const featuresAsArray = features.split(',').map((f) => f.trim());
 
   try {
+    const db = await getDb();
     const stmt = db.prepare(`
       UPDATE listings
       SET 
@@ -104,6 +103,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
   const { listingId, listingName, startDate, endDate, guests } = validatedFields.data;
 
   try {
+    const db = await getDb();
     const stmt = db.prepare(`
       INSERT INTO bookings (id, listingId, userId, listingName, startDate, endDate, guests, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
