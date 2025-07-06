@@ -10,19 +10,28 @@ import { randomUUID } from 'crypto';
 /**
  * Creates a session record in the database.
  * @param userId The ID of the user to create the session for.
- * @returns The new session ID.
- * @throws Will throw an error if the database operation fails.
+ * @returns The new session ID, or null if the operation fails.
  */
-export async function createSession(userId: string): Promise<string> {
+export async function createSession(userId: string): Promise<string | null> {
   const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
   const sessionId = randomUUID();
 
-  const db = await getDb();
-  const stmt = db.prepare('INSERT INTO sessions (id, userId, expiresAt) VALUES (?, ?, ?)');
-  stmt.run(sessionId, userId, expires.toISOString());
-  
-  console.log(`[SESSION_CREATE] Session record created for user ${userId} with ID ${sessionId}`);
-  return sessionId;
+  try {
+    const db = await getDb();
+    const stmt = db.prepare('INSERT INTO sessions (id, userId, expiresAt) VALUES (?, ?, ?)');
+    const info = stmt.run(sessionId, userId, expires.toISOString());
+    
+    if (info.changes === 0) {
+      console.error(`[SESSION_CREATE_FAIL] Failed to insert session for user ${userId}. No rows were changed.`);
+      return null;
+    }
+
+    console.log(`[SESSION_CREATE] Session record created for user ${userId} with ID ${sessionId}`);
+    return sessionId;
+  } catch (error) {
+    console.error(`[SESSION_CREATE_ERROR] Error creating session for user ${userId}:`, error);
+    return null;
+  }
 }
 
 export async function getSession(): Promise<User | null> {

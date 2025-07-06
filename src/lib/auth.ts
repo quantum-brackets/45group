@@ -4,8 +4,6 @@
 import { z } from 'zod';
 import { getDb } from './db';
 import { createSession } from './session';
-import { redirect } from 'next/navigation';
-import { randomUUID } from 'crypto';
 import type { User } from './types';
 import { hashPassword, verifyPassword } from './password';
 import { cookies } from 'next/headers';
@@ -39,6 +37,11 @@ export async function login(formData: z.infer<typeof LoginSchema>, from: string 
 
     // Credentials are valid, now create the session.
     const sessionId = await createSession(user.id);
+    
+    // Explicitly check if session creation was successful
+    if (!sessionId) {
+        return { success: false, error: 'Server error: Could not create a session. Please try again.' };
+    }
 
     // Session created, now set cookie.
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
@@ -70,7 +73,7 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
     }
 
     const { name, email, password } = validatedFields.data;
-    const userId = `user-${randomUUID()}`;
+    const userId = `user-${Math.random().toString(36).substring(2, 11)}`;
 
     try {
         const db = await getDb();
@@ -86,6 +89,11 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
         
         // User created, now create session.
         const sessionId = await createSession(userId);
+
+        if (!sessionId) {
+            return { success: false, error: 'Account created, but failed to log you in. Please try logging in manually.' };
+        }
+
         const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
         cookies().set('session', sessionId, {
             expires,
