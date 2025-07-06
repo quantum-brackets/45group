@@ -26,9 +26,9 @@ export default function LoginPage() {
             </Link>
           </div>
            <div className="mt-4 text-center text-sm">
-            Login issues?{" "}
-            <Link href="/set-password" className="underline text-destructive">
-              Reset Password (Dev Tool)
+            Troubleshooting?{" "}
+            <Link href="/dev-tools" className="underline">
+              Developer Tools
             </Link>
           </div>
         </div>
