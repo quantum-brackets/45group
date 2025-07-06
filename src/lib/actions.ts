@@ -74,7 +74,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof FormS
     
     return { success: true, message: `The details for "${name}" have been saved.` };
   } catch (error) {
-    await logToFile(`[UPDATE_LISTING_ACTION] Error: ${error}`);
+    console.error(`[UPDATE_LISTING_ACTION] Error: ${error}`);
     return { success: false, message: "Failed to update listing in the database." };
   }
 }
@@ -129,7 +129,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     return { success: true, message: `Your booking at ${listingName} has been confirmed.` };
   } catch (error)
     {
-    await logToFile(`[CREATE_BOOKING_ACTION] Error: ${error}`);
+    console.error(`[CREATE_BOOKING_ACTION] Error: ${error}`);
     return { success: false, message: "Failed to create booking in the database." };
   }
 }
@@ -153,60 +153,38 @@ export async function updatePasswordAction(data: z.infer<typeof UpdatePasswordSc
   const { email, password } = validatedFields.data;
 
   try {
-    // Step 1: Get DB and find user
-    await logToFile(`[SETPASS] Action started for user: ${email}`);
     const db = await getDb();
     const user = db.prepare('SELECT id, password FROM users WHERE email = ?').get(email) as User | undefined;
 
     if (!user) {
-      await logToFile(`[SETPASS] FAILURE: User with email ${email} not found.`);
       return { error: `Update failed: User with email "${email}" does not exist.` };
     }
-    await logToFile(`[SETPASS] Found user ${email}. Current hash: ${user.password}`);
 
-    // Step 2: Hash new password
-    await logToFile(`[SETPASS] Hashing new password for ${email}.`);
     const hashedPassword = await hashPassword(password);
-    await logToFile(`[SETPASS] New hashed password for ${email}: ${hashedPassword}`);
 
-    // Step 3: Update user password in DB
-    await logToFile(`[SETPASS] Updating password in database for ${email}.`);
     const stmt = db.prepare('UPDATE users SET password = ? WHERE email = ?');
     const info = stmt.run(hashedPassword, email);
     if (info.changes === 0) {
-        await logToFile(`[SETPASS] FAILURE: Database update failed. No rows were changed for email ${email}.`);
         return { error: 'Database update failed: Could not find user to update.' };
     }
-    await logToFile(`[SETPASS] Database update successful for ${email}. Rows affected: ${info.changes}`);
 
     // --- Automatic Verification Step ---
-    await logToFile(`[SETPASS_VERIFY] Starting immediate verification for ${email}.`);
-    
-    // Step 4: Re-fetch user to get the newly saved password
     const updatedUser = db.prepare('SELECT id, password FROM users WHERE email = ?').get(email) as User | undefined;
     if (!updatedUser || !updatedUser.password) {
-      await logToFile(`[SETPASS_VERIFY] FAILURE: Could not re-fetch user ${email} from DB for verification.`);
       return { error: 'Verification failed: Password was updated, but user could not be found immediately after.' };
     }
-    await logToFile(`[SETPASS_VERIFY] Fetched updated user. Verifying password against new hash: ${updatedUser.password}`);
 
-    // Step 5: Verify the plain text password against the new hash
     const passwordsMatch = await verifyPassword(password, updatedUser.password);
 
     if (passwordsMatch) {
-      await logToFile(`[SETPASS_VERIFY] SUCCESS: Verification for ${email} passed.`);
       return { success: `Password for ${email} was updated and verified successfully.` };
     } else {
-      await logToFile(`[SETPASS_VERIFY] FAILED: Password mismatch for ${email} after update.`);
-      await logToFile(`[SETPASS_VERIFY]   - Original Password Sent: ${password}`);
-      await logToFile(`[SETPASS_VERIFY]   - Hash in DB after update: ${updatedUser.password}`);
       return { error: `Verification FAILED: The password for ${email} was updated, but it could not be verified. This indicates a potential problem with the hashing or database logic.` };
     }
 
   } catch (error) {
     console.error(error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    await logToFile(`[SETPASS] CRITICAL ERROR for ${email}: ${errorMessage}`);
     return { error: `An unexpected error occurred during the process: ${errorMessage}` };
   }
 }
