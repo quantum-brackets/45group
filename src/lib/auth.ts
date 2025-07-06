@@ -13,10 +13,20 @@ const LoginSchema = z.object({
   password: z.string().min(1, 'Password is required.'),
 });
 
+function getErrorRedirect(from: string | null, error: string) {
+    const params = new URLSearchParams();
+    params.set('error', error);
+    if (from) {
+        params.set('from', from);
+    }
+    return `/login?${params.toString()}`;
+}
+
+
 export async function login(formData: z.infer<typeof LoginSchema>, from: string | null) {
   const validatedFields = LoginSchema.safeParse(formData);
   if (!validatedFields.success) {
-    return { error: 'Invalid fields.' };
+    redirect(getErrorRedirect(from, 'Invalid fields provided.'));
   }
 
   const { email, password } = validatedFields.data;
@@ -26,23 +36,26 @@ export async function login(formData: z.infer<typeof LoginSchema>, from: string 
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
     
     if (!user || !user.password) {
-      return { error: 'No account found with this email.' };
+        redirect(getErrorRedirect(from, 'No account found with this email.'));
     }
         
     const passwordsMatch = await verifyPassword(password, user.password);
 
     if (!passwordsMatch) {
-      return { error: 'Incorrect password.' };
+        redirect(getErrorRedirect(from, 'Incorrect password.'));
     }
     
     await createSession(user);
     
     const redirectTo = from || (user.role === 'admin' ? '/admin' : '/bookings');
-    return { success: true, redirectTo };
+    redirect(redirectTo);
 
   } catch (error) {
+    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
+        throw error;
+    }
     console.error(error);
-    return { error: 'An unexpected error occurred.' };
+    redirect(getErrorRedirect(from, 'An unexpected error occurred.'));
   }
 }
 

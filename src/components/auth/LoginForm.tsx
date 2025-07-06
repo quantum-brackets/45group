@@ -4,7 +4,7 @@
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTransition, useState } from "react";
+import { useTransition } from "react";
 import { login } from "@/lib/auth";
 import { useSearchParams } from "next/navigation";
 
@@ -24,9 +24,9 @@ type FormValues = z.infer<typeof formSchema>;
 
 export function LoginForm() {
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
+  const error = searchParams.get('error');
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -37,16 +37,8 @@ export function LoginForm() {
   });
 
   const onSubmit = (data: FormValues) => {
-    setError(null);
-    startTransition(async () => {
-      const result = await login(data, from);
-      if (result?.error) {
-        setError(result.error);
-      }
-      if (result?.success && result.redirectTo) {
-        // Use a full page navigation to ensure the new cookie is sent.
-        window.location.href = result.redirectTo;
-      }
+    startTransition(() => {
+      login(data, from);
     });
   };
 
