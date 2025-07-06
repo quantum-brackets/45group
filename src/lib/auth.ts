@@ -3,13 +3,12 @@
 
 import { z } from 'zod';
 import { getDb } from './db';
-import * as scryptJs from 'scrypt-js';
 import { createSession } from './session';
 import { redirect } from 'next/navigation';
 import { randomUUID } from 'crypto';
 import type { User } from './types';
-import { timingSafeEqual } from 'crypto';
 import { logToFile } from './logger';
+import { hashPassword, verifyPassword } from './password';
 
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address.'),
@@ -28,36 +27,15 @@ export async function login(formData: z.infer<typeof LoginSchema>) {
     const db = await getDb();
     await logToFile(`[LOGIN] Attempting login for email: ${email}`);
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
+    
     if (!user || !user.password) {
       await logToFile(`[LOGIN] User not found or has no password for email: ${email}`);
       return { error: 'No account found with this email.' };
     }
     
     await logToFile(`[LOGIN] User found: ${user.email}. Role: ${user.role}`);
-    await logToFile(`[LOGIN] Stored password hash from DB: ${user.password}`);
-
-    const [salt, storedKey] = user.password.split(':');
-    if (!salt || !storedKey) {
-        await logToFile(`[LOGIN] Invalid password format in DB for user: ${email}`);
-        return { error: 'Cannot log you in. Please contact support.'}
-    }
-    const saltBuffer = Buffer.from(salt, 'hex');
     
-    await logToFile(`[LOGIN] Provided password: ${password}`);
-
-    const inputKey = (await scryptJs.scrypt(Buffer.from(password, 'utf-8'), saltBuffer, 16384, 8, 1, 64)) as Buffer;
-    const storedKeyBuffer = Buffer.from(storedKey, 'hex');
-
-    await logToFile(`[LOGIN] Generated key from input (hex): ${inputKey.toString('hex')}`);
-    await logToFile(`[LOGIN] Stored key from DB (hex): ${storedKeyBuffer.toString('hex')}`);
-    
-    if (inputKey.length !== storedKeyBuffer.length) {
-        await logToFile('[LOGIN] Key length mismatch. This should not happen and indicates a potential hash corruption.');
-        return { error: 'Incorrect password.' };
-    }
-
-    const passwordsMatch = timingSafeEqual(inputKey, storedKeyBuffer);
-    await logToFile(`[LOGIN] Passwords match result (timingSafeEqual): ${passwordsMatch}`);
+    const passwordsMatch = await verifyPassword(password, user.password);
 
     if (!passwordsMatch) {
       await logToFile(`[LOGIN] Password mismatch for user: ${email}`);
@@ -96,9 +74,7 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
             return { error: 'A user with this email already exists.' };
         }
 
-        const salt = Buffer.from(Array.from({ length: 16 }, () => Math.floor(Math.random() * 256)));
-        const key = await scryptJs.scrypt(Buffer.from(password, 'utf-8'), salt, 16384, 8, 1, 64);
-        const hashedPassword = `${salt.toString('hex')}:${(key as Buffer).toString('hex')}`;
+        const hashedPassword = await hashPassword(password);
         const userId = `user-${randomUUID()}`;
 
         const stmt = db.prepare('INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)');

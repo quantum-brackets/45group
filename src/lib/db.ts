@@ -1,8 +1,8 @@
 
 import Database from 'better-sqlite3';
-import * as scryptJs from 'scrypt-js';
 import { listings, bookings, users } from './placeholder-data';
 import { logToFile } from './logger';
+import { hashPassword } from './password';
 
 let db: Database.Database | null = null;
 let dbPromise: Promise<Database.Database> | null = null;
@@ -15,9 +15,16 @@ async function initialize() {
     const tableCheck = newDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get();
 
     if (tableCheck) {
-        await logToFile('[DB_INIT] Database already seeded. Skipping.');
-        db = newDb;
-        return db;
+        const resetFlag = newDb.prepare("SELECT count(*) as count FROM pragma_table_info('users') WHERE name = 'reset_flag'").get() as { count: number };
+        if (!resetFlag || resetFlag.count === 0) {
+            await logToFile('[DB_INIT] Database already seeded and not marked for reset. Skipping seeding.');
+            db = newDb;
+            return db;
+        }
+        await logToFile('[DB_INIT] Reset flag found or table structure is old. Dropping all tables for reseeding.');
+        newDb.exec('DROP TABLE IF EXISTS bookings');
+        newDb.exec('DROP TABLE IF EXISTS listings');
+        newDb.exec('DROP TABLE IF EXISTS users');
     }
 
     await logToFile('[DB_INIT] Database not found or empty. Starting seeding process...');
@@ -29,7 +36,8 @@ async function initialize() {
         name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'guest'
+        role TEXT NOT NULL DEFAULT 'guest',
+        reset_flag INTEGER DEFAULT 1
     );
 
     CREATE TABLE listings (
@@ -69,13 +77,7 @@ async function initialize() {
     for (const user of users) {
         if (user.password) {
             await logToFile(`[DB_INIT] Hashing password for user: ${user.email}`);
-            const salt = Buffer.from(Array.from({ length: 16 }, () => Math.floor(Math.random() * 256)));
-            const key = await scryptJs.scrypt(Buffer.from(user.password, 'utf-8'), salt, 16384, 8, 1, 64);
-            const hashedPassword = `${salt.toString('hex')}:${(key as Buffer).toString('hex')}`;
-            
-            await logToFile(`[DB_INIT]   - Original Password: ${user.password}`);
-            await logToFile(`[DB_INIT]   - Stored Hash: ${hashedPassword}`);
-
+            const hashedPassword = await hashPassword(user.password);
             usersWithHashedPasswords.push({ ...user, password: hashedPassword });
         }
     }
@@ -138,13 +140,21 @@ async function initialize() {
 
     insertBookings(bookings);
     await logToFile('[DB_INIT] Bookings table seeded.');
-
-    await logToFile('[DB_INIT] Database seeding complete.');
+    
+    // Remove reset_flag column after seeding
+    newDb.exec('CREATE TABLE temp_users AS SELECT id, name, email, password, role FROM users');
+    newDb.exec('DROP TABLE users');
+    newDb.exec('ALTER TABLE temp_users RENAME TO users');
+    await logToFile('[DB_INIT] Reset flag removed. Database seeding complete.');
+    
     db = newDb;
     return db;
 }
 
 export function getDb(): Promise<Database.Database> {
+  if (db) {
+    return Promise.resolve(db);
+  }
   if (!dbPromise) {
     dbPromise = initialize();
   }

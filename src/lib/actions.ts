@@ -7,9 +7,9 @@ import { getDb } from './db'
 import { randomUUID } from 'crypto'
 import { getSession, deleteSession } from './session'
 import { redirect } from 'next/navigation'
-import * as scryptJs from 'scrypt-js';
 import type { User } from './types'
 import { logToFile } from './logger'
+import { hashPassword } from './password'
 
 const FormSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -161,9 +161,7 @@ export async function updatePasswordAction(data: z.infer<typeof UpdatePasswordSc
     }
 
     await logToFile(`[SETPASS] Hashing new password for user: ${email}`);
-    const salt = Buffer.from(Array.from({ length: 16 }, () => Math.floor(Math.random() * 256)));
-    const key = await scryptJs.scrypt(Buffer.from(password, 'utf-8'), salt, 16384, 8, 1, 64);
-    const hashedPassword = `${salt.toString('hex')}:${(key as Buffer).toString('hex')}`;
+    const hashedPassword = await hashPassword(password);
     
     await logToFile(`[SETPASS]   - New Hashed Password: ${hashedPassword}`);
 
