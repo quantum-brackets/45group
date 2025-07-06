@@ -1,10 +1,8 @@
-
 'use server';
 
 import fs from 'fs/promises';
-import path from 'path';
 
-const logFilePath = path.join(process.cwd(), 'debug.log');
+const logFilePath = `${process.cwd()}/debug.log`;
 
 export async function logToFile(message: string) {
   const timestamp = new Date().toISOString();
