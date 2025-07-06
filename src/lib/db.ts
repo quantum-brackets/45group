@@ -2,6 +2,8 @@
 import Database from 'better-sqlite3';
 import { listings, bookings, users } from './placeholder-data';
 import { hashPassword } from './password';
+import path from 'path';
+import fs from 'fs';
 
 // This is a common pattern to cache a database connection
 // across Next.js hot reloads or in serverless environments.
@@ -9,8 +11,11 @@ declare global {
   var dbPromise: Promise<Database.Database> | undefined;
 }
 
+const dbPath = path.join(process.cwd(), 'data.db');
+
 async function initialize() {
-    const newDb = new Database('data.db');
+    console.log(`[DB_INIT] Initializing database at: ${dbPath}`);
+    const newDb = new Database(dbPath);
     newDb.pragma('journal_mode = WAL');
 
     // Check if the users table already exists to determine if we need to seed.
