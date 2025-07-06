@@ -1,3 +1,4 @@
+
 'use server'
 
 import 'server-only';
@@ -46,8 +47,9 @@ export async function getSession(): Promise<User | null> {
     const sessionData = stmt.get(sessionId, new Date().toISOString()) as User | undefined;
 
     if (!sessionData) {
-      // Session not found or expired, clean up
-      await deleteSession();
+      // Session not found or expired. Do not delete the cookie here,
+      // as it might be a temporary DB replication delay.
+      // The client will be treated as logged out, and the cookie will expire naturally.
       return null;
     }
     
@@ -72,3 +74,4 @@ export async function deleteSession() {
   // Always clear the cookie
   cookies().set('session', '', { expires: new Date(0), path: '/' });
 }
+
