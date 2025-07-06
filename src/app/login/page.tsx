@@ -25,6 +25,12 @@ export default function LoginPage() {
               Sign up
             </Link>
           </div>
+           <div className="mt-4 text-center text-sm">
+            Login issues?{" "}
+            <Link href="/set-password" className="underline text-destructive">
+              Reset Password (Dev Tool)
+            </Link>
+          </div>
         </div>
       </div>
       <div className="hidden bg-muted lg:block">

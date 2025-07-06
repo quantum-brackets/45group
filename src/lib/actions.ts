@@ -7,6 +7,9 @@ import { getDb } from './db'
 import { randomUUID } from 'crypto'
 import { getSession, deleteSession } from './session'
 import { redirect } from 'next/navigation'
+import * as scryptJs from 'scrypt-js';
+import type { User } from './types'
+import { logToFile } from './logger'
 
 const FormSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -71,7 +74,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof FormS
     
     return { success: true, message: `The details for "${name}" have been saved.` };
   } catch (error) {
-    console.error("Database error:", error);
+    await logToFile(`[UPDATE_LISTING_ACTION] Error: ${error}`);
     return { success: false, message: "Failed to update listing in the database." };
   }
 }
@@ -126,7 +129,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     return { success: true, message: `Your booking at ${listingName} has been confirmed.` };
   } catch (error)
     {
-    console.error("Database error:", error);
+    await logToFile(`[CREATE_BOOKING_ACTION] Error: ${error}`);
     return { success: false, message: "Failed to create booking in the database." };
   }
 }
@@ -134,4 +137,45 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
 export async function logoutAction() {
     await deleteSession();
     redirect('/login');
+}
+
+
+const UpdatePasswordSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export async function updatePasswordAction(data: z.infer<typeof UpdatePasswordSchema>) {
+  const validatedFields = UpdatePasswordSchema.safeParse(data);
+  if (!validatedFields.success) {
+    return { error: 'Invalid fields.' };
+  }
+  const { email, password } = validatedFields.data;
+
+  try {
+    const db = await getDb();
+    const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as User | undefined;
+    if (!user) {
+      await logToFile(`[SETPASS] Attempted to set password for non-existent user: ${email}`);
+      return { error: 'User with that email does not exist.' };
+    }
+
+    await logToFile(`[SETPASS] Hashing new password for user: ${email}`);
+    const salt = Buffer.from(Array.from({ length: 16 }, () => Math.floor(Math.random() * 256)));
+    const key = await scryptJs.scrypt(Buffer.from(password, 'utf-8'), salt, 16384, 8, 1, 64);
+    const hashedPassword = `${salt.toString('hex')}:${(key as Buffer).toString('hex')}`;
+    
+    await logToFile(`[SETPASS]   - New Hashed Password: ${hashedPassword}`);
+
+    const stmt = db.prepare('UPDATE users SET password = ? WHERE id = ?');
+    stmt.run(hashedPassword, user.id);
+    
+    await logToFile(`[SETPASS] Successfully updated password for user: ${email}`);
+    return { success: `Password for ${email} has been updated successfully.` };
+
+  } catch (error) {
+    console.error(error);
+    await logToFile(`[SETPASS] Error updating password for ${email}: ${error}`);
+    return { error: 'An unexpected error occurred.' };
+  }
 }

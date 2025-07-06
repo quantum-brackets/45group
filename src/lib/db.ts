@@ -2,6 +2,7 @@
 import Database from 'better-sqlite3';
 import * as scryptJs from 'scrypt-js';
 import { listings, bookings, users } from './placeholder-data';
+import { logToFile } from './logger';
 
 let db: Database.Database | null = null;
 let dbPromise: Promise<Database.Database> | null = null;
@@ -10,13 +11,17 @@ async function initialize() {
     const newDb = new Database('data.db');
     newDb.pragma('journal_mode = WAL');
 
-    // Drop existing tables to ensure a clean slate for seeding
-    newDb.exec(`
-        DROP TABLE IF EXISTS bookings;
-        DROP TABLE IF EXISTS listings;
-        DROP TABLE IF EXISTS users;
-    `);
+    // Check if tables exist
+    const tableCheck = newDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get();
 
+    if (tableCheck) {
+        await logToFile('[DB_INIT] Database already seeded. Skipping.');
+        db = newDb;
+        return db;
+    }
+
+    await logToFile('[DB_INIT] Database not found or empty. Starting seeding process...');
+    
     // Create tables
     newDb.exec(`
     CREATE TABLE users (
@@ -55,21 +60,21 @@ async function initialize() {
         FOREIGN KEY (userId) REFERENCES users(id)
     );
     `);
+    await logToFile('[DB_INIT] Tables created.');
 
     // --- Seed Data ---
-    console.log('[SEEDING] Starting database seeding process...');
     
     // Seed Users
     const usersWithHashedPasswords = [];
     for (const user of users) {
         if (user.password) {
-            console.log(`[SEEDING] Hashing password for user: ${user.email}`);
+            await logToFile(`[DB_INIT] Hashing password for user: ${user.email}`);
             const salt = Buffer.from(Array.from({ length: 16 }, () => Math.floor(Math.random() * 256)));
             const key = await scryptJs.scrypt(Buffer.from(user.password, 'utf-8'), salt, 16384, 8, 1, 64);
             const hashedPassword = `${salt.toString('hex')}:${(key as Buffer).toString('hex')}`;
             
-            console.log(`[SEEDING]   - Original Password: ${user.password}`);
-            console.log(`[SEEDING]   - Stored Hash: ${hashedPassword}`);
+            await logToFile(`[DB_INIT]   - Original Password: ${user.password}`);
+            await logToFile(`[DB_INIT]   - Stored Hash: ${hashedPassword}`);
 
             usersWithHashedPasswords.push({ ...user, password: hashedPassword });
         }
@@ -87,7 +92,7 @@ async function initialize() {
     });
 
     insertUsers(usersWithHashedPasswords);
-    console.log('[SEEDING] Users table seeded.');
+    await logToFile('[DB_INIT] Users table seeded.');
 
 
     // Seed Listings
@@ -108,7 +113,7 @@ async function initialize() {
     });
 
     insertListings(listings);
-    console.log('[SEEDING] Listings table seeded.');
+    await logToFile('[DB_INIT] Listings table seeded.');
 
     // Seed Bookings
     const insertBooking = newDb.prepare(`
@@ -132,9 +137,9 @@ async function initialize() {
     });
 
     insertBookings(bookings);
-    console.log('[SEEDING] Bookings table seeded.');
+    await logToFile('[DB_INIT] Bookings table seeded.');
 
-    console.log('[SEEDING] Database seeding complete.');
+    await logToFile('[DB_INIT] Database seeding complete.');
     db = newDb;
     return db;
 }

@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation';
 import { randomUUID } from 'crypto';
 import type { User } from './types';
 import { timingSafeEqual } from 'crypto';
+import { logToFile } from './logger';
 
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address.'),
@@ -25,46 +26,49 @@ export async function login(formData: z.infer<typeof LoginSchema>) {
 
   try {
     const db = await getDb();
-    console.log(`[LOGIN] Attempting login for email: ${email}`);
+    await logToFile(`[LOGIN] Attempting login for email: ${email}`);
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
     if (!user || !user.password) {
-      console.log(`[LOGIN] User not found or has no password for email: ${email}`);
-      return { error: 'Invalid email or password.' };
+      await logToFile(`[LOGIN] User not found or has no password for email: ${email}`);
+      return { error: 'No account found with this email.' };
     }
     
-    console.log(`[LOGIN] User found: ${user.email}. Role: ${user.role}`);
-    console.log(`[LOGIN] Stored password hash from DB: ${user.password}`);
+    await logToFile(`[LOGIN] User found: ${user.email}. Role: ${user.role}`);
+    await logToFile(`[LOGIN] Stored password hash from DB: ${user.password}`);
 
     const [salt, storedKey] = user.password.split(':');
+    if (!salt || !storedKey) {
+        await logToFile(`[LOGIN] Invalid password format in DB for user: ${email}`);
+        return { error: 'Cannot log you in. Please contact support.'}
+    }
     const saltBuffer = Buffer.from(salt, 'hex');
     
-    console.log(`[LOGIN] Provided password: ${password}`);
+    await logToFile(`[LOGIN] Provided password: ${password}`);
 
     const inputKey = (await scryptJs.scrypt(Buffer.from(password, 'utf-8'), saltBuffer, 16384, 8, 1, 64)) as Buffer;
     const storedKeyBuffer = Buffer.from(storedKey, 'hex');
 
-    console.log(`[LOGIN] Generated key from input (hex): ${inputKey.toString('hex')}`);
-    console.log(`[LOGIN] Stored key from DB (hex): ${storedKeyBuffer.toString('hex')}`);
+    await logToFile(`[LOGIN] Generated key from input (hex): ${inputKey.toString('hex')}`);
+    await logToFile(`[LOGIN] Stored key from DB (hex): ${storedKeyBuffer.toString('hex')}`);
     
-    // Use Node's built-in timingSafeEqual for secure comparison
     if (inputKey.length !== storedKeyBuffer.length) {
-        console.error('[LOGIN] Key length mismatch. This should not happen and indicates a potential hash corruption.');
-        return { error: 'Invalid email or password.' };
+        await logToFile('[LOGIN] Key length mismatch. This should not happen and indicates a potential hash corruption.');
+        return { error: 'Incorrect password.' };
     }
 
     const passwordsMatch = timingSafeEqual(inputKey, storedKeyBuffer);
-    console.log(`[LOGIN] Passwords match result (timingSafeEqual): ${passwordsMatch}`);
+    await logToFile(`[LOGIN] Passwords match result (timingSafeEqual): ${passwordsMatch}`);
 
     if (!passwordsMatch) {
-      console.log(`[LOGIN] Password mismatch for user: ${email}`);
-      return { error: 'Invalid email or password.' };
+      await logToFile(`[LOGIN] Password mismatch for user: ${email}`);
+      return { error: 'Incorrect password.' };
     }
     
-    console.log(`[LOGIN] Login successful for user: ${email}. Creating session.`);
+    await logToFile(`[LOGIN] Login successful for user: ${email}. Creating session.`);
     await createSession(user);
 
   } catch (error) {
-    console.error('[LOGIN] An unexpected error occurred during login:', error);
+    await logToFile(`[LOGIN] An unexpected error occurred during login: ${error}`);
     return { error: 'An unexpected error occurred.' };
   }
   
@@ -100,10 +104,11 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
         const stmt = db.prepare('INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)');
         stmt.run(userId, name, email, hashedPassword, 'guest');
         
+        await logToFile(`[SIGNUP] New user created: ${email}`);
         await createSession({ id: userId, name, email, role: 'guest' });
 
     } catch (error) {
-        console.error(error);
+        await logToFile(`[SIGNUP] Error: ${error}`);
         return { error: 'An unexpected error occurred during signup.' };
     }
     
