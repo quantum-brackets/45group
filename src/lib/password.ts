@@ -1,7 +1,7 @@
 
 'use server';
 
-import * as scryptJs from 'scrypt-js';
+import { scrypt } from 'scrypt-js';
 import { timingSafeEqual, randomBytes } from 'crypto';
 import { logToFile } from './logger';
 
@@ -14,7 +14,7 @@ const scryptOptions = {
 
 export async function hashPassword(password: string): Promise<string> {
     const salt = randomBytes(16);
-    const key = await scryptJs.scrypt(Buffer.from(password, 'utf-8'), salt, scryptOptions.N, scryptOptions.r, scryptOptions.p, scryptOptions.dkLen) as Buffer;
+    const key = await scrypt(Buffer.from(password, 'utf-8'), salt, scryptOptions.N, scryptOptions.r, scryptOptions.p, scryptOptions.dkLen) as Buffer;
     const hash = `${salt.toString('hex')}:${key.toString('hex')}`;
     await logToFile(`[HASH] Hashing password. Salt: ${salt.toString('hex')}, Hash: ${hash}`);
     return hash;
@@ -34,7 +34,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
     const salt = Buffer.from(saltHex, 'hex');
     const storedKey = Buffer.from(storedKeyHex, 'hex');
 
-    const inputKey = await scryptJs.scrypt(Buffer.from(password, 'utf-8'), salt, scryptOptions.N, scryptOptions.r, scryptOptions.p, scryptOptions.dkLen) as Buffer;
+    const inputKey = await scrypt(Buffer.from(password, 'utf-8'), salt, scryptOptions.N, scryptOptions.r, scryptOptions.p, scryptOptions.dkLen) as Buffer;
     
     await logToFile(`[VERIFY] Salt from hash: ${salt.toString('hex')}`);
     await logToFile(`[VERIFY] Key from hash: ${storedKey.toString('hex')}`);
