@@ -1,4 +1,3 @@
-
 'use server'
 
 import 'server-only';
@@ -6,6 +5,7 @@ import { cookies } from 'next/headers';
 import type { User } from './types';
 import { getDb } from './db';
 import { randomUUID } from 'crypto';
+import { unstable_noStore as noStore } from 'next/cache';
 
 /**
  * Creates a session record in the database.
@@ -35,6 +35,7 @@ export async function createSession(userId: string): Promise<string | null> {
 }
 
 export async function getSession(): Promise<User | null> {
+  noStore();
   const sessionId = cookies().get('session')?.value;
   if (!sessionId) {
     return null;
@@ -54,7 +55,6 @@ export async function getSession(): Promise<User | null> {
 
     if (!sessionData) {
       // The session ID is invalid or expired. We simply return null.
-      // The aggressive cookie deletion has been removed to prevent transient issues from causing a full logout.
       return null;
     }
     
