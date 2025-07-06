@@ -13,7 +13,7 @@ import { UserNav } from '../auth/UserNav';
 const navLinks = [
   { href: '/search', label: 'Search' },
   { href: '/ai-recommendations', label: 'AI Recommendations' },
-  { href: '/admin', label: 'Admin' },
+  { href: '/dashboard', label: 'Dashboard' },
   { href: '/bookings', label: 'Bookings' },
 ];
 
@@ -21,7 +21,7 @@ export function Header({ session }: { session: User | null }) {
   const pathname = usePathname();
 
   const visibleNavLinks = navLinks.filter(link => {
-    if (link.href.startsWith('/admin') && session?.role !== 'admin') {
+    if (link.href.startsWith('/dashboard') && session?.role !== 'admin') {
       return false;
     }
     if (link.href.startsWith('/bookings') && !session) {

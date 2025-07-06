@@ -51,7 +51,7 @@ export async function login(formData: z.infer<typeof LoginSchema>, from: string 
       path: '/',
     });
     
-    const redirectTo = from || (user.role === 'admin' ? '/admin' : '/bookings');
+    const redirectTo = from || (user.role === 'admin' ? '/dashboard' : '/bookings');
     return { success: true, redirectTo };
     
   } catch (error) {
