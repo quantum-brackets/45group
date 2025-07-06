@@ -57,22 +57,28 @@ async function setupDb() {
     // Seed users if table is empty
     const usersCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
     if (usersCount.count === 0) {
+        const usersWithHashedPasswords = [];
+        for (const user of users) {
+            if (user.password) {
+                const salt = Buffer.from(Array.from({ length: 16 }, () => Math.floor(Math.random() * 256)));
+                const key = await scrypt.scrypt(Buffer.from(user.password, 'utf-8'), salt, 16384, 8, 1, 64);
+                const hashedPassword = `${salt.toString('hex')}:${(key as Buffer).toString('hex')}`;
+                usersWithHashedPasswords.push({ ...user, password: hashedPassword });
+            }
+        }
+        
         const insertUser = db.prepare(`
-        INSERT INTO users (id, name, email, password, role)
-        VALUES (@id, @name, @email, @password, @role)
+            INSERT INTO users (id, name, email, password, role)
+            VALUES (@id, @name, @email, @password, @role)
         `);
 
-        const insertUsers = db.transaction(async (usersToInsert) => {
+        const insertUsers = db.transaction((usersToInsert) => {
             for (const user of usersToInsert) {
-                 if (user.password) {
-                    const salt = Buffer.from(Array.from({ length: 16 }, () => Math.floor(Math.random() * 256)));
-                    const key = await scrypt.scrypt(Buffer.from(user.password, 'utf-8'), salt, 16384, 8, 1, 64);
-                    const hashed = `${salt.toString('hex')}:${(key as Buffer).toString('hex')}`;
-                    insertUser.run({ ...user, password: hashed });
-                }
+                insertUser.run(user);
             }
         });
-        await insertUsers(users);
+
+        insertUsers(usersWithHashedPasswords);
     }
 
     // Seed listings if table is empty
