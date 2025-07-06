@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation';
 import { randomUUID } from 'crypto';
 import type { User } from './types';
 import { hashPassword, verifyPassword } from './password';
+import { cookies } from 'next/headers';
 
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address.'),
@@ -54,9 +55,25 @@ export async function login(formData: z.infer<typeof LoginSchema>, from: string 
     redirect(getErrorRedirect(from, 'An unexpected error occurred during login.'));
   }
   
-  await createSession(user!);
+  let sessionId: string | null = null;
+  try {
+    sessionId = await createSession(user.id);
+  } catch (dbError) {
+    console.error('[LOGIN_SESSION_DB_ERROR]', dbError);
+  }
+
+  if (!sessionId) {
+    redirect(getErrorRedirect(from, 'Database error: Could not create session.'));
+  }
+
+  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
+  cookies().set('session', sessionId, {
+    expires,
+    httpOnly: true,
+    path: '/',
+  });
   
-  const redirectTo = from || (user!.role === 'admin' ? '/admin' : '/bookings');
+  const redirectTo = from || (user.role === 'admin' ? '/admin' : '/bookings');
   redirect(redirectTo);
 }
 
@@ -73,6 +90,7 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
     }
 
     const { name, email, password } = validatedFields.data;
+    const userId = `user-${randomUUID()}`;
 
     try {
         const db = await getDb();
@@ -82,17 +100,30 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
         }
 
         const hashedPassword = await hashPassword(password);
-        const userId = `user-${randomUUID()}`;
 
         const stmt = db.prepare('INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)');
         stmt.run(userId, name, email, hashedPassword, 'guest');
         
-        await createSession({ id: userId, name, email, role: 'guest' });
-
     } catch (error) {
-        console.error(`[SIGNUP] Error: ${error}`);
+        console.error(`[SIGNUP] Error creating user: ${error}`);
         return { error: 'An unexpected error occurred during signup.' };
     }
+    
+    // Create session for the new user
+    let sessionId: string | null = null;
+    try {
+        sessionId = await createSession(userId);
+    } catch (error) {
+        console.error(`[SIGNUP] Error creating session: ${error}`);
+        return { error: 'Account created, but could not log you in. Please log in manually.' };
+    }
+
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    cookies().set('session', sessionId, {
+        expires,
+        httpOnly: true,
+        path: '/',
+    });
     
     redirect('/bookings');
 }

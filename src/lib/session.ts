@@ -1,3 +1,4 @@
+
 'use server'
 
 import 'server-only';
@@ -6,23 +7,22 @@ import type { User } from './types';
 import { getDb } from './db';
 import { randomUUID } from 'crypto';
 
-export async function createSession(user: User) {
+/**
+ * Creates a session record in the database.
+ * @param userId The ID of the user to create the session for.
+ * @returns The new session ID.
+ * @throws Will throw an error if the database operation fails.
+ */
+export async function createSession(userId: string): Promise<string> {
   const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
   const sessionId = randomUUID();
 
-  // No try/catch here. If this fails, we want the error to propagate
-  // up to the login action so it can handle it properly.
   const db = await getDb();
   const stmt = db.prepare('INSERT INTO sessions (id, userId, expiresAt) VALUES (?, ?, ?)');
-  stmt.run(sessionId, user.id, expires.toISOString());
-
-  cookies().set('session', sessionId, { 
-    expires, 
-    httpOnly: true, 
-    path: '/' 
-  });
+  stmt.run(sessionId, userId, expires.toISOString());
   
-  console.log(`[SESSION_CREATE] Session created for user ${user.id} with token ${sessionId}`);
+  console.log(`[SESSION_CREATE] Session record created for user ${userId} with ID ${sessionId}`);
+  return sessionId;
 }
 
 export async function getSession(): Promise<User | null> {
@@ -34,7 +34,6 @@ export async function getSession(): Promise<User | null> {
   try {
     const db = await getDb();
     
-    // Join sessions and users table to get user data directly
     const stmt = db.prepare(`
       SELECT u.id, u.name, u.email, u.role 
       FROM sessions s
@@ -45,7 +44,6 @@ export async function getSession(): Promise<User | null> {
     const sessionData = stmt.get(sessionId, new Date().toISOString()) as User | undefined;
 
     if (!sessionData) {
-      // Session not found or expired. Do not delete the cookie here.
       return null;
     }
     
@@ -67,6 +65,5 @@ export async function deleteSession() {
         console.error(`[SESSION_DELETE] Error deleting session ${sessionId} from database: ${error}`);
     }
   }
-  // Always clear the cookie
   cookies().set('session', '', { expires: new Date(0), path: '/' });
 }
