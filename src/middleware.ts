@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 // Authorization (role checks) are handled in layouts (e.g., /dashboard/layout.tsx)
 // The middleware is only responsible for authentication (is user logged in?).
 const protectedRoutes = ['/bookings', '/booking', '/ai-recommendations', '/dashboard'];
-const authRoutes = ['/login', '/signup', '/dev-tools'];
+const authRoutes = ['/login', '/signup'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
