@@ -16,10 +16,6 @@ import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(6, "New password must be at least 6 characters."),
-  verifyPassword: z.string()
-}).refine((data) => data.password === data.verifyPassword, {
-  message: "Passwords do not match.",
-  path: ["verifyPassword"],
 });
 
 
@@ -39,7 +35,6 @@ export function SetPasswordForm() {
     defaultValues: {
       email: "",
       password: "",
-      verifyPassword: "",
     },
   });
 
@@ -126,19 +121,6 @@ export function SetPasswordForm() {
               <FormMessage />
             </FormItem>
           )}
-        />
-        <FormField
-            control={form.control}
-            name="verifyPassword"
-            render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Verify Password</FormLabel>
-                    <FormControl>
-                        <Input type="password" {...field} disabled={isUpdating || isVerifying} />
-                    </FormControl>
-                    <FormMessage />
-                </FormItem>
-            )}
         />
         <div className="flex flex-col sm:flex-row gap-2">
             <Button type="submit" className="w-full" disabled={isUpdating || isVerifying}>
