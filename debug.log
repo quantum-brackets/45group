@@ -234,3 +234,20 @@
 2025-07-06T18:47:17.867Z - [SETPASS_VERIFY] FAILED: Password mismatch for admin@45group.org after update.
 2025-07-06T18:47:17.870Z - [SETPASS_VERIFY]   - Original Password Sent: password
 2025-07-06T18:47:17.877Z - [SETPASS_VERIFY]   - Hash in DB after update: 36d4bdf3de48fa7b9945ded1d22e3242:187,172,23,137,106,160,150,167,169,105,100,226,158,214,54,233,154,18,45,20,140,187,183,175,40,134,198,108,140,116,77,43,148,19,228,115,114,116,84,137,122,230,198,52,226,166,158,175,198,121,151,233,92,58,65,181,162,247,37,162,182,57,134,183
+2025-07-06T18:50:33.623Z - [DB_INIT] No v3 init marker found. Starting fresh seed for password crypto and schema fixes.
+2025-07-06T18:50:33.700Z - [DB_INIT] Users table created.
+2025-07-06T18:50:33.707Z - [DB_INIT] Listings table created.
+2025-07-06T18:50:33.826Z - [HASH] Hashing password. Salt: 0b959c1022799e70abceace9e561bd04, Hash: 0b959c1022799e70abceace9e561bd04:517dc39c5807b317a1338b109ccc4171f5222adc7b8b223d0ce4437c2f5fdff517cf428fb626f8b3c466cb04dbf6e9e0130cebf1df68a9b6fd689ddc0f72ab25
+2025-07-06T18:50:33.838Z - [HASH] Hashing password. Salt: 581c7349750ff83c2ba0ff30c9b0ae1f, Hash: 581c7349750ff83c2ba0ff30c9b0ae1f:328f5e1e85274ad57de0a56360e4e8765772c5c034353ea7af466f5909edd1445c07f0d2782783fe58e1cfa9a82eb5faa42eb91278931b199ff3b141df789d45
+2025-07-06T18:50:33.840Z - [DB_INIT] All passwords hashed successfully.
+2025-07-06T18:51:09.493Z - [DB_INIT] No v3 init marker found. Starting fresh seed for password crypto and schema fixes.
+2025-07-06T18:51:09.556Z - [DB_INIT] Users table created.
+2025-07-06T18:51:09.697Z - [DB_INIT] Listings table created.
+2025-07-06T18:51:09.831Z - [DB_INIT] Bookings table created.
+2025-07-06T18:51:10.011Z - [HASH] Hashing password. Salt: 41a0d706e5f3d9dac41b4fdcbabb6772, Hash: 41a0d706e5f3d9dac41b4fdcbabb6772:06573062af4e2162db4e1c907890a1d46adccfca3b6efd8dbf3bf51bc14ff8f6ef5966eefbb452ec2a5435acfccd246439d6b83795f261ff6158b114085c27b7
+2025-07-06T18:51:10.033Z - [HASH] Hashing password. Salt: 28a9690d24488e374da7a3a1ea92bb6b, Hash: 28a9690d24488e374da7a3a1ea92bb6b:a9844290c8b73490a65bd496b7072888f6a1676c72c66c192f241f7a43c8017b3763bddc86dca4a49e3fac15017126b20f3095de58de2377b0a5ef77f634cbd3
+2025-07-06T18:51:10.038Z - [DB_INIT] All passwords hashed successfully.
+2025-07-06T18:51:10.039Z - [DB_INIT] Foreign keys turned OFF for seeding.
+2025-07-06T18:51:10.048Z - [DB_INIT] All data seeded.
+2025-07-06T18:51:10.055Z - [DB_INIT] Foreign keys turned ON.
+2025-07-06T18:51:10.057Z - [DB_INIT] V3 init marker created. Initialization complete.
