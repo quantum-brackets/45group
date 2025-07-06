@@ -1,6 +1,6 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
-import { getUserFromSessionId } from '@/lib/session';
+import { getUserFromSessionId } from '@/lib/session-middleware';
 
 const protectedRoutes = ['/bookings', '/booking', '/ai-recommendations'];
 const adminRoutes = ['/admin', '/edit-listing', '/dashboard', '/dashboard/booking', '/dashboard/bookings', '/dashboard/edit-listing'];
