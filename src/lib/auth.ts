@@ -32,40 +32,30 @@ export async function login(formData: z.infer<typeof LoginSchema>, from: string 
   }
 
   const { email, password } = validatedFields.data;
-  let user: User | undefined;
 
-  try {
-    const db = await getDb();
-    user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
-    
-    if (!user || !user.password) {
-        throw new Error('AUTH_INVALID_CREDENTIALS');
-    }
-        
-    const passwordsMatch = await verifyPassword(password, user.password);
+  const db = await getDb();
+  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
 
-    if (!passwordsMatch) {
-        throw new Error('AUTH_INVALID_CREDENTIALS');
-    }
-  } catch (error) {
-    if (error instanceof Error && error.message === 'AUTH_INVALID_CREDENTIALS') {
-        redirect(getErrorRedirect(from, 'Incorrect email or password.'));
-    }
-    console.error('[LOGIN_ERROR]', error);
-    redirect(getErrorRedirect(from, 'An unexpected error occurred during login.'));
+  if (!user || !user.password) {
+    redirect(getErrorRedirect(from, 'Incorrect email or password.'));
   }
-  
-  let sessionId: string | null = null;
+        
+  const passwordsMatch = await verifyPassword(password, user.password);
+
+  if (!passwordsMatch) {
+    redirect(getErrorRedirect(from, 'Incorrect email or password.'));
+  }
+
+  // Credentials are valid, now create the session.
+  let sessionId: string;
   try {
     sessionId = await createSession(user.id);
-  } catch (dbError) {
-    console.error('[LOGIN_SESSION_DB_ERROR]', dbError);
-  }
-
-  if (!sessionId) {
+  } catch (error) {
+    console.error('[LOGIN_SESSION_DB_ERROR]', error);
     redirect(getErrorRedirect(from, 'Database error: Could not create session.'));
   }
 
+  // Session created, now set cookie and redirect.
   const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
   cookies().set('session', sessionId, {
     expires,
@@ -109,8 +99,8 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
         return { error: 'An unexpected error occurred during signup.' };
     }
     
-    // Create session for the new user
-    let sessionId: string | null = null;
+    // User created, now create session.
+    let sessionId: string;
     try {
         sessionId = await createSession(userId);
     } catch (error) {
