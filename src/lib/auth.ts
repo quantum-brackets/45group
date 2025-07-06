@@ -47,7 +47,7 @@ export async function login(formData: z.infer<typeof LoginSchema>) {
     return { error: 'An unexpected error occurred.' };
   }
   
-  redirect('/dashboard/bookings');
+  redirect('/bookings');
 }
 
 const SignupSchema = z.object({
@@ -85,5 +85,5 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
         return { error: 'An unexpected error occurred during signup.' };
     }
     
-    redirect('/dashboard/bookings');
+    redirect('/bookings');
 }

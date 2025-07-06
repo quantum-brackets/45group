@@ -2,8 +2,8 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 
-const protectedRoutes = ['/dashboard', '/dashboard/bookings', '/dashboard/booking', '/dashboard/edit-listing', '/ai-recommendations'];
-const adminRoutes = ['/dashboard', '/dashboard/edit-listing'];
+const protectedRoutes = ['/admin', '/bookings', '/booking', '/edit-listing', '/ai-recommendations'];
+const adminRoutes = ['/admin', '/edit-listing'];
 const authRoutes = ['/login', '/signup'];
 
 export async function middleware(request: NextRequest) {
@@ -26,7 +26,7 @@ export async function middleware(request: NextRequest) {
   if (session) {
     // ...and is trying to access an auth route (login/signup), redirect to dashboard
     if (isAuthRoute) {
-      return NextResponse.redirect(new URL('/dashboard/bookings', request.url));
+      return NextResponse.redirect(new URL('/bookings', request.url));
     }
 
     // ...but is not an admin and tries to access an admin route

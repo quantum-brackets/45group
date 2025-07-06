@@ -14,8 +14,8 @@ import { UserNav } from '../auth/UserNav';
 const navLinks = [
   { href: '/search', label: 'Search' },
   { href: '/ai-recommendations', label: 'AI Recommendations' },
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/dashboard/bookings', label: 'Bookings' },
+  { href: '/admin', label: 'Admin' },
+  { href: '/bookings', label: 'Bookings' },
 ];
 
 export function Header({ session }: { session: SessionPayload | null }) {
@@ -27,8 +27,11 @@ export function Header({ session }: { session: SessionPayload | null }) {
   }, []);
 
   const visibleNavLinks = navLinks.filter(link => {
-    if (link.href.startsWith('/dashboard') && session?.role !== 'admin') {
+    if (link.href.startsWith('/admin') && session?.role !== 'admin') {
       return false;
+    }
+    if (link.href.startsWith('/bookings') && !session) {
+        return false;
     }
     return true;
   });

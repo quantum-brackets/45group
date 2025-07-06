@@ -67,7 +67,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof FormS
       id
     );
 
-    revalidatePath('/dashboard');
+    revalidatePath('/admin');
     revalidatePath(`/listing/${id}`);
     
     return { success: true, message: `The details for "${name}" have been saved.` };
@@ -120,7 +120,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       'Confirmed'
     );
 
-    revalidatePath('/dashboard/bookings');
+    revalidatePath('/bookings');
     revalidatePath(`/listing/${listingId}`);
     
     return { success: true, message: `Your booking at ${listingName} has been confirmed.` };

@@ -49,7 +49,7 @@ export function UserNav({ user }: { user: SessionPayload }) {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/dashboard/bookings">
+            <Link href="/bookings">
               <UserIcon className="mr-2 h-4 w-4" />
               <span>My Bookings</span>
             </Link>
