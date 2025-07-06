@@ -4,7 +4,7 @@
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTransition } from "react";
+import { useTransition, useState } from "react";
 import { login } from "@/lib/auth";
 import { useSearchParams } from "next/navigation";
 
@@ -26,7 +26,7 @@ export function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
-  const error = searchParams.get('error');
+  const [error, setError] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -37,8 +37,14 @@ export function LoginForm() {
   });
 
   const onSubmit = (data: FormValues) => {
-    startTransition(() => {
-      login(data, from);
+    setError(null);
+    startTransition(async () => {
+      const result = await login(data, from);
+      if (result.success) {
+        window.location.href = result.redirectTo;
+      } else if (result.error) {
+        setError(result.error);
+      }
     });
   };
 
