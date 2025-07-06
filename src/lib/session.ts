@@ -6,7 +6,6 @@ import { cookies } from 'next/headers';
 import type { User } from './types';
 import { getDb } from './db';
 import { randomUUID } from 'crypto';
-import { logToFile } from './logger';
 
 export async function createSession(user: User) {
   const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
@@ -22,9 +21,9 @@ export async function createSession(user: User) {
         httpOnly: true, 
         path: '/' 
       });
-      await logToFile(`[SESSION_CREATE] Session created for user ${user.id} with token ${sessionId}`);
+      console.log(`[SESSION_CREATE] Session created for user ${user.id} with token ${sessionId}`);
   } catch (error) {
-      await logToFile(`[SESSION_CREATE] Error creating session for user ${user.id}: ${error}`);
+      console.error(`[SESSION_CREATE] Error creating session for user ${user.id}: ${error}`);
   }
 }
 
@@ -55,7 +54,7 @@ export async function getSession(): Promise<User | null> {
     
     return sessionData;
   } catch (error) {
-    await logToFile(`[SESSION_GET] Error validating session ${sessionId}: ${error}`);
+    console.error(`[SESSION_GET] Error validating session ${sessionId}: ${error}`);
     return null;
   }
 }
@@ -67,9 +66,8 @@ export async function deleteSession() {
         const db = await getDb();
         const stmt = db.prepare('DELETE FROM sessions WHERE id = ?');
         stmt.run(sessionId);
-        await logToFile(`[SESSION_DELETE] Deleted session ${sessionId} from database.`);
     } catch (error) {
-        await logToFile(`[SESSION_DELETE] Error deleting session ${sessionId} from database: ${error}`);
+        console.error(`[SESSION_DELETE] Error deleting session ${sessionId} from database: ${error}`);
     }
   }
   // Always clear the cookie
