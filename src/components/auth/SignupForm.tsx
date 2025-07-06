@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -38,9 +37,7 @@ export function SignupForm() {
     setError(null);
     startTransition(async () => {
       const result = await signup(data);
-      if (result.success) {
-        window.location.href = result.redirectTo;
-      } else if (result.error) {
+      if (result?.error) {
         setError(result.error);
       }
     });

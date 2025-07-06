@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -39,10 +38,9 @@ export function LoginForm() {
   const onSubmit = (data: FormValues) => {
     setError(null);
     startTransition(async () => {
+      // The login action will redirect on success or return an object on error.
       const result = await login(data, from);
-      if (result.success) {
-        window.location.href = result.redirectTo;
-      } else if (result.error) {
+      if (result?.error) {
         setError(result.error);
       }
     });
