@@ -6,7 +6,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransition, useState } from "react";
 import { login } from "@/lib/auth";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,6 @@ type FormValues = z.infer<typeof formSchema>;
 export function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
 
@@ -45,7 +44,8 @@ export function LoginForm() {
         setError(result.error);
       }
       if (result?.success && result.redirectTo) {
-        router.push(result.redirectTo);
+        // Use a full page navigation to ensure the new cookie is sent.
+        window.location.href = result.redirectTo;
       }
     });
   };
