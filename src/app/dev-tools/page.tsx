@@ -3,8 +3,12 @@ import { SetPasswordForm } from '@/components/auth/SetPasswordForm';
 import { Wrench } from 'lucide-react';
 import Link from 'next/link';
 import { SessionDebugger } from '@/components/dev/SessionDebugger';
+import { cookies } from 'next/headers';
 
 export default function DevToolsPage() {
+  const cookieStore = cookies();
+  const sessionToken = cookieStore.get('session')?.value;
+
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
       <div className="flex items-center justify-center py-12">
@@ -19,7 +23,7 @@ export default function DevToolsPage() {
             </p>
           </div>
           <SetPasswordForm />
-          <SessionDebugger />
+          <SessionDebugger initialSessionId={sessionToken} />
            <div className="mt-4 text-center text-sm">
             Finished troubleshooting?{" "}
             <Link href="/login" className="underline">

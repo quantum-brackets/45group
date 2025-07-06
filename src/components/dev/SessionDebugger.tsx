@@ -24,12 +24,16 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function SessionDebugger() {
+interface SessionDebuggerProps {
+    initialSessionId?: string;
+}
+
+export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
   const [isLoginPending, startLoginTransition] = useTransition();
   const [isVerifyPending, startVerifyTransition] = useTransition();
   const [loginResult, setLoginResult] = useState<{ success?: string; error?: string } | null>(null);
   const [verifyResult, setVerifyResult] = useState<{ success?: string; error?: string } | null>(null);
-  const [sessionId, setSessionId] = useState<string>('');
+  const [sessionId, setSessionId] = useState<string>(initialSessionId || '');
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
