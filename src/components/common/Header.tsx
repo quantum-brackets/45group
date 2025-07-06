@@ -7,7 +7,6 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, Mountain } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
 import type { SessionPayload } from '@/lib/types';
 import { UserNav } from '../auth/UserNav';
 
@@ -20,11 +19,6 @@ const navLinks = [
 
 export function Header({ session }: { session: SessionPayload | null }) {
   const pathname = usePathname();
-  const [appName, setAppName] = useState('');
-
-  useEffect(() => {
-    setAppName('Book45');
-  }, []);
 
   const visibleNavLinks = navLinks.filter(link => {
     if (link.href.startsWith('/admin') && session?.role !== 'admin') {
@@ -42,7 +36,7 @@ export function Header({ session }: { session: SessionPayload | null }) {
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">
             <Mountain className="h-6 w-6 text-primary" />
-            <span className="font-headline">{appName}</span>
+            <span className="font-headline">Book45</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
             {visibleNavLinks.map((link) => (
@@ -85,7 +79,7 @@ export function Header({ session }: { session: SessionPayload | null }) {
                 <nav className="grid gap-6 text-lg font-medium p-6">
                     <Link href="/" className="flex items-center gap-2 font-bold text-lg mb-4">
                     <Mountain className="h-6 w-6 text-primary" />
-                    <span className="font-headline">{appName}</span>
+                    <span className="font-headline">Book45</span>
                     </Link>
                     {visibleNavLinks.map((link) => (
                     <Link
