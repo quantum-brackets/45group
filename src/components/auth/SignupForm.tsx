@@ -5,6 +5,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransition, useState } from "react";
 import { signup } from "@/lib/auth";
+import { useRouter } from "next/navigation";
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ type FormValues = z.infer<typeof formSchema>;
 export function SignupForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -39,6 +41,9 @@ export function SignupForm() {
       const result = await signup(data);
       if (result?.error) {
         setError(result.error);
+      }
+      if (result?.success) {
+        router.push(result.redirectTo);
       }
     });
   };

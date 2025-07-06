@@ -1,7 +1,7 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 
-// Note: Authorization (role checks) is now handled in layouts (e.g., /admin/layout.tsx)
+// Authorization (role checks) are handled in layouts (e.g., /dashboard/layout.tsx)
 // The middleware is only responsible for authentication (is user logged in?).
 const protectedRoutes = ['/bookings', '/booking', '/ai-recommendations', '/dashboard'];
 const authRoutes = ['/login', '/signup', '/dev-tools'];
@@ -13,7 +13,7 @@ export function middleware(request: NextRequest) {
   const isAccessingAuthRoute = authRoutes.some(route => pathname.startsWith(route));
   const isAccessingProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
-  // If the user has a session cookie and is trying to access a login/signup page,
+  // If the user has a session cookie and is trying to access an auth page,
   // redirect them to a default authenticated page.
   if (sessionId && isAccessingAuthRoute) {
     return NextResponse.redirect(new URL('/bookings', request.url));
@@ -23,7 +23,7 @@ export function middleware(request: NextRequest) {
   // redirect them to the login page.
   if (!sessionId && isAccessingProtectedRoute) {
     const url = new URL('/login', request.url);
-    url.searchParams.set('from', pathname);
+    url.searchParams.set('from', pathname); // Let login page know where to redirect back.
     return NextResponse.redirect(url);
   }
 

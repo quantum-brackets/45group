@@ -5,7 +5,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransition, useState } from "react";
 import { login } from "@/lib/auth";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -23,8 +23,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 export function LoginForm() {
   const [isPending, startTransition] = useTransition();
-  const searchParams = useSearchParams();
-  const from = searchParams.get('from');
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
@@ -38,10 +37,14 @@ export function LoginForm() {
   const onSubmit = (data: FormValues) => {
     setError(null);
     startTransition(async () => {
-      // The login action will redirect on success or return an object on error.
-      const result = await login(data, from);
+      const result = await login(data);
       if (result?.error) {
         setError(result.error);
+      }
+      if (result?.success) {
+        // Use router for client-side navigation after server action is complete.
+        // This ensures the cookie is set before navigating.
+        router.push(result.redirectTo);
       }
     });
   };
