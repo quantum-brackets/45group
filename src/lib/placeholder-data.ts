@@ -1,8 +1,8 @@
 import type { Listing, Booking, User } from './types';
 
 export const users: User[] = [
-    { id: 'user-admin-1', name: 'Admin User', email: 'admin@45group.org', password: 'password', role: 'admin' },
-    { id: 'user-guest-1', name: 'Guest User', email: 'guest@45group.org', password: 'password', role: 'guest' },
+    { id: '101', name: 'Admin User', email: 'admin@45group.org', password: 'password', role: 'admin' },
+    { id: '102', name: 'Guest User', email: 'guest@45group.org', password: 'password', role: 'guest' },
 ];
 
 export const listings: Listing[] = [
@@ -48,10 +48,7 @@ export const listings: Listing[] = [
   }
 ];
 
-export const bookings: Omit<Booking, 'listingName'>[] = [
-    { id: 'b1', listingId: '1', userId: 'user-guest-1', startDate: '2024-08-15', endDate: '2024-08-18', guests: 2, status: 'Confirmed' },
-    { id: 'b2', listingId: '2', userId: 'user-admin-1', startDate: '2024-09-01', endDate: '2024-09-01', guests: 150, status: 'Pending' },
-].map(b => {
-    const listing = listings.find(l => l.id === b.listingId);
-    return { ...b, listingName: listing!.name };
-});
+export const bookings: Booking[] = [
+    { id: '1001', listingId: '1', userId: '102', listingName: 'Grand Hyatt Hotel', startDate: '2024-08-15', endDate: '2024-08-18', guests: 2, status: 'Confirmed' },
+    { id: '1002', listingId: '2', userId: '101', listingName: 'The Lighthouse Events', startDate: '2024-09-01', endDate: '2024-09-01', guests: 150, status: 'Pending' },
+];

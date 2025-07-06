@@ -167,55 +167,30 @@ export async function updatePasswordAction(data: z.infer<typeof UpdatePasswordSc
 
     const stmt = db.prepare('UPDATE users SET password = ? WHERE id = ?');
     stmt.run(hashedPassword, user.id);
+    await logToFile(`[SETPASS] Successfully updated password for user: ${email} in the database.`);
     
-    await logToFile(`[SETPASS] Successfully updated password for user: ${email}`);
-    return { success: `Password for ${email} has been updated successfully.` };
+    // --- Automatic Verification Step ---
+    await logToFile(`[SETPASS_VERIFY] Immediately verifying new password for ${email}.`);
+    const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id) as User | undefined;
+    
+    if (!updatedUser || !updatedUser.password) {
+      await logToFile(`[SETPASS_VERIFY] Could not retrieve updated user or password from DB for verification.`);
+      return { error: 'Password updated, but failed to re-fetch user for verification.' };
+    }
+
+    const passwordsMatch = await verifyPassword(password, updatedUser.password);
+
+    if (passwordsMatch) {
+      await logToFile(`[SETPASS_VERIFY] SUCCESS: Verification for ${email} passed.`);
+      return { success: `Password for ${email} was updated and verified successfully.` };
+    } else {
+      await logToFile(`[SETPASS_VERIFY] FAILED: Verification for ${email} failed. The password in the database does not match the one just set.`);
+      return { error: `Password for ${email} was updated, but immediate verification FAILED. This suggests an issue with the hashing or comparison logic.` };
+    }
 
   } catch (error) {
     console.error(error);
     await logToFile(`[SETPASS] Error updating password for ${email}: ${error}`);
     return { error: 'An unexpected error occurred.' };
-  }
-}
-
-const VerifyLoginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1, 'Password is required.'),
-});
-
-export async function verifyLoginAction(data: z.infer<typeof VerifyLoginSchema>) {
-  const validatedFields = VerifyLoginSchema.safeParse(data);
-  if (!validatedFields.success) {
-    return { error: 'Invalid fields.' };
-  }
-  const { email, password } = validatedFields.data;
-
-  try {
-    const db = await getDb();
-    await logToFile(`[VERIFY_LOGIN_TOOL] Attempting verification for email: ${email}`);
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
-
-    if (!user) {
-      await logToFile(`[VERIFY_LOGIN_TOOL] User not found for email: ${email}`);
-      return { error: 'Verification failed: User not found.' };
-    }
-
-    if (!user.password) {
-        await logToFile(`[VERIFY_LOGIN_TOOL] User ${email} has no password set.`);
-        return { error: 'Verification failed: User has no password.' };
-    }
-
-    const passwordsMatch = await verifyPassword(password, user.password);
-
-    if (!passwordsMatch) {
-      await logToFile(`[VERIFY_LOGIN_TOOL] Password mismatch for user: ${email}`);
-      return { error: 'Verification failed: Incorrect password.' };
-    }
-
-    await logToFile(`[VERIFY_LOGIN_TOOL] Verification successful for user: ${email}.`);
-    return { success: 'Verification successful! You can log in with these credentials.' };
-  } catch (error) {
-    await logToFile(`[VERIFY_LOGIN_TOOL] An unexpected error occurred: ${error}`);
-    return { error: 'An unexpected error occurred during verification.' };
   }
 }

@@ -5,12 +5,12 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransition, useState } from "react";
-import { updatePasswordAction, verifyLoginAction } from "@/lib/actions";
+import { updatePasswordAction } from "@/lib/actions";
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle, CheckCircle, ShieldCheck } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 
 const formSchema = z.object({
@@ -22,14 +22,9 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export function SetPasswordForm() {
-  const [isUpdating, startUpdateTransition] = useTransition();
-  const [updateStatus, setUpdateStatus] = useState<{success?: string; error?: string} | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [status, setStatus] = useState<{success?: string; error?: string} | null>(null);
   
-  const [isVerifying, startVerificationTransition] = useTransition();
-  const [verificationStatus, setVerificationStatus] = useState<{success?: string; error?: string} | null>(null);
-  const [credentialsToVerify, setCredentialsToVerify] = useState<Pick<FormValues, 'email' | 'password'> | null>(null);
-
-
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -39,63 +34,34 @@ export function SetPasswordForm() {
   });
 
   const onSubmit = (data: FormValues) => {
-    setUpdateStatus(null);
-    setVerificationStatus(null);
-    setCredentialsToVerify(null);
-
-    startUpdateTransition(async () => {
+    setStatus(null);
+    startTransition(async () => {
       const result = await updatePasswordAction({email: data.email, password: data.password});
-      if (result?.error) {
-        setUpdateStatus({ error: result.error });
-      }
-      if (result?.success) {
-        setUpdateStatus({ success: result.success })
-        setCredentialsToVerify({ email: data.email, password: data.password });
-        form.reset();
+      setStatus(result);
+      if (result.success) {
+        form.reset({ email: data.email, password: "" });
       }
     });
   };
 
-  const handleVerify = () => {
-    if (!credentialsToVerify) return;
-    setVerificationStatus(null);
-    startVerificationTransition(async () => {
-      const result = await verifyLoginAction(credentialsToVerify);
-      setVerificationStatus(result);
-    })
-  }
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-        {updateStatus?.error && (
+        {status?.error && (
             <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{updateStatus.error}</AlertDescription>
+                <AlertTitle>Update Failed</AlertTitle>
+                <AlertDescription>{status.error}</AlertDescription>
             </Alert>
         )}
-        {updateStatus?.success && (
+        {status?.success && (
             <Alert variant="default" className="border-green-500 bg-green-50">
                 <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertTitle className="text-green-800">Success</AlertTitle>
-                <AlertDescription className="text-green-700">{updateStatus.success}</AlertDescription>
+                <AlertTitle className="text-green-800">Update Succeeded</AlertTitle>
+                <AlertDescription className="text-green-700">{status.success}</AlertDescription>
             </Alert>
         )}
-        {verificationStatus?.error && (
-            <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Verification Failed</AlertTitle>
-                <AlertDescription>{verificationStatus.error}</AlertDescription>
-            </Alert>
-        )}
-        {verificationStatus?.success && (
-            <Alert variant="default" className="border-accent bg-accent/10">
-                <ShieldCheck className="h-4 w-4 text-accent" />
-                <AlertTitle className="text-accent/90 font-bold">Verification Succeeded</AlertTitle>
-                <AlertDescription className="text-accent/90">{verificationStatus.success}</AlertDescription>
-            </Alert>
-        )}
+        
         <FormField
           control={form.control}
           name="email"
@@ -103,7 +69,7 @@ export function SetPasswordForm() {
             <FormItem>
               <FormLabel>User Email</FormLabel>
               <FormControl>
-                <Input placeholder="user@example.com" {...field} disabled={isUpdating || isVerifying} />
+                <Input placeholder="user@example.com" {...field} disabled={isPending} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -116,28 +82,16 @@ export function SetPasswordForm() {
             <FormItem>
               <FormLabel>New Password</FormLabel>
               <FormControl>
-                <Input type="password" {...field} disabled={isUpdating || isVerifying} />
+                <Input type="password" {...field} disabled={isPending} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <div className="flex flex-col sm:flex-row gap-2">
-            <Button type="submit" className="w-full" disabled={isUpdating || isVerifying}>
-              {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Set Password
-            </Button>
-            <Button 
-                type="button" 
-                variant="outline" 
-                className="w-full" 
-                onClick={handleVerify}
-                disabled={isVerifying || !credentialsToVerify}
-            >
-                {isVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Verify Login
-            </Button>
-        </div>
+        <Button type="submit" className="w-full" disabled={isPending}>
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Set and Verify Password
+        </Button>
       </form>
     </Form>
   );

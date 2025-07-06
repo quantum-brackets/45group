@@ -142,6 +142,7 @@ async function initialize() {
     await logToFile('[DB_INIT] Bookings table seeded.');
     
     // Remove reset_flag column after seeding
+    newDb.exec('DROP TABLE IF EXISTS temp_users');
     newDb.exec('CREATE TABLE temp_users AS SELECT id, name, email, password, role FROM users');
     newDb.exec('DROP TABLE users');
     newDb.exec('ALTER TABLE temp_users RENAME TO users');
