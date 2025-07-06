@@ -22,15 +22,15 @@ async function initialize() {
             return db;
         }
         await logToFile('[DB_INIT] Reset flag found or table structure is old. Dropping all tables for reseeding.');
-        newDb.exec('DROP TABLE IF EXISTS temp_users');
         newDb.exec('DROP TABLE IF EXISTS bookings');
         newDb.exec('DROP TABLE IF EXISTS listings');
         newDb.exec('DROP TABLE IF EXISTS users');
+        newDb.exec('DROP TABLE IF EXISTS temp_users;');
     }
 
     await logToFile('[DB_INIT] Database not found or empty. Starting seeding process...');
     
-    // Create tables
+    // Create users and listings tables first
     newDb.exec(`
     CREATE TABLE users (
         id TEXT PRIMARY KEY,
@@ -55,21 +55,8 @@ async function initialize() {
         features TEXT,
         maxGuests INTEGER
     );
-
-    CREATE TABLE bookings (
-        id TEXT PRIMARY KEY,
-        listingId TEXT NOT NULL,
-        userId TEXT NOT NULL,
-        listingName TEXT NOT NULL,
-        startDate TEXT NOT NULL,
-        endDate TEXT NOT NULL,
-        guests INTEGER NOT NULL,
-        status TEXT NOT NULL,
-        FOREIGN KEY (listingId) REFERENCES listings(id),
-        FOREIGN KEY (userId) REFERENCES users(id)
-    );
     `);
-    await logToFile('[DB_INIT] Tables created.');
+    await logToFile('[DB_INIT] Users and Listings tables created.');
 
     // Step 1: Perform all async operations (password hashing) first.
     const usersWithHashedPasswords = [];
@@ -81,10 +68,8 @@ async function initialize() {
     }
     await logToFile('[DB_INIT] All passwords hashed.');
 
-    // Step 2: Perform all synchronous DB operations within a single transaction.
-    const seed = newDb.transaction(() => {
-        newDb.pragma('foreign_keys = OFF');
-
+    // Step 2: Insert users and listings data
+    try {
         const insertUser = newDb.prepare(`
             INSERT INTO users (id, name, email, password, role)
             VALUES (@id, @name, @email, @password, @role)
@@ -105,7 +90,51 @@ async function initialize() {
                 features: JSON.stringify(listing.features),
             });
         }
+        await logToFile('[DB_INIT] Users and listings seeded successfully.');
+    } catch(err) {
+        const error = err as Error;
+        await logToFile(`[DB_INIT] Seeding users/listings failed: ${error.message}`);
+        throw error;
+    }
+    
+    // Step 3: Recreate users table without the reset_flag to finalize
+    await logToFile('[DB_INIT] Finalizing users table schema.');
+    newDb.exec('DROP TABLE IF EXISTS temp_users;');
+    newDb.exec(`
+        CREATE TABLE temp_users (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'guest'
+        );
+    `);
+    newDb.exec(`
+        INSERT INTO temp_users (id, name, email, password, role)
+        SELECT id, name, email, password, role FROM users;
+    `);
+    newDb.exec('DROP TABLE users;');
+    newDb.exec('ALTER TABLE temp_users RENAME TO users;');
+    await logToFile('[DB_INIT] Reset flag removed. Users table finalized.');
+    
+    // Step 4: Create and seed bookings table now that users and listings tables are stable
+    newDb.exec(`
+    CREATE TABLE bookings (
+        id TEXT PRIMARY KEY,
+        listingId TEXT NOT NULL,
+        userId TEXT NOT NULL,
+        listingName TEXT NOT NULL,
+        startDate TEXT NOT NULL,
+        endDate TEXT NOT NULL,
+        guests INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        FOREIGN KEY (listingId) REFERENCES listings(id),
+        FOREIGN KEY (userId) REFERENCES users(id)
+    );
+    `);
+    await logToFile('[DB_INIT] Bookings table created.');
 
+    try {
         const insertBooking = newDb.prepare(`
             INSERT INTO bookings (id, listingId, userId, listingName, startDate, endDate, guests, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -122,25 +151,14 @@ async function initialize() {
                 booking.status
             );
         }
-        
-        newDb.pragma('foreign_keys = ON');
-    });
-
-    try {
-        seed();
-        await logToFile('[DB_INIT] Seeding transaction completed successfully.');
-    } catch(err) {
+        await logToFile('[DB_INIT] Bookings seeded successfully.');
+    } catch (err) {
         const error = err as Error;
-        await logToFile(`[DB_INIT] Seeding transaction failed: ${error.message}`);
+        await logToFile(`[DB_INIT] Seeding bookings failed: ${error.message}`);
         throw error;
     }
     
-    // Remove reset_flag column after seeding
-    newDb.exec('DROP TABLE IF EXISTS temp_users');
-    newDb.exec('CREATE TABLE temp_users AS SELECT id, name, email, password, role FROM users');
-    newDb.exec('DROP TABLE users');
-    newDb.exec('ALTER TABLE temp_users RENAME TO users');
-    await logToFile('[DB_INIT] Reset flag removed. Database seeding complete.');
+    await logToFile('[DB_INIT] Database seeding complete.');
     
     db = newDb;
     return db;
