@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useTransition } from "react";
@@ -11,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle, CheckCircle, KeyRound, DatabaseSearch } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle, KeyRound, Database } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Separator } from "../ui/separator";
 
@@ -124,7 +123,7 @@ export function SessionDebugger() {
             <div className="grid gap-4">
                 <Button onClick={handleVerifySession} className="w-full" disabled={isVerifyPending}>
                     {isVerifyPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    <DatabaseSearch className="mr-2 h-4 w-4" />
+                    <Database className="mr-2 h-4 w-4" />
                     2. Verify Session in DB
                 </Button>
                 {verifyResult && (
