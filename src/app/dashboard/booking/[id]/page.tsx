@@ -69,7 +69,7 @@ export default async function BookingDetailsPage({ params }: { params: { id: str
         </CardContent>
         <CardFooter className="flex justify-end">
             <Button asChild>
-                <Link href="/dashboard">Back to Dashboard</Link>
+                <Link href="/dashboard/bookings">Back to Bookings</Link>
             </Button>
         </CardFooter>
       </Card>

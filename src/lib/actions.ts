@@ -1,9 +1,14 @@
+
 'use server'
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { db } from './db'
+import { getDb } from './db'
 import { randomUUID } from 'crypto'
+import { getSession, deleteSession } from './session'
+import { redirect } from 'next/navigation'
+
+const db = getDb();
 
 const FormSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -17,6 +22,11 @@ const FormSchema = z.object({
 });
 
 export async function updateListingAction(id: string, data: z.infer<typeof FormSchema>) {
+  const session = await getSession();
+  if (session?.role !== 'admin') {
+    return { success: false, message: 'Unauthorized' };
+  }
+  
   const validatedFields = FormSchema.safeParse(data);
 
   if (!validatedFields.success) {
@@ -76,6 +86,11 @@ const CreateBookingSchema = z.object({
 });
 
 export async function createBookingAction(data: z.infer<typeof CreateBookingSchema>) {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'You must be logged in to book.' };
+  }
+
   const validatedFields = CreateBookingSchema.safeParse(data);
 
   if (!validatedFields.success) {
@@ -90,13 +105,14 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
 
   try {
     const stmt = db.prepare(`
-      INSERT INTO bookings (id, listingId, listingName, startDate, endDate, guests, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO bookings (id, listingId, userId, listingName, startDate, endDate, guests, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
       randomUUID(),
       listingId,
+      session.id,
       listingName,
       new Date(startDate).toISOString().split('T')[0],
       new Date(endDate).toISOString().split('T')[0],
@@ -104,8 +120,8 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       'Confirmed'
     );
 
-    revalidatePath('/dashboard');
-    revalidatePath('/');
+    revalidatePath('/dashboard/bookings');
+    revalidatePath(`/listing/${listingId}`);
     
     return { success: true, message: `Your booking at ${listingName} has been confirmed.` };
   } catch (error)
@@ -113,4 +129,9 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     console.error("Database error:", error);
     return { success: false, message: "Failed to create booking in the database." };
   }
+}
+
+export async function logoutAction() {
+    await deleteSession();
+    redirect('/login');
 }

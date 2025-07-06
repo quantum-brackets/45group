@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -7,6 +8,8 @@ import { Menu, Mountain } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
+import type { SessionPayload } from '@/lib/types';
+import { UserNav } from '../auth/UserNav';
 
 const navLinks = [
   { href: '/search', label: 'Search' },
@@ -15,13 +18,20 @@ const navLinks = [
   { href: '/dashboard/bookings', label: 'Bookings' },
 ];
 
-export function Header() {
+export function Header({ session }: { session: SessionPayload | null }) {
   const pathname = usePathname();
   const [appName, setAppName] = useState('');
 
   useEffect(() => {
     setAppName('Book45');
   }, []);
+
+  const visibleNavLinks = navLinks.filter(link => {
+    if (link.href.startsWith('/dashboard') && session?.role !== 'admin') {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <header className="bg-card shadow-sm sticky top-0 z-40">
@@ -32,7 +42,7 @@ export function Header() {
             <span className="font-headline">{appName}</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-            {navLinks.map((link) => (
+            {visibleNavLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -47,35 +57,59 @@ export function Header() {
           </nav>
         </div>
 
-        <div className="md:hidden">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Toggle navigation menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left">
-              <nav className="grid gap-6 text-lg font-medium p-6">
-                <Link href="/" className="flex items-center gap-2 font-bold text-lg mb-4">
-                  <Mountain className="h-6 w-6 text-primary" />
-                  <span className="font-headline">{appName}</span>
-                </Link>
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={cn(
-                      'transition-colors hover:text-primary',
-                      pathname === link.href ? 'text-primary' : 'text-muted-foreground'
-                    )}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </nav>
-            </SheetContent>
-          </Sheet>
+        <div className="flex items-center gap-4">
+            {session ? (
+                <UserNav user={session} />
+            ) : (
+                <div className="hidden md:flex items-center gap-2">
+                    <Button variant="ghost" asChild>
+                        <Link href="/login">Login</Link>
+                    </Button>
+                    <Button asChild>
+                        <Link href="/signup">Sign Up</Link>
+                    </Button>
+                </div>
+            )}
+            <div className="md:hidden">
+            <Sheet>
+                <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                    <Menu className="h-6 w-6" />
+                    <span className="sr-only">Toggle navigation menu</span>
+                </Button>
+                </SheetTrigger>
+                <SheetContent side="left">
+                <nav className="grid gap-6 text-lg font-medium p-6">
+                    <Link href="/" className="flex items-center gap-2 font-bold text-lg mb-4">
+                    <Mountain className="h-6 w-6 text-primary" />
+                    <span className="font-headline">{appName}</span>
+                    </Link>
+                    {visibleNavLinks.map((link) => (
+                    <Link
+                        key={link.href}
+                        href={link.href}
+                        className={cn(
+                        'transition-colors hover:text-primary',
+                        pathname === link.href ? 'text-primary' : 'text-muted-foreground'
+                        )}
+                    >
+                        {link.label}
+                    </Link>
+                    ))}
+                    <div className="border-t pt-6 mt-4">
+                        {session ? (
+                             <UserNav user={session} />
+                        ): (
+                            <div className="grid gap-4">
+                                <Button variant="ghost" asChild><Link href="/login">Login</Link></Button>
+                                <Button asChild><Link href="/signup">Sign Up</Link></Button>
+                            </div>
+                        )}
+                    </div>
+                </nav>
+                </SheetContent>
+            </Sheet>
+            </div>
         </div>
       </div>
     </header>

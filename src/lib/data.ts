@@ -1,6 +1,9 @@
-import type { Listing, Booking, ListingType } from './types';
-import { db } from './db';
+import type { Listing, Booking, ListingType, User } from './types';
+import { getDb } from './db';
 import { DateRange } from 'react-day-picker';
+import { getSession } from '@/lib/session';
+
+const db = getDb();
 
 // Helper to parse listing data from the database
 function parseListing(listing: any): Listing {
@@ -10,6 +13,12 @@ function parseListing(listing: any): Listing {
     reviews: JSON.parse(listing.reviews),
     features: JSON.parse(listing.features),
   };
+}
+
+export async function getUserById(id: string): Promise<User | null> {
+    const stmt = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?');
+    const user = stmt.get(id) as User | undefined;
+    return user || null;
 }
 
 export async function getAllListings(): Promise<Listing[]> {
@@ -26,14 +35,37 @@ export async function getListingById(id: string): Promise<Listing | null> {
 }
 
 export async function getAllBookings(): Promise<Booking[]> {
-  const stmt = db.prepare('SELECT * FROM bookings ORDER BY startDate DESC');
-  return stmt.all() as Booking[];
+    const session = await getSession();
+    if (!session) {
+        return [];
+    }
+
+    if (session.role === 'admin') {
+        const stmt = db.prepare('SELECT * FROM bookings ORDER BY startDate DESC');
+        return stmt.all() as Booking[];
+    } else {
+        const stmt = db.prepare('SELECT * FROM bookings WHERE userId = ? ORDER BY startDate DESC');
+        return stmt.all(session.id) as Booking[];
+    }
 }
 
 export async function getBookingById(id: string): Promise<Booking | null> {
-  const stmt = db.prepare('SELECT * FROM bookings WHERE id = ?');
-  const booking = stmt.get(id) as Booking | undefined;
-  return booking || null;
+    const session = await getSession();
+    if (!session) {
+        return null;
+    }
+    
+    const stmt = db.prepare('SELECT * FROM bookings WHERE id = ?');
+    const booking = stmt.get(id) as Booking | undefined;
+
+    if (!booking) return null;
+
+    // Admin can view any booking, guests can only view their own
+    if (session.role !== 'admin' && booking.userId !== session.id) {
+        return null;
+    }
+
+    return booking;
 }
 
 interface FilterValues {
