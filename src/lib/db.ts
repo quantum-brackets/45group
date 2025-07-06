@@ -3,8 +3,11 @@ import Database from 'better-sqlite3';
 import { listings, bookings, users } from './placeholder-data';
 import { hashPassword } from './password';
 
-let db: Database.Database | null = null;
-let dbPromise: Promise<Database.Database> | null = null;
+// This is a common pattern to cache a database connection in development
+// across Next.js hot reloads.
+declare global {
+  var dbPromise: Promise<Database.Database> | undefined;
+}
 
 async function initialize() {
     const newDb = new Database('data.db');
@@ -14,8 +17,7 @@ async function initialize() {
     
     if (marker) {
         console.log('[DB_INIT] Database already initialized with v4 schema. Skipping seeding.');
-        db = newDb;
-        return db;
+        return newDb;
     }
 
     console.log('[DB_INIT] No v4 init marker found. Starting fresh seed for session management.');
@@ -140,17 +142,24 @@ async function initialize() {
     newDb.prepare('INSERT INTO db_init_marker_v4 VALUES (?)').run(new Date().toISOString());
     console.log('[DB_INIT] V4 init marker created. Initialization complete.');
 
-    db = newDb;
-    return db;
+    return newDb;
 }
 
+// In production, we don't want to cache the connection on the global object.
+let dbPromise: Promise<Database.Database> | null = null;
 
 export async function getDb(): Promise<Database.Database> {
-  if (db) {
-    return Promise.resolve(db);
+  if (process.env.NODE_ENV === 'production') {
+    if (!dbPromise) {
+      dbPromise = initialize();
+    }
+    return dbPromise;
   }
-  if (!dbPromise) {
-    dbPromise = initialize();
+  
+  // In development, use the global object to avoid re-initializing on every hot reload.
+  if (!globalThis.dbPromise) {
+    globalThis.dbPromise = initialize();
   }
-  return dbPromise;
+
+  return globalThis.dbPromise;
 }
