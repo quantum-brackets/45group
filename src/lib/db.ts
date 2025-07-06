@@ -3,7 +3,6 @@
 
 import Database from 'better-sqlite3';
 import { listings, bookings, users } from './placeholder-data';
-import { logToFile } from './logger';
 import { hashPassword } from './password';
 
 let db: Database.Database | null = null;
@@ -18,12 +17,12 @@ async function initialize() {
     const marker = newDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='db_init_marker_v3'").get();
     
     if (marker) {
-        await logToFile('[DB_INIT] Database already initialized with v3 schema. Skipping seeding.');
+        console.log('[DB_INIT] Database already initialized with v3 schema. Skipping seeding.');
         db = newDb;
         return db;
     }
 
-    await logToFile('[DB_INIT] No v3 init marker found. Starting fresh seed for session management.');
+    console.log('[DB_INIT] No v3 init marker found. Starting fresh seed for session management.');
     
     // Drop all tables to ensure a clean slate
     newDb.exec('DROP TABLE IF EXISTS sessions');
@@ -44,7 +43,7 @@ async function initialize() {
         password TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'guest'
     );`);
-    await logToFile('[DB_INIT] Users table created.');
+    console.log('[DB_INIT] Users table created.');
 
     newDb.exec(`
     CREATE TABLE listings (
@@ -61,7 +60,7 @@ async function initialize() {
         features TEXT,
         maxGuests INTEGER
     );`);
-    await logToFile('[DB_INIT] Listings table created.');
+    console.log('[DB_INIT] Listings table created.');
 
     newDb.exec(`
     CREATE TABLE bookings (
@@ -76,7 +75,7 @@ async function initialize() {
         FOREIGN KEY (listingId) REFERENCES listings (id) ON DELETE CASCADE,
         FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
     );`);
-    await logToFile('[DB_INIT] Bookings table created.');
+    console.log('[DB_INIT] Bookings table created.');
 
     newDb.exec(`
     CREATE TABLE sessions (
@@ -86,7 +85,7 @@ async function initialize() {
         FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
     );
     `);
-    await logToFile('[DB_INIT] Sessions table created.');
+    console.log('[DB_INIT] Sessions table created.');
 
     // 2. Hash all passwords before DB operations
     const usersWithHashedPasswords = await Promise.all(
@@ -96,7 +95,7 @@ async function initialize() {
             return { ...user, password: hashedPassword };
         })
     );
-    await logToFile('[DB_INIT] All passwords hashed successfully.');
+    console.log('[DB_INIT] All passwords hashed successfully.');
 
     // 3. Insert data in a single transaction
     const insertUser = newDb.prepare(`
@@ -141,13 +140,13 @@ async function initialize() {
     });
 
     seedTransaction();
-    await logToFile('[DB_INIT] All data seeded.');
+    console.log('[DB_INIT] All data seeded.');
     
 
     // 4. Create the final initialization marker
     newDb.exec(`CREATE TABLE db_init_marker_v3 (seeded_at TEXT);`);
     newDb.prepare('INSERT INTO db_init_marker_v3 VALUES (?)').run(new Date().toISOString());
-    await logToFile('[DB_INIT] V3 init marker created. Initialization complete.');
+    console.log('[DB_INIT] V3 init marker created. Initialization complete.');
 
     db = newDb;
     return db;

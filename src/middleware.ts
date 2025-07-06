@@ -1,6 +1,6 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/session';
+import { getUserFromSessionId } from '@/lib/session';
 
 const protectedRoutes = ['/bookings', '/booking', '/ai-recommendations'];
 const adminRoutes = ['/admin', '/edit-listing', '/dashboard', '/dashboard/booking', '/dashboard/bookings', '/dashboard/edit-listing'];
@@ -9,7 +9,8 @@ const authRoutes = ['/login', '/signup'];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const session = await getSession();
+  const sessionId = request.cookies.get('session')?.value;
+  const session = sessionId ? await getUserFromSessionId(sessionId) : null;
 
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAdminRoute = adminRoutes.some(route => pathname.startsWith(route));
@@ -45,6 +46,8 @@ export async function middleware(request: NextRequest) {
 
   return NextResponse.next();
 }
+
+export const runtime = 'nodejs';
 
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
