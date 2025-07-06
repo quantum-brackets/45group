@@ -265,3 +265,33 @@ export async function verifySessionAction() {
         return { error: `Database query failed: ${errorMessage}` };
     }
 }
+
+export async function verifySessionByIdAction(sessionId: string) {
+    if (!sessionId) {
+        return { error: 'No Session ID provided to verify.' };
+    }
+
+    try {
+        const db = await getDb();
+        const sessionRecord = db.prepare('SELECT userId, expiresAt FROM sessions WHERE id = ?').get(sessionId) as { userId: string, expiresAt: string } | undefined;
+
+        if (!sessionRecord) {
+            return { error: `Session with ID "${sessionId}" was not found in the database.` };
+        }
+
+        if (new Date(sessionRecord.expiresAt) < new Date()) {
+             return { error: `Session with ID "${sessionId}" was found but has expired.` };
+        }
+
+        const user = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(sessionRecord.userId) as User | undefined;
+        if (!user) {
+            return { error: `Session is valid, but the associated user (ID: ${sessionRecord.userId}) could not be found.` };
+        }
+
+        return { success: `Session ID is valid! User: ${user.email} (${user.role}). Expires at: ${sessionRecord.expiresAt}` };
+    } catch (error) {
+        console.error('[VERIFY_SESSION_BY_ID_ACTION_ERROR]', error);
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
+        return { error: `Database query failed: ${errorMessage}` };
+    }
+}
