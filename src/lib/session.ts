@@ -41,7 +41,7 @@ export async function createSession(user: User) {
 
   const session = await encrypt(sessionPayload);
 
-  cookies().set('session', session, { expires, httpOnly: true });
+  cookies().set('session', session, { expires, httpOnly: true, path: '/' });
 }
 
 export async function getSession(): Promise<SessionPayload | null> {
@@ -51,5 +51,5 @@ export async function getSession(): Promise<SessionPayload | null> {
 }
 
 export async function deleteSession() {
-  cookies().delete('session');
+  cookies().set('session', '', { expires: new Date(0), path: '/' });
 }

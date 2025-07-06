@@ -251,3 +251,27 @@
 2025-07-06T18:51:10.048Z - [DB_INIT] All data seeded.
 2025-07-06T18:51:10.055Z - [DB_INIT] Foreign keys turned ON.
 2025-07-06T18:51:10.057Z - [DB_INIT] V3 init marker created. Initialization complete.
+2025-07-06T19:00:33.293Z - [SETPASS] Action started for user: admin@45group.org
+2025-07-06T19:00:33.302Z - [SETPASS] Found user admin@45group.org. Current hash: 41a0d706e5f3d9dac41b4fdcbabb6772:06573062af4e2162db4e1c907890a1d46adccfca3b6efd8dbf3bf51bc14ff8f6ef5966eefbb452ec2a5435acfccd246439d6b83795f261ff6158b114085c27b7
+2025-07-06T19:00:33.306Z - [SETPASS] Hashing new password for admin@45group.org.
+2025-07-06T19:00:33.367Z - [HASH] Hashing password. Salt: 13913a69660b1716182a7c0fccc9c984, Hash: 13913a69660b1716182a7c0fccc9c984:f3e0ef2e80197463c833d9d4299f239950c76beb1c420050cb26c4d1417ebf0eb6ca95da8ab64b5b18b425a194fc15bfb9bc2bf44cdd2b0434f50f5bc7a8c2d8
+2025-07-06T19:00:33.371Z - [SETPASS] New hashed password for admin@45group.org: 13913a69660b1716182a7c0fccc9c984:f3e0ef2e80197463c833d9d4299f239950c76beb1c420050cb26c4d1417ebf0eb6ca95da8ab64b5b18b425a194fc15bfb9bc2bf44cdd2b0434f50f5bc7a8c2d8
+2025-07-06T19:00:33.375Z - [SETPASS] Updating password in database for admin@45group.org.
+2025-07-06T19:00:33.379Z - [SETPASS] Database update successful for admin@45group.org. Rows affected: 1
+2025-07-06T19:00:33.380Z - [SETPASS_VERIFY] Starting immediate verification for admin@45group.org.
+2025-07-06T19:00:33.386Z - [SETPASS_VERIFY] Fetched updated user. Verifying password against new hash: 13913a69660b1716182a7c0fccc9c984:f3e0ef2e80197463c833d9d4299f239950c76beb1c420050cb26c4d1417ebf0eb6ca95da8ab64b5b18b425a194fc15bfb9bc2bf44cdd2b0434f50f5bc7a8c2d8
+2025-07-06T19:00:33.388Z - [VERIFY] Verifying password. Provided hash: 13913a69660b1716182a7c0fccc9c984:f3e0ef2e80197463c833d9d4299f239950c76beb1c420050cb26c4d1417ebf0eb6ca95da8ab64b5b18b425a194fc15bfb9bc2bf44cdd2b0434f50f5bc7a8c2d8
+2025-07-06T19:00:33.448Z - [VERIFY] Salt from hash: 13913a69660b1716182a7c0fccc9c984
+2025-07-06T19:00:33.452Z - [VERIFY] Key from hash: f3e0ef2e80197463c833d9d4299f239950c76beb1c420050cb26c4d1417ebf0eb6ca95da8ab64b5b18b425a194fc15bfb9bc2bf44cdd2b0434f50f5bc7a8c2d8
+2025-07-06T19:00:33.453Z - [VERIFY] Generated key from input: f3e0ef2e80197463c833d9d4299f239950c76beb1c420050cb26c4d1417ebf0eb6ca95da8ab64b5b18b425a194fc15bfb9bc2bf44cdd2b0434f50f5bc7a8c2d8
+2025-07-06T19:00:33.454Z - [VERIFY] Password match result: true
+2025-07-06T19:00:33.455Z - [SETPASS_VERIFY] SUCCESS: Verification for admin@45group.org passed.
+2025-07-06T19:00:58.807Z - [LOGIN] Attempting login for email: admin@45group.org
+2025-07-06T19:00:58.810Z - [LOGIN] User found: admin@45group.org. Role: admin
+2025-07-06T19:00:58.811Z - [VERIFY] Verifying password. Provided hash: 13913a69660b1716182a7c0fccc9c984:f3e0ef2e80197463c833d9d4299f239950c76beb1c420050cb26c4d1417ebf0eb6ca95da8ab64b5b18b425a194fc15bfb9bc2bf44cdd2b0434f50f5bc7a8c2d8
+2025-07-06T19:00:58.872Z - [VERIFY] Salt from hash: 13913a69660b1716182a7c0fccc9c984
+2025-07-06T19:00:58.876Z - [VERIFY] Key from hash: f3e0ef2e80197463c833d9d4299f239950c76beb1c420050cb26c4d1417ebf0eb6ca95da8ab64b5b18b425a194fc15bfb9bc2bf44cdd2b0434f50f5bc7a8c2d8
+2025-07-06T19:00:58.877Z - [VERIFY] Generated key from input: f3e0ef2e80197463c833d9d4299f239950c76beb1c420050cb26c4d1417ebf0eb6ca95da8ab64b5b18b425a194fc15bfb9bc2bf44cdd2b0434f50f5bc7a8c2d8
+2025-07-06T19:00:58.877Z - [VERIFY] Password match result: true
+2025-07-06T19:00:58.878Z - [LOGIN] Login successful for user: admin@45group.org. Creating session.
+2025-07-06T19:03:50.763Z - [DB_INIT] Database already initialized with v3 schema. Skipping seeding.

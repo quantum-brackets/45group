@@ -22,6 +22,7 @@ export async function login(formData: z.infer<typeof LoginSchema>) {
   }
 
   const { email, password } = validatedFields.data;
+  let userRole: User['role'] = 'guest';
 
   try {
     const db = await getDb();
@@ -44,13 +45,18 @@ export async function login(formData: z.infer<typeof LoginSchema>) {
     
     await logToFile(`[LOGIN] Login successful for user: ${email}. Creating session.`);
     await createSession(user);
+    userRole = user.role;
 
   } catch (error) {
     await logToFile(`[LOGIN] An unexpected error occurred during login: ${error}`);
     return { error: 'An unexpected error occurred.' };
   }
   
-  redirect('/bookings');
+  if (userRole === 'admin') {
+    redirect('/admin');
+  } else {
+    redirect('/bookings');
+  }
 }
 
 const SignupSchema = z.object({
