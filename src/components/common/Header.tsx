@@ -11,7 +11,7 @@ import { UserNav } from '../auth/UserNav';
 
 const navLinks = [
   { href: '/search', label: 'Search' },
-  { href: '/ai-recommendations', label: 'Recommendations' },
+  { href: '/recommendations', label: 'Recommendations' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/bookings', label: 'Bookings' },
 ];
