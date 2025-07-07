@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { testLoginAction, verifySessionByIdAction, getSessionTokenAction } from "@/lib/actions";
+import { useRouter, usePathname } from 'next/navigation';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -29,6 +30,8 @@ interface SessionDebuggerProps {
 }
 
 export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [isLoginPending, startLoginTransition] = useTransition();
   const [isVerifyPending, startVerifyTransition] = useTransition();
   const [isLoadPending, startLoadTransition] = useTransition();
@@ -70,6 +73,9 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
     startVerifyTransition(async () => {
         const result = await verifySessionByIdAction(sessionId);
         setVerifyResult(result);
+        if (result.success) {
+            router.push(pathname);
+        }
     });
   }
 
