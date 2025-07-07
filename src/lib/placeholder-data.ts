@@ -20,6 +20,7 @@ export const listings: Listing[] = [
     ],
     price: 350,
     priceUnit: 'night',
+    currency: 'USD',
     rating: 4.8,
     reviews: [
       { id: 'r1', author: 'John Doe', avatar: 'https://placehold.co/100x100.png', rating: 5, comment: 'Amazing experience! The staff was incredibly friendly and the room was pristine.' },
@@ -40,6 +41,7 @@ export const listings: Listing[] = [
     ],
     price: 500,
     priceUnit: 'hour',
+    currency: 'USD',
     rating: 4.9,
     reviews: [
       { id: 'r3', author: 'Event Planners Inc.', avatar: 'https://placehold.co/100x100.png', rating: 5, comment: 'Our go-to venue for all major corporate events. Flawless execution every time.' },

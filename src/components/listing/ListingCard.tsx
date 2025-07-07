@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -70,7 +71,7 @@ export function ListingCard({ listing }: ListingCardProps) {
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between items-center">
         <div>
-          <span className="text-xl font-bold text-primary">${listing.price}</span>
+          <span className="text-xl font-bold text-primary">{`${listing.currency || 'USD'} ${listing.price}`}</span>
           <span className="text-sm text-muted-foreground">/{listing.priceUnit}</span>
         </div>
         <Button asChild>

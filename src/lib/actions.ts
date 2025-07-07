@@ -19,6 +19,7 @@ const FormSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
   price: z.coerce.number().positive("Price must be a positive number."),
   priceUnit: z.enum(['night', 'hour', 'person']),
+  currency: z.enum(['USD', 'EUR', 'GBP']),
   maxGuests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
   features: z.string().min(1, "Please list at least one feature."),
 });
@@ -39,7 +40,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof FormS
     }
   }
   
-  const { name, type, location, description, price, priceUnit, maxGuests, features } = validatedFields.data;
+  const { name, type, location, description, price, priceUnit, maxGuests, features, currency } = validatedFields.data;
   const featuresAsArray = features.split(',').map((f) => f.trim());
 
   try {
@@ -54,7 +55,8 @@ export async function updateListingAction(id: string, data: z.infer<typeof FormS
         price = ?,
         priceUnit = ?,
         maxGuests = ?,
-        features = ?
+        features = ?,
+        currency = ?
       WHERE id = ?
     `);
 
@@ -67,6 +69,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof FormS
       priceUnit,
       maxGuests,
       JSON.stringify(featuresAsArray),
+      currency,
       id
     );
 
