@@ -257,8 +257,6 @@ export async function verifySessionByIdAction(sessionId: string) {
           path: '/',
         });
 
-        revalidatePath('/dev-tools');
-
         return { success: `Session verified and cookie set for user: ${user.email} (${user.role}). You can now navigate to protected routes.` };
     } catch (error) {
         console.error('[VERIFY_SESSION_BY_ID_ACTION_ERROR]', error);
