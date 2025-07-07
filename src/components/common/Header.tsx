@@ -1,8 +1,9 @@
+
 "use client";
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Menu, Mountain, ChevronDown } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -116,7 +117,11 @@ export function Header({ session }: { session: User | null }) {
                 </Button>
                 </SheetTrigger>
                 <SheetContent side="left">
-                <nav className="grid gap-6 text-lg font-medium p-6">
+                <SheetHeader className="sr-only">
+                    <SheetTitle>Navigation Menu</SheetTitle>
+                    <SheetDescription>Main navigation links for the application.</SheetDescription>
+                </SheetHeader>
+                <nav className="grid gap-6 text-lg font-medium">
                     <Link href="/" className="flex items-center gap-2 font-bold text-lg mb-4">
                     <Mountain className="h-6 w-6 text-primary" />
                     <span className="font-headline">Book45</span>
