@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getDb } from './db'
 import { randomUUID } from 'crypto'
-import { createSession, deleteSession, getSession } from './session'
+import { createSession, getSession } from './session'
 import { redirect } from 'next/navigation'
 import type { User } from './types'
 import { logToFile } from './logger'
@@ -313,7 +313,23 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
 }
 
 export async function logoutAction() {
-    await deleteSession();
+    const cookieStore = cookies();
+    const sessionId = cookieStore.get('session')?.value;
+
+    if (sessionId) {
+        // Delete from database
+        try {
+            const db = await getDb();
+            const stmt = db.prepare('DELETE FROM sessions WHERE id = ?');
+            stmt.run(sessionId);
+        } catch (error) {
+            console.error(`[SESSION_DELETE] Error deleting session ${sessionId} from database: ${error}`);
+        }
+        
+        // Delete from browser
+        cookieStore.delete('session');
+    }
+    
     revalidatePath('/', 'layout');
     redirect('/login');
 }

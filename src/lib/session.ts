@@ -65,23 +65,3 @@ export async function getSession(): Promise<User | null> {
     return null;
   }
 }
-
-export async function deleteSession() {
-  const sessionId = cookies().get('session')?.value;
-  if (sessionId) {
-    try {
-        const db = await getDb();
-        const stmt = db.prepare('DELETE FROM sessions WHERE id = ?');
-        stmt.run(sessionId);
-    } catch (error) {
-        console.error(`[SESSION_DELETE] Error deleting session ${sessionId} from database: ${error}`);
-    }
-  }
-  cookies().set('session', '', { 
-    expires: new Date(0), 
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: true,
-  });
-}
