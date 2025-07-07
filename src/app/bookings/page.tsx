@@ -1,9 +1,8 @@
 
 import { getAllBookings, getAllListings, getAllUsers } from '@/lib/data';
-import { BookingsTable } from '@/components/bookings/BookingsTable';
 import { getSession } from '@/lib/session';
-import { BookingsFilters } from '@/components/bookings/BookingsFilters';
-import type { Booking, Listing, User } from '@/lib/types';
+import { BookingsDisplay } from '@/components/bookings/BookingsDisplay';
+import type { User } from '@/lib/types';
 
 interface BookingsPageProps {
   searchParams: {
@@ -14,20 +13,14 @@ interface BookingsPageProps {
 }
 
 export default async function BookingsPage({ searchParams }: BookingsPageProps) {
-  // Add robust validation for the status parameter to ensure it's a valid value.
-  const validStatuses: Booking['status'][] = ['Confirmed', 'Pending', 'Cancelled'];
-  const statusParam = searchParams.status;
-  const validStatus = statusParam && validStatuses.includes(statusParam as any)
-    ? (statusParam as Booking['status'])
-    : undefined;
-
+  // Backend filters will still handle listingId and userId for performance.
+  // Status filtering will now be done on the client-side.
   const filters = {
     listingId: searchParams.listingId || undefined,
     userId: searchParams.userId || undefined,
-    status: validStatus,
   };
 
-  const bookings = await getAllBookings(filters);
+  const allBookings = await getAllBookings(filters);
   const session = await getSession();
   
   // Fetch data needed for filter dropdowns.
@@ -37,28 +30,14 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
       users = await getAllUsers();
   }
 
-  const isFiltered = !!(searchParams.listingId || searchParams.userId || searchParams.status);
-
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="grid gap-8">
-        <section className="bg-card p-4 rounded-lg shadow-md border">
-            <BookingsFilters listings={listings} users={users} session={session} />
-        </section>
-        
-        {bookings.length > 0 ? (
-          <BookingsTable bookings={bookings} session={session} />
-        ) : (
-          <div className="text-center py-16 border-2 border-dashed rounded-lg">
-            <h2 className="text-2xl font-semibold">No Bookings Found</h2>
-            <p className="text-muted-foreground mt-2">
-              {isFiltered
-                ? "Try adjusting your search filters."
-                : "You haven't made any bookings yet."}
-            </p>
-          </div>
-        )}
-      </div>
+      <BookingsDisplay 
+        allBookings={allBookings}
+        listings={listings}
+        users={users}
+        session={session}
+      />
     </div>
   );
 }

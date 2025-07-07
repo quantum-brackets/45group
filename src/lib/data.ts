@@ -86,11 +86,6 @@ export async function getAllBookings(filters: BookingFilters): Promise<Booking[]
         params.push(filters.listingId);
     }
     
-    if (filters.status) {
-        whereClauses.push('b.status = ?');
-        params.push(filters.status);
-    }
-    
     if (whereClauses.length > 0) {
         query += ' WHERE ' + whereClauses.join(' AND ');
     }
