@@ -1,4 +1,6 @@
 
+'use server';
+
 import Database from 'better-sqlite3';
 import path from 'path';
 
@@ -10,81 +12,80 @@ declare global {
 
 const dbPath = path.join(process.cwd(), 'data.db');
 
-function runMigrations(db: Database.Database) {
-    console.log('[DB_MIGRATE] Checking database schema...');
-    
-    // Migration 1: Add 'currency' column to 'listings' table
+function runCurrencyMigration(db: Database.Database) {
     try {
         const columns = db.pragma('table_info(listings)');
         const hasCurrency = columns.some((col: any) => col.name === 'currency');
 
         if (!hasCurrency) {
-            console.log('[DB_MIGRATE] "currency" column not found. Applying migration...');
+            console.log('[DB_MIGRATE] Applying "currency" column migration to listings...');
             db.exec("ALTER TABLE listings ADD COLUMN currency TEXT NOT NULL DEFAULT 'NGN'");
-            console.log('[DB_MIGRATE] Migration successful: Added "currency" column with default "NGN".');
-        } else {
-            console.log('[DB_MIGRATE] "currency" column already exists. No migration needed.');
+            console.log('[DB_MIGRATE] Migration successful.');
         }
     } catch (error) {
         console.error("[DB_MIGRATE_ERROR] Critical error during 'currency' column migration:", error);
-        // This is a critical failure. If we can't migrate the schema, we must stop the app from proceeding with a broken DB state.
-        throw new Error("Database migration failed. The application cannot start.");
+        throw new Error("Database migration for 'currency' column failed. The application cannot start.");
     }
 }
 
 function runBookingActionTrackingMigration(db: Database.Database) {
-    console.log('[DB_MIGRATE] Checking for booking action tracking columns...');
     try {
         const columns = db.pragma('table_info(bookings)') as { name: string }[];
-        const hasActionBy = columns.some(col => col.name === 'actionByUserId');
-        const hasActionAt = columns.some(col => col.name === 'actionAt');
-        const hasStatusMsg = columns.some(col => col.name === 'statusMessage');
+        let migrationApplied = false;
 
-        if (!hasActionBy) {
+        if (!columns.some(col => col.name === 'actionByUserId')) {
             console.log('[DB_MIGRATE] Adding "actionByUserId" column to bookings...');
             db.exec("ALTER TABLE bookings ADD COLUMN actionByUserId TEXT");
+            migrationApplied = true;
         }
-        if (!hasActionAt) {
+        if (!columns.some(col => col.name === 'actionAt')) {
             console.log('[DB_MIGRATE] Adding "actionAt" column to bookings...');
             db.exec("ALTER TABLE bookings ADD COLUMN actionAt TEXT");
+            migrationApplied = true;
         }
-        if (!hasStatusMsg) {
+        if (!columns.some(col => col.name === 'statusMessage')) {
             console.log('[DB_MIGRATE] Adding "statusMessage" column to bookings...');
             db.exec("ALTER TABLE bookings ADD COLUMN statusMessage TEXT");
+            migrationApplied = true;
         }
         
-        if (hasActionBy && hasActionAt && hasStatusMsg) {
-            console.log('[DB_MIGRATE] Booking action tracking columns already exist.');
-        } else {
+        if (migrationApplied) {
             console.log('[DB_MIGRATE] Booking action tracking migrations applied successfully.');
         }
 
     } catch (error) {
         console.error("[DB_MIGRATE_ERROR] Critical error during booking action tracking migration:", error);
-        throw new Error("Database migration failed for booking actions. The application cannot start.");
+        throw new Error("Database migration for booking actions failed. The application cannot start.");
     }
 }
 
 /**
  * Provides a stable, cached database connection and applies necessary migrations.
+ * This function now runs migrations on every call to ensure schema consistency,
+ * especially in a hot-reloading development environment.
  */
 export async function getDb(): Promise<Database.Database> {
-    if (globalThis.db) {
-        return globalThis.db;
-    }
-
     try {
-        const db = new Database(dbPath);
+        // Initialize the database connection if it's not already cached.
+        if (!globalThis.db) {
+            console.log('[DB_SETUP] No cached DB connection found. Initializing new connection.');
+            globalThis.db = new Database(dbPath);
+        }
         
-        // Run all migrations
-        runMigrations(db);
+        const db = globalThis.db;
+
+        // --- Run All Migrations ---
+        // These functions are idempotent (they check before acting), so it's safe 
+        // to call them on every DB access during development.
+        runCurrencyMigration(db);
         runBookingActionTrackingMigration(db);
 
-        globalThis.db = db;
         return db;
     } catch (error) {
         console.error("Failed to connect to the database or run migrations.", error);
-        // Re-throwing the original error if it's from migrations, or a new one.
+        // If setup fails, clear the cache to allow a retry on the next request.
+        globalThis.db = undefined;
+        // Re-throw to prevent the app from running in a broken state.
         if (error instanceof Error && error.message.includes("Database migration failed")) {
             throw error;
         }
