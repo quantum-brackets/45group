@@ -478,6 +478,7 @@ export async function verifySessionByIdAction(sessionId: string) {
           httpOnly: true,
           path: '/',
           secure: process.env.NODE_ENV === 'production',
+          sameSite: 'none',
         });
 
         const successMessage = `Session for ${user.email} (${user.role}) is valid until ${expiresAtDate.toLocaleString()}. Cookie set.`;

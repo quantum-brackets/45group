@@ -75,6 +75,7 @@ export async function loginAction(formData: z.infer<typeof LoginSchema>) {
     httpOnly: true,
     path: '/',
     secure: process.env.NODE_ENV === 'production',
+    sameSite: 'none',
   });
   
   const redirectTo = user.role === 'admin' ? '/dashboard' : '/bookings';
@@ -120,6 +121,7 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
           httpOnly: true,
           path: '/',
           secure: process.env.NODE_ENV === 'production',
+          sameSite: 'none',
       });
 
       return { success: true, redirectTo: '/bookings' };
