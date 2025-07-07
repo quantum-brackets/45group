@@ -64,14 +64,14 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
             JSON.stringify(featuresAsArray),
             maxGuests
         );
+        
+        revalidatePath('/dashboard?tab=listings', 'page');
+        return { success: true, message: `Listing "${name}" has been created.` };
     } catch (error) {
         console.error(`[CREATE_LISTING_ACTION] Error: ${error}`);
         const message = error instanceof Error ? error.message : "An unknown database error occurred.";
         return { success: false, message: `Failed to create listing: ${message}` };
     }
-    
-    revalidatePath('/dashboard?tab=listings', 'page');
-    return { success: true, message: `Listing "${name}" has been created.` };
 }
 
 export async function updateListingAction(id: string, data: z.infer<typeof ListingFormSchema>) {
@@ -123,16 +123,17 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
       id
     );
 
+    revalidatePath('/dashboard?tab=listings', 'page');
+    revalidatePath(`/listing/${id}`);
+    revalidatePath('/bookings'); // Revalidate bookings in case listing name changed
+    
+    return { success: true, message: `The details for "${name}" have been saved.` };
+
   } catch (error) {
     console.error(`[UPDATE_LISTING_ACTION] Error: ${error}`);
     const message = error instanceof Error ? error.message : "An unknown database error occurred.";
     return { success: false, message: `Failed to update listing: ${message}` };
   }
-
-  revalidatePath('/dashboard?tab=listings', 'page');
-  revalidatePath(`/listing/${id}`);
-  
-  return { success: true, message: `The details for "${name}" have been saved.` };
 }
 
 export async function deleteListingAction(id: string) {
@@ -189,6 +190,14 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
 
   try {
     const db = await getDb();
+
+    const listingStmt = db.prepare('SELECT name FROM listings WHERE id = ?');
+    const listing = listingStmt.get(listingId) as { name: string } | undefined;
+
+    if (!listing) {
+        return { success: false, message: 'The venue you are trying to book does not exist.' };
+    }
+    const listingName = listing.name;
     
     // Check for existing bookings on the same dates
     const existingBookingStmt = db.prepare(`
@@ -205,8 +214,8 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     }
 
     const stmt = db.prepare(`
-      INSERT INTO bookings (id, listingId, userId, startDate, endDate, guests, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO bookings (id, listingId, userId, startDate, endDate, guests, status, listingName)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -216,16 +225,12 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       new Date(startDate).toISOString().split('T')[0],
       new Date(endDate).toISOString().split('T')[0],
       guests,
-      'Confirmed'
+      'Confirmed',
+      listingName
     );
 
     revalidatePath('/bookings');
     revalidatePath(`/listing/${listingId}`);
-    
-    // We need to look up the listing name to return it
-    const listingStmt = db.prepare('SELECT name FROM listings WHERE id = ?');
-    const listing = listingStmt.get(listingId) as { name: string };
-    const listingName = listing?.name || 'the venue';
     
     return { success: true, message: `Your booking at ${listingName} has been confirmed.` };
   } catch (error) {
