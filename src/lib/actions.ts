@@ -137,6 +137,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
 
 export async function logoutAction() {
     await deleteSession();
+    revalidatePath('/', 'layout');
     redirect('/login');
 }
 
@@ -268,6 +269,10 @@ export async function verifySessionByIdAction(sessionId: string) {
           httpOnly: true,
           path: '/',
         });
+
+        // Invalidate the cache for the dev tools page and the root layout (for header)
+        revalidatePath('/dev-tools');
+        revalidatePath('/', 'layout');
 
         const successMessage = `Session for ${user.email} (${user.role}) is valid until ${expiresAtDate.toLocaleString()}. Cookie set.`;
         return { success: successMessage };
