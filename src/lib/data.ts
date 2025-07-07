@@ -27,9 +27,9 @@ export async function getAllUsers(): Promise<User[]> {
         return [];
     }
     const db = await getDb();
-    // Exclude the current admin from the list to prevent self-modification
-    const stmt = db.prepare('SELECT id, name, email, role FROM users WHERE id != ?');
-    return stmt.all(session.id) as User[];
+    // Include all users in the list, including the current admin.
+    const stmt = db.prepare('SELECT id, name, email, role FROM users');
+    return stmt.all() as User[];
 }
 
 export async function getAllListings(): Promise<Listing[]> {
