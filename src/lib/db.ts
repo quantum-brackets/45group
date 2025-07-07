@@ -22,8 +22,6 @@ export async function getDb(): Promise<Database.Database> {
 
     try {
         const db = new Database(dbPath);
-        // WAL mode is recommended for performance and concurrency.
-        db.pragma('journal_mode = WAL');
         globalThis.db = db;
         return db;
     } catch (error) {
