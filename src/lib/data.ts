@@ -105,9 +105,10 @@ export async function getBookingById(id: string): Promise<Booking | null> {
     
     const db = await getDb();
     const stmt = db.prepare(`
-        SELECT b.*, l.name as listingName
+        SELECT b.*, l.name as listingName, u.name as userName
         FROM bookings as b
         JOIN listings as l on b.listingId = l.id
+        JOIN users u ON b.userId = u.id
         WHERE b.id = ?
     `);
     const booking = stmt.get(id) as Booking | undefined;

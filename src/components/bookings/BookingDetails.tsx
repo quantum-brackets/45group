@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2 } from 'lucide-react';
+import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -116,13 +116,15 @@ export function BookingDetails({ booking, listing, session }: BookingDetailsProp
           </p>
         </div>
       </div>
-      <div className="flex items-start gap-4 p-4 bg-card rounded-lg border">
-        <Building className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-        <div>
-          <p className="font-semibold">Listing ID</p>
-          <p className="text-muted-foreground font-mono text-sm">{booking.listingId}</p>
+      {session.role === 'admin' && booking.userName && (
+        <div className="flex items-start gap-4 p-4 bg-card rounded-lg border">
+          <UserIcon className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+          <div>
+            <p className="font-semibold">Booked By</p>
+            <p className="text-muted-foreground">{booking.userName}</p>
+          </div>
         </div>
-      </div>
+      )}
     </CardContent>
   );
 
@@ -228,18 +230,16 @@ export function BookingDetails({ booking, listing, session }: BookingDetailsProp
       <Card className="max-w-4xl mx-auto shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between">
             <div className="space-y-1">
-                <CardTitle className="text-2xl">
-                    <Link href={`/listing/${booking.listingId}`} className="hover:underline text-primary">
-                    {listing.name}
-                    </Link>
+                <CardTitle className="text-2xl font-mono text-primary tracking-tight">
+                  {booking.id}
                 </CardTitle>
                  {isEditing ? (
                      <CardDescription>
-                        Update the details for this booking below.
+                        Update the details for your booking at <Link href={`/listing/${listing.id}`} className="font-semibold hover:underline">{listing.name}</Link>.
                     </CardDescription>
                 ) : (
                     <CardDescription>
-                        Status: <Badge variant={booking.status === 'Confirmed' ? 'default' : 'secondary'} className={booking.status === 'Confirmed' ? 'bg-accent text-accent-foreground' : ''}>{booking.status}</Badge>
+                       For <Link href={`/listing/${listing.id}`} className="font-semibold hover:underline">{listing.name}</Link>
                     </CardDescription>
                 )}
             </div>
