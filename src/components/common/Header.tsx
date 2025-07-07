@@ -56,7 +56,7 @@ export function Header({ session }: { session: User | null }) {
                 <DropdownMenu key={link.href}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className={cn(
-                      'flex items-center gap-1 transition-colors hover:text-primary p-0 h-auto text-sm font-medium',
+                      'flex items-center gap-1 transition-colors hover:text-primary p-0 h-auto text-sm font-medium hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0',
                       pathname.startsWith('/dashboard') ? 'text-primary' : 'text-muted-foreground'
                     )}>
                       {link.label}
