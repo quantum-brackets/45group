@@ -4,10 +4,10 @@ import { listings, bookings, users } from './placeholder-data';
 import { hashPassword } from './password';
 import path from 'path';
 
-// Cache the database connection promise on the global object to prevent
+// Cache the database connection on the global object to prevent
 // re-initializing on every hot reload in development. This is crucial.
 declare global {
-  var dbPromise: Promise<Database.Database> | undefined;
+  var db: Database.Database | undefined;
 }
 
 const dbPath = path.join(process.cwd(), 'data.db');
@@ -22,9 +22,12 @@ async function initializeDb() {
     const tableCheck = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get();
     
     if (tableCheck) {
+        console.log('[DB_INIT] Database already seeded.');
         return db;
     }
 
+    console.log('[DB_INIT] New database, seeding...');
+    
     // --- SEEDING LOGIC ---
     // If no tables exist, this is a fresh DB that needs to be created and seeded.
     
@@ -104,14 +107,26 @@ async function initializeDb() {
     });
 
     seedTransaction();
+    console.log('[DB_INIT] Seeding complete.');
 
     return db;
 }
 
-// This function provides the cached promise of the database connection.
-export function getDb(): Promise<Database.Database> {
-  if (!globalThis.dbPromise) {
-    globalThis.dbPromise = initializeDb();
+// We need a top-level promise to coordinate the async initialization.
+let dbInitPromise: Promise<Database.Database> | null = null;
+
+// This function provides a stable, cached database connection.
+export async function getDb(): Promise<Database.Database> {
+  if (globalThis.db) {
+    return globalThis.db;
   }
-  return globalThis.dbPromise;
+  
+  if (!dbInitPromise) {
+    dbInitPromise = initializeDb();
+  }
+
+  const db = await dbInitPromise;
+  globalThis.db = db;
+  
+  return db;
 }
