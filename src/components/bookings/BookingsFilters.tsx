@@ -46,10 +46,10 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
   const isAdmin = session?.role === 'admin';
 
   return (
-    <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4 items-center", isAdmin ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
-        <div className="lg:col-span-1">
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
             <Select onValueChange={setListingId} value={listingId}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full sm:w-auto">
                     <Building className="mr-2 h-4 w-4 text-muted-foreground" />
                     <SelectValue placeholder="Filter by Venue" />
                 </SelectTrigger>
@@ -60,12 +60,10 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
                     ))}
                 </SelectContent>
             </Select>
-        </div>
 
-        {isAdmin && (
-            <div className="lg:col-span-1">
+            {isAdmin && (
                 <Select onValueChange={setUserId} value={userId}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full sm:w-auto">
                         <UserIcon className="mr-2 h-4 w-4 text-muted-foreground" />
                         <SelectValue placeholder="Filter by User" />
                     </SelectTrigger>
@@ -76,12 +74,10 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
                         ))}
                     </SelectContent>
                 </Select>
-            </div>
-        )}
+            )}
 
-        <div className="lg:col-span-1">
             <Select onValueChange={setStatus} value={status}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full sm:w-auto">
                     <ListFilter className="mr-2 h-4 w-4 text-muted-foreground" />
                     <SelectValue placeholder="Filter by Status" />
                 </SelectTrigger>
@@ -94,13 +90,13 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
             </Select>
         </div>
 
-        <div className={cn("flex gap-2 lg:col-span-1", isAdmin ? "lg:col-start-5" : "md:col-start-2 lg:col-start-4")}>
-            <Button className="w-full" onClick={handleFilter}>
+        <div className="flex gap-2 self-end md:self-center">
+            <Button onClick={handleFilter}>
                 <Search className="mr-2 h-4 w-4" />
                 Filter
             </Button>
             {isFiltered && (
-              <Button variant="ghost" className="w-full" onClick={handleClear}>
+              <Button variant="ghost" onClick={handleClear}>
                   <XCircle className="mr-2 h-4 w-4" />
                   Clear
               </Button>
