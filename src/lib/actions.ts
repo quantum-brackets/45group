@@ -477,7 +477,7 @@ export async function verifySessionByIdAction(sessionId: string) {
           expires: expiresAtDate,
           httpOnly: true,
           path: '/',
-          secure: process.env.NODE_ENV === 'production',
+          secure: true,
           sameSite: 'none',
         });
 
@@ -744,7 +744,7 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
 const ReviewSchema = z.object({
     listingId: z.string(),
     rating: z.coerce.number().min(1).max(5),
-    comment: z.string().min(10, "Comment must be at least 10 characters.")
+    comment: z.string().min(10, "Comment must be at least 10 characters long.")
 });
 
 export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>) {
