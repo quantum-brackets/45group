@@ -327,8 +327,15 @@ export async function logoutAction() {
             console.error(`[SESSION_DELETE] Error deleting session ${sessionId} from database: ${error}`);
         }
         
-        // Delete from browser
-        cookieStore.delete('session');
+        // Explicitly clear the cookie by setting it with an expiry date in the past
+        // and matching attributes to ensure it's properly removed by the browser.
+        cookieStore.set('session', '', {
+            expires: new Date(0),
+            path: '/',
+            httpOnly: true,
+            secure: true,
+            sameSite: 'none',
+        });
     }
     
     revalidatePath('/', 'layout');
