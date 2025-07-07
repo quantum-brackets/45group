@@ -13,10 +13,6 @@ export default function SignupPage() {
                 <Mountain className="h-8 w-8 text-primary" />
                 <span className="font-headline">Book45</span>
               </Link>
-            <h1 className="text-3xl font-bold">Sign Up</h1>
-            <p className="text-balance text-muted-foreground">
-              Create an account to start booking venues.
-            </p>
           </div>
           <SignupForm />
           <div className="mt-4 text-center text-sm">
