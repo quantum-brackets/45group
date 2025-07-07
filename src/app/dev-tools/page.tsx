@@ -4,8 +4,10 @@ import { Wrench } from 'lucide-react';
 import Link from 'next/link';
 import { SessionDebugger } from '@/components/dev/SessionDebugger';
 import { cookies } from 'next/headers';
+import { unstable_noStore as noStore } from 'next/cache';
 
 export default function DevToolsPage() {
+  noStore();
   const cookieStore = cookies();
   const sessionToken = cookieStore.get('session')?.value;
 
