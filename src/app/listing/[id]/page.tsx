@@ -1,12 +1,12 @@
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getListingById } from '@/lib/data';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BookingForm } from '@/components/listing/BookingForm';
 import { BedDouble, Building2, CheckCircle, MapPin, Star, Utensils } from 'lucide-react';
+import { getSession } from '@/lib/session';
+import { ReviewSection } from '@/components/listing/ReviewSection';
 
 const typeIcons = {
   hotel: <BedDouble className="w-5 h-5 mr-2" />,
@@ -22,6 +22,7 @@ const AITypeHints = {
 
 export default async function ListingDetailPage({ params }: { params: { id: string } }) {
   const listing = await getListingById(params.id);
+  const session = await getSession();
 
   if (!listing) {
     notFound();
@@ -37,7 +38,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
             <div className="flex items-center gap-4 mt-2 text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Star className="w-4 h-4 text-primary" />
-                <span>{listing.rating} ({listing.reviews.length} reviews)</span>
+                <span>{listing.rating.toFixed(1)} ({listing.reviews.length} reviews)</span>
               </div>
               <span>&middot;</span>
               <div className="flex items-center gap-1">
@@ -92,38 +93,13 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
               </CardContent>
             </Card>
 
-            {/* Reviews */}
-            {listing.reviews.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Star className="w-5 h-5 mr-2" />
-                    {listing.rating.toFixed(1)} &middot; {listing.reviews.length} reviews
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {listing.reviews.map(review => (
-                    <div key={review.id} className="flex gap-4">
-                      <Avatar>
-                        <AvatarImage src={review.avatar} alt={review.author} data-ai-hint="person face" />
-                        <AvatarFallback>{review.author.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold">{review.author}</p>
-                           <div className="flex items-center gap-0.5 text-primary">
-                            {Array.from({ length: 5 }, (_, i) => (
-                                <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-current' : 'fill-muted stroke-muted-foreground'}`} />
-                            ))}
-                            </div>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">{review.comment}</p>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+            {/* Reviews Section */}
+            <ReviewSection 
+              listingId={listing.id}
+              reviews={listing.reviews}
+              averageRating={listing.rating}
+              session={session}
+            />
           </div>
         </div>
 

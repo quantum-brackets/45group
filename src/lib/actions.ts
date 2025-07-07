@@ -11,6 +11,7 @@ import type { User } from './types'
 import { logToFile } from './logger'
 import { hashPassword, verifyPassword } from './password'
 import { cookies } from 'next/headers'
+import { getListingById } from './data'
 
 const ListingFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -726,4 +727,73 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
     const message = error instanceof Error ? error.message : "An unknown database error occurred.";
     return { success: false, message: `Failed to update your profile in the database: ${message}` };
   }
+}
+
+const ReviewSchema = z.object({
+    listingId: z.string(),
+    rating: z.coerce.number().min(1).max(5),
+    comment: z.string().min(10, "Comment must be at least 10 characters.")
+});
+
+export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>) {
+    const session = await getSession();
+    if (!session) {
+        return { success: false, message: 'You must be logged in to submit a review.' };
+    }
+
+    const validatedFields = ReviewSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
+    }
+
+    const { listingId, rating, comment } = validatedFields.data;
+
+    try {
+        const db = await getDb();
+        const listing = await getListingById(listingId);
+
+        if (!listing) {
+            return { success: false, message: 'Listing not found.' };
+        }
+
+        let reviews = listing.reviews;
+        const existingReviewIndex = reviews.findIndex(r => r.userId === session.id);
+        
+        if (existingReviewIndex > -1) {
+            // Update existing review
+            reviews[existingReviewIndex].rating = rating;
+            reviews[existingReviewIndex].comment = comment;
+        } else {
+            // Add new review
+            const newReview = {
+                id: `review-${randomUUID()}`,
+                userId: session.id,
+                author: session.name,
+                avatar: `https://avatar.vercel.sh/${session.email}.png`,
+                rating,
+                comment,
+            };
+            reviews.push(newReview);
+        }
+
+        // Recalculate average rating
+        const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+        const newAverageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
+
+        const stmt = db.prepare(`
+            UPDATE listings
+            SET reviews = ?, rating = ?
+            WHERE id = ?
+        `);
+        
+        stmt.run(JSON.stringify(reviews), newAverageRating, listingId);
+
+        revalidatePath(`/listing/${listingId}`);
+        return { success: true, message: 'Your review has been submitted successfully!' };
+
+    } catch (error) {
+        console.error(`[ADD_REVIEW_ACTION] Error: ${error}`);
+        const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+        return { success: false, message: `Failed to submit review: ${message}` };
+    }
 }

@@ -4,6 +4,7 @@ export type Currency = 'USD' | 'EUR' | 'GBP' | 'NGN';
 
 export interface Review {
   id: string;
+  userId?: string;
   author: string;
   avatar: string;
   rating: number;
