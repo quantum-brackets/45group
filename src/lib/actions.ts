@@ -228,6 +228,18 @@ export async function testLoginAction(data: z.infer<typeof TestLoginSchema>) {
   }
 }
 
+export async function getSessionTokenAction() {
+    'use server';
+    const cookieStore = cookies();
+    const sessionToken = cookieStore.get('session')?.value;
+
+    if (sessionToken) {
+        return { success: sessionToken };
+    } else {
+        return { error: 'No active session token found in cookies.' };
+    }
+}
+
 export async function verifySessionByIdAction(sessionId: string) {
     if (!sessionId) {
         return { error: 'No Session ID provided to verify.' };
@@ -243,7 +255,7 @@ export async function verifySessionByIdAction(sessionId: string) {
 
         const expiresAtDate = new Date(sessionRecord.expiresAt);
         if (expiresAtDate < new Date()) {
-             return { error: `Session with ID "${sessionId}" was found but has expired.` };
+             return { error: `Session with ID "${sessionId}" was found but has expired on ${expiresAtDate.toLocaleString()}.` };
         }
 
         const user = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(sessionRecord.userId) as User | undefined;
@@ -257,7 +269,8 @@ export async function verifySessionByIdAction(sessionId: string) {
           path: '/',
         });
 
-        return { success: `Session verified and cookie set for user: ${user.email} (${user.role}). You can now navigate to protected routes.` };
+        const successMessage = `Session for ${user.email} (${user.role}) is valid until ${expiresAtDate.toLocaleString()}. Cookie set.`;
+        return { success: successMessage };
     } catch (error) {
         console.error('[VERIFY_SESSION_BY_ID_ACTION_ERROR]', error);
         const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';

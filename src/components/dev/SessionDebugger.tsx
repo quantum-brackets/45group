@@ -5,13 +5,13 @@ import { useState, useTransition, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { testLoginAction, verifySessionByIdAction } from "@/lib/actions";
+import { testLoginAction, verifySessionByIdAction, getSessionTokenAction } from "@/lib/actions";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle, CheckCircle, KeyRound, Database } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle, KeyRound, Database, Download } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Separator } from "../ui/separator";
 import { Label } from "../ui/label";
@@ -31,15 +31,16 @@ interface SessionDebuggerProps {
 export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
   const [isLoginPending, startLoginTransition] = useTransition();
   const [isVerifyPending, startVerifyTransition] = useTransition();
+  const [isLoadPending, startLoadTransition] = useTransition();
   const [loginResult, setLoginResult] = useState<{ success?: string; error?: string } | null>(null);
   const [verifyResult, setVerifyResult] = useState<{ success?: string; error?: string } | null>(null);
+  const [loadResult, setLoadResult] = useState<{ success?: string; error?: string } | null>(null);
   const [sessionId, setSessionId] = useState<string>(initialSessionId || '');
 
   useEffect(() => {
-    if (initialSessionId && initialSessionId !== sessionId) {
-      setSessionId(initialSessionId);
-    }
-  }, [initialSessionId, sessionId]);
+    // This effect ensures the component's state stays in sync with the prop from the server on every render.
+    setSessionId(initialSessionId || '');
+  }, [initialSessionId]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -52,6 +53,7 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
   const onLoginSubmit = (data: FormValues) => {
     setLoginResult(null);
     setVerifyResult(null);
+    setLoadResult(null);
     setSessionId('');
     startLoginTransition(async () => {
       const result = await testLoginAction(data);
@@ -64,11 +66,23 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
 
   const handleVerifySession = () => {
     setVerifyResult(null);
+    setLoadResult(null);
     startVerifyTransition(async () => {
         const result = await verifySessionByIdAction(sessionId);
         setVerifyResult(result);
-        if (result.success) {
-            window.location.reload();
+    });
+  }
+
+  const handleLoadSession = () => {
+    setVerifyResult(null);
+    setLoadResult(null);
+    startLoadTransition(async () => {
+        const result = await getSessionTokenAction();
+        setLoadResult(result);
+        if(result.success) {
+            setSessionId(result.success);
+        } else {
+            setSessionId('');
         }
     });
   }
@@ -81,7 +95,7 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
             Session Debugger
           </CardTitle>
           <CardDescription>
-            Step 1: Test login to generate a session token. Step 2: Verify that token exists in the database.
+            Test login credentials or manually verify a session token.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -115,7 +129,7 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
               />
               <Button type="submit" className="w-full" disabled={isLoginPending}>
                 {isLoginPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                1. Test Login & Get Token
+                Test Login & Get Token
               </Button>
             </form>
           </Form>
@@ -144,20 +158,33 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
         <Separator className="my-4"/>
         <CardContent>
             <div className="grid gap-4">
-                <div className="grid gap-2">
+                <Button onClick={handleLoadSession} variant="outline" className="w-full justify-start" disabled={isLoadPending}>
+                    {isLoadPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    Load Token From Browser Cookie
+                </Button>
+                 {loadResult && loadResult.error && (
+                    <div className="mt-4">
+                        <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Load Failed</AlertTitle>
+                            <AlertDescription>{loadResult.error}</AlertDescription>
+                        </Alert>
+                    </div>
+                  )}
+                <div className="grid gap-2 pt-4">
                   <Label htmlFor="session-id">Session Token</Label>
                   <Input 
                     id="session-id"
                     value={sessionId}
                     onChange={(e) => setSessionId(e.target.value)}
-                    placeholder="Token will appear here after login test"
+                    placeholder="Token will appear here after login test or load"
                     className="font-mono text-xs"
                   />
                 </div>
                 <Button onClick={handleVerifySession} className="w-full" disabled={isVerifyPending || !sessionId}>
                     {isVerifyPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <Database className="mr-2 h-4 w-4" />
-                    2. Verify Session Token in DB
+                    Verify Session Token in DB & Set Cookie
                 </Button>
                 {verifyResult && (
                     <div className="mt-4">
