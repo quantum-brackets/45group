@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -12,7 +11,7 @@ import { UserNav } from '../auth/UserNav';
 
 const navLinks = [
   { href: '/search', label: 'Search' },
-  { href: '/ai-recommendations', label: 'AI Recommendations' },
+  { href: '/ai-recommendations', label: 'Recommendations' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/bookings', label: 'Bookings' },
 ];
