@@ -24,6 +24,7 @@ const ListingFormSchema = z.object({
   currency: z.enum(['USD', 'EUR', 'GBP', 'NGN'], { required_error: "Currency is required."}),
   maxGuests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
   features: z.string().min(1, "Please list at least one feature."),
+  images: z.array(z.string().url({ message: "Please enter a valid image URL." })).min(1, "At least one image is required."),
 });
 
 export async function createListingAction(data: z.infer<typeof ListingFormSchema>) {
@@ -37,11 +38,10 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
         return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
     }
 
-    const { name, type, location, description, price, priceUnit, currency, maxGuests, features } = validatedFields.data;
+    const { name, type, location, description, price, priceUnit, currency, maxGuests, features, images } = validatedFields.data;
     const featuresAsArray = features.split(',').map(f => f.trim());
     const newId = `listing-${randomUUID()}`;
 
-    const defaultImages = ['https://placehold.co/800x600.png', 'https://placehold.co/800x600.png'];
     const defaultReviews = [];
     const defaultRating = 0;
 
@@ -57,7 +57,7 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
             type,
             location,
             description,
-            JSON.stringify(defaultImages),
+            JSON.stringify(images),
             price,
             priceUnit,
             currency,
@@ -92,7 +92,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
     }
   }
   
-  const { name, type, location, description, price, priceUnit, currency, maxGuests, features } = validatedFields.data;
+  const { name, type, location, description, price, priceUnit, currency, maxGuests, features, images } = validatedFields.data;
   const featuresAsArray = features.split(',').map((f) => f.trim());
 
   try {
@@ -108,7 +108,8 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
         priceUnit = ?,
         currency = ?,
         maxGuests = ?,
-        features = ?
+        features = ?,
+        images = ?
       WHERE id = ?
     `);
 
@@ -122,6 +123,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
       currency,
       maxGuests,
       JSON.stringify(featuresAsArray),
+      JSON.stringify(images),
       id
     );
 

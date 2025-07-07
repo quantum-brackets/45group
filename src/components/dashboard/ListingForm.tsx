@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useForm, SubmitHandler, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Listing, Currency } from "@/lib/types";
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Loader2, PlusCircle, Trash2 } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -28,6 +28,7 @@ const formSchema = z.object({
   currency: z.enum(['USD', 'EUR', 'GBP', 'NGN'], { required_error: "Currency is required."}),
   maxGuests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
   features: z.string().min(1, "Please list at least one feature."),
+  images: z.array(z.string().url({ message: "Please enter a valid image URL." })).min(1, "At least one image is required."),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -56,7 +57,13 @@ export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) 
       currency: listing?.currency || 'NGN',
       maxGuests: listing?.maxGuests || 1,
       features: listing?.features.join(', ') || "",
+      images: (listing?.images && listing.images.length > 0) ? listing.images : ["https://placehold.co/800x600.png"],
     },
+  });
+
+  const { fields, append, remove, move } = useFieldArray({
+    control: form.control,
+    name: "images",
   });
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
@@ -264,6 +271,57 @@ export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) 
                     </FormItem>
                 )}
                 />
+            </div>
+            <div className="md:col-span-2 space-y-4">
+              <FormLabel>Images</FormLabel>
+              <div className="space-y-4">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="flex items-center gap-2 sm:gap-4 p-2 border rounded-md bg-muted/20">
+                    <img
+                        src={form.watch(`images.${index}`) || 'https://placehold.co/100x100.png'}
+                        alt={`Preview ${index + 1}`}
+                        width={80}
+                        height={80}
+                        className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-md bg-muted"
+                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/100x100.png'; }}
+                    />
+                    <div className="flex-grow">
+                      <FormField
+                        control={form.control}
+                        name={`images.${index}`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="sr-only">Image URL {index + 1}</FormLabel>
+                            <FormControl>
+                              <Input placeholder="https://example.com/image.png" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <Button type="button" size="icon" variant="ghost" onClick={() => move(index, index - 1)} disabled={index === 0}>
+                            <span className="sr-only">Move Up</span>
+                            <ArrowUp className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" size="icon" variant="ghost" onClick={() => move(index, index + 1)} disabled={index === fields.length - 1}>
+                            <span className="sr-only">Move Down</span>
+                            <ArrowDown className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <Button type="button" size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => fields.length > 1 ? remove(index) : form.setValue(`images.0`, '')} >
+                        <span className="sr-only">Remove</span>
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button type="button" variant="outline" onClick={() => append("https://placehold.co/800x600.png")}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Image
+              </Button>
+               <FormMessage>{form.formState.errors.images?.root?.message}</FormMessage>
             </div>
           </CardContent>
           <CardFooter className="flex justify-end gap-2">
