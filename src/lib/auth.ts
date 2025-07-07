@@ -9,12 +9,46 @@ import { hashPassword, verifyPassword } from './password';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+/**
+ * Authenticates a user based on email and password. This is the centralized
+ * function for credential validation.
+ * @param email The user's email.
+ * @param password The user's password.
+ * @returns An object with either the user object on success or an error message.
+ */
+export async function authenticateUser(email, password) {
+    try {
+        const db = await getDb();
+        const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
+
+        if (!user || !user.password) {
+            return { error: 'Incorrect email or password.' };
+        }
+
+        if (user.status === 'disabled') {
+            return { error: 'Your account has been disabled. Please contact your IT support.' };
+        }
+            
+        const passwordsMatch = await verifyPassword(password, user.password);
+
+        if (!passwordsMatch) {
+            return { error: 'Incorrect email or password.' };
+        }
+
+        return { user };
+    } catch (error) {
+        console.error(`[AUTH_ERROR]`, error);
+        return { error: 'An unexpected server error occurred during authentication.' };
+    }
+}
+
+
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address.'),
   password: z.string().min(1, 'Password is required.'),
 });
 
-export async function login(formData: z.infer<typeof LoginSchema>) {
+export async function loginAction(formData: z.infer<typeof LoginSchema>) {
   const validatedFields = LoginSchema.safeParse(formData);
   if (!validatedFields.success) {
     return { error: 'Invalid fields provided.' };
@@ -22,45 +56,30 @@ export async function login(formData: z.infer<typeof LoginSchema>) {
 
   const { email, password } = validatedFields.data;
 
-  try {
-    const db = await getDb();
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
+  const authResult = await authenticateUser(email, password);
 
-    if (!user || !user.password) {
-      return { error: 'Incorrect email or password.' };
-    }
-
-    if (user.status === 'disabled') {
-      return { error: 'Your account has been disabled. Please contact your IT support.' };
-    }
-          
-    const passwordsMatch = await verifyPassword(password, user.password);
-
-    if (!passwordsMatch) {
-      return { error: 'Incorrect email or password.' };
-    }
-
-    const sessionId = await createSession(user.id);
-    
-    if (!sessionId) {
-        return { error: 'Server error: Could not create a session. Please try again.' };
-    }
-
-    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
-    cookies().set('session', sessionId, {
-      expires,
-      httpOnly: true,
-      path: '/',
-      sameSite: 'lax',
-      secure: true,
-    });
-    
-    const redirectTo = user.role === 'admin' ? '/dashboard' : '/bookings';
-    return { success: true, redirectTo };
-  } catch (error) {
-    console.error(`[LOGIN_ERROR]`, error);
-    return { error: 'An unexpected server error occurred.' };
+  if (authResult.error) {
+      return { error: authResult.error };
   }
+  
+  const { user } = authResult;
+  const sessionId = await createSession(user.id);
+  
+  if (!sessionId) {
+      return { error: 'Server error: Could not create a session. Please try again.' };
+  }
+
+  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
+  cookies().set('session', sessionId, {
+    expires,
+    httpOnly: true,
+    path: '/',
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  });
+  
+  const redirectTo = user.role === 'admin' ? '/dashboard' : '/bookings';
+  return { success: true, redirectTo };
 }
 
 const SignupSchema = z.object({
@@ -102,7 +121,7 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
           httpOnly: true,
           path: '/',
           sameSite: 'lax',
-          secure: true,
+          secure: process.env.NODE_ENV === 'production',
       });
 
       return { success: true, redirectTo: '/bookings' };

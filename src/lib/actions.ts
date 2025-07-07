@@ -12,6 +12,7 @@ import { logToFile } from './logger'
 import { hashPassword, verifyPassword } from './password'
 import { cookies } from 'next/headers'
 import { getListingById } from './data'
+import { authenticateUser } from './auth'
 
 const ListingFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -397,18 +398,12 @@ export async function testLoginAction(data: z.infer<typeof TestLoginSchema>) {
   const { email, password } = validatedFields.data;
 
   try {
-    const db = await getDb();
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
-
-    if (!user || !user.password) {
-      return { error: 'Incorrect email or password.' };
-    }
-
-    const passwordsMatch = await verifyPassword(password, user.password);
-    if (!passwordsMatch) {
-      return { error: 'Incorrect email or password.' };
+    const authResult = await authenticateUser(email, password);
+    if (authResult.error) {
+      return { error: authResult.error };
     }
     
+    const { user } = authResult;
     const sessionId = await createSession(user.id);
     if (!sessionId) {
       return { error: 'Server error: Could not create a session record in the database.' };
@@ -483,7 +478,7 @@ export async function verifySessionByIdAction(sessionId: string) {
           httpOnly: true,
           path: '/',
           sameSite: 'lax',
-          secure: true,
+          secure: process.env.NODE_ENV === 'production',
         });
 
         const successMessage = `Session for ${user.email} (${user.role}) is valid until ${expiresAtDate.toLocaleString()}. Cookie set.`;

@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransition, useState } from "react";
-import { login } from "@/lib/auth";
+import { loginAction } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -37,7 +37,7 @@ export function LoginForm() {
   const onSubmit = (data: FormValues) => {
     setError(null);
     startTransition(async () => {
-      const result = await login(data);
+      const result = await loginAction(data);
       if (result?.error) {
         setError(result.error);
       }
