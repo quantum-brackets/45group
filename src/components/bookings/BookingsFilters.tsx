@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -18,16 +19,16 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [listingId, setListingId] = useState('');
-  const [userId, setUserId] = useState('');
-  const [status, setStatus] = useState('');
+  const [listingId, setListingId] = useState('all');
+  const [userId, setUserId] = useState('all');
+  const [status, setStatus] = useState('all');
 
   const isFiltered = searchParams.has('listingId') || searchParams.has('userId') || searchParams.has('status');
 
   useEffect(() => {
-    setListingId(searchParams.get('listingId') || '');
-    setUserId(searchParams.get('userId') || '');
-    setStatus(searchParams.get('status') || '');
+    setListingId(searchParams.get('listingId') || 'all');
+    setUserId(searchParams.get('userId') || 'all');
+    setStatus(searchParams.get('status') || 'all');
   }, [searchParams]);
 
   const handleFilter = () => {
@@ -42,8 +43,10 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
     router.push('/bookings');
   }
 
+  const isAdmin = session?.role === 'admin';
+
   return (
-    <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4 items-center", session?.role === 'admin' ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
+    <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4 items-center", isAdmin ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
         <div className="lg:col-span-1">
             <Select onValueChange={setListingId} value={listingId}>
                 <SelectTrigger>
@@ -59,7 +62,7 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
             </Select>
         </div>
 
-        {session?.role === 'admin' && (
+        {isAdmin && (
             <div className="lg:col-span-1">
                 <Select onValueChange={setUserId} value={userId}>
                     <SelectTrigger>
@@ -91,7 +94,7 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
             </Select>
         </div>
 
-        <div className="lg:col-span-1 flex gap-2">
+        <div className={cn("flex gap-2 lg:col-span-1", isAdmin ? "lg:col-start-5" : "md:col-start-2 lg:col-start-4")}>
             <Button className="w-full" onClick={handleFilter}>
                 <Search className="mr-2 h-4 w-4" />
                 Filter
