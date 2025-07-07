@@ -489,3 +489,49 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
     return { success: false, message: "Failed to update user in the database." };
   }
 }
+
+const UpdateProfileSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  email: z.string().email("Please enter a valid email address."),
+  password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
+});
+
+export async function updateUserProfileAction(data: z.infer<typeof UpdateProfileSchema>) {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized' };
+  }
+
+  const validatedFields = UpdateProfileSchema.safeParse(data);
+  if (!validatedFields.success) {
+    return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
+  }
+
+  const { name, email, password } = validatedFields.data;
+
+  try {
+    const db = await getDb();
+    
+    const otherUserWithEmail = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, session.id);
+    if (otherUserWithEmail) {
+        return { success: false, message: 'Another user with this email already exists.' };
+    }
+
+    if (password) {
+      const hashedPassword = await hashPassword(password);
+      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?');
+      stmt.run(name, email, hashedPassword, session.id);
+    } else {
+      const stmt = db.prepare('UPDATE users SET name = ?, email = ? WHERE id = ?');
+      stmt.run(name, email, session.id);
+    }
+
+    revalidatePath('/profile');
+    revalidatePath('/', 'layout');
+    
+    return { success: true, message: `Your profile has been updated successfully.` };
+  } catch (error) {
+    console.error(`[UPDATE_PROFILE_ACTION] Error: ${error}`);
+    return { success: false, message: "Failed to update your profile in the database." };
+  }
+}
