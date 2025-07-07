@@ -235,6 +235,71 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
   }
 }
 
+const UpdateBookingSchema = z.object({
+  bookingId: z.string(),
+  startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
+  endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
+  guests: z.coerce.number().int().min(1, "At least one guest is required."),
+});
+
+export async function updateBookingAction(data: z.infer<typeof UpdateBookingSchema>) {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized' };
+  }
+
+  const validatedFields = UpdateBookingSchema.safeParse(data);
+  if (!validatedFields.success) {
+    return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
+  }
+
+  const { bookingId, startDate, endDate, guests } = validatedFields.data;
+
+  try {
+    const db = await getDb();
+    const booking = db.prepare('SELECT userId, listingId FROM bookings WHERE id = ?').get(bookingId) as { userId: string, listingId: string } | undefined;
+
+    if (!booking) {
+      return { success: false, message: 'Booking not found.' };
+    }
+
+    if (session.role !== 'admin' && booking.userId !== session.id) {
+      return { success: false, message: 'You do not have permission to edit this booking.' };
+    }
+    
+    const listing = db.prepare('SELECT maxGuests FROM listings WHERE id = ?').get(booking.listingId) as { maxGuests: number } | undefined;
+    if (listing && guests > listing.maxGuests) {
+        return { success: false, message: `Number of guests cannot exceed the maximum of ${listing.maxGuests}.` };
+    }
+
+    const stmt = db.prepare(`
+      UPDATE bookings 
+      SET startDate = ?, endDate = ?, guests = ?
+      WHERE id = ?
+    `);
+    
+    const info = stmt.run(
+        new Date(startDate).toISOString().split('T')[0],
+        new Date(endDate).toISOString().split('T')[0],
+        guests,
+        bookingId
+    );
+
+    if (info.changes === 0) {
+        return { success: false, message: 'Failed to update booking. No changes were made.' };
+    }
+
+    revalidatePath('/bookings');
+    revalidatePath(`/booking/${bookingId}`);
+
+    return { success: true, message: 'Booking has been updated successfully.' };
+  } catch (error) {
+    console.error(`[UPDATE_BOOKING_ACTION] Error: ${error}`);
+    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+    return { success: false, message: `Failed to update booking: ${message}` };
+  }
+}
+
 export async function logoutAction() {
     await deleteSession();
     revalidatePath('/', 'layout');
