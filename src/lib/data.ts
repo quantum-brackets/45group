@@ -35,7 +35,7 @@ export async function getAllUsers(): Promise<User[]> {
 
 export async function getAllListings(): Promise<Listing[]> {
   const db = await getDb();
-  const stmt = db.prepare('SELECT * FROM listings');
+  const stmt = db.prepare('SELECT * FROM listings ORDER BY location, type, name');
   const listings = stmt.all() as any[];
   return listings.map(parseListing);
 }
@@ -171,6 +171,8 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
   if (whereClauses.length > 0) {
     query += ' WHERE ' + whereClauses.join(' AND ');
   }
+
+  query += ' ORDER BY location, type, name';
 
   const stmt = db.prepare(query);
   const listings = stmt.all(...params) as any[];
