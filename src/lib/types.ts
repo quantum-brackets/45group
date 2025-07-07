@@ -10,7 +10,7 @@ export interface Review {
 }
 
 export interface Listing {
-  id: string;
+  id:string;
   name: string;
   type: ListingType;
   location: string;
@@ -41,5 +41,5 @@ export interface User {
     name: string;
     email: string;
     password?: string;
-    role: 'admin' | 'guest';
+    role: 'admin' | 'guest' | 'staff';
 }

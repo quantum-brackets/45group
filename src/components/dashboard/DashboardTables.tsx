@@ -7,7 +7,7 @@ import { MoreHorizontal, Users, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
-import type { Listing, User } from '@/lib/types';
+import type { User } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
 import { useTransition } from 'react';
@@ -25,7 +25,7 @@ export function DashboardTables({ listings, users, session }: DashboardTablesPro
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
-  const handleRoleChange = (userId: string, role: 'admin' | 'guest') => {
+  const handleRoleChange = (userId: string, role: 'admin' | 'guest' | 'staff') => {
     startTransition(async () => {
       const result = await updateUserRoleAction({ userId, role });
       if (result.success) {
@@ -137,13 +137,18 @@ export function DashboardTables({ listings, users, session }: DashboardTablesPro
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                        {user.role === 'guest' && (
+                                        <DropdownMenuLabel>Change Role</DropdownMenuLabel>
+                                        {user.role !== 'admin' && (
                                             <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'admin')} disabled={isPending}>
                                                 Make Admin
                                             </DropdownMenuItem>
                                         )}
-                                        {user.role === 'admin' && (
+                                        {user.role !== 'staff' && (
+                                            <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'staff')} disabled={isPending}>
+                                                Make Staff
+                                            </DropdownMenuItem>
+                                        )}
+                                        {user.role !== 'guest' && (
                                             <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'guest')} disabled={isPending}>
                                                 Make Guest
                                             </DropdownMenuItem>

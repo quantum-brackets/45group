@@ -3,6 +3,7 @@ import type { Listing, Booking, User } from './types';
 export const users: User[] = [
     { id: '101', name: 'Admin User', email: 'admin@45group.org', password: 'password', role: 'admin' },
     { id: '102', name: 'Guest User', email: 'guest@45group.org', password: 'password', role: 'guest' },
+    { id: '103', name: 'Staff User', email: 'staff@45group.org', password: 'password', role: 'staff' },
 ];
 
 export const listings: Listing[] = [

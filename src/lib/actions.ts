@@ -93,6 +93,10 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
   if (!session) {
     return { success: false, message: 'You must be logged in to book.' };
   }
+  
+  if (session.role === 'staff') {
+    return { success: false, message: 'Staff accounts cannot create new bookings.' };
+  }
 
   const validatedFields = CreateBookingSchema.safeParse(data);
 
@@ -304,7 +308,7 @@ export async function verifySessionByIdAction(sessionId: string) {
 
 const UpdateUserRoleSchema = z.object({
   userId: z.string().min(1, 'User ID is required.'),
-  role: z.enum(['admin', 'guest']),
+  role: z.enum(['admin', 'guest', 'staff']),
 });
 
 export async function updateUserRoleAction(data: z.infer<typeof UpdateUserRoleSchema>) {
@@ -344,5 +348,56 @@ export async function updateUserRoleAction(data: z.infer<typeof UpdateUserRoleSc
   } catch (error) {
     console.error(`[UPDATE_USER_ROLE_ACTION] Error: ${error}`);
     return { error: "A database error occurred while updating the user role." };
+  }
+}
+
+const CancelBookingSchema = z.object({
+  bookingId: z.string(),
+});
+
+export async function cancelBookingAction(data: z.infer<typeof CancelBookingSchema>) {
+  const session = await getSession();
+  if (!session) {
+    return { error: 'Unauthorized' };
+  }
+
+  const validatedFields = CancelBookingSchema.safeParse(data);
+  if (!validatedFields.success) {
+    return { error: 'Invalid booking ID.' };
+  }
+  
+  const { bookingId } = validatedFields.data;
+
+  try {
+    const db = await getDb();
+    const booking = db.prepare('SELECT userId, listingName FROM bookings WHERE id = ?').get(bookingId) as { userId: string, listingName: string } | undefined;
+
+    if (!booking) {
+      return { error: 'Booking not found.' };
+    }
+
+    if (session.role === 'staff') {
+        return { error: 'You do not have permission to cancel this booking.' };
+    }
+
+    // Admin can cancel any booking, guest can only cancel their own.
+    if (session.role !== 'admin' && booking.userId !== session.id) {
+      return { error: 'You do not have permission to cancel this booking.' };
+    }
+
+    const stmt = db.prepare(`UPDATE bookings SET status = 'Cancelled' WHERE id = ?`);
+    const info = stmt.run(bookingId);
+    
+    if (info.changes === 0) {
+        return { error: 'Failed to cancel booking.' };
+    }
+
+    revalidatePath('/bookings');
+    revalidatePath(`/booking/${bookingId}`);
+    
+    return { success: `Booking for ${booking.listingName} has been cancelled.` };
+  } catch (error) {
+    console.error(`[CANCEL_BOOKING_ACTION] Error: ${error}`);
+    return { error: "Failed to cancel booking in the database." };
   }
 }

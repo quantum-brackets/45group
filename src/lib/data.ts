@@ -68,11 +68,11 @@ export async function getAllBookings(filters: BookingFilters): Promise<Booking[]
     const whereClauses: string[] = [];
     const params: (string | number)[] = [];
 
-    // For non-admin users, they can only see their own bookings.
-    if (session.role !== 'admin') {
+    // For non-admin/staff users, they can only see their own bookings.
+    if (session.role === 'guest') {
         whereClauses.push('b.userId = ?');
         params.push(session.id);
-    } else {
+    } else if (session.role === 'admin') {
         // Admin can filter by any userId passed in the filters
         if (filters.userId) {
             whereClauses.push('b.userId = ?');
@@ -114,8 +114,8 @@ export async function getBookingById(id: string): Promise<Booking | null> {
 
     if (!booking) return null;
 
-    // Admin can view any booking, guests can only view their own
-    if (session.role !== 'admin' && booking.userId !== session.id) {
+    // Admin/staff can view any booking, guests can only view their own
+    if (session.role === 'guest' && booking.userId !== session.id) {
         return null;
     }
 

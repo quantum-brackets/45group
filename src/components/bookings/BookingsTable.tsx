@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
 import type { Booking, User } from '@/lib/types';
+import { useTransition } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { cancelBookingAction } from '@/lib/actions';
 
 interface BookingsTableProps {
   bookings: Booking[];
@@ -17,6 +20,26 @@ interface BookingsTableProps {
 
 export function BookingsTable({ bookings, session }: BookingsTableProps) {
   const router = useRouter();
+  const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
+
+  const handleCancel = (bookingId: string) => {
+    startTransition(async () => {
+      const result = await cancelBookingAction({ bookingId });
+      if (result.success) {
+        toast({
+          title: "Booking Cancelled",
+          description: result.success,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    });
+  };
 
   return (
     <Card>
@@ -31,7 +54,7 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Venue</TableHead>
-              {session?.role === 'admin' && (
+              {(session?.role === 'admin' || session?.role === 'staff') && (
                 <TableHead className="hidden sm:table-cell">User</TableHead>
               )}
               <TableHead>Dates</TableHead>
@@ -44,7 +67,7 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
             {bookings.map((booking) => (
               <TableRow key={booking.id}>
                 <TableCell className="font-medium">{booking.listingName}</TableCell>
-                {session?.role === 'admin' && (
+                {(session?.role === 'admin' || session?.role === 'staff') && (
                   <TableCell className="hidden sm:table-cell">{booking.userName}</TableCell>
                 )}
                 <TableCell>
@@ -71,9 +94,20 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
                             <DropdownMenuItem onClick={() => router.push(`/booking/${booking.id}`)}>View Details</DropdownMenuItem>
                              {session?.role === 'admin' && (
                                 <>
-                                 <DropdownMenuItem>Confirm Booking</DropdownMenuItem>
-                                 <DropdownMenuItem className="text-destructive">Cancel Booking</DropdownMenuItem>
+                                 <DropdownMenuItem disabled>Confirm Booking</DropdownMenuItem>
+                                 <DropdownMenuItem 
+                                    className="text-destructive"
+                                    disabled={isPending || booking.status === 'Cancelled'}
+                                    onClick={() => handleCancel(booking.id)}
+                                 >Cancel Booking</DropdownMenuItem>
                                 </>
+                            )}
+                             {session?.role === 'guest' && booking.userId === session.id && (
+                                 <DropdownMenuItem 
+                                    className="text-destructive"
+                                    disabled={isPending || booking.status === 'Cancelled'}
+                                    onClick={() => handleCancel(booking.id)}
+                                 >Cancel Booking</DropdownMenuItem>
                             )}
                         </DropdownMenuContent>
                     </DropdownMenu>
