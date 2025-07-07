@@ -26,7 +26,7 @@ export async function authenticateUser(email, password) {
         }
 
         if (user.status === 'disabled') {
-            return { error: 'Your account has been disabled. Please contact your IT support.' };
+            return { error: 'Your account has been disabled. Please contact an administrator.' };
         }
             
         const passwordsMatch = await verifyPassword(password, user.password);
@@ -106,8 +106,8 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
 
       const hashedPassword = await hashPassword(password);
 
-      const stmt = db.prepare('INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)');
-      stmt.run(userId, name, email, hashedPassword, 'guest');
+      const stmt = db.prepare('INSERT INTO users (id, name, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?)');
+      stmt.run(userId, name, email, hashedPassword, 'guest', 'active');
       
       const sessionId = await createSession(userId);
 
