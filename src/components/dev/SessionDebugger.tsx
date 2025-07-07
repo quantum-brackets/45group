@@ -31,7 +31,6 @@ interface SessionDebuggerProps {
 
 export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const [isLoginPending, startLoginTransition] = useTransition();
   const [isVerifyPending, startVerifyTransition] = useTransition();
   const [loginResult, setLoginResult] = useState<{ success?: string; error?: string } | null>(null);
@@ -65,7 +64,7 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
         const result = await verifySessionByIdAction(sessionId);
         setVerifyResult(result);
         if (result.success) {
-            router.push(pathname);
+            router.refresh();
         }
     });
   }
