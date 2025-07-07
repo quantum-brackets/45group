@@ -66,10 +66,11 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
         );
     } catch (error) {
         console.error(`[CREATE_LISTING_ACTION] Error: ${error}`);
-        return { success: false, message: "Failed to create listing in the database." };
+        const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+        return { success: false, message: `Failed to create listing: ${message}` };
     }
     
-    revalidatePath('/dashboard');
+    revalidatePath('/dashboard?tab=listings');
     return { success: true, message: `Listing "${name}" has been created.` };
 }
 
@@ -124,10 +125,11 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
 
   } catch (error) {
     console.error(`[UPDATE_LISTING_ACTION] Error: ${error}`);
-    return { success: false, message: "Failed to update listing in the database." };
+    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+    return { success: false, message: `Failed to update listing: ${message}` };
   }
 
-  revalidatePath('/dashboard');
+  revalidatePath('/dashboard?tab=listings');
   revalidatePath(`/listing/${id}`);
   
   return { success: true, message: `The details for "${name}" have been saved.` };
