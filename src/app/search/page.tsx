@@ -1,3 +1,4 @@
+
 import { getFilteredListings } from '@/lib/data';
 import { ListingFilters } from '@/components/listing/ListingFilters';
 import { ListingCard } from '@/components/listing/ListingCard';
@@ -29,15 +30,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <header className="mb-8">
-        <h1 className="text-4xl font-headline font-bold tracking-tight lg:text-5xl">
-          Search for a Venue
-        </h1>
-        <p className="mt-4 text-lg text-muted-foreground">
-          Use the filters below to find the perfect spot for your next event, trip, or meal.
-        </p>
-      </header>
-      
       <section className="mb-12 sticky top-[63px] bg-background/95 z-30 py-4 backdrop-blur-sm -mx-4 px-4 border-b">
         <ListingFilters />
       </section>
