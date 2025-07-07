@@ -21,7 +21,7 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Your Bookings</CardTitle>
+        <CardTitle>Bookings</CardTitle>
         <CardDescription>
           {session?.role === 'admin' ? 'An overview of all bookings across all venues.' : 'An overview of your past and upcoming bookings.'}
         </CardDescription>

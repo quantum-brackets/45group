@@ -10,14 +10,6 @@ export default async function BookingsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <header className="mb-8">
-        <h1 className="text-4xl font-headline font-bold tracking-tight">
-          {session?.role === 'admin' ? 'All Bookings' : 'My Bookings'}
-        </h1>
-        <p className="mt-2 text-lg text-muted-foreground">
-          {session?.role === 'admin' ? 'Manage all bookings for your venues.' : 'View your past and upcoming bookings.'}
-        </p>
-      </header>
       <div className="grid gap-8">
         {bookings.length > 0 ? (
           <BookingsTable bookings={bookings} session={session} />
