@@ -31,7 +31,9 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Venue</TableHead>
-              <TableHead className="hidden sm:table-cell">User</TableHead>
+              {session?.role === 'admin' && (
+                <TableHead className="hidden sm:table-cell">User</TableHead>
+              )}
               <TableHead>Dates</TableHead>
               <TableHead>Guests</TableHead>
               <TableHead>Status</TableHead>
@@ -42,7 +44,9 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
             {bookings.map((booking) => (
               <TableRow key={booking.id}>
                 <TableCell className="font-medium">{booking.listingName}</TableCell>
-                <TableCell className="hidden sm:table-cell">{booking.userId}</TableCell>
+                {session?.role === 'admin' && (
+                  <TableCell className="hidden sm:table-cell">{booking.userName}</TableCell>
+                )}
                 <TableCell>
                   {booking.startDate === booking.endDate
                     ? booking.startDate

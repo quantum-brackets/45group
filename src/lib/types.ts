@@ -28,6 +28,7 @@ export interface Booking {
   id: string;
   listingId: string;
   userId: string;
+  userName?: string;
   listingName: string;
   startDate: string;
   endDate: string;

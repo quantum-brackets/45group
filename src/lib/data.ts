@@ -55,10 +55,20 @@ export async function getAllBookings(): Promise<Booking[]> {
 
     const db = await getDb();
     if (session.role === 'admin') {
-        const stmt = db.prepare('SELECT * FROM bookings ORDER BY startDate DESC');
+        const stmt = db.prepare(`
+            SELECT b.*, u.name as userName 
+            FROM bookings as b
+            JOIN users as u ON b.userId = u.id
+            ORDER BY b.startDate DESC
+        `);
         return stmt.all() as Booking[];
     } else {
-        const stmt = db.prepare('SELECT * FROM bookings WHERE userId = ? ORDER BY startDate DESC');
+        const stmt = db.prepare(`
+            SELECT b.*, u.name as userName
+            FROM bookings as b
+            JOIN users as u ON b.userId = u.id
+            WHERE b.userId = ? ORDER BY b.startDate DESC
+        `);
         return stmt.all(session.id) as Booking[];
     }
 }
