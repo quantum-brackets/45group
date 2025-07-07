@@ -65,7 +65,7 @@ export function BookingForm({ listing }: BookingFormProps) {
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle>
-          <span className="text-2xl font-bold text-primary">{`${listing.currency || 'USD'} ${listing.price}`}</span>
+          <span className="text-2xl font-bold text-primary">{`${listing.currency || 'NGN'} ${listing.price}`}</span>
           <span className="text-base font-normal text-muted-foreground">/{listing.priceUnit}</span>
         </CardTitle>
       </CardHeader>

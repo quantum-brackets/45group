@@ -57,7 +57,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                     <TableCell className="font-medium">{listing.name}</TableCell>
                     <TableCell>{listing.type.charAt(0).toUpperCase() + listing.type.slice(1)}</TableCell>
                     <TableCell>{listing.location}</TableCell>
-                    <TableCell className="text-right">{listing.price} {listing.currency || 'USD'}/{listing.priceUnit}</TableCell>
+                    <TableCell className="text-right">{listing.price} {listing.currency || 'NGN'}/{listing.priceUnit}</TableCell>
                     <TableCell className="text-right">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

@@ -19,7 +19,7 @@ const FormSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
   price: z.coerce.number().positive("Price must be a positive number."),
   priceUnit: z.enum(['night', 'hour', 'person']),
-  currency: z.enum(['USD', 'EUR', 'GBP']),
+  currency: z.enum(['USD', 'EUR', 'GBP', 'NGN']),
   maxGuests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
   features: z.string().min(1, "Please list at least one feature."),
 });
