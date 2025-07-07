@@ -236,26 +236,20 @@ export function BookingDetails({ booking, listing, session }: BookingDetailsProp
   return (
     <Card className="max-w-4xl mx-auto shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between">
-          <div className="space-y-1">
-              <CardTitle className="text-2xl font-mono text-primary tracking-tight">
-                {booking.id}
-              </CardTitle>
-               {isEditing ? (
-                   <CardDescription>
-                      Update the details for your booking at <Link href={`/listing/${listing.id}`} className="font-semibold hover:underline">{listing.name}</Link>.
-                  </CardDescription>
-              ) : (
-                  <CardDescription>
-                     For <Link href={`/listing/${listing.id}`} className="font-semibold hover:underline">{listing.name}</Link>
-                  </CardDescription>
-              )}
-          </div>
-          {canEdit && !isEditing && isActionable && (
-              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit Booking
-              </Button>
-          )}
+        <div className="space-y-1">
+          <CardTitle className="text-2xl font-headline text-primary">
+            <Link href={`/listing/${listing.id}`} className="hover:underline">{listing.name}</Link>
+          </CardTitle>
+          <CardDescription className="pt-1">
+              <span className="font-mono text-muted-foreground">{booking.id}</span>
+          </CardDescription>
+        </div>
+        {canEdit && !isEditing && isActionable && (
+            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Booking
+            </Button>
+        )}
       </CardHeader>
       
       {isEditing ? <EditView /> : <DisplayView />}
