@@ -8,7 +8,7 @@ import type { Listing } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { updateListingAction } from "@/lib/actions";
+import { createListingAction, updateListingAction } from "@/lib/actions";
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -32,36 +32,49 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-interface EditListingFormProps {
-  listing: Listing;
+interface ListingFormProps {
+  listing?: Listing | null;
+  isDuplicate?: boolean;
 }
 
-export function EditListingForm({ listing }: EditListingFormProps) {
+export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
+  const isEditMode = !!listing && !isDuplicate;
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      ...listing,
-      features: listing.features.join(', '),
-      currency: listing.currency || 'NGN',
+      name: listing ? (isDuplicate ? `${listing.name} (Copy)` : listing.name) : "",
+      type: listing?.type || undefined,
+      location: listing?.location || "",
+      description: listing?.description || "",
+      price: listing?.price || 0,
+      priceUnit: listing?.priceUnit || undefined,
+      maxGuests: listing?.maxGuests || 1,
+      features: listing?.features.join(', ') || "",
+      currency: listing?.currency || 'NGN',
     },
   });
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
     startTransition(async () => {
-      const result = await updateListingAction(listing.id, data);
+      const result = isEditMode
+        ? await updateListingAction(listing.id, data)
+        : await createListingAction(data);
+
       if (result.success) {
         toast({
-          title: "Listing Updated Successfully!",
+          title: `Listing ${isEditMode ? 'Updated' : 'Created'}!`,
           description: result.message,
         });
-        router.push('/dashboard');
+        router.push('/dashboard?tab=listings');
+        router.refresh();
       } else {
         toast({
-          title: "Error updating listing",
+          title: `Error ${isEditMode ? 'updating' : 'creating'} listing`,
           description: result.message || "An unexpected error occurred.",
           variant: "destructive",
         });
@@ -69,13 +82,25 @@ export function EditListingForm({ listing }: EditListingFormProps) {
     });
   };
 
+  const getTitle = () => {
+    if (isEditMode) return 'Edit Listing';
+    if (isDuplicate) return 'Duplicate Listing';
+    return 'Add New Listing';
+  }
+
+  const getDescription = () => {
+    if (isEditMode) return `Update the information for ${listing.name}.`;
+    if (isDuplicate) return `Create a new listing based on ${listing?.name}.`;
+    return "Fill in the details to create a new listing.";
+  }
+
   return (
     <Card className="max-w-4xl mx-auto shadow-lg">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardHeader>
-            <CardTitle>Listing Details</CardTitle>
-            <CardDescription>Update the information for this listing. Click save when you're done.</CardDescription>
+            <CardTitle>{getTitle()}</CardTitle>
+            <CardDescription>{getDescription()}</CardDescription>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-6">
             <FormField
@@ -244,7 +269,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
             <Button variant="outline" type="button" onClick={() => router.back()} disabled={isPending}>Cancel</Button>
             <Button type="submit" disabled={isPending}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
+              {isEditMode ? 'Save Changes' : 'Create Listing'}
             </Button>
           </CardFooter>
         </form>

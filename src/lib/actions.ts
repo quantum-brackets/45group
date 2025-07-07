@@ -12,7 +12,7 @@ import { logToFile } from './logger'
 import { hashPassword, verifyPassword } from './password'
 import { cookies } from 'next/headers'
 
-const FormSchema = z.object({
+const ListingFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
   type: z.enum(['hotel', 'events', 'restaurant']),
   location: z.string().min(1, "Location is required."),
@@ -24,13 +24,62 @@ const FormSchema = z.object({
   features: z.string().min(1, "Please list at least one feature."),
 });
 
-export async function updateListingAction(id: string, data: z.infer<typeof FormSchema>) {
+export async function createListingAction(data: z.infer<typeof ListingFormSchema>) {
+    const session = await getSession();
+    if (session?.role !== 'admin') {
+        return { success: false, message: 'Unauthorized' };
+    }
+
+    const validatedFields = ListingFormSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
+    }
+
+    const { name, type, location, description, price, priceUnit, maxGuests, features, currency } = validatedFields.data;
+    const featuresAsArray = features.split(',').map(f => f.trim());
+    const newId = `listing-${randomUUID()}`;
+
+    const defaultImages = ['https://placehold.co/800x600.png', 'https://placehold.co/800x600.png'];
+    const defaultReviews = [];
+    const defaultRating = 0;
+
+    try {
+        const db = await getDb();
+        const stmt = db.prepare(`
+            INSERT INTO listings (id, name, type, location, description, images, price, priceUnit, currency, rating, reviews, features, maxGuests)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        stmt.run(
+            newId,
+            name,
+            type,
+            location,
+            description,
+            JSON.stringify(defaultImages),
+            price,
+            priceUnit,
+            currency,
+            defaultRating,
+            JSON.stringify(defaultReviews),
+            JSON.stringify(featuresAsArray),
+            maxGuests
+        );
+
+        revalidatePath('/dashboard');
+        return { success: true, message: `Listing "${name}" has been created.` };
+    } catch (error) {
+        console.error(`[CREATE_LISTING_ACTION] Error: ${error}`);
+        return { success: false, message: "Failed to create listing in the database." };
+    }
+}
+
+export async function updateListingAction(id: string, data: z.infer<typeof ListingFormSchema>) {
   const session = await getSession();
   if (session?.role !== 'admin') {
     return { success: false, message: 'Unauthorized' };
   }
   
-  const validatedFields = FormSchema.safeParse(data);
+  const validatedFields = ListingFormSchema.safeParse(data);
 
   if (!validatedFields.success) {
     return {
@@ -80,6 +129,29 @@ export async function updateListingAction(id: string, data: z.infer<typeof FormS
   } catch (error) {
     console.error(`[UPDATE_LISTING_ACTION] Error: ${error}`);
     return { success: false, message: "Failed to update listing in the database." };
+  }
+}
+
+export async function deleteListingAction(id: string) {
+  const session = await getSession();
+  if (session?.role !== 'admin') {
+    return { success: false, message: 'Unauthorized' };
+  }
+
+  try {
+    const db = await getDb();
+    const stmt = db.prepare('DELETE FROM listings WHERE id = ?');
+    const info = stmt.run(id);
+
+    if (info.changes === 0) {
+      return { success: false, message: 'Listing not found or could not be deleted.' };
+    }
+
+    revalidatePath('/dashboard');
+    return { success: true, message: 'Listing has been deleted.' };
+  } catch (error) {
+    console.error(`[DELETE_LISTING_ACTION] Error: ${error}`);
+    return { success: false, message: 'Database error occurred while deleting the listing.' };
   }
 }
 
