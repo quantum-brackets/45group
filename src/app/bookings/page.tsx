@@ -15,9 +15,9 @@ interface BookingsPageProps {
 
 export default async function BookingsPage({ searchParams }: BookingsPageProps) {
   const filters = {
-    listingId: searchParams.listingId,
-    userId: searchParams.userId,
-    status: searchParams.status as Booking['status'] | undefined,
+    listingId: searchParams.listingId || undefined,
+    userId: searchParams.userId || undefined,
+    status: searchParams.status ? (searchParams.status as Booking['status']) : undefined,
   };
 
   const bookings = await getAllBookings(filters);
