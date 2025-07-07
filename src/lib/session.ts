@@ -46,7 +46,7 @@ export async function getSession(): Promise<User | null> {
     const db = await getDb();
     
     const stmt = db.prepare(`
-      SELECT u.id, u.name, u.email, u.role 
+      SELECT u.id, u.name, u.email, u.role, u.status 
       FROM sessions s
       JOIN users u ON s.userId = u.id
       WHERE s.id = ? AND s.expiresAt > ?

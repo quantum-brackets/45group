@@ -597,6 +597,7 @@ const UserFormSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
   role: z.enum(['admin', 'guest', 'staff']),
+  status: z.enum(['active', 'disabled']),
 });
 
 export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
@@ -610,7 +611,7 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
     return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
   }
 
-  const { name, email, password, role } = validatedFields.data;
+  const { name, email, password, role, status } = validatedFields.data;
 
   if (!password) {
     return { success: false, message: "Password is required for new users." };
@@ -626,8 +627,8 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
     const hashedPassword = await hashPassword(password);
     const userId = `user-${randomUUID()}`;
 
-    const stmt = db.prepare('INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)');
-    stmt.run(userId, name, email, hashedPassword, role);
+    const stmt = db.prepare('INSERT INTO users (id, name, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?)');
+    stmt.run(userId, name, email, hashedPassword, role, status);
 
     revalidatePath('/dashboard?tab=users', 'page');
     return { success: true, message: `User "${name}" was created successfully.` };
@@ -649,7 +650,7 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
     return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
   }
 
-  const { name, email, password, role } = validatedFields.data;
+  const { name, email, password, role, status } = validatedFields.data;
   
   try {
     const db = await getDb();
@@ -663,12 +664,12 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
     if (password) {
       // Update with new password
       const hashedPassword = await hashPassword(password);
-      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, password = ?, role = ? WHERE id = ?');
-      stmt.run(name, email, hashedPassword, role, id);
+      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, password = ?, role = ?, status = ? WHERE id = ?');
+      stmt.run(name, email, hashedPassword, role, status, id);
     } else {
       // Update without changing password
-      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?');
-      stmt.run(name, email, role, id);
+      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, role = ?, status = ? WHERE id = ?');
+      stmt.run(name, email, role, status, id);
     }
 
     revalidatePath('/dashboard?tab=users', 'page');
@@ -796,4 +797,44 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
         const message = error instanceof Error ? error.message : "An unknown database error occurred.";
         return { success: false, message: `Failed to submit review: ${message}` };
     }
+}
+
+const ToggleUserStatusSchema = z.object({
+  userId: z.string(),
+  status: z.enum(['active', 'disabled']),
+});
+
+export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStatusSchema>) {
+  const session = await getSession();
+  if (session?.role !== 'admin') {
+    return { success: false, message: 'Unauthorized' };
+  }
+
+  const validatedFields = ToggleUserStatusSchema.safeParse(data);
+  if (!validatedFields.success) {
+    return { success: false, message: 'Invalid data provided.' };
+  }
+
+  const { userId, status } = validatedFields.data;
+
+  if (userId === session.id) {
+    return { success: false, message: "You cannot change your own status." };
+  }
+
+  try {
+    const db = await getDb();
+    const stmt = db.prepare('UPDATE users SET status = ? WHERE id = ?');
+    const info = stmt.run(status, userId);
+
+    if (info.changes === 0) {
+      return { success: false, message: 'User not found or status is already the same.' };
+    }
+
+    revalidatePath('/dashboard?tab=users', 'page');
+    return { success: true, message: `User status has been updated to ${status}.` };
+  } catch (error) {
+    console.error(`[TOGGLE_USER_STATUS_ACTION] Error: ${error}`);
+    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+    return { success: false, message: `Database error: ${message}` };
+  }
 }

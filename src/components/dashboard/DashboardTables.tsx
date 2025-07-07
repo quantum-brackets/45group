@@ -13,8 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { deleteListingAction } from '@/lib/actions';
+import { deleteListingAction, toggleUserStatusAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
 
 interface DashboardTablesProps {
   listings: Listing[];
@@ -22,6 +23,41 @@ interface DashboardTablesProps {
   session: User | null;
   defaultTab?: string;
 }
+
+const UserStatusSwitch = ({ user, isCurrentUser }: { user: User; isCurrentUser: boolean }) => {
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
+
+  const handleToggle = (newStatus: boolean) => {
+    startTransition(async () => {
+      const result = await toggleUserStatusAction({
+        userId: user.id,
+        status: newStatus ? 'active' : 'disabled',
+      });
+      if (!result.success) {
+        toast({
+          title: "Update Failed",
+          description: result.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+            title: "Status Updated",
+            description: result.message,
+        });
+      }
+    });
+  };
+
+  return (
+    <Switch
+      checked={user.status === 'active'}
+      onCheckedChange={handleToggle}
+      disabled={isCurrentUser || isPending}
+      aria-label={`Toggle user status for ${user.name}`}
+    />
+  );
+};
 
 export function DashboardTables({ listings, users, session, defaultTab }: DashboardTablesProps) {
   const router = useRouter();
@@ -147,6 +183,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                           <TableHead>Name</TableHead>
                           <TableHead>Email</TableHead>
                           <TableHead>Role</TableHead>
+                          <TableHead>Status</TableHead>
                           <TableHead><span className="sr-only">Actions</span></TableHead>
                       </TableRow>
                   </TableHeader>
@@ -159,6 +196,9 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                                   <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
                                       {user.role}
                                   </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <UserStatusSwitch user={user} isCurrentUser={user.id === session?.id} />
                               </TableCell>
                               <TableCell className="text-right">
                                   <DropdownMenu>

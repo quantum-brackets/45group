@@ -29,6 +29,10 @@ export async function login(formData: z.infer<typeof LoginSchema>) {
     if (!user || !user.password) {
       return { error: 'Incorrect email or password.' };
     }
+
+    if (user.status === 'disabled') {
+      return { error: 'Your account has been disabled. Please contact your IT support.' };
+    }
           
     const passwordsMatch = await verifyPassword(password, user.password);
 

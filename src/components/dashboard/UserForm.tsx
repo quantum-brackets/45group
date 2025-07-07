@@ -16,12 +16,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
   role: z.enum(['admin', 'guest', 'staff'], { required_error: "Role is required."}),
+  status: z.enum(['active', 'disabled'], { required_error: "Status is required."}),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -43,6 +45,7 @@ export function UserForm({ user }: UserFormProps) {
       email: user?.email || "",
       password: "",
       role: user?.role || 'guest',
+      status: user?.status || 'active',
     },
   });
 
@@ -62,7 +65,7 @@ export function UserForm({ user }: UserFormProps) {
           title: `User ${isEditMode ? 'Updated' : 'Added'} Successfully!`,
           description: result.message,
         });
-        router.push('/dashboard');
+        router.push('/dashboard?tab=users');
       } else {
         toast({
           title: `Error ${isEditMode ? 'updating' : 'adding'} user`,
@@ -148,9 +151,39 @@ export function UserForm({ user }: UserFormProps) {
                     </FormItem>
                 )}
              />
+             <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                    <FormLabel>Account Status</FormLabel>
+                    <FormControl>
+                        <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex items-center space-x-4"
+                        >
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                            <RadioGroupItem value="active" />
+                            </FormControl>
+                            <FormLabel className="font-normal">Active</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                            <RadioGroupItem value="disabled" />
+                            </FormControl>
+                            <FormLabel className="font-normal">Disabled</FormLabel>
+                        </FormItem>
+                        </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
           </CardContent>
           <CardFooter className="flex justify-end gap-2">
-            <Button variant="outline" type="button" onClick={() => router.push('/dashboard')} disabled={isPending}>Cancel</Button>
+            <Button variant="outline" type="button" onClick={() => router.push('/dashboard?tab=users')} disabled={isPending}>Cancel</Button>
             <Button type="submit" disabled={isPending}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditMode ? 'Save Changes' : 'Create User'}

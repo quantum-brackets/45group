@@ -76,6 +76,20 @@ function runBookingCreationDateMigration(db: Database.Database) {
     }
 }
 
+function runUserStatusMigration(db: Database.Database) {
+    try {
+        const columns = db.pragma('table_info(users)') as { name: string }[];
+        if (!columns.some(col => col.name === 'status')) {
+            console.log('[DB_MIGRATE] Adding "status" column to users...');
+            db.exec("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'");
+            console.log('[DB_MIGRATE] "status" column added to users table.');
+        }
+    } catch (error) {
+        console.error("[DB_MIGRATE_ERROR] Critical error during user status migration:", error);
+        throw new Error("Database migration for user status failed. The application cannot start.");
+    }
+}
+
 
 /**
  * Provides a stable, cached database connection and applies necessary migrations.
@@ -98,6 +112,7 @@ export async function getDb(): Promise<Database.Database> {
         runCurrencyMigration(db);
         runBookingActionTrackingMigration(db);
         runBookingCreationDateMigration(db);
+        runUserStatusMigration(db);
 
         return db;
     } catch (error) {
