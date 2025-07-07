@@ -279,9 +279,12 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
         return { success: false, message: `Number of guests cannot exceed the maximum of ${listing.maxGuests}.` };
     }
 
+    const modifiedAt = new Date();
+    const statusMessage = `Modified by ${session.name} on ${modifiedAt.toLocaleDateString()}. Awaiting re-confirmation.`;
+
     const stmt = db.prepare(`
       UPDATE bookings 
-      SET startDate = ?, endDate = ?, guests = ?
+      SET startDate = ?, endDate = ?, guests = ?, status = 'Pending', statusMessage = ?, actionByUserId = NULL, actionAt = NULL
       WHERE id = ?
     `);
     
@@ -289,6 +292,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
         new Date(startDate).toISOString().split('T')[0],
         new Date(endDate).toISOString().split('T')[0],
         guests,
+        statusMessage,
         bookingId
     );
 
@@ -299,7 +303,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     revalidatePath('/bookings');
     revalidatePath(`/booking/${bookingId}`);
 
-    return { success: true, message: 'Booking has been updated successfully.' };
+    return { success: true, message: 'Booking has been updated and is now pending re-confirmation.' };
   } catch (error) {
     console.error(`[UPDATE_BOOKING_ACTION] Error: ${error}`);
     const message = error instanceof Error ? error.message : "An unknown database error occurred.";
