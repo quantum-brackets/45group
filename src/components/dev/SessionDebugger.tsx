@@ -39,10 +39,6 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
   const [loadResult, setLoadResult] = useState<{ success?: string; error?: string } | null>(null);
   const [sessionId, setSessionId] = useState<string>(initialSessionId || '');
 
-  useEffect(() => {
-    setSessionId(initialSessionId || '');
-  }, [initialSessionId]);
-
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -50,6 +46,10 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
       password: "",
     },
   });
+  
+  useEffect(() => {
+    setSessionId(initialSessionId || '');
+  }, [initialSessionId]);
 
   const onLoginSubmit = (data: FormValues) => {
     setLoginResult(null);
