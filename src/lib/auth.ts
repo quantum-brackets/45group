@@ -1,3 +1,4 @@
+
 'use server'
 
 import { z } from 'zod';
@@ -46,6 +47,8 @@ export async function login(formData: z.infer<typeof LoginSchema>) {
       expires,
       httpOnly: true,
       path: '/',
+      sameSite: 'none',
+      secure: true,
     });
     
     const redirectTo = user.role === 'admin' ? '/dashboard' : '/bookings';
@@ -94,6 +97,8 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
           expires,
           httpOnly: true,
           path: '/',
+          sameSite: 'none',
+          secure: true,
       });
 
       return { success: true, redirectTo: '/bookings' };

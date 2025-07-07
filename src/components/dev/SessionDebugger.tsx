@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -58,10 +58,6 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
           email: "",
       },
   });
-  
-  useEffect(() => {
-    setSessionId(initialSessionId || '');
-  }, [initialSessionId]);
 
   const onLoginSubmit = (data: LoginFormValues) => {
     setLoginResult(null);

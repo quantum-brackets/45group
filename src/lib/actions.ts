@@ -289,9 +289,9 @@ export async function verifySessionByIdAction(sessionId: string) {
           expires: expiresAtDate,
           httpOnly: true,
           path: '/',
+          sameSite: 'none',
+          secure: true,
         });
-
-        revalidatePath('/dev-tools');
 
         const successMessage = `Session for ${user.email} (${user.role}) is valid until ${expiresAtDate.toLocaleString()}. Cookie set.`;
         return { success: successMessage };

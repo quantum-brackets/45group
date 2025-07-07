@@ -1,11 +1,8 @@
-
 import { SetPasswordForm } from '@/components/auth/SetPasswordForm';
 import { Wrench } from 'lucide-react';
 import Link from 'next/link';
 import { SessionDebugger } from '@/components/dev/SessionDebugger';
 import { cookies } from 'next/headers';
-
-export const dynamic = 'force-dynamic';
 
 export default function DevToolsPage() {
   const cookieStore = cookies();
