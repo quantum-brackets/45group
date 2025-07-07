@@ -50,7 +50,7 @@ export async function getListingById(id: string): Promise<Listing | null> {
 interface BookingFilters {
   listingId?: string;
   userId?: string;
-  status?: Booking['status'] | '';
+  status?: Booking['status'];
 }
 
 export async function getAllBookings(filters: BookingFilters): Promise<Booking[]> {
