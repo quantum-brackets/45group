@@ -72,12 +72,10 @@ export async function getAllBookings(filters: BookingFilters): Promise<Booking[]
     if (session.role === 'guest') {
         whereClauses.push('b.userId = ?');
         params.push(session.id);
-    } else if (session.role === 'admin') {
-        // Admin can filter by any userId passed in the filters
-        if (filters.userId) {
-            whereClauses.push('b.userId = ?');
-            params.push(filters.userId);
-        }
+    } else if (session.role === 'admin' && filters.userId) {
+        // Admin can filter by a specific user.
+        whereClauses.push('b.userId = ?');
+        params.push(filters.userId);
     }
 
     // These filters are available for everyone
