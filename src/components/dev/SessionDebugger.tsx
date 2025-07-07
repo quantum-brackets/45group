@@ -5,25 +5,30 @@ import { useState, useTransition, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { testLoginAction, verifySessionByIdAction, getSessionTokenAction } from "@/lib/actions";
+import { testLoginAction, verifySessionByIdAction, getSessionTokenByEmailAction } from "@/lib/actions";
 import { useRouter } from 'next/navigation';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle, CheckCircle, KeyRound, Database, Download } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle, KeyRound, Database, Search } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Separator } from "../ui/separator";
 import { Label } from "../ui/label";
 
 
-const formSchema = z.object({
+const loginFormSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(1, "Password is required."),
 });
+type LoginFormValues = z.infer<typeof loginFormSchema>;
 
-type FormValues = z.infer<typeof formSchema>;
+const loadFormSchema = z.object({
+    email: z.string().email("Please enter a valid email address."),
+});
+type LoadFormValues = z.infer<typeof loadFormSchema>;
+
 
 interface SessionDebuggerProps {
     initialSessionId?: string;
@@ -39,19 +44,26 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
   const [loadResult, setLoadResult] = useState<{ success?: string; error?: string } | null>(null);
   const [sessionId, setSessionId] = useState<string>(initialSessionId || '');
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  const loginForm = useForm<LoginFormValues>({
+    resolver: zodResolver(loginFormSchema),
     defaultValues: {
       email: "",
       password: "",
     },
+  });
+
+  const loadForm = useForm<LoadFormValues>({
+      resolver: zodResolver(loadFormSchema),
+      defaultValues: {
+          email: "",
+      },
   });
   
   useEffect(() => {
     setSessionId(initialSessionId || '');
   }, [initialSessionId]);
 
-  const onLoginSubmit = (data: FormValues) => {
+  const onLoginSubmit = (data: LoginFormValues) => {
     setLoginResult(null);
     setVerifyResult(null);
     setLoadResult(null);
@@ -77,11 +89,11 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
     });
   }
 
-  const handleLoadSession = () => {
+  const onEmailLoadSubmit = (data: LoadFormValues) => {
     setVerifyResult(null);
     setLoadResult(null);
     startLoadTransition(async () => {
-        const result = await getSessionTokenAction();
+        const result = await getSessionTokenByEmailAction({email: data.email});
         setLoadResult(result);
         if(result.success) {
             setSessionId(result.success);
@@ -103,10 +115,10 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onLoginSubmit)} className="grid gap-4">
+          <Form {...loginForm}>
+            <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="grid gap-4">
               <FormField
-                control={form.control}
+                control={loginForm.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
@@ -119,7 +131,7 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
                 )}
               />
               <FormField
-                control={form.control}
+                control={loginForm.control}
                 name="password"
                 render={({ field }) => (
                   <FormItem>
@@ -162,20 +174,49 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
         <Separator className="my-4"/>
         <CardContent>
             <div className="grid gap-4">
-                <Button onClick={handleLoadSession} variant="outline" className="w-full justify-start" disabled={isLoadPending}>
-                    {isLoadPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    Load Token From Browser Cookie
-                </Button>
-                 {loadResult && loadResult.error && (
+                <Form {...loadForm}>
+                    <form onSubmit={loadForm.handleSubmit(onEmailLoadSubmit)} className="grid gap-4">
+                        <FormField
+                        control={loadForm.control}
+                        name="email"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Find Session by Email</FormLabel>
+                            <FormControl>
+                                <Input placeholder="user@example.com" {...field} disabled={isLoadPending} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <Button type="submit" variant="outline" className="w-full" disabled={isLoadPending}>
+                            {isLoadPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                            Load Session Token
+                        </Button>
+                    </form>
+                </Form>
+                 {loadResult && (
                     <div className="mt-4">
+                    {loadResult.error && (
                         <Alert variant="destructive">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>Load Failed</AlertTitle>
                             <AlertDescription>{loadResult.error}</AlertDescription>
                         </Alert>
+                    )}
+                    {loadResult.success && (
+                        <Alert variant="default" className="border-green-500 bg-green-50">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <AlertTitle className="text-green-800">Load Succeeded</AlertTitle>
+                            <AlertDescription className="text-green-700">
+                                Token loaded and placed in the field below.
+                            </AlertDescription>
+                        </Alert>
+                    )}
                     </div>
-                  )}
-                <div className="grid gap-2 pt-4">
+                )}
+                <Separator className="my-2"/>
+                <div className="grid gap-2">
                   <Label htmlFor="session-id">Session Token</Label>
                   <Input 
                     id="session-id"

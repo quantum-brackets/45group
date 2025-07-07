@@ -229,15 +229,36 @@ export async function testLoginAction(data: z.infer<typeof TestLoginSchema>) {
   }
 }
 
-export async function getSessionTokenAction() {
-    'use server';
-    const cookieStore = cookies();
-    const sessionToken = cookieStore.get('session')?.value;
+const GetSessionByEmailSchema = z.object({
+  email: z.string().email(),
+});
 
-    if (sessionToken) {
-        return { success: sessionToken };
-    } else {
-        return { error: 'No active session token found in cookies.' };
+export async function getSessionTokenByEmailAction(data: z.infer<typeof GetSessionByEmailSchema>) {
+    const validatedFields = GetSessionByEmailSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { error: 'Invalid email provided.' };
+    }
+    const { email } = validatedFields.data;
+
+    try {
+        const db = await getDb();
+        const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as { id: string } | undefined;
+
+        if (!user) {
+            return { error: `No user found with email: ${email}` };
+        }
+
+        const session = db.prepare('SELECT id FROM sessions WHERE userId = ? AND expiresAt > ? ORDER BY expiresAt DESC LIMIT 1').get(user.id, new Date().toISOString()) as { id: string } | undefined;
+
+        if (!session) {
+            return { error: `No active session found for user: ${email}` };
+        }
+
+        return { success: session.id };
+    } catch (error) {
+        console.error('[GET_SESSION_BY_EMAIL_ACTION_ERROR]', error);
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
+        return { error: `Database query failed: ${errorMessage}` };
     }
 }
 
@@ -270,9 +291,7 @@ export async function verifySessionByIdAction(sessionId: string) {
           path: '/',
         });
 
-        // Invalidate the cache for the dev tools page and the root layout (for header)
         revalidatePath('/dev-tools');
-        revalidatePath('/', 'layout');
 
         const successMessage = `Session for ${user.email} (${user.role}) is valid until ${expiresAtDate.toLocaleString()}. Cookie set.`;
         return { success: successMessage };
