@@ -63,7 +63,6 @@ export function UserForm({ user }: UserFormProps) {
           description: result.message,
         });
         router.push('/dashboard');
-        router.refresh();
       } else {
         toast({
           title: `Error ${isEditMode ? 'updating' : 'adding'} user`,

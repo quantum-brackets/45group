@@ -71,7 +71,6 @@ export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) 
           description: result.message,
         });
         router.push('/dashboard?tab=listings');
-        router.refresh();
       } else {
         toast({
           title: `Error ${isEditMode ? 'updating' : 'creating'} listing`,
