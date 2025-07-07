@@ -20,6 +20,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import { useState, useEffect } from 'react';
 
 const navLinks = [
   { href: '/search', label: 'Search' },
@@ -31,6 +32,11 @@ const navLinks = [
 export function Header({ session }: { session: User | null }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const visibleNavLinks = navLinks.filter(link => {
     if (link.href.startsWith('/dashboard') && session?.role !== 'admin') {
@@ -57,7 +63,7 @@ export function Header({ session }: { session: User | null }) {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className={cn(
                       'flex items-center gap-1 transition-colors hover:text-primary p-0 h-auto text-sm font-medium hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0',
-                      pathname.startsWith('/dashboard') ? 'text-primary' : 'text-muted-foreground'
+                      isMounted && pathname.startsWith('/dashboard') ? 'text-primary' : 'text-muted-foreground'
                     )}>
                       {link.label}
                       <ChevronDown className="h-4 w-4" />
@@ -78,7 +84,7 @@ export function Header({ session }: { session: User | null }) {
                   href={link.href}
                   className={cn(
                     'transition-colors hover:text-primary',
-                    pathname === link.href ? 'text-primary' : 'text-muted-foreground'
+                    isMounted && pathname === link.href ? 'text-primary' : 'text-muted-foreground'
                   )}
                 >
                   {link.label}
@@ -121,18 +127,18 @@ export function Header({ session }: { session: User | null }) {
                             <AccordionItem value="dashboard" className="border-b-0">
                                 <AccordionTrigger className={cn(
                                     'py-2 hover:no-underline transition-colors hover:text-primary [&[data-state=open]>svg]:text-primary',
-                                    pathname.startsWith('/dashboard') ? 'text-primary' : 'text-muted-foreground'
+                                    isMounted && pathname.startsWith('/dashboard') ? 'text-primary' : 'text-muted-foreground'
                                 )}>
                                     {link.label}
                                 </AccordionTrigger>
                                 <AccordionContent className="pl-6 pt-4 pb-0 flex flex-col gap-4">
                                     <Link href="/dashboard?tab=listings" className={cn(
                                         'text-muted-foreground hover:text-primary',
-                                        (pathname === '/dashboard' && (searchParams.get('tab') === 'listings' || !searchParams.has('tab'))) ? 'text-primary font-semibold' : ''
+                                        isMounted && (pathname === '/dashboard' && (searchParams.get('tab') === 'listings' || !searchParams.has('tab'))) ? 'text-primary font-semibold' : ''
                                     )}>Listings</Link>
                                     <Link href="/dashboard?tab=users" className={cn(
                                         'text-muted-foreground hover:text-primary',
-                                        pathname === '/dashboard' && searchParams.get('tab') === 'users' ? 'text-primary font-semibold' : ''
+                                        isMounted && pathname === '/dashboard' && searchParams.get('tab') === 'users' ? 'text-primary font-semibold' : ''
                                     )}>Users</Link>
                                 </AccordionContent>
                             </AccordionItem>
@@ -143,7 +149,7 @@ export function Header({ session }: { session: User | null }) {
                             href={link.href}
                             className={cn(
                             'transition-colors hover:text-primary',
-                            pathname === link.href ? 'text-primary' : 'text-muted-foreground'
+                            isMounted && pathname === link.href ? 'text-primary' : 'text-muted-foreground'
                             )}
                         >
                             {link.label}
