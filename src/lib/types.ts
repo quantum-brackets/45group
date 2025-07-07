@@ -18,7 +18,6 @@ export interface Listing {
   images: string[];
   price: number;
   priceUnit: 'night' | 'hour' | 'person';
-  currency: string;
   rating: number;
   reviews: Review[];
   features: string[];

@@ -19,7 +19,6 @@ const ListingFormSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
   price: z.coerce.number().positive("Price must be a positive number."),
   priceUnit: z.enum(['night', 'hour', 'person']),
-  currency: z.enum(['USD', 'EUR', 'GBP', 'NGN']),
   maxGuests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
   features: z.string().min(1, "Please list at least one feature."),
 });
@@ -35,7 +34,7 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
         return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
     }
 
-    const { name, type, location, description, price, priceUnit, maxGuests, features, currency } = validatedFields.data;
+    const { name, type, location, description, price, priceUnit, maxGuests, features } = validatedFields.data;
     const featuresAsArray = features.split(',').map(f => f.trim());
     const newId = `listing-${randomUUID()}`;
 
@@ -46,8 +45,8 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
     try {
         const db = await getDb();
         const stmt = db.prepare(`
-            INSERT INTO listings (id, name, type, location, description, images, price, priceUnit, currency, rating, reviews, features, maxGuests)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO listings (id, name, type, location, description, images, price, priceUnit, rating, reviews, features, maxGuests)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         stmt.run(
             newId,
@@ -58,7 +57,6 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
             JSON.stringify(defaultImages),
             price,
             priceUnit,
-            currency,
             defaultRating,
             JSON.stringify(defaultReviews),
             JSON.stringify(featuresAsArray),
@@ -90,7 +88,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
     }
   }
   
-  const { name, type, location, description, price, priceUnit, maxGuests, features, currency } = validatedFields.data;
+  const { name, type, location, description, price, priceUnit, maxGuests, features } = validatedFields.data;
   const featuresAsArray = features.split(',').map((f) => f.trim());
 
   try {
@@ -105,8 +103,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
         price = ?,
         priceUnit = ?,
         maxGuests = ?,
-        features = ?,
-        currency = ?
+        features = ?
       WHERE id = ?
     `);
 
@@ -119,7 +116,6 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
       priceUnit,
       maxGuests,
       JSON.stringify(featuresAsArray),
-      currency,
       id
     );
 

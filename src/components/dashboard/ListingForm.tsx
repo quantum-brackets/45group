@@ -25,7 +25,6 @@ const formSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
   price: z.coerce.number().positive("Price must be a positive number."),
   priceUnit: z.enum(['night', 'hour', 'person'], { required_error: "Price unit is required."}),
-  currency: z.enum(['USD', 'EUR', 'GBP', 'NGN'], { required_error: "Currency is required." }),
   maxGuests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
   features: z.string().min(1, "Please list at least one feature."),
 });
@@ -55,7 +54,6 @@ export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) 
       priceUnit: listing?.priceUnit || undefined,
       maxGuests: listing?.maxGuests || 1,
       features: listing?.features.join(', ') || "",
-      currency: listing?.currency || 'NGN',
     },
   });
 
@@ -150,7 +148,7 @@ export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) 
                     </FormItem>
                 )}
              />
-             <div className="grid grid-cols-3 gap-4">
+             <div className="grid grid-cols-2 gap-4">
                 <FormField
                 control={form.control}
                 name="price"
@@ -186,29 +184,6 @@ export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) 
                         </FormItem>
                     )}
                     />
-                <FormField
-                    control={form.control}
-                    name="currency"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Currency</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a currency" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                <SelectItem value="NGN">NGN</SelectItem>
-                                <SelectItem value="USD">USD</SelectItem>
-                                <SelectItem value="EUR">EUR</SelectItem>
-                                <SelectItem value="GBP">GBP</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
              </div>
             <FormField
               control={form.control}
