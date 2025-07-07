@@ -66,7 +66,7 @@ export function DashboardTables({ listings, users }: DashboardTablesProps) {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-listing/${listing.id}`)}>Edit</DropdownMenuItem>
-                                <DropdownMenuItem>View Bookings</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => router.push(`/bookings?listingId=${listing.id}`)}>View Bookings</DropdownMenuItem>
                                 <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
