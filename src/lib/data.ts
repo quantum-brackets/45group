@@ -3,6 +3,7 @@ import type { Listing, Booking, ListingType, User } from './types';
 import { getDb } from './db';
 import { DateRange } from 'react-day-picker';
 import { getSession } from '@/lib/session';
+import { unstable_noStore as noStore } from 'next/cache';
 
 // Helper to parse listing data from the database
 function parseListing(listing: any): Listing {
@@ -54,6 +55,7 @@ interface BookingFilters {
 }
 
 export async function getAllBookings(filters: BookingFilters): Promise<Booking[]> {
+    noStore();
     const session = await getSession();
     if (!session) {
         return [];
@@ -128,6 +130,7 @@ interface FilterValues {
 }
 
 export async function getFilteredListings(filters: FilterValues): Promise<Listing[]> {
+  noStore();
   const db = await getDb();
   let query = 'SELECT * FROM listings';
   const whereClauses: string[] = [];
