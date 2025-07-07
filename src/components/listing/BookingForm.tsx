@@ -37,7 +37,6 @@ export function BookingForm({ listing }: BookingFormProps) {
     startTransition(async () => {
         const result = await createBookingAction({
             listingId: listing.id,
-            listingName: listing.name,
             startDate: date.from!.toISOString(),
             endDate: (date.to || date.from)!.toISOString(),
             guests: guests,

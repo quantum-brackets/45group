@@ -64,13 +64,13 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
             JSON.stringify(featuresAsArray),
             maxGuests
         );
-
-        revalidatePath('/dashboard');
-        return { success: true, message: `Listing "${name}" has been created.` };
     } catch (error) {
         console.error(`[CREATE_LISTING_ACTION] Error: ${error}`);
         return { success: false, message: "Failed to create listing in the database." };
     }
+    
+    revalidatePath('/dashboard');
+    return { success: true, message: `Listing "${name}" has been created.` };
 }
 
 export async function updateListingAction(id: string, data: z.infer<typeof ListingFormSchema>) {
@@ -122,14 +122,15 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
       id
     );
 
-    revalidatePath('/admin');
-    revalidatePath(`/listing/${id}`);
-    
-    return { success: true, message: `The details for "${name}" have been saved.` };
   } catch (error) {
     console.error(`[UPDATE_LISTING_ACTION] Error: ${error}`);
     return { success: false, message: "Failed to update listing in the database." };
   }
+
+  revalidatePath('/dashboard');
+  revalidatePath(`/listing/${id}`);
+  
+  return { success: true, message: `The details for "${name}" have been saved.` };
 }
 
 export async function deleteListingAction(id: string) {
@@ -157,7 +158,6 @@ export async function deleteListingAction(id: string) {
 
 const CreateBookingSchema = z.object({
   listingId: z.string(),
-  listingName: z.string(),
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
@@ -183,7 +183,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     }
   }
 
-  const { listingId, listingName, startDate, endDate, guests } = validatedFields.data;
+  const { listingId, startDate, endDate, guests } = validatedFields.data;
 
   try {
     const db = await getDb();
@@ -204,6 +204,11 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
 
     revalidatePath('/bookings');
     revalidatePath(`/listing/${listingId}`);
+    
+    // We need to look up the listing name to return it
+    const listingStmt = db.prepare('SELECT name FROM listings WHERE id = ?');
+    const listing = listingStmt.get(listingId) as { name: string };
+    const listingName = listing?.name || 'the venue';
     
     return { success: true, message: `Your booking at ${listingName} has been confirmed.` };
   } catch (error)
