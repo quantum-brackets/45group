@@ -1,4 +1,3 @@
-
 'use client'
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -51,7 +50,7 @@ export function UserNav({ user }: { user: User }) {
           <DropdownMenuItem asChild>
             <Link href="/bookings">
               <UserIcon className="mr-2 h-4 w-4" />
-              <span>My Bookings</span>
+              <span>Bookings</span>
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
