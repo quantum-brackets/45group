@@ -47,31 +47,60 @@ export async function getListingById(id: string): Promise<Listing | null> {
   return parseListing(listing);
 }
 
-export async function getAllBookings(): Promise<Booking[]> {
+interface BookingFilters {
+  listingId?: string;
+  userId?: string;
+  status?: Booking['status'] | '';
+}
+
+export async function getAllBookings(filters: BookingFilters): Promise<Booking[]> {
     const session = await getSession();
     if (!session) {
         return [];
     }
 
     const db = await getDb();
-    if (session.role === 'admin') {
-        const stmt = db.prepare(`
-            SELECT b.*, u.name as userName 
-            FROM bookings as b
-            JOIN users as u ON b.userId = u.id
-            ORDER BY b.startDate DESC
-        `);
-        return stmt.all() as Booking[];
+    let query = `
+        SELECT b.*, u.name as userName 
+        FROM bookings as b
+        JOIN users as u ON b.userId = u.id
+    `;
+    const whereClauses: string[] = [];
+    const params: (string | number)[] = [];
+
+    // For non-admin users, they can only see their own bookings.
+    if (session.role !== 'admin') {
+        whereClauses.push('b.userId = ?');
+        params.push(session.id);
     } else {
-        const stmt = db.prepare(`
-            SELECT b.*, u.name as userName
-            FROM bookings as b
-            JOIN users as u ON b.userId = u.id
-            WHERE b.userId = ? ORDER BY b.startDate DESC
-        `);
-        return stmt.all(session.id) as Booking[];
+        // Admin can filter by any userId passed in the filters
+        if (filters.userId) {
+            whereClauses.push('b.userId = ?');
+            params.push(filters.userId);
+        }
     }
+
+    // These filters are available for everyone
+    if (filters.listingId) {
+        whereClauses.push('b.listingId = ?');
+        params.push(filters.listingId);
+    }
+    
+    if (filters.status) {
+        whereClauses.push('b.status = ?');
+        params.push(filters.status);
+    }
+    
+    if (whereClauses.length > 0) {
+        query += ' WHERE ' + whereClauses.join(' AND ');
+    }
+    
+    query += ' ORDER BY b.startDate DESC';
+
+    const stmt = db.prepare(query);
+    return stmt.all(...params) as Booking[];
 }
+
 
 export async function getBookingById(id: string): Promise<Booking | null> {
     const session = await getSession();
