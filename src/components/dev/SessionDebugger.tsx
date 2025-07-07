@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,6 +34,12 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
   const [loginResult, setLoginResult] = useState<{ success?: string; error?: string } | null>(null);
   const [verifyResult, setVerifyResult] = useState<{ success?: string; error?: string } | null>(null);
   const [sessionId, setSessionId] = useState<string>(initialSessionId || '');
+
+  useEffect(() => {
+    if (initialSessionId && initialSessionId !== sessionId) {
+      setSessionId(initialSessionId);
+    }
+  }, [initialSessionId, sessionId]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
