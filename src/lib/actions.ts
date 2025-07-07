@@ -14,12 +14,12 @@ import { cookies } from 'next/headers'
 
 const ListingFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
-  type: z.enum(['hotel', 'events', 'restaurant']),
+  type: z.enum(['hotel', 'events', 'restaurant'], { required_error: "Type is required."}),
   location: z.string().min(1, "Location is required."),
   description: z.string().min(10, "Description must be at least 10 characters."),
   price: z.coerce.number().positive("Price must be a positive number."),
-  priceUnit: z.enum(['night', 'hour', 'person']),
-  currency: z.enum(['USD', 'EUR', 'GBP', 'NGN']),
+  priceUnit: z.enum(['night', 'hour', 'person'], { required_error: "Price unit is required."}),
+  currency: z.enum(['USD', 'EUR', 'GBP', 'NGN'], { required_error: "Currency is required."}),
   maxGuests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
   features: z.string().min(1, "Please list at least one feature."),
 });
@@ -70,7 +70,7 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
         return { success: false, message: `Failed to create listing: ${message}` };
     }
     
-    revalidatePath('/dashboard', 'layout');
+    revalidatePath('/dashboard?tab=listings', 'page');
     return { success: true, message: `Listing "${name}" has been created.` };
 }
 
@@ -129,7 +129,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
     return { success: false, message: `Failed to update listing: ${message}` };
   }
 
-  revalidatePath('/dashboard', 'layout');
+  revalidatePath('/dashboard?tab=listings', 'page');
   revalidatePath(`/listing/${id}`);
   
   return { success: true, message: `The details for "${name}" have been saved.` };
@@ -150,7 +150,7 @@ export async function deleteListingAction(id: string) {
       return { success: false, message: 'Listing not found or could not be deleted.' };
     }
 
-    revalidatePath('/dashboard', 'layout');
+    revalidatePath('/dashboard?tab=listings', 'page');
     return { success: true, message: 'Listing has been deleted.' };
   } catch (error) {
     console.error(`[DELETE_LISTING_ACTION] Error: ${error}`);
@@ -228,10 +228,10 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     const listingName = listing?.name || 'the venue';
     
     return { success: true, message: `Your booking at ${listingName} has been confirmed.` };
-  } catch (error)
-    {
+  } catch (error) {
     console.error(`[CREATE_BOOKING_ACTION] Error: ${error}`);
-    return { success: false, message: "Failed to create booking in the database." };
+    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+    return { success: false, message: `Failed to create booking: ${message}` };
   }
 }
 
@@ -560,7 +560,7 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
     const stmt = db.prepare('INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)');
     stmt.run(userId, name, email, hashedPassword, role);
 
-    revalidatePath('/dashboard', 'layout');
+    revalidatePath('/dashboard?tab=users', 'page');
     return { success: true, message: `User "${name}" was created successfully.` };
   } catch (error) {
     console.error(`[ADD_USER_ACTION] Error: ${error}`);
@@ -601,7 +601,7 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
       stmt.run(name, email, role, id);
     }
 
-    revalidatePath('/dashboard', 'layout');
+    revalidatePath('/dashboard?tab=users', 'page');
     revalidatePath(`/dashboard/edit-user/${id}`);
     
     return { success: true, message: `User "${name}" was updated successfully.` };
