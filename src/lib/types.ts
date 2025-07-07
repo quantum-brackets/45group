@@ -36,6 +36,9 @@ export interface Booking {
   endDate: string;
   guests: number;
   status: 'Confirmed' | 'Pending' | 'Cancelled';
+  actionByUserId?: string;
+  actionAt?: string;
+  statusMessage?: string;
 }
 
 export interface User {

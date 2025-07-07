@@ -32,6 +32,39 @@ function runMigrations(db: Database.Database) {
     }
 }
 
+function runBookingActionTrackingMigration(db: Database.Database) {
+    console.log('[DB_MIGRATE] Checking for booking action tracking columns...');
+    try {
+        const columns = db.pragma('table_info(bookings)') as { name: string }[];
+        const hasActionBy = columns.some(col => col.name === 'actionByUserId');
+        const hasActionAt = columns.some(col => col.name === 'actionAt');
+        const hasStatusMsg = columns.some(col => col.name === 'statusMessage');
+
+        if (!hasActionBy) {
+            console.log('[DB_MIGRATE] Adding "actionByUserId" column to bookings...');
+            db.exec("ALTER TABLE bookings ADD COLUMN actionByUserId TEXT");
+        }
+        if (!hasActionAt) {
+            console.log('[DB_MIGRATE] Adding "actionAt" column to bookings...');
+            db.exec("ALTER TABLE bookings ADD COLUMN actionAt TEXT");
+        }
+        if (!hasStatusMsg) {
+            console.log('[DB_MIGRATE] Adding "statusMessage" column to bookings...');
+            db.exec("ALTER TABLE bookings ADD COLUMN statusMessage TEXT");
+        }
+        
+        if (hasActionBy && hasActionAt && hasStatusMsg) {
+            console.log('[DB_MIGRATE] Booking action tracking columns already exist.');
+        } else {
+            console.log('[DB_MIGRATE] Booking action tracking migrations applied successfully.');
+        }
+
+    } catch (error) {
+        console.error("[DB_MIGRATE_ERROR] Critical error during booking action tracking migration:", error);
+        throw new Error("Database migration failed for booking actions. The application cannot start.");
+    }
+}
+
 /**
  * Provides a stable, cached database connection and applies necessary migrations.
  */
@@ -45,6 +78,7 @@ export async function getDb(): Promise<Database.Database> {
         
         // Run all migrations
         runMigrations(db);
+        runBookingActionTrackingMigration(db);
 
         globalThis.db = db;
         return db;

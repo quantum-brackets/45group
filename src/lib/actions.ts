@@ -225,14 +225,14 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       new Date(startDate).toISOString().split('T')[0],
       new Date(endDate).toISOString().split('T')[0],
       guests,
-      'Confirmed',
+      'Pending',
       listingName
     );
 
     revalidatePath('/bookings');
     revalidatePath(`/listing/${listingId}`);
     
-    return { success: true, message: `Your booking at ${listingName} has been confirmed.` };
+    return { success: true, message: `Your booking request for ${listingName} is now pending confirmation.` };
   } catch (error) {
     console.error(`[CREATE_BOOKING_ACTION] Error: ${error}`);
     const message = error instanceof Error ? error.message : "An unknown database error occurred.";
@@ -472,17 +472,17 @@ export async function verifySessionByIdAction(sessionId: string) {
     }
 }
 
-const CancelBookingSchema = z.object({
+const BookingActionSchema = z.object({
   bookingId: z.string(),
 });
 
-export async function cancelBookingAction(data: z.infer<typeof CancelBookingSchema>) {
+export async function cancelBookingAction(data: z.infer<typeof BookingActionSchema>) {
   const session = await getSession();
   if (!session) {
     return { error: 'Unauthorized' };
   }
 
-  const validatedFields = CancelBookingSchema.safeParse(data);
+  const validatedFields = BookingActionSchema.safeParse(data);
   if (!validatedFields.success) {
     return { error: 'Invalid booking ID.' };
   }
@@ -510,9 +510,15 @@ export async function cancelBookingAction(data: z.infer<typeof CancelBookingSche
     if (session.role !== 'admin' && booking.userId !== session.id) {
       return { error: 'You do not have permission to cancel this booking.' };
     }
+    
+    const actionAt = new Date().toISOString();
+    const statusMessage = `Cancelled by ${session.name} on ${new Date(actionAt).toLocaleDateString()}`;
 
-    const stmt = db.prepare(`UPDATE bookings SET status = 'Cancelled' WHERE id = ?`);
-    const info = stmt.run(bookingId);
+    const stmt = db.prepare(`
+        UPDATE bookings 
+        SET status = 'Cancelled', actionByUserId = ?, actionAt = ?, statusMessage = ?
+        WHERE id = ?`);
+    const info = stmt.run(session.id, actionAt, statusMessage, bookingId);
     
     if (info.changes === 0) {
         return { error: 'Failed to cancel booking.' };
@@ -526,6 +532,55 @@ export async function cancelBookingAction(data: z.infer<typeof CancelBookingSche
     console.error(`[CANCEL_BOOKING_ACTION] Error: ${error}`);
     return { error: "Failed to cancel booking in the database." };
   }
+}
+
+export async function confirmBookingAction(data: z.infer<typeof BookingActionSchema>) {
+    const session = await getSession();
+    if (session?.role !== 'admin') {
+      return { error: 'Unauthorized: Only administrators can confirm bookings.' };
+    }
+  
+    const validatedFields = BookingActionSchema.safeParse(data);
+    if (!validatedFields.success) {
+      return { error: 'Invalid booking ID.' };
+    }
+    
+    const { bookingId } = validatedFields.data;
+  
+    try {
+      const db = await getDb();
+      const booking = db.prepare(`
+        SELECT l.name as listingName 
+        FROM bookings b
+        JOIN listings l ON b.listingId = l.id
+        WHERE b.id = ?
+      `).get(bookingId) as { listingName: string } | undefined;
+  
+      if (!booking) {
+        return { error: 'Booking not found.' };
+      }
+      
+      const actionAt = new Date().toISOString();
+      const statusMessage = `Confirmed by ${session.name} on ${new Date(actionAt).toLocaleDateString()}`;
+  
+      const stmt = db.prepare(`
+        UPDATE bookings 
+        SET status = 'Confirmed', actionByUserId = ?, actionAt = ?, statusMessage = ?
+        WHERE id = ? AND status = 'Pending'`);
+      const info = stmt.run(session.id, actionAt, statusMessage, bookingId);
+      
+      if (info.changes === 0) {
+          return { error: 'Failed to confirm booking. It might not be in a pending state.' };
+      }
+  
+      revalidatePath('/bookings');
+      revalidatePath(`/booking/${bookingId}`);
+      
+      return { success: `Booking for ${booking.listingName} has been confirmed.` };
+    } catch (error) {
+      console.error(`[CONFIRM_BOOKING_ACTION] Error: ${error}`);
+      return { error: "Failed to confirm booking in the database." };
+    }
 }
 
 const UserFormSchema = z.object({

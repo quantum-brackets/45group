@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import type { Booking, User } from '@/lib/types';
 import { useTransition } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { cancelBookingAction } from '@/lib/actions';
+import { cancelBookingAction, confirmBookingAction } from '@/lib/actions';
 
 interface BookingsTableProps {
   bookings: Booking[];
@@ -21,10 +21,11 @@ interface BookingsTableProps {
 export function BookingsTable({ bookings, session }: BookingsTableProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
+  const [isCancelPending, startCancelTransition] = useTransition();
+  const [isConfirmPending, startConfirmTransition] = useTransition();
 
   const handleCancel = (bookingId: string) => {
-    startTransition(async () => {
+    startCancelTransition(async () => {
       const result = await cancelBookingAction({ bookingId });
       if (result.success) {
         toast({
@@ -38,6 +39,24 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
           variant: "destructive",
         });
       }
+    });
+  };
+
+  const handleConfirm = (bookingId: string) => {
+    startConfirmTransition(async () => {
+        const result = await confirmBookingAction({ bookingId });
+        if (result.success) {
+            toast({
+                title: "Booking Confirmed",
+                description: result.success,
+            });
+        } else {
+            toast({
+                title: "Error",
+                description: result.error,
+                variant: "destructive",
+            });
+        }
     });
   };
 
@@ -94,10 +113,15 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
                             <DropdownMenuItem onClick={() => router.push(`/booking/${booking.id}`)}>View Details</DropdownMenuItem>
                              {session?.role === 'admin' && (
                                 <>
-                                 <DropdownMenuItem disabled>Confirm Booking</DropdownMenuItem>
+                                 {booking.status === 'Pending' && (
+                                    <DropdownMenuItem 
+                                        disabled={isConfirmPending}
+                                        onClick={() => handleConfirm(booking.id)}
+                                    >Confirm Booking</DropdownMenuItem>
+                                 )}
                                  <DropdownMenuItem 
                                     className="text-destructive"
-                                    disabled={isPending || booking.status === 'Cancelled'}
+                                    disabled={isCancelPending || booking.status === 'Cancelled'}
                                     onClick={() => handleCancel(booking.id)}
                                  >Cancel Booking</DropdownMenuItem>
                                 </>
@@ -105,7 +129,7 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
                              {session?.role === 'guest' && booking.userId === session.id && (
                                  <DropdownMenuItem 
                                     className="text-destructive"
-                                    disabled={isPending || booking.status === 'Cancelled'}
+                                    disabled={isCancelPending || booking.status === 'Cancelled'}
                                     onClick={() => handleCancel(booking.id)}
                                  >Cancel Booking</DropdownMenuItem>
                             )}

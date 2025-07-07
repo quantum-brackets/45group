@@ -44,7 +44,7 @@ export function BookingForm({ listing }: BookingFormProps) {
 
         if (result.success) {
             toast({
-                title: "Booking Confirmed!",
+                title: "Booking Request Sent!",
                 description: result.message,
                 action: <div className="p-2 bg-accent rounded-full"><PartyPopper className="h-5 w-5 text-accent-foreground" /></div>,
             });
@@ -115,7 +115,7 @@ export function BookingForm({ listing }: BookingFormProps) {
         </div>
         <div className="px-6 pt-2">
           <Button onClick={handleBooking} disabled={isPending || !date?.from} className="w-full text-lg" size="lg">
-            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Book Now"}
+            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Request to Book"}
           </Button>
           <div className="text-center text-sm text-muted-foreground mt-2">
             You won't be charged yet

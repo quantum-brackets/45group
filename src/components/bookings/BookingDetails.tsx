@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon } from 'lucide-react';
+import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -47,6 +47,7 @@ export function BookingDetails({ booking, listing, session }: BookingDetailsProp
   const router = useRouter();
 
   const canEdit = session.role === 'admin' || session.id === booking.userId;
+  const isActionable = booking.status !== 'Cancelled';
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -122,6 +123,15 @@ export function BookingDetails({ booking, listing, session }: BookingDetailsProp
           <div>
             <p className="font-semibold">Booked By</p>
             <p className="text-muted-foreground">{booking.userName}</p>
+          </div>
+        </div>
+      )}
+       {booking.statusMessage && (
+        <div className="md:col-span-2 flex items-start gap-4 p-4 bg-card rounded-lg border">
+          <History className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+          <div>
+            <p className="font-semibold">Booking History</p>
+            <p className="text-muted-foreground">{booking.statusMessage}</p>
           </div>
         </div>
       )}
@@ -235,7 +245,7 @@ export function BookingDetails({ booking, listing, session }: BookingDetailsProp
                   </CardDescription>
               )}
           </div>
-          {canEdit && !isEditing && booking.status !== 'Cancelled' && (
+          {canEdit && !isEditing && isActionable && (
               <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                   <Edit className="mr-2 h-4 w-4" />
                   Edit Booking
