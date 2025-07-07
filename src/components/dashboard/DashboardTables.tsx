@@ -15,13 +15,14 @@ interface DashboardTablesProps {
   listings: Listing[];
   users: User[];
   session: User | null;
+  defaultTab?: string;
 }
 
-export function DashboardTables({ listings, users, session }: DashboardTablesProps) {
+export function DashboardTables({ listings, users, session, defaultTab }: DashboardTablesProps) {
   const router = useRouter();
 
   return (
-    <Tabs defaultValue="listings">
+    <Tabs defaultValue={defaultTab || 'listings'} onValueChange={(value) => router.push(`/dashboard?tab=${value}`)}>
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="listings">
             <List className="mr-2" />
