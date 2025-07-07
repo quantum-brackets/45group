@@ -48,7 +48,7 @@ export function UserNav({ user }: { user: User }) {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/bookings">
+            <Link href={`/bookings?userId=${user.id}`}>
               <UserIcon className="mr-2 h-4 w-4" />
               <span>Bookings</span>
             </Link>
