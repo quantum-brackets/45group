@@ -155,7 +155,8 @@ export async function deleteListingAction(id: string) {
     return { success: true, message: 'Listing has been deleted.' };
   } catch (error) {
     console.error(`[DELETE_LISTING_ACTION] Error: ${error}`);
-    return { success: false, message: 'Database error occurred while deleting the listing.' };
+    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+    return { success: false, message: `Database error occurred while deleting the listing: ${message}` };
   }
 }
 
@@ -530,7 +531,8 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
     return { success: `Booking for ${booking.listingName} has been cancelled.` };
   } catch (error) {
     console.error(`[CANCEL_BOOKING_ACTION] Error: ${error}`);
-    return { error: "Failed to cancel booking in the database." };
+    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+    return { error: `Failed to cancel booking in the database: ${message}` };
   }
 }
 
@@ -579,7 +581,8 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
       return { success: `Booking for ${booking.listingName} has been confirmed.` };
     } catch (error) {
       console.error(`[CONFIRM_BOOKING_ACTION] Error: ${error}`);
-      return { error: "Failed to confirm booking in the database." };
+      const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+      return { error: `Failed to confirm booking in the database: ${message}` };
     }
 }
 
@@ -624,7 +627,8 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
     return { success: true, message: `User "${name}" was created successfully.` };
   } catch (error) {
     console.error(`[ADD_USER_ACTION] Error: ${error}`);
-    return { success: false, message: "Failed to create user in the database." };
+    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+    return { success: false, message: `Failed to create user in the database: ${message}` };
   }
 }
 
@@ -667,7 +671,8 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
     return { success: true, message: `User "${name}" was updated successfully.` };
   } catch (error) {
     console.error(`[UPDATE_USER_ACTION] Error: ${error}`);
-    return { success: false, message: "Failed to update user in the database." };
+    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+    return { success: false, message: `Failed to update user in the database: ${message}` };
   }
 }
 
@@ -713,6 +718,7 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
     return { success: true, message: `Your profile has been updated successfully.` };
   } catch (error) {
     console.error(`[UPDATE_PROFILE_ACTION] Error: ${error}`);
-    return { success: false, message: "Failed to update your profile in the database." };
+    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+    return { success: false, message: `Failed to update your profile in the database: ${message}` };
   }
 }
