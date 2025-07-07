@@ -14,10 +14,17 @@ interface BookingsPageProps {
 }
 
 export default async function BookingsPage({ searchParams }: BookingsPageProps) {
+  // Add robust validation for the status parameter to ensure it's a valid value.
+  const validStatuses: Booking['status'][] = ['Confirmed', 'Pending', 'Cancelled'];
+  const statusParam = searchParams.status;
+  const validStatus = statusParam && validStatuses.includes(statusParam as any)
+    ? (statusParam as Booking['status'])
+    : undefined;
+
   const filters = {
     listingId: searchParams.listingId || undefined,
     userId: searchParams.userId || undefined,
-    status: searchParams.status ? (searchParams.status as Booking['status']) : undefined,
+    status: validStatus,
   };
 
   const bookings = await getAllBookings(filters);
