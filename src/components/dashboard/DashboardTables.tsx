@@ -3,16 +3,17 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, Users, List } from 'lucide-react';
+import { MoreHorizontal, Users, List, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
-import type { User } from '@/lib/types';
+import type { User, Listing } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
 import { useTransition } from 'react';
 import { updateUserRoleAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 interface DashboardTablesProps {
   listings: Listing[];
@@ -104,9 +105,17 @@ export function DashboardTables({ listings, users, session }: DashboardTablesPro
       </TabsContent>
       <TabsContent value="users">
         <Card>
-          <CardHeader>
-            <CardTitle>Manage Users</CardTitle>
-            <CardDescription>View and manage user accounts.</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Manage Users</CardTitle>
+              <CardDescription>View, create, and manage user accounts.</CardDescription>
+            </div>
+            <Button asChild>
+              <Link href="/dashboard/add-user">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add User
+              </Link>
+            </Button>
           </CardHeader>
           <CardContent>
             <Table>
@@ -137,6 +146,11 @@ export function DashboardTables({ listings, users, session }: DashboardTablesPro
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                        <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-user/${user.id}`)}>
+                                            Edit User
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
                                         <DropdownMenuLabel>Change Role</DropdownMenuLabel>
                                         {user.role !== 'admin' && (
                                             <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'admin')} disabled={isPending}>

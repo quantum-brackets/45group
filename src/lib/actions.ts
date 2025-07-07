@@ -401,3 +401,91 @@ export async function cancelBookingAction(data: z.infer<typeof CancelBookingSche
     return { error: "Failed to cancel booking in the database." };
   }
 }
+
+const UserFormSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  email: z.string().email("Please enter a valid email address."),
+  password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
+  role: z.enum(['admin', 'guest', 'staff']),
+});
+
+export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
+  const session = await getSession();
+  if (session?.role !== 'admin') {
+    return { success: false, message: 'Unauthorized' };
+  }
+
+  const validatedFields = UserFormSchema.safeParse(data);
+  if (!validatedFields.success) {
+    return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
+  }
+
+  const { name, email, password, role } = validatedFields.data;
+
+  if (!password) {
+    return { success: false, message: "Password is required for new users." };
+  }
+
+  try {
+    const db = await getDb();
+    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    if (existingUser) {
+      return { success: false, message: 'A user with this email already exists.' };
+    }
+    
+    const hashedPassword = await hashPassword(password);
+    const userId = `user-${randomUUID()}`;
+
+    const stmt = db.prepare('INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)');
+    stmt.run(userId, name, email, hashedPassword, role);
+
+    revalidatePath('/dashboard');
+    return { success: true, message: `User "${name}" was created successfully.` };
+  } catch (error) {
+    console.error(`[ADD_USER_ACTION] Error: ${error}`);
+    return { success: false, message: "Failed to create user in the database." };
+  }
+}
+
+export async function updateUserAction(id: string, data: z.infer<typeof UserFormSchema>) {
+  const session = await getSession();
+  if (session?.role !== 'admin') {
+    return { success: false, message: 'Unauthorized' };
+  }
+
+  const validatedFields = UserFormSchema.safeParse(data);
+  if (!validatedFields.success) {
+    return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
+  }
+
+  const { name, email, password, role } = validatedFields.data;
+  
+  try {
+    const db = await getDb();
+    
+    // Check if another user already has the new email
+    const otherUserWithEmail = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, id);
+    if (otherUserWithEmail) {
+        return { success: false, message: 'Another user with this email already exists.' };
+    }
+
+    if (password) {
+      // Update with new password
+      const hashedPassword = await hashPassword(password);
+      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, password = ?, role = ? WHERE id = ?');
+      stmt.run(name, email, hashedPassword, role, id);
+    } else {
+      // Update without changing password
+      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?');
+      stmt.run(name, email, role, id);
+    }
+
+    revalidatePath('/dashboard');
+    revalidatePath(`/dashboard/edit-user/${id}`);
+    
+    return { success: true, message: `User "${name}" was updated successfully.` };
+  } catch (error) {
+    console.error(`[UPDATE_USER_ACTION] Error: ${error}`);
+    return { success: false, message: "Failed to update user in the database." };
+  }
+}
