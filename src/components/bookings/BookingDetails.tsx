@@ -219,48 +219,39 @@ export function BookingDetails({ booking, listing, session }: BookingDetailsProp
   );
 
   return (
-    <>
-      <header className="mb-8 max-w-4xl mx-auto">
-        <h1 className="text-4xl font-headline font-bold tracking-tight">Booking Details</h1>
-        <p className="mt-2 text-lg text-muted-foreground">
-          Reviewing booking <span className="font-mono text-sm bg-muted px-2 py-1 rounded">{booking.id}</span>
-        </p>
-      </header>
-
-      <Card className="max-w-4xl mx-auto shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between">
-            <div className="space-y-1">
-                <CardTitle className="text-2xl font-mono text-primary tracking-tight">
-                  {booking.id}
-                </CardTitle>
-                 {isEditing ? (
-                     <CardDescription>
-                        Update the details for your booking at <Link href={`/listing/${listing.id}`} className="font-semibold hover:underline">{listing.name}</Link>.
-                    </CardDescription>
-                ) : (
-                    <CardDescription>
-                       For <Link href={`/listing/${listing.id}`} className="font-semibold hover:underline">{listing.name}</Link>
-                    </CardDescription>
-                )}
-            </div>
-            {canEdit && !isEditing && booking.status !== 'Cancelled' && (
-                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit Booking
-                </Button>
-            )}
-        </CardHeader>
-        
-        {isEditing ? <EditView /> : <DisplayView />}
-        
-        {!isEditing && (
-            <CardFooter className="flex justify-end">
-                <Button asChild>
-                    <Link href="/bookings">Back to Bookings</Link>
-                </Button>
-            </CardFooter>
-        )}
-      </Card>
-    </>
+    <Card className="max-w-4xl mx-auto shadow-lg">
+      <CardHeader className="flex flex-row items-center justify-between">
+          <div className="space-y-1">
+              <CardTitle className="text-2xl font-mono text-primary tracking-tight">
+                {booking.id}
+              </CardTitle>
+               {isEditing ? (
+                   <CardDescription>
+                      Update the details for your booking at <Link href={`/listing/${listing.id}`} className="font-semibold hover:underline">{listing.name}</Link>.
+                  </CardDescription>
+              ) : (
+                  <CardDescription>
+                     For <Link href={`/listing/${listing.id}`} className="font-semibold hover:underline">{listing.name}</Link>
+                  </CardDescription>
+              )}
+          </div>
+          {canEdit && !isEditing && booking.status !== 'Cancelled' && (
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Booking
+              </Button>
+          )}
+      </CardHeader>
+      
+      {isEditing ? <EditView /> : <DisplayView />}
+      
+      {!isEditing && (
+          <CardFooter className="flex justify-end">
+              <Button asChild>
+                  <Link href="/bookings">Back to Bookings</Link>
+              </Button>
+          </CardFooter>
+      )}
+    </Card>
   );
 }
