@@ -47,7 +47,7 @@ export async function login(formData: z.infer<typeof LoginSchema>) {
       expires,
       httpOnly: true,
       path: '/',
-      sameSite: 'none',
+      sameSite: 'lax',
       secure: true,
     });
     
@@ -97,7 +97,7 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
           expires,
           httpOnly: true,
           path: '/',
-          sameSite: 'none',
+          sameSite: 'lax',
           secure: true,
       });
 

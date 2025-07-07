@@ -1,3 +1,4 @@
+
 'use server'
 
 import 'server-only';
@@ -80,7 +81,7 @@ export async function deleteSession() {
     expires: new Date(0), 
     path: '/',
     httpOnly: true,
-    sameSite: 'none',
+    sameSite: 'lax',
     secure: true,
   });
 }

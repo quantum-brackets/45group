@@ -293,7 +293,7 @@ export async function verifySessionByIdAction(sessionId: string) {
           expires: expiresAtDate,
           httpOnly: true,
           path: '/',
-          sameSite: 'none',
+          sameSite: 'lax',
           secure: true,
         });
 
