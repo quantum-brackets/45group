@@ -21,6 +21,17 @@ export async function getUserById(id: string): Promise<User | null> {
     return user || null;
 }
 
+export async function getAllUsers(): Promise<User[]> {
+    const session = await getSession();
+    if (session?.role !== 'admin') {
+        return [];
+    }
+    const db = await getDb();
+    // Exclude the current admin from the list to prevent self-modification
+    const stmt = db.prepare('SELECT id, name, email, role FROM users WHERE id != ?');
+    return stmt.all(session.id) as User[];
+}
+
 export async function getAllListings(): Promise<Listing[]> {
   const db = await getDb();
   const stmt = db.prepare('SELECT * FROM listings');
