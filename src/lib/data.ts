@@ -48,13 +48,12 @@ export async function getListingById(id: string): Promise<Listing | null> {
   return parseListing(listing);
 }
 
-interface BookingFilters {
+interface BookingsPageFilters {
   listingId?: string;
   userId?: string;
-  status?: Booking['status'];
 }
 
-export async function getAllBookings(filters: BookingFilters): Promise<Booking[]> {
+export async function getAllBookings(filters: BookingsPageFilters): Promise<Booking[]> {
     noStore();
     const session = await getSession();
     if (!session) {
@@ -63,9 +62,10 @@ export async function getAllBookings(filters: BookingFilters): Promise<Booking[]
 
     const db = await getDb();
     let query = `
-        SELECT b.*, u.name as userName 
+        SELECT b.*, u.name as userName, l.name as listingName
         FROM bookings as b
         JOIN users as u ON b.userId = u.id
+        JOIN listings as l ON b.listingId = l.id
     `;
     const whereClauses: string[] = [];
     const params: (string | number)[] = [];
@@ -80,7 +80,7 @@ export async function getAllBookings(filters: BookingFilters): Promise<Booking[]
         params.push(filters.userId);
     }
 
-    // These filters are available for everyone
+    // This filter is available for everyone
     if (filters.listingId) {
         whereClauses.push('b.listingId = ?');
         params.push(filters.listingId);
@@ -104,7 +104,12 @@ export async function getBookingById(id: string): Promise<Booking | null> {
     }
     
     const db = await getDb();
-    const stmt = db.prepare('SELECT * FROM bookings WHERE id = ?');
+    const stmt = db.prepare(`
+        SELECT b.*, l.name as listingName
+        FROM bookings as b
+        JOIN listings as l on b.listingId = l.id
+        WHERE b.id = ?
+    `);
     const booking = stmt.get(id) as Booking | undefined;
 
     if (!booking) return null;

@@ -188,15 +188,14 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
   try {
     const db = await getDb();
     const stmt = db.prepare(`
-      INSERT INTO bookings (id, listingId, userId, listingName, startDate, endDate, guests, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO bookings (id, listingId, userId, startDate, endDate, guests, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
       randomUUID(),
       listingId,
       session.id,
-      listingName,
       new Date(startDate).toISOString().split('T')[0],
       new Date(endDate).toISOString().split('T')[0],
       guests,
@@ -400,7 +399,12 @@ export async function cancelBookingAction(data: z.infer<typeof CancelBookingSche
 
   try {
     const db = await getDb();
-    const booking = db.prepare('SELECT userId, listingName FROM bookings WHERE id = ?').get(bookingId) as { userId: string, listingName: string } | undefined;
+    const booking = db.prepare(`
+        SELECT b.userId, l.name as listingName 
+        FROM bookings b
+        JOIN listings l ON b.listingId = l.id
+        WHERE b.id = ?
+    `).get(bookingId) as { userId: string, listingName: string } | undefined;
 
     if (!booking) {
       return { error: 'Booking not found.' };
