@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -33,9 +32,9 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
 
   const handleFilter = () => {
     const params = new URLSearchParams(searchParams.toString());
-    if (listingId) params.set('listingId', listingId); else params.delete('listingId');
-    if (userId && session?.role === 'admin') params.set('userId', userId); else params.delete('userId');
-    if (status) params.set('status', status); else params.delete('status');
+    if (listingId && listingId !== 'all') params.set('listingId', listingId); else params.delete('listingId');
+    if (userId && session?.role === 'admin' && userId !== 'all') params.set('userId', userId); else params.delete('userId');
+    if (status && status !== 'all') params.set('status', status); else params.delete('status');
     router.push(`/bookings?${params.toString()}`);
   };
   
@@ -52,7 +51,7 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
                     <SelectValue placeholder="Filter by Venue" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="">All Venues</SelectItem>
+                    <SelectItem value="all">All Venues</SelectItem>
                     {listings.map(listing => (
                         <SelectItem key={listing.id} value={listing.id}>{listing.name}</SelectItem>
                     ))}
@@ -68,7 +67,7 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
                         <SelectValue placeholder="Filter by User" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="">All Users</SelectItem>
+                        <SelectItem value="all">All Users</SelectItem>
                         {users.map(user => (
                             <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                         ))}
@@ -84,7 +83,7 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
                     <SelectValue placeholder="Filter by Status" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="">All Statuses</SelectItem>
+                    <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="Confirmed">Confirmed</SelectItem>
                     <SelectItem value="Pending">Pending</SelectItem>
                     <SelectItem value="Cancelled">Cancelled</SelectItem>
