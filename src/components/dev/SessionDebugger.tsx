@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { testLoginAction, verifySessionByIdAction } from "@/lib/actions";
 import { useRouter } from "next/navigation";
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,14 @@ export function SessionDebugger({ initialSessionId }: SessionDebuggerProps) {
   const [loginResult, setLoginResult] = useState<{ success?: string; error?: string } | null>(null);
   const [verifyResult, setVerifyResult] = useState<{ success?: string; error?: string } | null>(null);
   const [sessionId, setSessionId] = useState<string>(initialSessionId || '');
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
   const onLoginSubmit = (data: FormValues) => {
     setLoginResult(null);
