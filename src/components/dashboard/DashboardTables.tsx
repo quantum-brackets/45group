@@ -5,19 +5,43 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { MoreHorizontal, Users, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
 import type { Listing, User } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
+import { useTransition } from 'react';
+import { updateUserRoleAction } from '@/lib/actions';
+import { useToast } from '@/hooks/use-toast';
 
 interface DashboardTablesProps {
   listings: Listing[];
   users: User[];
+  session: User | null;
 }
 
-export function DashboardTables({ listings, users }: DashboardTablesProps) {
+export function DashboardTables({ listings, users, session }: DashboardTablesProps) {
   const router = useRouter();
+  const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
+
+  const handleRoleChange = (userId: string, role: 'admin' | 'guest') => {
+    startTransition(async () => {
+      const result = await updateUserRoleAction({ userId, role });
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: result.success,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    });
+  };
 
   return (
     <Tabs defaultValue="listings">
@@ -107,16 +131,25 @@ export function DashboardTables({ listings, users }: DashboardTablesProps) {
                             <TableCell className="text-right">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <Button variant="ghost" className="h-8 w-8 p-0" disabled={user.id === session?.id}>
                                             <span className="sr-only">Open menu</span>
                                             <MoreHorizontal className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                        <DropdownMenuItem>Make Admin</DropdownMenuItem>
-                                        <DropdownMenuItem>Make Guest</DropdownMenuItem>
-                                        <DropdownMenuItem className="text-destructive">Delete User</DropdownMenuItem>
+                                        {user.role === 'guest' && (
+                                            <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'admin')} disabled={isPending}>
+                                                Make Admin
+                                            </DropdownMenuItem>
+                                        )}
+                                        {user.role === 'admin' && (
+                                            <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'guest')} disabled={isPending}>
+                                                Make Guest
+                                            </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem className="text-destructive" disabled={isPending}>Delete User</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </TableCell>
