@@ -306,51 +306,6 @@ export async function verifySessionByIdAction(sessionId: string) {
     }
 }
 
-const UpdateUserRoleSchema = z.object({
-  userId: z.string().min(1, 'User ID is required.'),
-  role: z.enum(['admin', 'guest', 'staff']),
-});
-
-export async function updateUserRoleAction(data: z.infer<typeof UpdateUserRoleSchema>) {
-  const session = await getSession();
-  if (session?.role !== 'admin') {
-    return { error: 'Unauthorized: You must be an admin to perform this action.' };
-  }
-
-  const validatedFields = UpdateUserRoleSchema.safeParse(data);
-  if (!validatedFields.success) {
-    return { error: 'Invalid data provided.' };
-  }
-
-  const { userId, role } = validatedFields.data;
-
-  if (userId === session.id) {
-    return { error: "Action not allowed: Admins cannot change their own role." };
-  }
-
-  try {
-    const db = await getDb();
-    const userToUpdate = db.prepare('SELECT name FROM users WHERE id = ?').get(userId) as { name: string } | undefined;
-    
-    if (!userToUpdate) {
-        return { error: "User not found." };
-    }
-
-    const stmt = db.prepare('UPDATE users SET role = ? WHERE id = ?');
-    const info = stmt.run(role, userId);
-
-    if (info.changes === 0) {
-      return { error: 'No changes made. The user may already have this role.' };
-    }
-
-    revalidatePath('/dashboard');
-    return { success: `${userToUpdate.name}'s role has been updated to ${role}.` };
-  } catch (error) {
-    console.error(`[UPDATE_USER_ROLE_ACTION] Error: ${error}`);
-    return { error: "A database error occurred while updating the user role." };
-  }
-}
-
 const CancelBookingSchema = z.object({
   bookingId: z.string(),
 });

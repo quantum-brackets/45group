@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,9 +9,6 @@ import { useRouter } from 'next/navigation';
 import type { User, Listing } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
-import { useTransition } from 'react';
-import { updateUserRoleAction } from '@/lib/actions';
-import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
 interface DashboardTablesProps {
@@ -23,26 +19,6 @@ interface DashboardTablesProps {
 
 export function DashboardTables({ listings, users, session }: DashboardTablesProps) {
   const router = useRouter();
-  const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
-
-  const handleRoleChange = (userId: string, role: 'admin' | 'guest' | 'staff') => {
-    startTransition(async () => {
-      const result = await updateUserRoleAction({ userId, role });
-      if (result.success) {
-        toast({
-          title: "Success",
-          description: result.success,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: result.error,
-          variant: "destructive",
-        });
-      }
-    });
-  };
 
   return (
     <Tabs defaultValue="listings">
@@ -151,24 +127,7 @@ export function DashboardTables({ listings, users, session }: DashboardTablesPro
                                             Edit User
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
-                                        <DropdownMenuLabel>Change Role</DropdownMenuLabel>
-                                        {user.role !== 'admin' && (
-                                            <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'admin')} disabled={isPending}>
-                                                Make Admin
-                                            </DropdownMenuItem>
-                                        )}
-                                        {user.role !== 'staff' && (
-                                            <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'staff')} disabled={isPending}>
-                                                Make Staff
-                                            </DropdownMenuItem>
-                                        )}
-                                        {user.role !== 'guest' && (
-                                            <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'guest')} disabled={isPending}>
-                                                Make Guest
-                                            </DropdownMenuItem>
-                                        )}
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem className="text-destructive" disabled={isPending}>Delete User</DropdownMenuItem>
+                                        <DropdownMenuItem className="text-destructive" disabled={user.id === session?.id}>Delete User</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </TableCell>
