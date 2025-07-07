@@ -59,6 +59,24 @@ function runBookingActionTrackingMigration(db: Database.Database) {
     }
 }
 
+function runBookingCreationDateMigration(db: Database.Database) {
+    try {
+        const columns = db.pragma('table_info(bookings)') as { name: string }[];
+        if (!columns.some(col => col.name === 'createdAt')) {
+            console.log('[DB_MIGRATE] Adding "createdAt" column to bookings...');
+            db.exec("ALTER TABLE bookings ADD COLUMN createdAt TEXT");
+            
+            // For existing bookings, we can set a reasonable default, like the start date of the booking.
+            db.exec("UPDATE bookings SET createdAt = startDate WHERE createdAt IS NULL");
+            console.log('[DB_MIGRATE] "createdAt" column added and populated for existing bookings.');
+        }
+    } catch (error) {
+        console.error("[DB_MIGRATE_ERROR] Critical error during booking creation date migration:", error);
+        throw new Error("Database migration for booking createdAt failed. The application cannot start.");
+    }
+}
+
+
 /**
  * Provides a stable, cached database connection and applies necessary migrations.
  * This function now runs migrations on every call to ensure schema consistency,
@@ -79,6 +97,7 @@ export async function getDb(): Promise<Database.Database> {
         // to call them on every DB access during development.
         runCurrencyMigration(db);
         runBookingActionTrackingMigration(db);
+        runBookingCreationDateMigration(db);
 
         return db;
     } catch (error) {

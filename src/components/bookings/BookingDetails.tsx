@@ -122,7 +122,12 @@ export function BookingDetails({ booking, listing, session }: BookingDetailsProp
           <UserIcon className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
           <div>
             <p className="font-semibold">Booked By</p>
-            <p className="text-muted-foreground">{booking.userName}</p>
+            <p className="text-muted-foreground">
+              {booking.userName}
+              {booking.createdAt && (
+                <span className="block text-sm">on {format(parseISO(booking.createdAt), 'PPP')}</span>
+              )}
+            </p>
           </div>
         </div>
       )}

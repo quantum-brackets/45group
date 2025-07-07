@@ -215,8 +215,8 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     }
 
     const stmt = db.prepare(`
-      INSERT INTO bookings (id, listingId, userId, startDate, endDate, guests, status, listingName)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO bookings (id, listingId, userId, startDate, endDate, guests, status, listingName, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -227,7 +227,8 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       new Date(endDate).toISOString().split('T')[0],
       guests,
       'Pending',
-      listingName
+      listingName,
+      new Date().toISOString()
     );
 
     revalidatePath('/bookings');
