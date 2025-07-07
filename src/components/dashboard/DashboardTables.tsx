@@ -4,7 +4,7 @@
 import { useState, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, Users, List, PlusCircle, Copy, Trash2, AlertCircle } from 'lucide-react';
+import { MoreHorizontal, Users, List, PlusCircle, Trash2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
@@ -108,7 +108,6 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                                   <DropdownMenuItem onClick={() => router.push(`/listing/${listing.id}`)}>View</DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-listing/${listing.id}`)}>Edit</DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => router.push(`/dashboard/add-listing?duplicate=${listing.id}`)}>
-                                    <Copy className="mr-2 h-4 w-4" />
                                     Duplicate
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => router.push(`/bookings?listingId=${listing.id}`)}>View Bookings</DropdownMenuItem>
