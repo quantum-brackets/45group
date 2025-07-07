@@ -1,5 +1,6 @@
 
 export type ListingType = 'hotel' | 'events' | 'restaurant';
+export type Currency = 'USD' | 'EUR' | 'GBP' | 'NGN';
 
 export interface Review {
   id: string;
@@ -18,6 +19,7 @@ export interface Listing {
   images: string[];
   price: number;
   priceUnit: 'night' | 'hour' | 'person';
+  currency: Currency;
   rating: number;
   reviews: Review[];
   features: string[];

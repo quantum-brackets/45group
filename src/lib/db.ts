@@ -22,6 +22,20 @@ export async function getDb(): Promise<Database.Database> {
 
     try {
         const db = new Database(dbPath);
+        
+        // Simple migration to add 'currency' column if it doesn't exist.
+        try {
+            const columns = db.pragma('table_info(listings)');
+            const hasCurrency = columns.some((col: any) => col.name === 'currency');
+            if (!hasCurrency) {
+                db.exec("ALTER TABLE listings ADD COLUMN currency TEXT NOT NULL DEFAULT 'NGN'");
+                console.log('[DB_MIGRATE] Added "currency" column to "listings" table.');
+            }
+        } catch (migrationError) {
+             console.error("[DB_MIGRATE_ERROR] Could not apply migration:", migrationError);
+             // Don't re-throw, let the app continue if possible.
+        }
+
         globalThis.db = db;
         return db;
     } catch (error) {

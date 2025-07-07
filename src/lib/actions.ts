@@ -19,6 +19,7 @@ const ListingFormSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
   price: z.coerce.number().positive("Price must be a positive number."),
   priceUnit: z.enum(['night', 'hour', 'person']),
+  currency: z.enum(['USD', 'EUR', 'GBP', 'NGN']),
   maxGuests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
   features: z.string().min(1, "Please list at least one feature."),
 });
@@ -34,7 +35,7 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
         return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
     }
 
-    const { name, type, location, description, price, priceUnit, maxGuests, features } = validatedFields.data;
+    const { name, type, location, description, price, priceUnit, currency, maxGuests, features } = validatedFields.data;
     const featuresAsArray = features.split(',').map(f => f.trim());
     const newId = `listing-${randomUUID()}`;
 
@@ -45,8 +46,8 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
     try {
         const db = await getDb();
         const stmt = db.prepare(`
-            INSERT INTO listings (id, name, type, location, description, images, price, priceUnit, rating, reviews, features, maxGuests)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO listings (id, name, type, location, description, images, price, priceUnit, currency, rating, reviews, features, maxGuests)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         stmt.run(
             newId,
@@ -57,6 +58,7 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
             JSON.stringify(defaultImages),
             price,
             priceUnit,
+            currency,
             defaultRating,
             JSON.stringify(defaultReviews),
             JSON.stringify(featuresAsArray),
@@ -68,7 +70,7 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
         return { success: false, message: `Failed to create listing: ${message}` };
     }
     
-    revalidatePath('/dashboard?tab=listings');
+    revalidatePath('/dashboard', 'layout');
     return { success: true, message: `Listing "${name}" has been created.` };
 }
 
@@ -88,7 +90,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
     }
   }
   
-  const { name, type, location, description, price, priceUnit, maxGuests, features } = validatedFields.data;
+  const { name, type, location, description, price, priceUnit, currency, maxGuests, features } = validatedFields.data;
   const featuresAsArray = features.split(',').map((f) => f.trim());
 
   try {
@@ -102,6 +104,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
         description = ?,
         price = ?,
         priceUnit = ?,
+        currency = ?,
         maxGuests = ?,
         features = ?
       WHERE id = ?
@@ -114,6 +117,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
       description,
       price,
       priceUnit,
+      currency,
       maxGuests,
       JSON.stringify(featuresAsArray),
       id
@@ -125,7 +129,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
     return { success: false, message: `Failed to update listing: ${message}` };
   }
 
-  revalidatePath('/dashboard?tab=listings');
+  revalidatePath('/dashboard', 'layout');
   revalidatePath(`/listing/${id}`);
   
   return { success: true, message: `The details for "${name}" have been saved.` };
@@ -146,7 +150,7 @@ export async function deleteListingAction(id: string) {
       return { success: false, message: 'Listing not found or could not be deleted.' };
     }
 
-    revalidatePath('/dashboard');
+    revalidatePath('/dashboard', 'layout');
     return { success: true, message: 'Listing has been deleted.' };
   } catch (error) {
     console.error(`[DELETE_LISTING_ACTION] Error: ${error}`);
@@ -185,6 +189,21 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
 
   try {
     const db = await getDb();
+    
+    // Check for existing bookings on the same dates
+    const existingBookingStmt = db.prepare(`
+        SELECT id FROM bookings
+        WHERE listingId = ? AND status = 'Confirmed' AND (
+            -- Overlap check: (StartA <= EndB) AND (EndA >= StartB)
+            endDate >= ? AND startDate <= ?
+        )
+    `);
+    const existingBooking = existingBookingStmt.get(listingId, new Date(startDate).toISOString().split('T')[0], new Date(endDate).toISOString().split('T')[0]);
+
+    if (existingBooking) {
+        return { success: false, message: 'These dates are no longer available. Please select different dates.' };
+    }
+
     const stmt = db.prepare(`
       INSERT INTO bookings (id, listingId, userId, startDate, endDate, guests, status)
       VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -476,7 +495,7 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
     const stmt = db.prepare('INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)');
     stmt.run(userId, name, email, hashedPassword, role);
 
-    revalidatePath('/dashboard');
+    revalidatePath('/dashboard', 'layout');
     return { success: true, message: `User "${name}" was created successfully.` };
   } catch (error) {
     console.error(`[ADD_USER_ACTION] Error: ${error}`);
@@ -517,7 +536,7 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
       stmt.run(name, email, role, id);
     }
 
-    revalidatePath('/dashboard');
+    revalidatePath('/dashboard', 'layout');
     revalidatePath(`/dashboard/edit-user/${id}`);
     
     return { success: true, message: `User "${name}" was updated successfully.` };
