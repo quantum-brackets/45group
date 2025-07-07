@@ -74,7 +74,6 @@ export async function loginAction(formData: z.infer<typeof LoginSchema>) {
     expires,
     httpOnly: true,
     path: '/',
-    sameSite: 'strict',
     secure: process.env.NODE_ENV === 'production',
   });
   
@@ -120,7 +119,6 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
           expires,
           httpOnly: true,
           path: '/',
-          sameSite: 'strict',
           secure: process.env.NODE_ENV === 'production',
       });
 

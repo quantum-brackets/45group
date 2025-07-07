@@ -477,7 +477,6 @@ export async function verifySessionByIdAction(sessionId: string) {
           expires: expiresAtDate,
           httpOnly: true,
           path: '/',
-          sameSite: 'strict',
           secure: process.env.NODE_ENV === 'production',
         });
 
