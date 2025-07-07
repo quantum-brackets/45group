@@ -76,5 +76,11 @@ export async function deleteSession() {
         console.error(`[SESSION_DELETE] Error deleting session ${sessionId} from database: ${error}`);
     }
   }
-  cookies().set('session', '', { expires: new Date(0), path: '/' });
+  cookies().set('session', '', { 
+    expires: new Date(0), 
+    path: '/',
+    httpOnly: true,
+    sameSite: 'none',
+    secure: true,
+  });
 }
