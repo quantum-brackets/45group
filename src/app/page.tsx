@@ -1,14 +1,27 @@
-import { getAllListings } from '@/lib/data';
-import { ListingCard } from '@/components/listing/ListingCard';
+
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
-export default async function HomePage() {
-  // Fetch a few featured listings to display
-  const allListings = await getAllListings();
-  const featuredListings = allListings.slice(0, 3);
+const locations = [
+  {
+    name: 'Abuja',
+    image: 'https://placehold.co/400x600.png',
+    hint: 'hotel bedroom',
+  },
+  {
+    name: 'Calabar',
+    image: 'https://placehold.co/400x600.png',
+    hint: 'restaurant dining',
+  },
+  {
+    name: 'Ikom',
+    image: 'https://placehold.co/400x600.png',
+    hint: 'hotel room',
+  },
+];
 
+export default async function HomePage() {
   return (
     <div>
       {/* Hero Section */}
@@ -30,26 +43,34 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Featured Listings Section */}
+      {/* Lodges Section */}
       <section className="py-16">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-headline font-bold text-center mb-8">Featured Venues</h2>
-          {featuredListings.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredListings.map((listing) => (
-                <ListingCard key={listing.id} listing={listing} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-16">
-              <p className="text-muted-foreground mt-2">Could not load featured venues at this time.</p>
-            </div>
-          )}
-           <div className="text-center mt-12">
-             <Button asChild variant="outline">
-                <Link href="/search">View All Venues</Link>
-             </Button>
-           </div>
+          <div className="mb-8 flex items-baseline gap-x-3">
+            <h2 className="text-3xl font-headline font-bold">Lodges</h2>
+            <p className="text-xl text-muted-foreground">
+              ~ Find your next adventure at a 45 group location!
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {locations.map((location) => (
+              <Link href={`/search?location=${location.name}`} key={location.name} className="group">
+                <div className="relative rounded-2xl overflow-hidden h-[500px] shadow-lg">
+                  <img
+                    src={location.image}
+                    data-ai-hint={location.hint}
+                    alt={`Lodge in ${location.name}`}
+                    className="w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center transition-colors duration-300 group-hover:bg-black/40">
+                    <h3 className="text-white text-4xl font-headline font-bold tracking-wider">
+                      {location.name}
+                    </h3>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
     </div>
