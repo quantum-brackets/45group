@@ -170,7 +170,7 @@ export function BookingForm({ listing, confirmedBookings }: BookingFormProps) {
           />
         </div>
         <div className="px-6 pt-2">
-            <div className="h-6 text-center text-sm mb-2">
+            <div className="min-h-10 text-center text-sm mb-2 flex items-center justify-center px-2">
                 {availability.message && (
                     <span className={availability.availableCount <= 0 ? 'text-destructive' : 'text-accent'}>
                         {availability.message}

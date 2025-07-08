@@ -365,7 +365,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
           <Link href={`/listing/${listing.id}`} className="hover:underline">{listing.name}</Link>
         </CardTitle>
         <CardDescription className="pt-1">
-            <span className="font-mono text-muted-foreground">{booking.id}</span>
+            <span className="font-mono text-muted-foreground break-all">{booking.id}</span>
         </CardDescription>
       </CardHeader>
       
