@@ -87,7 +87,7 @@ export async function getAllListings(): Promise<Listing[]> {
   const supabase = createSupabaseServerClient();
   const { data: listingsData, error: listingsError } = await supabase
     .from('listings')
-    .select('*')
+    .select('*, listing_inventory(count)')
     .order('location')
     .order('type')
     .order('name');
@@ -97,21 +97,10 @@ export async function getAllListings(): Promise<Listing[]> {
       return [];
   }
 
-  const { data: inventoryData, error: inventoryError } = await supabase
-    .from('listing_inventory_counts')
-    .select('listing_id, count');
-
-  if (inventoryError) {
-      console.error("Error fetching inventory counts for all listings:", inventoryError);
-      // Return listings without inventory count as a fallback
-      return listingsData.map((l: any) => ({ ...l, inventoryCount: 0 })) as Listing[];
-  }
-
-  const inventoryMap = new Map(inventoryData.map(item => [item.listing_id, item.count]));
-
   return listingsData.map((l: any) => ({
       ...l,
-      inventoryCount: inventoryMap.get(l.id) || 0,
+      inventoryCount: l.listing_inventory[0]?.count || 0,
+      listing_inventory: undefined, // clean up
   })) as Listing[];
 }
 
@@ -142,7 +131,7 @@ export async function getListingById(id: string): Promise<Listing | null> {
   
   const { data: listingData, error: listingError } = await supabase
     .from('listings')
-    .select('*')
+    .select('*, listing_inventory(count)')
     .eq('id', id)
     .single();
 
@@ -151,15 +140,10 @@ export async function getListingById(id: string): Promise<Listing | null> {
     return null;
   }
   
-  const { data: inventoryData, error: inventoryError } = await supabase
-    .from('listing_inventory_counts')
-    .select('count')
-    .eq('listing_id', id)
-    .single();
-
   const listing = {
       ...listingData,
-      inventoryCount: inventoryError ? 0 : inventoryData?.count || 0
+      inventoryCount: listingData.listing_inventory[0]?.count || 0,
+      listing_inventory: undefined, // clean up
   };
   
   return listing as Listing;
@@ -272,42 +256,73 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
   noStore();
   const supabase = createSupabaseServerClient();
   
-  const { data: listingsData, error } = await supabase.rpc('get_filtered_listings', {
-      location_filter: filters.location || null,
-      type_filter: filters.type || null,
-      guests_filter: filters.guests ? parseInt(filters.guests, 10) : null,
-      from_date_filter: filters.date?.from ? filters.date.from.toISOString() : null,
-      to_date_filter: filters.date?.to ? filters.date.to.toISOString() : (filters.date?.from ? filters.date.from.toISOString() : null),
-  });
+  let query = supabase
+    .from('listings')
+    .select('*, listing_inventory(id)');
+
+  if (filters.location) {
+    query = query.ilike('location', `%${filters.location}%`);
+  }
+  if (filters.type) {
+    query = query.eq('type', filters.type);
+  }
+  if (filters.guests && parseInt(filters.guests, 10) > 0) {
+    query = query.gte('max_guests', parseInt(filters.guests, 10));
+  }
+
+  const { data: listingsData, error } = await query;
 
   if (error) {
-    console.error("Error fetching filtered listings:", error);
+    console.error("Error fetching listings for filtering:", error);
     return [];
   }
-  if (!listingsData || listingsData.length === 0) {
+  
+  let listingsWithInventoryCount = listingsData.map(l => ({
+    ...l,
+    inventoryCount: l.listing_inventory.length,
+    listing_inventory: undefined, // remove to clean up
+  }));
+
+  if (!filters.date?.from) {
+    return listingsWithInventoryCount as Listing[];
+  }
+  
+  const listingIds = listingsWithInventoryCount.map(l => l.id);
+  if (listingIds.length === 0) {
       return [];
   }
 
-  const listingIds = listingsData.map((l: any) => l.id);
+  const from = filters.date.from.toISOString();
+  const to = (filters.date.to || filters.date.from).toISOString();
 
-  const { data: inventoryData, error: inventoryError } = await supabase
-    .from('listing_inventory_counts')
-    .select('listing_id, count')
-    .in('listing_id', listingIds);
-    
-  if (inventoryError) {
-      console.error("Error fetching inventory counts:", inventoryError);
-      return listingsData as Listing[]; // return without counts as fallback
+  const { data: overlappingBookings, error: bookingsError } = await supabase
+      .from('bookings')
+      .select('listing_id, inventory_ids')
+      .in('listing_id', listingIds)
+      .eq('status', 'Confirmed')
+      .lte('start_date', to) // booking starts before or on the same day the search range ends
+      .gte('end_date', from); // booking ends after or on the same day the search range starts
+
+  if (bookingsError) {
+      console.error("Error fetching bookings for date filter:", bookingsError);
+      return listingsWithInventoryCount as Listing[];
   }
 
-  const inventoryMap = new Map(inventoryData.map(item => [item.listing_id, item.count]));
+  const bookedUnitsByListing: Record<string, Set<string>> = {};
+  for (const booking of overlappingBookings) {
+      if (!bookedUnitsByListing[booking.listing_id]) {
+          bookedUnitsByListing[booking.listing_id] = new Set();
+      }
+      booking.inventory_ids.forEach(invId => bookedUnitsByListing[booking.listing_id].add(invId));
+  }
+  
+  const availableListings = listingsWithInventoryCount.filter(listing => {
+      const totalInventory = listing.inventoryCount;
+      const bookedCount = bookedUnitsByListing[listing.id]?.size || 0;
+      return totalInventory > bookedCount;
+  });
 
-  const listingsWithInventory = listingsData.map((listing: any) => ({
-      ...listing,
-      inventoryCount: inventoryMap.get(listing.id) || 0,
-  }));
-
-  return listingsWithInventory as Listing[];
+  return availableListings as Listing[];
 }
 
 export async function getConfirmedBookingsForListing(listingId: string) {
