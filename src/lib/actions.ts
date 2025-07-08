@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession } from './session'
 import { redirect } from 'next/navigation'
-import { createSupabaseServerClient } from './supabase'
+import { createSupabaseAdminClient, createSupabaseServerClient } from './supabase'
 import { hashPassword } from './password'
 import { logout as sessionLogout } from './session'
 
@@ -25,7 +25,7 @@ const ListingFormSchema = z.object({
 
 
 export async function createListingAction(data: z.infer<typeof ListingFormSchema>) {
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (session?.role !== 'admin') {
         return { success: false, message: 'Unauthorized' };
@@ -62,7 +62,7 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
 }
 
 export async function updateListingAction(id: string, data: z.infer<typeof ListingFormSchema>) {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (session?.role !== 'admin') {
     return { success: false, message: 'Unauthorized' };
@@ -107,7 +107,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
 }
 
 export async function deleteListingAction(id: string) {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (session?.role !== 'admin') {
     return { success: false, message: 'Unauthorized' };
@@ -136,7 +136,7 @@ const CreateBookingSchema = z.object({
 });
 
 export async function createBookingAction(data: z.infer<typeof CreateBookingSchema>) {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const session = await getSession();
 
   const validatedFields = CreateBookingSchema.safeParse(data);
@@ -184,7 +184,7 @@ const UpdateBookingSchema = z.object({
 });
 
 export async function updateBookingAction(data: z.infer<typeof UpdateBookingSchema>) {
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session) {
       return { success: false, message: 'Unauthorized' };
@@ -273,7 +273,7 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
 }
 
 export async function confirmBookingAction(data: z.infer<typeof BookingActionSchema>) {
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (session?.role !== 'admin') {
       return { error: 'Unauthorized: Only administrators can confirm bookings.' };
@@ -314,7 +314,7 @@ const UserFormSchema = z.object({
 });
 
 export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (session?.role !== 'admin') {
     return { success: false, message: 'Unauthorized' };
@@ -357,7 +357,7 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
 }
 
 export async function updateUserAction(id: string, data: z.infer<typeof UserFormSchema>) {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (session?.role !== 'admin') {
     return { success: false, message: 'Unauthorized' };
@@ -435,7 +435,7 @@ const ReviewSchema = z.object({
 });
 
 export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>) {
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session) {
         return { success: false, message: 'You must be logged in to submit a review.' };
@@ -473,7 +473,7 @@ const ReviewActionSchema = z.object({
 });
 
 export async function approveReviewAction(data: z.infer<typeof ReviewActionSchema>) {
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (session?.role !== 'admin') {
         return { success: false, message: 'Unauthorized action.' };
@@ -496,7 +496,7 @@ export async function approveReviewAction(data: z.infer<typeof ReviewActionSchem
 
 
 export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema>) {
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (session?.role !== 'admin') {
         return { success: false, message: 'Unauthorized action.' };
@@ -523,7 +523,7 @@ const ToggleUserStatusSchema = z.object({
 });
 
 export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStatusSchema>) {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (session?.role !== 'admin') {
     return { success: false, message: 'Unauthorized' };
@@ -556,7 +556,7 @@ const MergeListingsSchema = z.object({
 });
 
 export async function mergeListingsAction(data: z.infer<typeof MergeListingsSchema>) {
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (session?.role !== 'admin') {
       return { success: false, message: 'Unauthorized' };
@@ -588,7 +588,7 @@ const BulkDeleteListingsSchema = z.object({
 });
 
 export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteListingsSchema>) {
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (session?.role !== 'admin') {
         return { success: false, message: 'Unauthorized' };

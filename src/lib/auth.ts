@@ -2,7 +2,7 @@
 'use server'
 
 import { z } from 'zod';
-import { createSupabaseServerClient } from './supabase';
+import { createSupabaseServerClient, createSupabaseAdminClient } from './supabase';
 import { verifyPassword, hashPassword } from './password';
 import { createSession } from './session';
 
@@ -52,7 +52,7 @@ const SignupSchema = z.object({
 });
 
 export async function signup(formData: z.infer<typeof SignupSchema>) {
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const validatedFields = SignupSchema.safeParse(formData);
     if (!validatedFields.success) {
         return { error: "Invalid fields provided." };
@@ -91,6 +91,7 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
         }).select('id').single();
 
         if (insertError || !newUser) {
+            console.error('[SIGNUP_ERROR]', insertError);
             return { error: "Database error saving new user" };
         }
         userId = newUser.id;
