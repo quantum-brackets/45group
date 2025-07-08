@@ -43,13 +43,13 @@ export default function StaticCard({ name, images, link }: Props) {
           div {
             width: 100%;
             aspect-ratio: 16 / 9;
+            border: solid 2px #2aa1471a;
             border-radius: 0.75rem;
             object-fit: cover;
             background-position: center;
             background-size: cover;
-            filter: brightness(0.6);
-            }
-            `;
+            filter: brightness(1.0);
+          }`;
         shadowRoot.appendChild(style);
       }
     }
