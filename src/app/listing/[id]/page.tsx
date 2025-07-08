@@ -32,7 +32,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <BackButton href="/search">Back to Search</BackButton>
+        <BackButton />
       </div>
       <div className="grid lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2">

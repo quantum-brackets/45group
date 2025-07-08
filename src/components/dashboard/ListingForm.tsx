@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowDown, ArrowUp, Loader2, PlusCircle, Trash2, Warehouse } from "lucide-react";
+import { BackButton } from "../common/BackButton";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -350,7 +351,7 @@ export function ListingForm({ listing, initialInventoryCount = 1 }: ListingFormP
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
-              <Button variant="outline" type="button" onClick={() => router.back()} disabled={isPending}>Cancel</Button>
+              <BackButton disabled={isPending}>Cancel</BackButton>
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isEditMode ? 'Save Changes' : 'Create Listing'}

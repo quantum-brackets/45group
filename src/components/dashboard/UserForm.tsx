@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "../ui/textarea";
+import { BackButton } from "../common/BackButton";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -224,7 +225,7 @@ export function UserForm({ user }: UserFormProps) {
             />
           </CardContent>
           <CardFooter className="flex justify-end gap-2">
-            <Button variant="outline" type="button" onClick={() => router.push('/dashboard?tab=users')} disabled={isPending}>Cancel</Button>
+            <BackButton disabled={isPending}>Cancel</BackButton>
             <Button type="submit" disabled={isPending}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditMode ? 'Save Changes' : 'Create User'}

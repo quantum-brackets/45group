@@ -23,6 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
+import { BackButton } from '../common/BackButton';
 
 interface BookingDetailsProps {
   booking: Booking;
@@ -298,9 +299,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
       
       {!isEditing && (
           <CardFooter className="flex justify-end">
-              <Button asChild>
-                  <Link href="/bookings">Back to Bookings</Link>
-              </Button>
+              <BackButton>Back to Bookings</BackButton>
           </CardFooter>
       )}
     </Card>

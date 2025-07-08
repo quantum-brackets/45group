@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { Textarea } from "../ui/textarea";
+import { BackButton } from "../common/BackButton";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -158,9 +159,9 @@ export function ProfileForm({ user }: ProfileFormProps) {
             />
           </CardContent>
           <CardFooter className="flex justify-end gap-2">
-            <Button variant="ghost" type="button" onClick={() => router.back()} disabled={isPending}>
+            <BackButton variant="ghost" disabled={isPending}>
                 Cancel
-            </Button>
+            </BackButton>
             <Button type="submit" disabled={isPending}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
