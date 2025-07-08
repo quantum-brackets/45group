@@ -89,7 +89,7 @@ export async function getAllListings(): Promise<Listing[]> {
     .from('listings')
     .select(`
         *,
-        inventory_count:listing_inventory(count)
+        inventory_count:listing_inventory_counts(count)
     `)
     .order('location')
     .order('type')
@@ -135,7 +135,7 @@ export async function getListingById(id: string): Promise<Listing | null> {
     .from('listings')
     .select(`
         *,
-        inventory_count:listing_inventory(count)
+        inventory_count:listing_inventory_counts(count)
     `)
     .eq('id', id)
     .single();
@@ -278,7 +278,7 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
   const listingIds = listingsData.map((l: any) => l.id);
 
   const { data: inventoryData, error: inventoryError } = await supabase
-    .from('listing_inventory')
+    .from('listing_inventory_counts')
     .select('listing_id, count')
     .in('listing_id', listingIds);
     
