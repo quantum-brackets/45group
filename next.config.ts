@@ -49,10 +49,6 @@ const nextConfig: NextConfig = {
       }] : []),
     ],
   },
-  experimental: {
-    // No longer need better-sqlite3
-    // serverComponentsExternalPackages: ['better-sqlite3'],
-  },
 };
 
 export default nextConfig;

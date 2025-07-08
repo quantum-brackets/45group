@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { getSession } from './session'
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from './supabase'
+import { hashPassword } from './password'
+import { cookies } from 'next/headers'
 
 const ListingFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -217,9 +219,13 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
 }
 
 export async function logoutAction() {
-    const supabase = createSupabaseServerClient();
-    await supabase.auth.signOut();
-    revalidatePath('/', 'layout');
+    const cookieStore = cookies();
+    const token = cookieStore.get('session_token')?.value;
+    if (token) {
+        const supabase = createSupabaseServerClient();
+        await supabase.from('sessions').delete().eq('id', token);
+    }
+    cookieStore.set('session_token', '', { expires: new Date(0), path: '/' });
     redirect('/login');
 }
 
@@ -228,8 +234,6 @@ const UpdatePasswordSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-// This action is for admins to reset passwords. A user-initiated password reset
-// would use Supabase's built-in email flow.
 export async function updatePasswordAction(data: z.infer<typeof UpdatePasswordSchema>) {
     const supabase = createSupabaseServerClient();
     const validatedFields = UpdatePasswordSchema.safeParse(data);
@@ -244,10 +248,8 @@ export async function updatePasswordAction(data: z.infer<typeof UpdatePasswordSc
         return { error: `Update failed: User with email "${email}" does not exist.` };
     }
     
-    const { error } = await supabase.auth.admin.updateUserById(
-        user.id,
-        { password: password }
-    );
+    const hashedPassword = await hashPassword(password);
+    const { error } = await supabase.from('users').update({ password: hashedPassword }).eq('id', user.id);
     
     if (error) {
         console.error('[UPDATE_PASSWORD_ACTION] Supabase Error:', error);
@@ -285,7 +287,6 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
       return { error: 'You do not have permission to cancel this booking.' };
   }
   
-  // Admin can cancel any booking, guest can only cancel their own.
   if (session.role !== 'admin' && booking.user_id !== session.id) {
     return { error: 'You do not have permission to cancel this booking.' };
   }
@@ -365,29 +366,26 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   if (!password) {
     return { success: false, message: "Password is required for new users." };
   }
-
-  // Create auth user
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true, // Auto-confirm user
-    user_metadata: { name }
-  });
-
-  if (authError || !authData.user) {
-    return { success: false, message: authError?.message || 'Failed to create user.' };
+  
+  const { data: existingUser } = await supabase.from('users').select('id').eq('email', email).single();
+  if (existingUser) {
+    return { success: false, message: 'A user with this email already exists.' };
   }
 
-  // The trigger 'on_auth_user_created' creates the public user record.
-  // Now, we update it with the additional details.
-  const { error: profileError } = await supabase.from('users').update({
-    role, status, notes, phone
-  }).eq('id', authData.user.id);
-  
-  if (profileError) {
-    // Attempt to clean up the auth user if profile update fails
-    await supabase.auth.admin.deleteUser(authData.user.id);
-    return { success: false, message: `Failed to set user profile: ${profileError.message}` };
+  const hashedPassword = await hashPassword(password);
+
+  const { error } = await supabase.from('users').insert({
+    name,
+    email,
+    password: hashedPassword,
+    role,
+    status,
+    notes,
+    phone
+  });
+
+  if (error) {
+    return { success: false, message: `Failed to create user: ${error.message}` };
   }
 
   revalidatePath('/dashboard?tab=users', 'page');
@@ -408,27 +406,16 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
 
   const { name, email, password, role, status, notes, phone } = validatedFields.data;
   
-  // Update auth user if password or email changes
+  let updateData: any = { name, email, role, status, notes, phone };
+  
   if (password) {
-    const { error } = await supabase.auth.admin.updateUserById(id, { password });
-    if (error) return { success: false, message: `Failed to update password: ${error.message}` };
-  }
-  
-  const { data: authUser, error: authErr } = await supabase.auth.admin.getUserById(id);
-  if(authErr || !authUser.user) return { success: false, message: 'Could not fetch user to update.' };
-  
-  if (email !== authUser.user.email) {
-    const { error } = await supabase.auth.admin.updateUserById(id, { email });
-    if (error) return { success: false, message: `Failed to update email: ${error.message}` };
+    updateData.password = await hashPassword(password);
   }
 
-  // Update public profile
-  const { error: profileError } = await supabase.from('users').update({
-    name, email, role, status, notes, phone
-  }).eq('id', id);
+  const { error } = await supabase.from('users').update(updateData).eq('id', id);
 
-  if (profileError) {
-    return { success: false, message: `Failed to update user profile: ${profileError.message}` };
+  if (error) {
+    return { success: false, message: `Failed to update user profile: ${error.message}` };
   }
 
   revalidatePath('/dashboard?tab=users', 'page');
@@ -458,31 +445,17 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
   }
 
   const { name, email, password, notes, phone } = validatedFields.data;
-
-  // Update auth user
-  if (password) {
-    const { error } = await supabase.auth.updateUser({ password });
-    if(error) return { success: false, message: `Failed to update password: ${error.message}` };
-  }
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user && email !== user.email) {
-    const { error } = await supabase.auth.updateUser({ email });
-    if (error) return { success: false, message: `Failed to update email: ${error.message}` };
-  }
   
-  if (user && name !== user.user_metadata.name) {
-    const { error } = await supabase.auth.updateUser({ data: { name } });
-    if(error) return { success: false, message: `Failed to update name: ${error.message}` };
+  let updateData: any = { name, email, notes, phone };
+
+  if (password) {
+    updateData.password = await hashPassword(password);
   }
 
-  // Update public profile
-  const { error: profileError } = await supabase.from('users').update({
-    name, email, notes, phone
-  }).eq('id', session.id);
+  const { error } = await supabase.from('users').update(updateData).eq('id', session.id);
 
-  if (profileError) {
-    return { success: false, message: `Failed to update profile: ${profileError.message}` };
+  if (error) {
+    return { success: false, message: `Failed to update profile: ${error.message}` };
   }
   
   revalidatePath('/profile');

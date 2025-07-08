@@ -5,28 +5,40 @@ import 'server-only';
 import type { User } from './types';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createSupabaseServerClient } from './supabase';
+import { cookies } from 'next/headers';
 
 
 export async function getSession(): Promise<User | null> {
   noStore();
-  const supabase = createSupabaseServerClient();
-  
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  const cookieStore = cookies();
+  const token = cookieStore.get('session_token')?.value;
 
-  if (sessionError || !session) {
+  if (!token) {
     return null;
   }
   
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('id, name, email, role, status, notes, phone')
-    .eq('id', session.user.id)
+  const supabase = createSupabaseServerClient();
+
+  const { data: session, error: sessionError } = await supabase
+    .from('sessions')
+    .select(`
+        *,
+        user:users(id, name, email, role, status, notes, phone)
+    `)
+    .eq('id', token)
     .single();
 
-  if (userError || !user) {
-    console.error(`[SESSION_GET] User profile not found for authenticated session user ${session.user.id}:`, userError);
+  if (sessionError || !session || !session.user) {
     return null;
   }
   
-  return user as User;
+  // Check if session has expired
+  const sessionExpires = new Date(session.expires_at).getTime();
+  if (sessionExpires < Date.now()) {
+    // Optionally, delete the expired session from DB
+    await supabase.from('sessions').delete().eq('id', token);
+    return null;
+  }
+  
+  return session.user as User;
 }

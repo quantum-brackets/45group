@@ -210,9 +210,9 @@ ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
 
 -- Trigger for new user creation
 DROP TRIGGER IF EXISTS "on_auth_user_created" ON "auth"."users";
-CREATE TRIGGER "on_auth_user_created"
-AFTER INSERT ON "auth"."users"
-FOR EACH ROW EXECUTE FUNCTION "public"."handle_new_user"();
+-- CREATE TRIGGER "on_auth_user_created"
+-- AFTER INSERT ON "auth"."users"
+-- FOR EACH ROW EXECUTE FUNCTION "public"."handle_new_user"();
 
 -- Function to get filtered listings
 DROP FUNCTION IF EXISTS get_filtered_listings(text,listing_type,integer,date,date);
@@ -567,10 +567,6 @@ BEGIN
         
         IF v_user_id IS NULL THEN
             -- Create a new provisional user
-            INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, recovery_token, recovery_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, email_change, email_change_sent_at, confirmed_at) 
-            VALUES (uuid_generate_v4(), uuid_generate_v4(), 'authenticated', 'authenticated', p_guest_email, crypt(p_guest_email, gen_salt('bf')), now(), '', now(), now(), '{"provider":"email","providers":["email"]}', json_build_object('name', 'Guest User'), now(), now(), '', '', now(), now())
-            RETURNING id INTO v_user_id;
-
             INSERT INTO public.users(id, name, email, role, status)
             VALUES(v_user_id, 'Guest User', p_guest_email, 'guest', 'provisional');
             v_message := 'Booking request sent. A provisional account has been created for you. Please check your email to set a password.';
