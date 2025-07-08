@@ -114,6 +114,9 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => router.push(`/booking/${booking.id}`)}>View Details</DropdownMenuItem>
+                            {(session?.role === 'admin' || session?.role === 'staff') && (
+                                <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-user/${booking.userId}`)}>View User Details</DropdownMenuItem>
+                             )}
                              {session?.role === 'admin' && (
                                 <>
                                  {booking.status === 'Pending' && (

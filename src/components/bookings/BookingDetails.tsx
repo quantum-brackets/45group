@@ -122,13 +122,15 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
             </p>
           </div>
         </div>
-        {session.role === 'admin' && booking.userName && (
+        {(session.role === 'admin' || session.role === 'staff') && booking.userName && (
           <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
             <UserIcon className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
             <div>
               <p className="font-semibold">Booked By</p>
               <p className="text-muted-foreground">
-                {booking.userName}
+                <Link href={`/dashboard/edit-user/${booking.userId}`} className="text-primary hover:underline">
+                    {booking.userName}
+                </Link>
                 {booking.createdAt && (
                   <span className="block text-sm">on {format(parseISO(booking.createdAt), 'PPP')}</span>
                 )}
