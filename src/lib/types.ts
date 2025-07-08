@@ -4,7 +4,7 @@ export type Currency = 'USD' | 'EUR' | 'GBP' | 'NGN';
 
 export interface Review {
   id: string;
-  userId?: string;
+  user_id?: string;
   author: string;
   avatar: string;
   rating: number;
@@ -20,37 +20,37 @@ export interface Listing {
   description: string;
   images: string[];
   price: number;
-  priceUnit: 'night' | 'hour' | 'person';
+  price_unit: 'night' | 'hour' | 'person';
   currency: Currency;
   rating: number;
   reviews: Review[];
   features: string[];
-  maxGuests: number;
+  max_guests: number;
   inventoryCount?: number;
 }
 
 export interface ListingInventory {
   id: string;
-  listingId: string;
+  listing_id: string;
   name: string;
 }
 
 export interface Booking {
   id: string;
-  listingId: string;
-  inventoryIds: string[];
+  listing_id: string;
+  inventory_ids: string[];
   inventoryNames?: string[];
-  userId: string;
+  user_id: string;
   userName?: string;
   listingName: string;
-  startDate: string;
-  endDate: string;
+  start_date: string;
+  end_date: string;
   guests: number;
   status: 'Confirmed' | 'Pending' | 'Cancelled';
-  createdAt?: string;
-  actionByUserId?: string;
-  actionAt?: string;
-  statusMessage?: string;
+  created_at?: string;
+  action_by_user_id?: string;
+  action_at?: string;
+  status_message?: string;
 }
 
 export interface User {

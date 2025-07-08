@@ -74,7 +74,7 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
   const approvedReviews = reviews.filter(review => review.status === 'approved');
   const reviewsToDisplay = isAdmin ? reviews.sort((a,b) => (a.status === 'pending' ? -1 : 1)) : approvedReviews;
   const reviewCount = approvedReviews.length;
-  const currentUserReview = reviews.find(review => review.userId === session?.id);
+  const currentUserReview = reviews.find(review => review.user_id === session?.id);
   
   const form = useForm<ReviewFormValues>({
     resolver: zodResolver(reviewFormSchema),
