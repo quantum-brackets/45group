@@ -118,6 +118,28 @@ function runUserPhoneMigration(db: Database.Database) {
     }
 }
 
+function runInventoryModelMigration(db: Database.Database) {
+    try {
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS listing_inventory (
+                id TEXT PRIMARY KEY,
+                listingId TEXT NOT NULL,
+                name TEXT NOT NULL
+            );
+        `);
+
+        const bookingsColumns = db.pragma('table_info(bookings)') as { name: string }[];
+        if (!bookingsColumns.some(col => col.name === 'inventoryId')) {
+            console.log('[DB_MIGRATE] Adding "inventoryId" column to bookings...');
+            db.exec("ALTER TABLE bookings ADD COLUMN inventoryId TEXT");
+            console.log('[DB_MIGRATE] "inventoryId" column added.');
+        }
+    } catch (error) {
+        console.error("[DB_MIGRATE_ERROR] Critical error during inventory model migration:", error);
+        throw new Error("Database migration for inventory model failed. The application cannot start.");
+    }
+}
+
 
 /**
  * Provides a stable, cached database connection and applies necessary migrations.
@@ -143,6 +165,7 @@ export async function getDb(): Promise<Database.Database> {
         runUserStatusMigration(db);
         runUserNotesMigration(db);
         runUserPhoneMigration(db);
+        runInventoryModelMigration(db);
 
         return db;
     } catch (error) {

@@ -72,7 +72,7 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Venue</TableHead>
+              <TableHead>Venue / Unit</TableHead>
               {(session?.role === 'admin' || session?.role === 'staff') && (
                 <TableHead className="hidden sm:table-cell">User</TableHead>
               )}
@@ -85,7 +85,10 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
           <TableBody>
             {bookings.map((booking) => (
               <TableRow key={booking.id}>
-                <TableCell className="font-medium">{booking.listingName}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="font-medium">{booking.listingName}</div>
+                  <div className="text-sm text-muted-foreground">{booking.inventoryName || 'N/A'}</div>
+                </TableCell>
                 {(session?.role === 'admin' || session?.role === 'staff') && (
                   <TableCell className="hidden sm:table-cell">{booking.userName}</TableCell>
                 )}

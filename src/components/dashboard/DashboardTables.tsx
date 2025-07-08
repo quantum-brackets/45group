@@ -4,7 +4,7 @@
 import { useState, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, Users, List, PlusCircle, Trash2, AlertCircle } from 'lucide-react';
+import { MoreHorizontal, Users, List, PlusCircle, Trash2, AlertCircle, Warehouse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
@@ -124,6 +124,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                     <TableHead>Name</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Location</TableHead>
+                    <TableHead>Inventory</TableHead>
                     <TableHead className="text-right">Price</TableHead>
                     <TableHead><span className="sr-only">Actions</span></TableHead>
                   </TableRow>
@@ -134,6 +135,12 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                       <TableCell className="font-medium">{listing.name}</TableCell>
                       <TableCell>{listing.type.charAt(0).toUpperCase() + listing.type.slice(1)}</TableCell>
                       <TableCell>{listing.location}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                            <Warehouse className="h-4 w-4 text-muted-foreground" />
+                            <span>{listing.inventoryCount}</span>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right">{listing.price} {listing.currency}/{listing.priceUnit}</TableCell>
                       <TableCell className="text-right">
                           <DropdownMenu>
@@ -149,9 +156,6 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                                   {isAdmin && (
                                     <>
                                       <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-listing/${listing.id}`)}>Edit</DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => router.push(`/dashboard/add-listing?duplicate=${listing.id}`)}>
-                                        Duplicate
-                                      </DropdownMenuItem>
                                     </>
                                   )}
                                   <DropdownMenuItem onClick={() => router.push(`/bookings?listingId=${listing.id}`)}>View Bookings</DropdownMenuItem>

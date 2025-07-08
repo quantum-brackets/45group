@@ -11,7 +11,7 @@ import type { User } from './types'
 import { logToFile } from './logger'
 import { hashPassword, verifyPassword } from './password'
 import { cookies } from 'next/headers'
-import { getListingById } from './data'
+import { getInventoryByListingId, getListingById } from './data'
 import { authenticateUser } from './auth'
 
 const ListingFormSchema = z.object({
@@ -25,6 +25,7 @@ const ListingFormSchema = z.object({
   maxGuests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
   features: z.string().min(1, "Please list at least one feature."),
   images: z.array(z.string().url({ message: "Please enter a valid image URL." })).min(1, "At least one image is required."),
+  inventoryCount: z.coerce.number().int().min(0, "Inventory count must be 0 or more."),
 });
 
 export async function createListingAction(data: z.infer<typeof ListingFormSchema>) {
@@ -38,37 +39,46 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
         return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
     }
 
-    const { name, type, location, description, price, priceUnit, currency, maxGuests, features, images } = validatedFields.data;
+    const { name, type, location, description, price, priceUnit, currency, maxGuests, features, images, inventoryCount } = validatedFields.data;
     const featuresAsArray = features.split(',').map(f => f.trim());
-    const newId = `listing-${randomUUID()}`;
+    const newListingId = `listing-${randomUUID()}`;
 
     const defaultReviews = [];
     const defaultRating = 0;
 
     try {
         const db = await getDb();
-        const stmt = db.prepare(`
-            INSERT INTO listings (id, name, type, location, description, images, price, priceUnit, currency, rating, reviews, features, maxGuests)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-        stmt.run(
-            newId,
-            name,
-            type,
-            location,
-            description,
-            JSON.stringify(images),
-            price,
-            priceUnit,
-            currency,
-            defaultRating,
-            JSON.stringify(defaultReviews),
-            JSON.stringify(featuresAsArray),
-            maxGuests
-        );
+        const transaction = db.transaction(() => {
+            const listingStmt = db.prepare(`
+                INSERT INTO listings (id, name, type, location, description, images, price, priceUnit, currency, rating, reviews, features, maxGuests)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+            listingStmt.run(
+                newListingId,
+                name,
+                type,
+                location,
+                description,
+                JSON.stringify(images),
+                price,
+                priceUnit,
+                currency,
+                defaultRating,
+                JSON.stringify(defaultReviews),
+                JSON.stringify(featuresAsArray),
+                maxGuests
+            );
+
+            const inventoryStmt = db.prepare('INSERT INTO listing_inventory (id, listingId, name) VALUES (?, ?, ?)');
+            for (let i = 0; i < inventoryCount; i++) {
+                inventoryStmt.run(`inv-${randomUUID()}`, newListingId, `${name} - Unit ${i + 1}`);
+            }
+        });
+
+        transaction();
         
         revalidatePath('/dashboard?tab=listings', 'page');
-        return { success: true, message: `Listing "${name}" has been created.` };
+        return { success: true, message: `Listing "${name}" has been created with ${inventoryCount} units.` };
     } catch (error) {
         console.error(`[CREATE_LISTING_ACTION] Error: ${error}`);
         const message = error instanceof Error ? error.message : "An unknown database error occurred.";
@@ -92,44 +102,59 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
     }
   }
   
-  const { name, type, location, description, price, priceUnit, currency, maxGuests, features, images } = validatedFields.data;
+  const { name, type, location, description, price, priceUnit, currency, maxGuests, features, images, inventoryCount } = validatedFields.data;
   const featuresAsArray = features.split(',').map((f) => f.trim());
 
   try {
     const db = await getDb();
-    const stmt = db.prepare(`
-      UPDATE listings
-      SET 
-        name = ?,
-        type = ?,
-        location = ?,
-        description = ?,
-        price = ?,
-        priceUnit = ?,
-        currency = ?,
-        maxGuests = ?,
-        features = ?,
-        images = ?
-      WHERE id = ?
-    `);
+    const transaction = db.transaction(() => {
+        // 1. Update the parent listing details
+        const stmt = db.prepare(`
+        UPDATE listings
+        SET 
+            name = ?, type = ?, location = ?, description = ?, price = ?,
+            priceUnit = ?, currency = ?, maxGuests = ?, features = ?, images = ?
+        WHERE id = ?
+        `);
+        stmt.run(name, type, location, description, price, priceUnit, currency, maxGuests, JSON.stringify(featuresAsArray), JSON.stringify(images), id);
+        
+        // 2. Reconcile inventory count
+        const currentInventory = db.prepare('SELECT id FROM listing_inventory WHERE listingId = ?').all(id) as { id: string }[];
+        const currentCount = currentInventory.length;
+        const newCount = inventoryCount;
 
-    stmt.run(
-      name,
-      type,
-      location,
-      description,
-      price,
-      priceUnit,
-      currency,
-      maxGuests,
-      JSON.stringify(featuresAsArray),
-      JSON.stringify(images),
-      id
-    );
+        if (newCount > currentCount) {
+            // Add new inventory items
+            const inventoryStmt = db.prepare('INSERT INTO listing_inventory (id, listingId, name) VALUES (?, ?, ?)');
+            for (let i = currentCount; i < newCount; i++) {
+                inventoryStmt.run(`inv-${randomUUID()}`, id, `${name} - Unit ${i + 1}`);
+            }
+        } else if (newCount < currentCount) {
+            // Remove inventory items that are not booked
+            const bookedInventoryIdsStmt = db.prepare(`SELECT DISTINCT inventoryId FROM bookings WHERE inventoryId IN (${currentInventory.map(() => '?').join(',')})`);
+            const bookedInventoryIdsResult = bookedInventoryIdsStmt.all(...currentInventory.map(i => i.id)) as {inventoryId: string}[];
+            const bookedIds = new Set(bookedInventoryIdsResult.map(r => r.inventoryId));
+            
+            const deletableInventory = currentInventory.filter(i => !bookedIds.has(i.id));
+            const countToDelete = currentCount - newCount;
+
+            if (deletableInventory.length < countToDelete) {
+                throw new Error(`Cannot reduce inventory to ${newCount}. Only ${deletableInventory.length} units are available for removal, but ${countToDelete} need to be removed. Please cancel active bookings first.`);
+            }
+
+            const idsToDelete = deletableInventory.slice(0, countToDelete).map(i => i.id);
+            if (idsToDelete.length > 0) {
+                const deleteStmt = db.prepare(`DELETE FROM listing_inventory WHERE id IN (${idsToDelete.map(() => '?').join(',')})`);
+                deleteStmt.run(...idsToDelete);
+            }
+        }
+    });
+
+    transaction();
 
     revalidatePath('/dashboard?tab=listings', 'page');
     revalidatePath(`/listing/${id}`);
-    revalidatePath('/bookings'); // Revalidate bookings in case listing name changed
+    revalidatePath('/bookings');
     
     return { success: true, message: `The details for "${name}" have been saved.` };
 
@@ -148,19 +173,42 @@ export async function deleteListingAction(id: string) {
 
   try {
     const db = await getDb();
-    const stmt = db.prepare('DELETE FROM listings WHERE id = ?');
-    const info = stmt.run(id);
+    
+    const transaction = db.transaction(() => {
+        // Check for active bookings associated with this listing's inventory
+        const bookingCheckStmt = db.prepare(`
+            SELECT COUNT(*) as bookingCount 
+            FROM bookings b
+            JOIN listing_inventory i ON b.inventoryId = i.id
+            WHERE i.listingId = ? AND b.status != 'Cancelled'
+        `);
+        const { bookingCount } = bookingCheckStmt.get(id) as { bookingCount: number };
+        
+        if (bookingCount > 0) {
+            throw new Error(`This listing cannot be deleted because it has ${bookingCount} active or pending bookings.`);
+        }
 
-    if (info.changes === 0) {
-      return { success: false, message: 'Listing not found or could not be deleted.' };
-    }
+        // Delete associated inventory items
+        const deleteInventoryStmt = db.prepare('DELETE FROM listing_inventory WHERE listingId = ?');
+        deleteInventoryStmt.run(id);
+
+        // Delete the main listing
+        const deleteListingStmt = db.prepare('DELETE FROM listings WHERE id = ?');
+        const info = deleteListingStmt.run(id);
+
+        if (info.changes === 0) {
+            throw new Error('Listing not found or could not be deleted.');
+        }
+    });
+    
+    transaction();
 
     revalidatePath('/dashboard?tab=listings', 'page');
-    return { success: true, message: 'Listing has been deleted.' };
+    return { success: true, message: 'Listing and all its inventory have been deleted.' };
   } catch (error) {
     console.error(`[DELETE_LISTING_ACTION] Error: ${error}`);
     const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-    return { success: false, message: `Database error occurred while deleting the listing: ${message}` };
+    return { success: false, message: `${message}` };
   }
 }
 
@@ -196,49 +244,57 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
   try {
     const db = await getDb();
 
-    const listingStmt = db.prepare('SELECT name FROM listings WHERE id = ?');
-    const listing = listingStmt.get(listingId) as { name: string } | undefined;
-
+    const listing = await getListingById(listingId);
     if (!listing) {
         return { success: false, message: 'The venue you are trying to book does not exist.' };
     }
-    const listingName = listing.name;
-    
-    // Check for existing bookings on the same dates
-    const existingBookingStmt = db.prepare(`
-        SELECT id FROM bookings
-        WHERE listingId = ? AND status = 'Confirmed' AND (
-            -- Overlap check: (StartA <= EndB) AND (EndA >= StartB)
-            endDate >= ? AND startDate <= ?
-        )
-    `);
-    const existingBooking = existingBookingStmt.get(listingId, new Date(startDate).toISOString().split('T')[0], new Date(endDate).toISOString().split('T')[0]);
 
-    if (existingBooking) {
-        return { success: false, message: 'These dates are no longer available. Please select different dates.' };
+    const fromDate = new Date(startDate).toISOString().split('T')[0];
+    const toDate = new Date(endDate).toISOString().split('T')[0];
+
+    // Find an available inventory item for the given dates
+    const findAvailableInventoryStmt = db.prepare(`
+        SELECT id FROM listing_inventory
+        WHERE listingId = ? 
+        AND id NOT IN (
+            SELECT inventoryId FROM bookings
+            WHERE inventoryId IS NOT NULL
+            AND status = 'Confirmed'
+            AND (endDate >= ? AND startDate <= ?)
+        )
+        LIMIT 1
+    `);
+
+    const availableInventory = findAvailableInventoryStmt.get(listingId, fromDate, toDate) as { id: string } | undefined;
+    
+    if (!availableInventory) {
+        return { success: false, message: 'Sorry, no units are available for these dates. Please try another date range.' };
     }
+    
+    const inventoryId = availableInventory.id;
 
     const stmt = db.prepare(`
-      INSERT INTO bookings (id, listingId, userId, startDate, endDate, guests, status, listingName, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO bookings (id, listingId, inventoryId, userId, startDate, endDate, guests, status, listingName, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
-      randomUUID(),
+      `booking-${randomUUID()}`,
       listingId,
+      inventoryId,
       session.id,
-      new Date(startDate).toISOString().split('T')[0],
-      new Date(endDate).toISOString().split('T')[0],
+      fromDate,
+      toDate,
       guests,
       'Pending',
-      listingName,
+      listing.name,
       new Date().toISOString()
     );
 
     revalidatePath('/bookings');
     revalidatePath(`/listing/${listingId}`);
     
-    return { success: true, message: `Your booking request for ${listingName} is now pending confirmation.` };
+    return { success: true, message: `Your booking request for ${listing.name} is now pending confirmation.` };
   } catch (error) {
     console.error(`[CREATE_BOOKING_ACTION] Error: ${error}`);
     const message = error instanceof Error ? error.message : "An unknown database error occurred.";
@@ -857,77 +913,5 @@ export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStat
     console.error(`[TOGGLE_USER_STATUS_ACTION] Error: ${error}`);
     const message = error instanceof Error ? error.message : "An unknown database error occurred.";
     return { success: false, message: `Database error: ${message}` };
-  }
-}
-
-const BulkCreateListingsSchema = z.object({
-  originalListingId: z.string(),
-  count: z.coerce.number().int().min(1, "Must create at least 1 duplicate.").max(50, "Cannot create more than 50 duplicates at once."),
-});
-
-export async function bulkCreateListingsAction(data: z.infer<typeof BulkCreateListingsSchema>) {
-  const session = await getSession();
-  if (session?.role !== 'admin') {
-      return { success: false, message: 'Unauthorized' };
-  }
-
-  const validatedFields = BulkCreateListingsSchema.safeParse(data);
-  if (!validatedFields.success) {
-      return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
-  }
-
-  const { originalListingId, count } = validatedFields.data;
-
-  try {
-      const db = await getDb();
-      const originalListing = await getListingById(originalListingId);
-
-      if (!originalListing) {
-          return { success: false, message: 'Original listing not found.' };
-      }
-      
-      const insertStmt = db.prepare(`
-          INSERT INTO listings (id, name, type, location, description, images, price, priceUnit, currency, rating, reviews, features, maxGuests)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      const createDuplicates = db.transaction((listingsToCreate) => {
-        for (const listing of listingsToCreate) {
-          insertStmt.run(
-            listing.id,
-            listing.name,
-            listing.type,
-            listing.location,
-            listing.description,
-            JSON.stringify(listing.images),
-            listing.price,
-            listing.priceUnit,
-            listing.currency,
-            listing.rating,
-            JSON.stringify(listing.reviews),
-            JSON.stringify(listing.features),
-            listing.maxGuests
-          );
-        }
-        return { count: listingsToCreate.length };
-      });
-      
-      const listingsToCreate = [];
-      for (let i = 0; i < count; i++) {
-        listingsToCreate.push({
-          ...originalListing,
-          id: `listing-${randomUUID()}`,
-          // Name is kept the same as per request "exact duplicates"
-        });
-      }
-
-      const result = createDuplicates(listingsToCreate);
-      
-      revalidatePath('/dashboard?tab=listings', 'page');
-      return { success: true, message: `${result.count} duplicate(s) of "${originalListing.name}" created successfully.` };
-  } catch (error) {
-      console.error(`[BULK_CREATE_LISTINGS_ACTION] Error: ${error}`);
-      const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-      return { success: false, message: `Failed to create duplicates: ${message}` };
   }
 }

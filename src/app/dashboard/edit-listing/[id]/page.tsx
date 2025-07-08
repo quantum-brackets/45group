@@ -1,6 +1,6 @@
 
 import { notFound, redirect } from 'next/navigation';
-import { getListingById } from '@/lib/data';
+import { getListingById, getInventoryByListingId } from '@/lib/data';
 import { ListingForm } from '@/components/dashboard/ListingForm';
 import { getSession } from '@/lib/session';
 
@@ -14,6 +14,7 @@ export default async function EditListingPage({ params }: { params: { id: string
   }
 
   const listing = await getListingById(params.id);
+  const inventory = await getInventoryByListingId(params.id);
 
   if (!listing) {
     notFound();
@@ -21,7 +22,7 @@ export default async function EditListingPage({ params }: { params: { id: string
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <ListingForm listing={listing} />
+      <ListingForm listing={listing} initialInventoryCount={inventory.length} />
     </div>
   );
 }

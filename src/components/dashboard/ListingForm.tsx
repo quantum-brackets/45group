@@ -8,7 +8,7 @@ import type { Listing } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { createListingAction, updateListingAction, bulkCreateListingsAction } from "@/lib/actions";
+import { createListingAction, updateListingAction } from "@/lib/actions";
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowDown, ArrowUp, Loader2, PlusCircle, Trash2, Copy } from "lucide-react";
+import { ArrowDown, ArrowUp, Loader2, PlusCircle, Trash2, Warehouse } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -29,107 +29,28 @@ const formSchema = z.object({
   maxGuests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
   features: z.string().min(1, "Please list at least one feature."),
   images: z.array(z.string().url({ message: "Please enter a valid image URL." })).min(1, "At least one image is required."),
+  inventoryCount: z.coerce.number().int().min(0, "Inventory count must be 0 or more."),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-const bulkDuplicateSchema = z.object({
-  count: z.coerce.number().int().min(1, "Please enter a number of 1 or more.").max(50, "You can create a maximum of 50 duplicates at a time."),
-});
-type BulkDuplicateFormValues = z.infer<typeof bulkDuplicateSchema>;
-
 interface ListingFormProps {
   listing?: Listing | null;
-  isDuplicate?: boolean;
+  initialInventoryCount?: number;
 }
 
-const BulkDuplicateForm = ({ listing }: { listing: Listing }) => {
-  const { toast } = useToast();
-  const router = useRouter();
-  const [isBulkPending, startBulkTransition] = useTransition();
 
-  const bulkForm = useForm<BulkDuplicateFormValues>({
-    resolver: zodResolver(bulkDuplicateSchema),
-    defaultValues: {
-      count: 1,
-    },
-  });
-
-  const onBulkSubmit: SubmitHandler<BulkDuplicateFormValues> = (data) => {
-    startBulkTransition(async () => {
-      const result = await bulkCreateListingsAction({
-        originalListingId: listing.id,
-        count: data.count,
-      });
-
-      if (result.success) {
-        toast({
-          title: "Duplicates Created!",
-          description: result.message,
-        });
-        router.push('/dashboard?tab=listings');
-      } else {
-        toast({
-          title: "Error Creating Duplicates",
-          description: result.message || "An unexpected error occurred.",
-          variant: "destructive",
-        });
-      }
-    });
-  };
-
-  return (
-    <Card className="border-primary/20 bg-primary/5">
-      <Form {...bulkForm}>
-        <form onSubmit={bulkForm.handleSubmit(onBulkSubmit)}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Copy className="text-primary" />
-              Bulk Duplicate Listing
-            </CardTitle>
-            <CardDescription>
-              Create multiple exact copies of <strong>{listing.name}</strong>. The only change will be a new unique ID for each copy.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FormField
-              control={bulkForm.control}
-              name="count"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Number of Duplicates</FormLabel>
-                  <FormControl>
-                    <Input type="number" min="1" max="50" placeholder="e.g., 5" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-          <CardFooter>
-            <Button type="submit" disabled={isBulkPending}>
-              {isBulkPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4" />}
-              Create Duplicates
-            </Button>
-          </CardFooter>
-        </form>
-      </Form>
-    </Card>
-  );
-};
-
-
-export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) {
+export function ListingForm({ listing, initialInventoryCount = 1 }: ListingFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const isEditMode = !!listing && !isDuplicate;
+  const isEditMode = !!listing;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: listing ? (isDuplicate ? `${listing.name} (Copy)` : listing.name) : "",
+      name: listing?.name || "",
       type: listing?.type || undefined,
       location: listing?.location || "",
       description: listing?.description || "",
@@ -139,6 +60,7 @@ export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) 
       maxGuests: listing?.maxGuests || 1,
       features: listing?.features.join(', ') || "",
       images: (listing?.images && listing.images.length > 0) ? listing.images : ["https://placehold.co/800x600.png"],
+      inventoryCount: isEditMode ? initialInventoryCount : 1,
     },
   });
 
@@ -171,20 +93,16 @@ export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) 
 
   const getTitle = () => {
     if (isEditMode) return 'Edit Listing';
-    if (isDuplicate) return 'Duplicate & Edit Single Listing';
     return 'Add New Listing';
   }
 
   const getDescription = () => {
     if (isEditMode) return `Update the information for ${listing!.name}.`;
-    if (isDuplicate) return `Create a new, edited copy based on ${listing!.name}, or use the bulk tool above to create exact copies.`;
     return "Fill in the details to create a new listing.";
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      {isDuplicate && listing && <BulkDuplicateForm listing={listing} />}
-    
       <Card className="shadow-lg">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -250,6 +168,7 @@ export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) 
                     <FormControl>
                       <Input type="number" min="1" placeholder="e.g., 4" {...field} />
                     </FormControl>
+                    <FormDescription>Per unit/room.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -314,6 +233,28 @@ export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) 
                           </FormItem>
                       )}
                   />
+              </div>
+
+               <div className="md:col-span-2">
+                <FormField
+                    control={form.control}
+                    name="inventoryCount"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Inventory Count</FormLabel>
+                            <FormControl>
+                                <div className="relative">
+                                    <Warehouse className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                    <Input type="number" min="0" className="pl-10" {...field} />
+                                </div>
+                            </FormControl>
+                            <FormDescription>
+                                The number of bookable units (e.g., rooms) for this listing. Setting to 0 will make it unbookable.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
               </div>
               
               <div className="md:col-span-2">

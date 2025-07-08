@@ -1,5 +1,5 @@
 
-import type { Listing, Booking, ListingType, User } from './types';
+import type { Listing, Booking, ListingType, User, ListingInventory } from './types';
 import { getDb } from './db';
 import { DateRange } from 'react-day-picker';
 import { getSession } from '@/lib/session';
@@ -35,9 +35,21 @@ export async function getAllUsers(): Promise<User[]> {
 
 export async function getAllListings(): Promise<Listing[]> {
   const db = await getDb();
-  const stmt = db.prepare('SELECT * FROM listings ORDER BY location, type, name');
+  const stmt = db.prepare(`
+    SELECT l.*, COUNT(i.id) as inventoryCount
+    FROM listings l
+    LEFT JOIN listing_inventory i ON l.id = i.listingId
+    GROUP BY l.id
+    ORDER BY l.location, l.type, l.name
+  `);
   const listings = stmt.all() as any[];
   return listings.map(parseListing);
+}
+
+export async function getInventoryByListingId(listingId: string): Promise<ListingInventory[]> {
+    const db = await getDb();
+    const stmt = db.prepare('SELECT * FROM listing_inventory WHERE listingId = ?');
+    return stmt.all(listingId) as ListingInventory[];
 }
 
 export async function getListingById(id: string): Promise<Listing | null> {
@@ -62,8 +74,9 @@ export async function getAllBookings(filters: BookingsPageFilters): Promise<Book
 
     const db = await getDb();
     let query = `
-        SELECT b.*, u.name as userName, l.name as listingName
+        SELECT b.*, u.name as userName, l.name as listingName, i.name as inventoryName
         FROM bookings as b
+        LEFT JOIN listing_inventory as i ON b.inventoryId = i.id
         JOIN users as u ON b.userId = u.id
         JOIN listings as l ON b.listingId = l.id
     `;
@@ -105,10 +118,11 @@ export async function getBookingById(id: string): Promise<Booking | null> {
     
     const db = await getDb();
     const stmt = db.prepare(`
-        SELECT b.*, l.name as listingName, u.name as userName
+        SELECT b.*, l.name as listingName, u.name as userName, i.name as inventoryName
         FROM bookings as b
         JOIN listings as l on b.listingId = l.id
         JOIN users u ON b.userId = u.id
+        LEFT JOIN listing_inventory i ON b.inventoryId = i.id
         WHERE b.id = ?
     `);
     const booking = stmt.get(id) as Booking | undefined;
@@ -133,22 +147,22 @@ interface FilterValues {
 export async function getFilteredListings(filters: FilterValues): Promise<Listing[]> {
   noStore();
   const db = await getDb();
-  let query = 'SELECT * FROM listings';
+  let query = 'SELECT * FROM listings l';
   const whereClauses: string[] = [];
   const params: (string | number)[] = [];
 
   if (filters.location) {
-    whereClauses.push('location LIKE ?');
+    whereClauses.push('l.location LIKE ?');
     params.push(`%${filters.location}%`);
   }
   if (filters.type) {
-    whereClauses.push('type = ?');
+    whereClauses.push('l.type = ?');
     params.push(filters.type);
   }
   if (filters.guests) {
     const numGuests = parseInt(filters.guests, 10);
     if (!isNaN(numGuests)) {
-      whereClauses.push('maxGuests >= ?');
+      whereClauses.push('l.maxGuests >= ?');
       params.push(numGuests);
     }
   }
@@ -158,13 +172,13 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
     const toDate = (filters.date.to || filters.date.from).toISOString().split('T')[0];
     
     whereClauses.push(`
-      id NOT IN (
-        SELECT listingId FROM bookings
-        WHERE status = 'Confirmed' AND (
-          -- Overlap check: (StartA <= EndB) AND (EndA >= StartB)
-          endDate >= ? AND startDate <= ?
-        )
-      )
+      (SELECT COUNT(*) FROM listing_inventory WHERE listingId = l.id) >
+      (SELECT COUNT(DISTINCT b.inventoryId) 
+       FROM bookings b
+       JOIN listing_inventory i ON b.inventoryId = i.id
+       WHERE i.listingId = l.id
+       AND b.status = 'Confirmed'
+       AND (b.endDate >= ? AND b.startDate <= ?))
     `);
     params.push(fromDate, toDate);
   }
@@ -173,7 +187,7 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
     query += ' WHERE ' + whereClauses.join(' AND ');
   }
 
-  query += ' ORDER BY location, type, name';
+  query += ' ORDER BY l.location, l.type, l.name';
 
   const stmt = db.prepare(query);
   const listings = stmt.all(...params) as any[];

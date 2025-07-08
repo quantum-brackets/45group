@@ -25,11 +25,20 @@ export interface Listing {
   reviews: Review[];
   features: string[];
   maxGuests: number;
+  inventoryCount?: number;
+}
+
+export interface ListingInventory {
+  id: string;
+  listingId: string;
+  name: string;
 }
 
 export interface Booking {
   id: string;
   listingId: string;
+  inventoryId?: string;
+  inventoryName?: string;
   userId: string;
   userName?: string;
   listingName: string;
