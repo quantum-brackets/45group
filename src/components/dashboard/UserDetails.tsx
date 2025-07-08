@@ -1,12 +1,10 @@
-
 "use client";
 
 import type { User } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 import { User as UserIcon, Mail, Phone, Shield, FileText, CircleUserRound } from 'lucide-react';
+import { BackButton } from '../common/BackButton';
 
 interface UserDetailsProps {
     user: User;
@@ -75,9 +73,7 @@ export function UserDetails({ user }: UserDetailsProps) {
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end">
-                    <Button asChild>
-                        <Link href="/dashboard?tab=users">Back to Dashboard</Link>
-                    </Button>
+                    <BackButton>Back to Dashboard</BackButton>
                 </CardFooter>
             </Card>
         </div>
