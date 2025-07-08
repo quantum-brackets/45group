@@ -19,12 +19,6 @@ export default function LoginPage() {
             Sign up
           </Link>
         </div>
-          <div className="mt-4 text-center text-sm">
-          Troubleshooting?{" "}
-          <Link href="/dev-tools" className="underline">
-            Developer Tools
-          </Link>
-        </div>
       </div>
     </div>
   );

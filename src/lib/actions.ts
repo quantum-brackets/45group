@@ -3,11 +3,11 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getSession, createSession } from './session'
+import { getSession } from './session'
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from './supabase'
 import { hashPassword } from './password'
-import { cookies } from 'next/headers'
+import { logout as sessionLogout } from './session'
 
 const ListingFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -219,62 +219,8 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
 }
 
 export async function logoutAction() {
-    const cookieStore = cookies();
-    const token = cookieStore.get('session_token')?.value;
-    if (token) {
-        const supabase = createSupabaseServerClient();
-        await supabase.from('sessions').delete().eq('id', token);
-    }
-    cookieStore.set('session_token', '', { expires: new Date(0), path: '/' });
+    await sessionLogout();
     redirect('/login');
-}
-
-export async function impersonateUserAction(email: string) {
-    const supabase = createSupabaseServerClient();
-
-    const { data: user, error: userError } = await supabase.from('users').select('id, status').eq('email', email).single();
-
-    if (userError || !user) {
-        return { error: `User with email "${email}" not found.` };
-    }
-    
-    if (user.status === 'disabled') {
-        return { error: `User account for "${email}" is disabled.` };
-    }
-
-    await createSession(user.id);
-
-    return { success: true };
-}
-
-const UpdatePasswordSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-export async function updatePasswordAction(data: z.infer<typeof UpdatePasswordSchema>) {
-    const supabase = createSupabaseServerClient();
-    const validatedFields = UpdatePasswordSchema.safeParse(data);
-    if (!validatedFields.success) {
-        return { error: 'Invalid fields.' };
-    }
-    const { email, password } = validatedFields.data;
-
-    const { data: user, error: userError } = await supabase.from('users').select('id').eq('email', email).single();
-
-    if (userError || !user) {
-        return { error: `Update failed: User with email "${email}" does not exist.` };
-    }
-    
-    const hashedPassword = await hashPassword(password);
-    const { error } = await supabase.from('users').update({ password: hashedPassword }).eq('id', user.id);
-    
-    if (error) {
-        console.error('[UPDATE_PASSWORD_ACTION] Supabase Error:', error);
-        return { error: `Password update failed: ${error.message}` };
-    }
-    
-    return { success: `Password for ${email} was updated successfully.` };
 }
 
 const BookingActionSchema = z.object({
