@@ -4,11 +4,11 @@
 import { useForm, SubmitHandler, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { Listing, Currency } from "@/lib/types";
+import type { Listing } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { createListingAction, updateListingAction } from "@/lib/actions";
+import { createListingAction, updateListingAction, bulkCreateListingsAction } from "@/lib/actions";
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowDown, ArrowUp, Loader2, PlusCircle, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Loader2, PlusCircle, Trash2, Copy } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -33,10 +33,91 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+const bulkDuplicateSchema = z.object({
+  count: z.coerce.number().int().min(1, "Please enter a number of 1 or more.").max(50, "You can create a maximum of 50 duplicates at a time."),
+});
+type BulkDuplicateFormValues = z.infer<typeof bulkDuplicateSchema>;
+
 interface ListingFormProps {
   listing?: Listing | null;
   isDuplicate?: boolean;
 }
+
+const BulkDuplicateForm = ({ listing }: { listing: Listing }) => {
+  const { toast } = useToast();
+  const router = useRouter();
+  const [isBulkPending, startBulkTransition] = useTransition();
+
+  const bulkForm = useForm<BulkDuplicateFormValues>({
+    resolver: zodResolver(bulkDuplicateSchema),
+    defaultValues: {
+      count: 1,
+    },
+  });
+
+  const onBulkSubmit: SubmitHandler<BulkDuplicateFormValues> = (data) => {
+    startBulkTransition(async () => {
+      const result = await bulkCreateListingsAction({
+        originalListingId: listing.id,
+        count: data.count,
+      });
+
+      if (result.success) {
+        toast({
+          title: "Duplicates Created!",
+          description: result.message,
+        });
+        router.push('/dashboard?tab=listings');
+      } else {
+        toast({
+          title: "Error Creating Duplicates",
+          description: result.message || "An unexpected error occurred.",
+          variant: "destructive",
+        });
+      }
+    });
+  };
+
+  return (
+    <Card className="border-primary/20 bg-primary/5">
+      <Form {...bulkForm}>
+        <form onSubmit={bulkForm.handleSubmit(onBulkSubmit)}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Copy className="text-primary" />
+              Bulk Duplicate Listing
+            </CardTitle>
+            <CardDescription>
+              Create multiple exact copies of <strong>{listing.name}</strong>. The only change will be a new unique ID for each copy.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FormField
+              control={bulkForm.control}
+              name="count"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Number of Duplicates</FormLabel>
+                  <FormControl>
+                    <Input type="number" min="1" max="50" placeholder="e.g., 5" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" disabled={isBulkPending}>
+              {isBulkPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4" />}
+              Create Duplicates
+            </Button>
+          </CardFooter>
+        </form>
+      </Form>
+    </Card>
+  );
+};
+
 
 export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) {
   const { toast } = useToast();
@@ -69,7 +150,7 @@ export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
     startTransition(async () => {
       const result = isEditMode
-        ? await updateListingAction(listing.id, data)
+        ? await updateListingAction(listing!.id, data)
         : await createListingAction(data);
 
       if (result.success) {
@@ -90,249 +171,253 @@ export function ListingForm({ listing, isDuplicate = false }: ListingFormProps) 
 
   const getTitle = () => {
     if (isEditMode) return 'Edit Listing';
-    if (isDuplicate) return 'Duplicate Listing';
+    if (isDuplicate) return 'Duplicate & Edit Single Listing';
     return 'Add New Listing';
   }
 
   const getDescription = () => {
-    if (isEditMode) return `Update the information for ${listing.name}.`;
-    if (isDuplicate) return `Create a new listing based on ${listing?.name}.`;
+    if (isEditMode) return `Update the information for ${listing!.name}.`;
+    if (isDuplicate) return `Create a new, edited copy based on ${listing!.name}, or use the bulk tool above to create exact copies.`;
     return "Fill in the details to create a new listing.";
   }
 
   return (
-    <Card className="max-w-4xl mx-auto shadow-lg">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardHeader>
-            <CardTitle>{getTitle()}</CardTitle>
-            <CardDescription>{getDescription()}</CardDescription>
-          </CardHeader>
-          <CardContent className="grid md:grid-cols-2 gap-6">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Listing Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Grand Hyatt Hotel" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., New York, NY" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select a listing type" />
-                        </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                        <SelectItem value="hotel">Hotel</SelectItem>
-                        <SelectItem value="events">Events</SelectItem>
-                        <SelectItem value="restaurant">Restaurant</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
-                )}
-             />
-             <FormField
-              control={form.control}
-              name="maxGuests"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Max Guests</FormLabel>
-                  <FormControl>
-                    <Input type="number" min="1" placeholder="e.g., 4" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
-                <FormField
-                    control={form.control}
-                    name="price"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Price</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder="e.g., 350" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="currency"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Currency</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select currency" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                <SelectItem value="NGN">NGN</SelectItem>
-                                <SelectItem value="USD">USD</SelectItem>
-                                <SelectItem value="EUR">EUR</SelectItem>
-                                <SelectItem value="GBP">GBP</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="priceUnit"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Unit</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a unit" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            <SelectItem value="night">/ night</SelectItem>
-                            <SelectItem value="hour">/ hour</SelectItem>
-                            <SelectItem value="person">/ person</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            </div>
-            
-            <div className="md:col-span-2">
+    <div className="max-w-4xl mx-auto space-y-8">
+      {isDuplicate && listing && <BulkDuplicateForm listing={listing} />}
+    
+      <Card className="shadow-lg">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardHeader>
+              <CardTitle>{getTitle()}</CardTitle>
+              <CardDescription>{getDescription()}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
-                name="description"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel>Listing Name</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="A detailed description of the listing..."
-                        rows={5}
-                        {...field}
-                      />
+                      <Input placeholder="e.g., Grand Hyatt Hotel" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
-            <div className="md:col-span-2">
-                <FormField
+              <FormField
                 control={form.control}
-                name="features"
+                name="location"
                 render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Features</FormLabel>
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
                     <FormControl>
-                        <Textarea
-                        placeholder="e.g., Free WiFi, Pool, Gym"
-                        {...field}
-                        />
+                      <Input placeholder="e.g., New York, NY" {...field} />
                     </FormControl>
-                    <FormDescription>
-                        Please list features separated by a comma.
-                    </FormDescription>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
-            </div>
-            <div className="md:col-span-2 space-y-4">
-              <FormLabel>Images</FormLabel>
-              <div className="space-y-4">
-                {fields.map((field, index) => (
-                  <div key={field.id} className="flex items-center gap-2 sm:gap-4 p-2 border rounded-md bg-muted/20">
-                    <img
-                        src={form.watch(`images.${index}`) || 'https://placehold.co/100x100.png'}
-                        alt={`Preview ${index + 1}`}
-                        width={80}
-                        height={80}
-                        className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-md bg-muted"
-                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/100x100.png'; }}
-                    />
-                    <div className="flex-grow">
-                      <FormField
-                        control={form.control}
-                        name={`images.${index}`}
-                        render={({ field }) => (
+              />
+              <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                          <SelectTrigger>
+                              <SelectValue placeholder="Select a listing type" />
+                          </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                          <SelectItem value="hotel">Hotel</SelectItem>
+                          <SelectItem value="events">Events</SelectItem>
+                          <SelectItem value="restaurant">Restaurant</SelectItem>
+                          </SelectContent>
+                      </Select>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+              />
+              <FormField
+                control={form.control}
+                name="maxGuests"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Max Guests</FormLabel>
+                    <FormControl>
+                      <Input type="number" min="1" placeholder="e.g., 4" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="sr-only">Image URL {index + 1}</FormLabel>
-                            <FormControl>
-                              <Input placeholder="https://example.com/image.png" {...field} />
-                            </FormControl>
-                            <FormMessage />
+                          <FormLabel>Price</FormLabel>
+                          <FormControl>
+                              <Input type="number" placeholder="e.g., 350" {...field} />
+                          </FormControl>
+                          <FormMessage />
                           </FormItem>
-                        )}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                        <Button type="button" size="icon" variant="ghost" onClick={() => move(index, index - 1)} disabled={index === 0}>
-                            <span className="sr-only">Move Up</span>
-                            <ArrowUp className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" size="icon" variant="ghost" onClick={() => move(index, index + 1)} disabled={index === fields.length - 1}>
-                            <span className="sr-only">Move Down</span>
-                            <ArrowDown className="h-4 w-4" />
-                        </Button>
-                    </div>
-                    <Button type="button" size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => fields.length > 1 ? remove(index) : form.setValue(`images.0`, '')} >
-                        <span className="sr-only">Remove</span>
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                      )}
+                  />
+                  <FormField
+                      control={form.control}
+                      name="currency"
+                      render={({ field }) => (
+                          <FormItem>
+                          <FormLabel>Currency</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                              <SelectTrigger>
+                                  <SelectValue placeholder="Select currency" />
+                              </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                  <SelectItem value="NGN">NGN</SelectItem>
+                                  <SelectItem value="USD">USD</SelectItem>
+                                  <SelectItem value="EUR">EUR</SelectItem>
+                                  <SelectItem value="GBP">GBP</SelectItem>
+                              </SelectContent>
+                          </Select>
+                          <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+                  <FormField
+                      control={form.control}
+                      name="priceUnit"
+                      render={({ field }) => (
+                          <FormItem>
+                          <FormLabel>Unit</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                              <SelectTrigger>
+                                  <SelectValue placeholder="Select a unit" />
+                              </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                              <SelectItem value="night">/ night</SelectItem>
+                              <SelectItem value="hour">/ hour</SelectItem>
+                              <SelectItem value="person">/ person</SelectItem>
+                              </SelectContent>
+                          </Select>
+                          <FormMessage />
+                          </FormItem>
+                      )}
+                  />
               </div>
-              <Button type="button" variant="outline" onClick={() => append("https://placehold.co/800x600.png")}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Image
+              
+              <div className="md:col-span-2">
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="A detailed description of the listing..."
+                          rows={5}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="md:col-span-2">
+                  <FormField
+                  control={form.control}
+                  name="features"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Features</FormLabel>
+                      <FormControl>
+                          <Textarea
+                          placeholder="e.g., Free WiFi, Pool, Gym"
+                          {...field}
+                          />
+                      </FormControl>
+                      <FormDescription>
+                          Please list features separated by a comma.
+                      </FormDescription>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+                  />
+              </div>
+              <div className="md:col-span-2 space-y-4">
+                <FormLabel>Images</FormLabel>
+                <div className="space-y-4">
+                  {fields.map((field, index) => (
+                    <div key={field.id} className="flex items-center gap-2 sm:gap-4 p-2 border rounded-md bg-muted/20">
+                      <img
+                          src={form.watch(`images.${index}`) || 'https://placehold.co/100x100.png'}
+                          alt={`Preview ${index + 1}`}
+                          width={80}
+                          height={80}
+                          className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-md bg-muted"
+                          onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/100x100.png'; }}
+                      />
+                      <div className="flex-grow">
+                        <FormField
+                          control={form.control}
+                          name={`images.${index}`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="sr-only">Image URL {index + 1}</FormLabel>
+                              <FormControl>
+                                <Input placeholder="https://example.com/image.png" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                          <Button type="button" size="icon" variant="ghost" onClick={() => move(index, index - 1)} disabled={index === 0}>
+                              <span className="sr-only">Move Up</span>
+                              <ArrowUp className="h-4 w-4" />
+                          </Button>
+                          <Button type="button" size="icon" variant="ghost" onClick={() => move(index, index + 1)} disabled={index === fields.length - 1}>
+                              <span className="sr-only">Move Down</span>
+                              <ArrowDown className="h-4 w-4" />
+                          </Button>
+                      </div>
+                      <Button type="button" size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => fields.length > 1 ? remove(index) : form.setValue(`images.0`, '')} >
+                          <span className="sr-only">Remove</span>
+                          <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <Button type="button" variant="outline" onClick={() => append("https://placehold.co/800x600.png")}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Image
+                </Button>
+                 <FormMessage>{form.formState.errors.images?.root?.message}</FormMessage>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-end gap-2">
+              <Button variant="outline" type="button" onClick={() => router.back()} disabled={isPending}>Cancel</Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isEditMode ? 'Save Changes' : 'Create Listing'}
               </Button>
-               <FormMessage>{form.formState.errors.images?.root?.message}</FormMessage>
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-end gap-2">
-            <Button variant="outline" type="button" onClick={() => router.back()} disabled={isPending}>Cancel</Button>
-            <Button type="submit" disabled={isPending}>
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEditMode ? 'Save Changes' : 'Create Listing'}
-            </Button>
-          </CardFooter>
-        </form>
-      </Form>
-    </Card>
+            </CardFooter>
+          </form>
+        </Form>
+      </Card>
+    </div>
   );
 }

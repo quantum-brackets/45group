@@ -859,3 +859,75 @@ export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStat
     return { success: false, message: `Database error: ${message}` };
   }
 }
+
+const BulkCreateListingsSchema = z.object({
+  originalListingId: z.string(),
+  count: z.coerce.number().int().min(1, "Must create at least 1 duplicate.").max(50, "Cannot create more than 50 duplicates at once."),
+});
+
+export async function bulkCreateListingsAction(data: z.infer<typeof BulkCreateListingsSchema>) {
+  const session = await getSession();
+  if (session?.role !== 'admin') {
+      return { success: false, message: 'Unauthorized' };
+  }
+
+  const validatedFields = BulkCreateListingsSchema.safeParse(data);
+  if (!validatedFields.success) {
+      return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
+  }
+
+  const { originalListingId, count } = validatedFields.data;
+
+  try {
+      const db = await getDb();
+      const originalListing = await getListingById(originalListingId);
+
+      if (!originalListing) {
+          return { success: false, message: 'Original listing not found.' };
+      }
+      
+      const insertStmt = db.prepare(`
+          INSERT INTO listings (id, name, type, location, description, images, price, priceUnit, currency, rating, reviews, features, maxGuests)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      const createDuplicates = db.transaction((listingsToCreate) => {
+        for (const listing of listingsToCreate) {
+          insertStmt.run(
+            listing.id,
+            listing.name,
+            listing.type,
+            listing.location,
+            listing.description,
+            JSON.stringify(listing.images),
+            listing.price,
+            listing.priceUnit,
+            listing.currency,
+            listing.rating,
+            JSON.stringify(listing.reviews),
+            JSON.stringify(listing.features),
+            listing.maxGuests
+          );
+        }
+        return { count: listingsToCreate.length };
+      });
+      
+      const listingsToCreate = [];
+      for (let i = 0; i < count; i++) {
+        listingsToCreate.push({
+          ...originalListing,
+          id: `listing-${randomUUID()}`,
+          // Name is kept the same as per request "exact duplicates"
+        });
+      }
+
+      const result = createDuplicates(listingsToCreate);
+      
+      revalidatePath('/dashboard?tab=listings', 'page');
+      return { success: true, message: `${result.count} duplicate(s) of "${originalListing.name}" created successfully.` };
+  } catch (error) {
+      console.error(`[BULK_CREATE_LISTINGS_ACTION] Error: ${error}`);
+      const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+      return { success: false, message: `Failed to create duplicates: ${message}` };
+  }
+}
