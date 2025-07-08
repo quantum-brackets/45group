@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
 
 export default function DevToolsPage() {
   const cookieStore = cookies();
-  const sessionToken = cookieStore.get('session')?.value;
+  const sessionToken = cookieStore.get('session_token')?.value;
 
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">

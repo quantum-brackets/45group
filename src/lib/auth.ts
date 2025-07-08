@@ -4,42 +4,12 @@
 import { z } from 'zod';
 import { createSupabaseServerClient } from './supabase';
 import { verifyPassword, hashPassword } from './password';
-import { cookies } from 'next/headers';
-import { add } from 'date-fns';
+import { createSession } from './session';
 
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address.'),
   password: z.string().min(1, 'Password is required.'),
 });
-
-async function createSession(userId: string) {
-    const supabase = createSupabaseServerClient();
-    const cookieStore = cookies();
-    
-    const expiresAt = add(new Date(), {
-        hours: 24,
-    });
-
-    const { data, error } = await supabase.from('sessions').insert({
-        user_id: userId,
-        expires_at: expiresAt.toISOString(),
-    }).select().single();
-
-    if (error || !data) {
-        console.error('Failed to create session:', error);
-        return null;
-    }
-
-    cookieStore.set('session_token', data.id, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        expires: expiresAt,
-        sameSite: 'lax',
-        path: '/',
-    });
-    return data.id;
-}
-
 
 export async function loginAction(formData: z.infer<typeof LoginSchema>) {
   const supabase = createSupabaseServerClient();

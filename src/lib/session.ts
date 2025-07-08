@@ -6,6 +6,7 @@ import type { User } from './types';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createSupabaseServerClient } from './supabase';
 import { cookies } from 'next/headers';
+import { add } from 'date-fns';
 
 
 export async function getSession(): Promise<User | null> {
@@ -41,4 +42,32 @@ export async function getSession(): Promise<User | null> {
   }
   
   return session.user as User;
+}
+
+export async function createSession(userId: string) {
+    const supabase = createSupabaseServerClient();
+    const cookieStore = cookies();
+    
+    const expiresAt = add(new Date(), {
+        hours: 24,
+    });
+
+    const { data, error } = await supabase.from('sessions').insert({
+        user_id: userId,
+        expires_at: expiresAt.toISOString(),
+    }).select().single();
+
+    if (error || !data) {
+        console.error('Failed to create session:', error);
+        return null;
+    }
+
+    cookieStore.set('session_token', data.id, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        expires: expiresAt,
+        sameSite: 'lax',
+        path: '/',
+    });
+    return data.id;
 }
