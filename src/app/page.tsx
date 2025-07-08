@@ -3,32 +3,11 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import StaticCard from '@/components/common/StaticCard';
-
-const services = [
-  {
-    name: 'Hotel',
-    images: [
-      'https://placehold.co/400x600.png',
-      'https://placehold.co/400x600.png',
-    ],
-  },
-  {
-    name: 'Events',
-    images: [
-      'https://placehold.co/400x600.png',
-      'https://placehold.co/400x600.png',
-    ],
-  },
-  {
-    name: 'Restaurant',
-    images: [
-      'https://placehold.co/400x600.png',
-      'https://placehold.co/400x600.png',
-    ],
-  },
-];
+import { getListingTypesWithSampleImages } from '@/lib/data';
 
 export default async function HomePage() {
+  const services = await getListingTypesWithSampleImages();
+
   return (
     <div>
       {/* Hero Section */}
@@ -64,7 +43,7 @@ export default async function HomePage() {
               <StaticCard
                 key={srvc.name}
                 name={srvc.name}
-                link={`/search?type=${srvc.name}`}
+                link={`/search?type=${srvc.name.toLowerCase()}`}
                 images={srvc.images}
               />
             ))}

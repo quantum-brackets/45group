@@ -33,6 +33,71 @@ export async function getAllUsers(): Promise<User[]> {
     return stmt.all() as User[];
 }
 
+export async function getListingTypesWithSampleImages(): Promise<{ name: string, images: string[] }[]> {
+    noStore();
+    const db = await getDb();
+    
+    // 1. Get all unique listing types, ordered for consistency
+    const types = db.prepare('SELECT DISTINCT type FROM listings ORDER BY type').all() as { type: ListingType }[];
+    
+    if (!types || types.length === 0) {
+      return [];
+    }
+    
+    const servicesData: { name: string, images: string[] }[] = [];
+    
+    // 2. For each type, get a sample of images
+    for (const typeInfo of types) {
+      const listingType = typeInfo.type;
+      
+      const listingsForType = db.prepare('SELECT images FROM listings WHERE type = ?').all(listingType) as { images: string }[];
+      
+      const allImages = listingsForType.flatMap(listing => {
+          try {
+              // Images are stored as a JSON string array, so parse them
+              return JSON.parse(listing.images);
+          } catch (e) {
+              console.error(`Error parsing images for a listing of type ${listingType}:`, e);
+              return []; // Return empty array on parse error to avoid crashing
+          }
+      });
+  
+      if (allImages.length > 0) {
+        // Shuffle the images array to get a random sample
+        for (let i = allImages.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allImages[i], allImages[j]] = [allImages[j], allImages[i]];
+        }
+        
+        // Take up to 5 images for the carousel display.
+        const sampleImages = allImages.slice(0, 5);
+
+        // The carousel component looks best with at least 2 images.
+        // If we only have one, we duplicate it.
+        if (sampleImages.length === 1) {
+            sampleImages.push(sampleImages[0]);
+        }
+        
+        servicesData.push({
+          name: listingType.charAt(0).toUpperCase() + listingType.slice(1),
+          images: sampleImages
+        });
+      } else {
+          // Fallback with placeholder images if no images are found for this type
+          servicesData.push({
+              name: listingType.charAt(0).toUpperCase() + listingType.slice(1),
+              images: [
+                  'https://placehold.co/400x600.png',
+                  'https://placehold.co/400x600.png',
+                  'https://placehold.co/400x600.png',
+              ]
+          });
+      }
+    }
+    
+    return servicesData;
+}
+
 export async function getAllListings(): Promise<Listing[]> {
   const db = await getDb();
   const stmt = db.prepare(`
