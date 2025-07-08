@@ -85,25 +85,33 @@ export async function getListingTypesWithSampleImages(): Promise<{ name: string,
 
 export async function getAllListings(): Promise<Listing[]> {
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
+  const { data: listingsData, error: listingsError } = await supabase
     .from('listings')
-    .select(`
-        *,
-        inventory_count:listing_inventory_counts(count)
-    `)
+    .select('*')
     .order('location')
     .order('type')
     .order('name');
   
-  if (error) {
-      console.error("Error fetching all listings:", error);
+  if (listingsError) {
+      console.error("Error fetching all listings:", listingsError);
       return [];
   }
-  
-  // The count is returned as an array of objects, so we need to flatten it.
-  return data.map((l: any) => ({
+
+  const { data: inventoryData, error: inventoryError } = await supabase
+    .from('listing_inventory_counts')
+    .select('listing_id, count');
+
+  if (inventoryError) {
+      console.error("Error fetching inventory counts for all listings:", inventoryError);
+      // Return listings without inventory count as a fallback
+      return listingsData.map((l: any) => ({ ...l, inventoryCount: 0 })) as Listing[];
+  }
+
+  const inventoryMap = new Map(inventoryData.map(item => [item.listing_id, item.count]));
+
+  return listingsData.map((l: any) => ({
       ...l,
-      inventoryCount: l.inventory_count[0]?.count || 0,
+      inventoryCount: inventoryMap.get(l.id) || 0,
   })) as Listing[];
 }
 
@@ -131,24 +139,29 @@ export async function getInventoryByListingId(listingId: string): Promise<Listin
 export async function getListingById(id: string): Promise<Listing | null> {
   noStore();
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
+  
+  const { data: listingData, error: listingError } = await supabase
     .from('listings')
-    .select(`
-        *,
-        inventory_count:listing_inventory_counts(count)
-    `)
+    .select('*')
     .eq('id', id)
     .single();
 
-  if (error) {
-    console.error("Error fetching listing by ID:", error);
+  if (listingError) {
+    console.error("Error fetching listing by ID:", listingError);
     return null;
   }
   
+  const { data: inventoryData, error: inventoryError } = await supabase
+    .from('listing_inventory_counts')
+    .select('count')
+    .eq('listing_id', id)
+    .single();
+
   const listing = {
-      ...data,
-      inventoryCount: data.inventory_count && data.inventory_count.length > 0 ? data.inventory_count[0]?.count : 0
+      ...listingData,
+      inventoryCount: inventoryError ? 0 : inventoryData?.count || 0
   };
+  
   return listing as Listing;
 }
 
