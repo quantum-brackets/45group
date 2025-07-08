@@ -11,7 +11,7 @@ import type { User } from './types'
 import { logToFile } from './logger'
 import { hashPassword, verifyPassword } from './password'
 import { cookies } from 'next/headers'
-import { getInventoryByListingId, getListingById } from './data'
+import { getInventoryByListingId, getListingById, getListingsByIds } from './data'
 import { authenticateUser } from './auth'
 
 const ListingFormSchema = z.object({
@@ -27,6 +27,69 @@ const ListingFormSchema = z.object({
   images: z.array(z.string().url({ message: "Please enter a valid image URL." })).min(1, "At least one image is required."),
   inventoryCount: z.coerce.number().int().min(0, "Inventory count must be 0 or more."),
 });
+
+const BulkCreateSchema = z.object({
+  listingId: z.string(),
+  count: z.coerce.number().int().min(1, "Please enter a number greater than 0."),
+});
+
+export async function bulkCreateListingsAction(data: z.infer<typeof BulkCreateSchema>) {
+    const session = await getSession();
+    if (session?.role !== 'admin') {
+        return { success: false, message: 'Unauthorized' };
+    }
+
+    const validatedFields = BulkCreateSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
+    }
+    
+    const { listingId, count } = validatedFields.data;
+    const originalListing = await getListingById(listingId);
+    
+    if (!originalListing) {
+      return { success: false, message: "Original listing not found." };
+    }
+
+    // Exclude fields that should be unique or are generated
+    const { id, rating, reviews, ...duplicatableData } = originalListing;
+
+    try {
+        const db = await getDb();
+        const transaction = db.transaction(() => {
+            const stmt = db.prepare(`
+                INSERT INTO listings (id, name, type, location, description, images, price, priceUnit, currency, rating, reviews, features, maxGuests)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+            for (let i = 0; i < count; i++) {
+                stmt.run(
+                    `listing-${randomUUID()}`,
+                    duplicatableData.name,
+                    duplicatableData.type,
+                    duplicatableData.location,
+                    duplicatableData.description,
+                    JSON.stringify(duplicatableData.images),
+                    duplicatableData.price,
+                    duplicatableData.priceUnit,
+                    duplicatableData.currency,
+                    0, // Default rating
+                    '[]', // Default empty reviews
+                    JSON.stringify(duplicatableData.features),
+                    duplicatableData.maxGuests
+                );
+            }
+        });
+
+        transaction();
+        
+        revalidatePath('/dashboard?tab=listings', 'page');
+        return { success: true, message: `${count} duplicate(s) of "${originalListing.name}" have been created.` };
+    } catch (error) {
+        console.error(`[BULK_CREATE_ACTION] Error: ${error}`);
+        const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+        return { success: false, message: `Failed to create duplicates: ${message}` };
+    }
+}
 
 export async function createListingAction(data: z.infer<typeof ListingFormSchema>) {
     const session = await getSession();
@@ -945,4 +1008,147 @@ export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStat
     const message = error instanceof Error ? error.message : "An unknown database error occurred.";
     return { success: false, message: `Database error: ${message}` };
   }
+}
+
+const MergeListingsSchema = z.object({
+  primaryListingId: z.string(),
+  listingIdsToMerge: z.array(z.string()).min(1, "At least one listing must be selected to merge."),
+});
+
+export async function mergeListingsAction(data: z.infer<typeof MergeListingsSchema>) {
+    const session = await getSession();
+    if (session?.role !== 'admin') {
+      return { success: false, message: 'Unauthorized' };
+    }
+  
+    const validatedFields = MergeListingsSchema.safeParse(data);
+    if (!validatedFields.success) {
+      return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
+    }
+  
+    const { primaryListingId, listingIdsToMerge } = validatedFields.data;
+  
+    try {
+      const db = await getDb();
+      const allListings = await getListingsByIds([primaryListingId, ...listingIdsToMerge]);
+  
+      const primaryListing = allListings.find(l => l.id === primaryListingId);
+      const otherListings = allListings.filter(l => l.id !== primaryListingId);
+  
+      if (!primaryListing || otherListings.length === 0) {
+        return { success: false, message: 'Could not find the listings to merge.' };
+      }
+  
+      const transaction = db.transaction(() => {
+        // 1. Combine unique images, features, and all reviews
+        const mergedImages = [...new Set([...primaryListing.images, ...otherListings.flatMap(l => l.images)])];
+        const mergedFeatures = [...new Set([...primaryListing.features, ...otherListings.flatMap(l => l.features)])];
+        const mergedReviews = [...primaryListing.reviews, ...otherListings.flatMap(l => l.reviews)];
+  
+        // 2. Recalculate rating
+        const totalRating = mergedReviews.reduce((sum, review) => sum + review.rating, 0);
+        const newAverageRating = mergedReviews.length > 0 ? totalRating / mergedReviews.length : 0;
+  
+        // 3. Update the primary listing
+        const updateListingStmt = db.prepare(`
+          UPDATE listings
+          SET images = ?, features = ?, reviews = ?, rating = ?
+          WHERE id = ?
+        `);
+        updateListingStmt.run(
+          JSON.stringify(mergedImages),
+          JSON.stringify(mergedFeatures),
+          JSON.stringify(mergedReviews),
+          newAverageRating,
+          primaryListingId
+        );
+  
+        const idsToMergePlaceholders = listingIdsToMerge.map(() => '?').join(',');
+        
+        // 4. Re-assign inventory
+        const updateInventoryStmt = db.prepare(`UPDATE listing_inventory SET listingId = ? WHERE listingId IN (${idsToMergePlaceholders})`);
+        updateInventoryStmt.run(primaryListingId, ...listingIdsToMerge);
+  
+        // 5. Re-assign bookings
+        const updateBookingsStmt = db.prepare(`UPDATE bookings SET listingId = ?, listingName = ? WHERE listingId IN (${idsToMergePlaceholders})`);
+        updateBookingsStmt.run(primaryListingId, primaryListing.name, ...listingIdsToMerge);
+  
+        // 6. Delete the other listings
+        const deleteListingsStmt = db.prepare(`DELETE FROM listings WHERE id IN (${idsToMergePlaceholders})`);
+        deleteListingsStmt.run(...listingIdsToMerge);
+      });
+  
+      transaction();
+  
+      revalidatePath('/dashboard');
+      return { success: true, message: `${listingIdsToMerge.length} listing(s) were successfully merged into "${primaryListing.name}".` };
+  
+    } catch (error) {
+      console.error(`[MERGE_LISTINGS_ACTION] Error: ${error}`);
+      const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+      return { success: false, message: `Failed to merge listings: ${message}` };
+    }
+}
+
+const BulkDeleteListingsSchema = z.object({
+  listingIds: z.array(z.string()).min(1, "At least one listing must be selected for deletion."),
+});
+
+export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteListingsSchema>) {
+    const session = await getSession();
+    if (session?.role !== 'admin') {
+        return { success: false, message: 'Unauthorized' };
+    }
+
+    const validatedFields = BulkDeleteListingsSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
+    }
+    
+    const { listingIds } = validatedFields.data;
+
+    try {
+        const db = await getDb();
+        const transaction = db.transaction(() => {
+            const placeholders = listingIds.map(() => '?').join(',');
+
+            // Check for active bookings across all listings to be deleted
+            const bookingCheckStmt = db.prepare(`
+                SELECT l.name, COUNT(b.id) as bookingCount 
+                FROM listings l
+                LEFT JOIN bookings b ON l.id = b.listingId AND b.status != 'Cancelled'
+                WHERE l.id IN (${placeholders})
+                GROUP BY l.id
+            `);
+
+            const bookingCounts = bookingCheckStmt.all(...listingIds) as { name: string, bookingCount: number }[];
+            const listingsWithBookings = bookingCounts.filter(r => r.bookingCount > 0);
+            
+            if (listingsWithBookings.length > 0) {
+                const names = listingsWithBookings.map(l => l.name).join(', ');
+                throw new Error(`Cannot delete. The following listings have active bookings: ${names}`);
+            }
+
+            // Delete associated inventory items
+            const deleteInventoryStmt = db.prepare(`DELETE FROM listing_inventory WHERE listingId IN (${placeholders})`);
+            deleteInventoryStmt.run(...listingIds);
+
+            // Delete the main listings
+            const deleteListingsStmt = db.prepare(`DELETE FROM listings WHERE id IN (${placeholders})`);
+            const info = deleteListingsStmt.run(...listingIds);
+
+            if (info.changes < listingIds.length) {
+                console.warn(`[BULK_DELETE_WARN] Expected to delete ${listingIds.length} listings, but only deleted ${info.changes}. Some might have been deleted already.`);
+            }
+        });
+
+        transaction();
+
+        revalidatePath('/dashboard');
+        return { success: true, message: `${listingIds.length} listing(s) have been deleted.` };
+    } catch (error) {
+        console.error(`[BULK_DELETE_ACTION] Error: ${error}`);
+        const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+        return { success: false, message: `Failed to delete listings: ${message}` };
+    }
 }

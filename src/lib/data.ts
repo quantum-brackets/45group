@@ -46,6 +46,17 @@ export async function getAllListings(): Promise<Listing[]> {
   return listings.map(parseListing);
 }
 
+export async function getListingsByIds(ids: string[]): Promise<Listing[]> {
+  if (ids.length === 0) {
+    return [];
+  }
+  const db = await getDb();
+  const placeholders = ids.map(() => '?').join(',');
+  const stmt = db.prepare(`SELECT * FROM listings WHERE id IN (${placeholders})`);
+  const listings = stmt.all(...ids) as any[];
+  return listings.map(parseListing);
+}
+
 export async function getInventoryByListingId(listingId: string): Promise<ListingInventory[]> {
     const db = await getDb();
     const stmt = db.prepare('SELECT * FROM listing_inventory WHERE listingId = ?');
