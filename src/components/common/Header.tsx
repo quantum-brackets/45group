@@ -26,8 +26,8 @@ import { useState, useEffect } from 'react';
 const navLinks = [
   { href: '/search', label: 'Search' },
   { href: '/recommendations', label: 'Recommendations' },
-  { href: '/dashboard', label: 'Dashboard' },
   { href: '/bookings', label: 'Bookings' },
+  { href: '/dashboard', label: 'Dashboard' },
 ];
 
 export function Header({ session }: { session: User | null }) {
