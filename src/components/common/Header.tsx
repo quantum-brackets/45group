@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -58,13 +57,15 @@ export function Header({ session }: { session: User | null }) {
 
   return (
     <header className="bg-card shadow-sm sticky top-0 z-40">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between relative">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">
             <img src="/icon.svg" alt="Hospitality Logo" className="h-6 w-6" />
             <span className="font-headline">Hospitality</span>
           </Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+        </div>
+
+        <nav className="hidden md:flex items-center gap-6 text-sm font-medium absolute left-1/2 -translate-x-1/2">
             {visibleNavLinks.map((link) => (
               link.href.startsWith('/dashboard') ? (
                 <DropdownMenu key={link.href}>
@@ -102,8 +103,7 @@ export function Header({ session }: { session: User | null }) {
                 </Link>
               )
             ))}
-          </nav>
-        </div>
+        </nav>
 
         <div className="flex items-center gap-4">
             {session ? (
