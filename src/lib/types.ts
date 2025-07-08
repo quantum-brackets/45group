@@ -37,20 +37,20 @@ export interface ListingInventory {
 
 export interface Booking {
   id: string;
-  listing_id: string;
-  inventory_ids: string[];
+  listingId: string;
+  inventoryIds: string[];
   inventoryNames?: string[];
-  user_id: string;
+  userId: string;
   userName?: string;
   listingName: string;
-  start_date: string;
-  end_date: string;
+  startDate: string;
+  endDate: string;
   guests: number;
   status: 'Confirmed' | 'Pending' | 'Cancelled';
-  created_at?: string;
-  action_by_user_id?: string;
-  action_at?: string;
-  status_message?: string;
+  createdAt?: string;
+  actionByUserId?: string;
+  actionAt?: string;
+  statusMessage?: string;
 }
 
 export interface User {

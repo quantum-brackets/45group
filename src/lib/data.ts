@@ -162,13 +162,7 @@ export async function getAllBookings(filters: BookingsPageFilters): Promise<Book
         return [];
     }
 
-    let query = supabase
-        .from('bookings')
-        .select(`
-            *,
-            userName:users(name),
-            listingName:listings(name)
-        `);
+    let query = supabase.from('bookings').select('*');
 
     if (session.role === 'guest') {
         query = query.eq('user_id', session.id);
@@ -180,18 +174,50 @@ export async function getAllBookings(filters: BookingsPageFilters): Promise<Book
         query = query.eq('listing_id', filters.listingId);
     }
     
-    const { data, error } = await query.order('start_date', { ascending: false });
+    const { data: bookingsData, error } = await query.order('start_date', { ascending: false });
 
     if (error) {
         console.error("Error fetching all bookings:", error);
         return [];
     }
+    if (!bookingsData || bookingsData.length === 0) {
+        return [];
+    }
 
-    // Flatten the joined user and listing names
-    return data.map((b: any) => ({
-        ...b,
-        userName: b.userName?.name,
-        listingName: b.listingName?.name,
+    const userIds = [...new Set(bookingsData.map(b => b.user_id))];
+    const listingIds = [...new Set(bookingsData.map(b => b.listing_id))];
+
+    const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('id, name')
+        .in('id', userIds);
+
+    const { data: listingsData, error: listingsError } = await supabase
+        .from('listings')
+        .select('id, name')
+        .in('id', listingIds);
+        
+    if (usersError) console.error("Error fetching user names for bookings:", usersError);
+    if (listingsError) console.error("Error fetching listing names for bookings:", listingsError);
+
+    const usersMap = new Map(usersData?.map(u => [u.id, u.name]));
+    const listingsMap = new Map(listingsData?.map(l => [l.id, l.name]));
+
+    return bookingsData.map((b) => ({
+      id: b.id,
+      listingId: b.listing_id,
+      inventoryIds: b.inventory_ids,
+      userId: b.user_id,
+      startDate: b.start_date,
+      endDate: b.end_date,
+      guests: b.guests,
+      status: b.status,
+      createdAt: b.created_at,
+      actionByUserId: b.action_by_user_id,
+      actionAt: b.action_at,
+      statusMessage: b.status_message,
+      userName: usersMap.get(b.user_id),
+      listingName: listingsMap.get(b.listing_id) || 'Unknown Listing',
     })) as Booking[];
 }
 
@@ -236,11 +262,22 @@ export async function getBookingById(id: string): Promise<Booking | null> {
     }
 
     const booking: Booking = {
-        ...bookingData,
-        listingName: (bookingData.listing as any)?.name,
-        userName: (bookingData.user as any)?.name,
-        inventoryNames: inventoryNames,
-    }
+      id: bookingData.id,
+      listingId: bookingData.listing_id,
+      inventoryIds: bookingData.inventory_ids,
+      userId: bookingData.user_id,
+      startDate: bookingData.start_date,
+      endDate: bookingData.end_date,
+      guests: bookingData.guests,
+      status: bookingData.status,
+      createdAt: bookingData.created_at,
+      actionByUserId: bookingData.action_by_user_id,
+      actionAt: bookingData.action_at,
+      statusMessage: bookingData.status_message,
+      listingName: (bookingData.listing as any)?.name,
+      userName: (bookingData.user as any)?.name,
+      inventoryNames: inventoryNames,
+    };
 
     return booking;
 }
