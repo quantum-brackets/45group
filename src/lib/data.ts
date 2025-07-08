@@ -1,5 +1,5 @@
 
-import type { Listing, Booking, ListingType, User, ListingInventory } from './types';
+import type { Listing, Booking, ListingType, User, ListingInventory, Review } from './types';
 import { getDb } from './db';
 import { DateRange } from 'react-day-picker';
 import { getSession } from '@/lib/session';
@@ -7,10 +7,14 @@ import { unstable_noStore as noStore } from 'next/cache';
 
 // Helper to parse listing data from the database
 function parseListing(listing: any): Listing {
+  const reviews = (JSON.parse(listing.reviews) as Review[]).map(review => ({
+      ...review,
+      status: review.status || 'approved' // Default to approved if status is missing
+  }));
   return {
     ...listing,
     images: JSON.parse(listing.images),
-    reviews: JSON.parse(listing.reviews),
+    reviews: reviews,
     features: JSON.parse(listing.features),
   };
 }
@@ -129,6 +133,7 @@ export async function getInventoryByListingId(listingId: string): Promise<Listin
 }
 
 export async function getListingById(id: string): Promise<Listing | null> {
+  noStore();
   const db = await getDb();
   const stmt = db.prepare(`
     SELECT l.*, COUNT(i.id) as inventoryCount

@@ -7,7 +7,7 @@ import { getDb } from './db'
 import { randomUUID } from 'crypto'
 import { createSession, getSession } from './session'
 import { redirect } from 'next/navigation'
-import type { User } from './types'
+import type { Review, User } from './types'
 import { logToFile } from './logger'
 import { hashPassword, verifyPassword } from './password'
 import { cookies } from 'next/headers'
@@ -968,25 +968,28 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
         const existingReviewIndex = reviews.findIndex(r => r.userId === session.id);
         
         if (existingReviewIndex > -1) {
-            // Update existing review
+            // Update existing review and set status to pending for re-approval
             reviews[existingReviewIndex].rating = rating;
             reviews[existingReviewIndex].comment = comment;
+            reviews[existingReviewIndex].status = 'pending';
         } else {
-            // Add new review
-            const newReview = {
+            // Add new review with pending status
+            const newReview: Review = {
                 id: `review-${randomUUID()}`,
                 userId: session.id,
                 author: session.name,
                 avatar: `https://avatar.vercel.sh/${session.email}.png`,
                 rating,
                 comment,
+                status: 'pending',
             };
             reviews.push(newReview);
         }
 
-        // Recalculate average rating
-        const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-        const newAverageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
+        // Recalculate average rating based on APPROVED reviews only
+        const approvedReviews = reviews.filter(r => r.status === 'approved');
+        const totalRating = approvedReviews.reduce((sum, review) => sum + review.rating, 0);
+        const newAverageRating = approvedReviews.length > 0 ? totalRating / approvedReviews.length : 0;
 
         const stmt = db.prepare(`
             UPDATE listings
@@ -997,12 +1000,89 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
         stmt.run(JSON.stringify(reviews), newAverageRating, listingId);
 
         revalidatePath(`/listing/${listingId}`);
-        return { success: true, message: 'Your review has been submitted successfully!' };
+        return { success: true, message: 'Your review has been submitted and is awaiting approval.' };
 
     } catch (error) {
         console.error(`[ADD_REVIEW_ACTION] Error: ${error}`);
         const message = error instanceof Error ? error.message : "An unknown database error occurred.";
         return { success: false, message: `Failed to submit review: ${message}` };
+    }
+}
+
+
+const ReviewActionSchema = z.object({
+  listingId: z.string(),
+  reviewId: z.string(),
+});
+
+export async function approveReviewAction(data: z.infer<typeof ReviewActionSchema>) {
+    const session = await getSession();
+    if (session?.role !== 'admin') {
+        return { success: false, message: 'Unauthorized action.' };
+    }
+    const { listingId, reviewId } = data;
+
+    try {
+        const db = await getDb();
+        const listing = await getListingById(listingId);
+        if (!listing) {
+            return { success: false, message: 'Listing not found.' };
+        }
+
+        const reviews = listing.reviews;
+        const reviewIndex = reviews.findIndex(r => r.id === reviewId);
+        if (reviewIndex === -1) {
+            return { success: false, message: 'Review not found.' };
+        }
+
+        reviews[reviewIndex].status = 'approved';
+
+        const approvedReviews = reviews.filter(r => r.status === 'approved');
+        const totalRating = approvedReviews.reduce((sum, r) => sum + r.rating, 0);
+        const newAverageRating = approvedReviews.length > 0 ? totalRating / approvedReviews.length : 0;
+
+        const stmt = db.prepare('UPDATE listings SET reviews = ?, rating = ? WHERE id = ?');
+        stmt.run(JSON.stringify(reviews), newAverageRating, listingId);
+
+        revalidatePath(`/listing/${listingId}`);
+        return { success: true, message: 'Review approved successfully.' };
+    } catch (error) {
+        console.error(`[APPROVE_REVIEW_ACTION] Error: ${error}`);
+        const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+        return { success: false, message: `Failed to approve review: ${message}` };
+    }
+}
+
+
+export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema>) {
+    const session = await getSession();
+    if (session?.role !== 'admin') {
+        return { success: false, message: 'Unauthorized action.' };
+    }
+    const { listingId, reviewId } = data;
+
+    try {
+        const db = await getDb();
+        const listing = await getListingById(listingId);
+        if (!listing) {
+            return { success: false, message: 'Listing not found.' };
+        }
+
+        const updatedReviews = listing.reviews.filter(r => r.id !== reviewId);
+
+        const approvedReviews = updatedReviews.filter(r => r.status === 'approved');
+        const totalRating = approvedReviews.reduce((sum, r) => sum + r.rating, 0);
+        const newAverageRating = approvedReviews.length > 0 ? totalRating / approvedReviews.length : 0;
+        
+        const stmt = db.prepare('UPDATE listings SET reviews = ?, rating = ? WHERE id = ?');
+        stmt.run(JSON.stringify(updatedReviews), newAverageRating, listingId);
+
+        revalidatePath(`/listing/${listingId}`);
+        return { success: true, message: 'Review deleted successfully.' };
+    } catch (error) {
+        console.error(`[DELETE_REVIEW_ACTION] Error: ${error}`);
+        const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+        return { success: false, message: `Failed to delete review: ${message}` };
     }
 }
 

@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Review, User } from '@/lib/types';
-import { addOrUpdateReviewAction } from '@/lib/actions';
+import { addOrUpdateReviewAction, approveReviewAction, deleteReviewAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,8 +13,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Star, Loader2 } from 'lucide-react';
+import { Star, Loader2, Check, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const reviewFormSchema = z.object({
   rating: z.coerce.number().min(1, "Rating is required.").max(5),
@@ -65,8 +67,13 @@ const StarRating = ({ field }: { field: any }) => {
 export function ReviewSection({ listingId, reviews, averageRating, session }: ReviewSectionProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [adminActionPending, startAdminActionTransition] = useTransition();
   const [showForm, setShowForm] = useState(false);
 
+  const isAdmin = session?.role === 'admin';
+  const approvedReviews = reviews.filter(review => review.status === 'approved');
+  const reviewsToDisplay = isAdmin ? reviews.sort((a,b) => (a.status === 'pending' ? -1 : 1)) : approvedReviews;
+  const reviewCount = approvedReviews.length;
   const currentUserReview = reviews.find(review => review.userId === session?.id);
   
   const form = useForm<ReviewFormValues>({
@@ -81,7 +88,7 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
     startTransition(async () => {
       const result = await addOrUpdateReviewAction({ listingId, ...data });
       if (result.success) {
-        toast({ title: 'Success', description: result.message });
+        toast({ title: 'Review Submitted', description: result.message });
         setShowForm(false);
       } else {
         toast({ title: 'Error', description: result.message, variant: 'destructive' });
@@ -92,7 +99,6 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
   const handleToggleForm = () => {
     setShowForm(prev => !prev);
     if (!showForm) {
-      // If opening form, reset with latest values
       form.reset({
         rating: currentUserReview?.rating || 0,
         comment: currentUserReview?.comment || '',
@@ -100,6 +106,27 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
     }
   };
 
+  const handleApprove = (reviewId: string) => {
+    startAdminActionTransition(async () => {
+      const result = await approveReviewAction({ listingId, reviewId });
+      if (result.success) {
+        toast({ title: 'Success', description: result.message });
+      } else {
+        toast({ title: 'Error', description: result.message, variant: 'destructive' });
+      }
+    });
+  };
+
+  const handleDelete = (reviewId: string) => {
+    startAdminActionTransition(async () => {
+      const result = await deleteReviewAction({ listingId, reviewId });
+      if (result.success) {
+        toast({ title: 'Success', description: result.message });
+      } else {
+        toast({ title: 'Error', description: result.message, variant: 'destructive' });
+      }
+    });
+  };
 
   return (
     <Card>
@@ -107,7 +134,7 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
         <div className="flex items-center justify-between">
             <CardTitle className="flex items-center">
                 <Star className="w-5 h-5 mr-2" />
-                {averageRating.toFixed(1)} &middot; {reviews.length} review{reviews.length === 1 ? '' : 's'}
+                {averageRating.toFixed(1)} &middot; {reviewCount} approved review{reviewCount === 1 ? '' : 's'}
             </CardTitle>
             {session && (
               <Button variant="outline" onClick={handleToggleForm}>
@@ -159,31 +186,64 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
             </div>
         )}
 
-        {reviews.length > 0 ? (
-          reviews.map((review, index) => (
+        {reviewsToDisplay.length > 0 ? (
+          reviewsToDisplay.map((review, index) => (
             <React.Fragment key={review.id}>
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Avatar>
                   <AvatarImage src={review.avatar} alt={review.author} data-ai-hint="person face" />
                   <AvatarFallback>{review.author.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="flex-grow">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <p className="font-semibold">{review.author}</p>
                     <div className="flex items-center gap-0.5 text-primary">
                       {Array.from({ length: 5 }, (_, i) => (
                         <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-current' : 'fill-muted stroke-muted-foreground'}`} />
                       ))}
                     </div>
+                    {isAdmin && (
+                        <Badge variant={review.status === 'approved' ? 'default' : 'secondary'} className={review.status === 'approved' ? 'bg-accent text-accent-foreground' : ''}>
+                            {review.status}
+                        </Badge>
+                    )}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">{review.comment}</p>
+                  <p className="text-sm text-muted-foreground">{review.comment}</p>
                 </div>
+                {isAdmin && (
+                    <div className="flex items-center gap-2 mt-2 sm:mt-0 self-end sm:self-start">
+                        {review.status === 'pending' && (
+                            <Button size="sm" variant="outline" onClick={() => handleApprove(review.id)} disabled={adminActionPending}>
+                                <Check className="mr-0 sm:mr-2 h-4 w-4"/><span className="hidden sm:inline">Approve</span>
+                            </Button>
+                        )}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                             <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={adminActionPending}>
+                                <Trash2 className="h-4 w-4 mr-0 sm:mr-2"/><span className="hidden sm:inline">Delete</span>
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the review by {review.author}.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(review.id)} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
+                )}
               </div>
-              {index < reviews.length -1 && <Separator />}
+              {index < reviewsToDisplay.length - 1 && <Separator />}
             </React.Fragment>
           ))
         ) : (
-          !showForm && <p className="text-muted-foreground text-center py-4">Be the first to leave a review!</p>
+          !showForm && <p className="text-muted-foreground text-center py-4">{isAdmin && reviews.length > 0 ? 'No approved reviews yet.' : 'Be the first to leave a review!'}</p>
         )}
       </CardContent>
     </Card>

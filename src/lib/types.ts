@@ -9,6 +9,7 @@ export interface Review {
   avatar: string;
   rating: number;
   comment: string;
+  status: 'pending' | 'approved';
 }
 
 export interface Listing {
