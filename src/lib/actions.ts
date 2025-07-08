@@ -5,7 +5,6 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession } from './session'
 import { redirect } from 'next/navigation'
-import { randomUUID } from 'crypto'
 import { createSupabaseServerClient } from './supabase'
 
 const ListingFormSchema = z.object({
@@ -38,7 +37,6 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
     const { name, type, location, description, price, priceUnit, currency, maxGuests, features, images, inventoryCount } = validatedFields.data;
     
     const { error } = await supabase.rpc('create_listing_with_inventory', {
-        p_id: `listing-${randomUUID()}`,
         p_name: name,
         p_type: type,
         p_location: location,
@@ -676,3 +674,4 @@ export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteLi
     revalidatePath('/dashboard');
     return { success: true, message: `${listingIds.length} listing(s) have been deleted.` };
 }
+

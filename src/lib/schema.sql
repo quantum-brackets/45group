@@ -1,471 +1,374 @@
--- Enable HTTP extension
-create extension if not exists http with schema extensions;
+-- Enable UUID generation
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create custom types
-create type listing_type as enum ('hotel', 'events', 'restaurant');
-create type price_unit as enum ('night', 'hour', 'person');
-create type currency_type as enum ('USD', 'EUR', 'GBP', 'NGN');
-create type user_role as enum ('admin', 'guest', 'staff');
-create type user_status as enum ('active', 'disabled', 'provisional');
-create type booking_status as enum ('Confirmed', 'Pending', 'Cancelled');
-create type review_status as enum ('pending', 'approved');
+-- Define custom types
+CREATE TYPE listing_type AS ENUM ('hotel', 'events', 'restaurant');
+CREATE TYPE currency_type AS ENUM ('USD', 'EUR', 'GBP', 'NGN');
+CREATE TYPE price_unit_type AS ENUM ('night', 'hour', 'person');
+CREATE TYPE user_role AS ENUM ('admin', 'guest', 'staff');
+CREATE TYPE user_status AS ENUM ('active', 'disabled', 'provisional');
+CREATE TYPE booking_status AS ENUM ('Confirmed', 'Pending', 'Cancelled');
 
--- USERS Table
-create table users (
-  id uuid references auth.users not null primary key,
-  name text,
-  email text unique,
-  role user_role default 'guest',
-  status user_status default 'provisional',
-  phone text,
-  notes text
+-- Create the users table
+CREATE TABLE users (
+    id UUID PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    phone TEXT,
+    role user_role NOT NULL DEFAULT 'guest',
+    status user_status NOT NULL DEFAULT 'active',
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- LISTINGS Table
-create table listings (
-  id text primary key,
-  name text not null,
-  type listing_type not null,
-  location text not null,
-  description text,
-  images jsonb,
-  price double precision not null,
-  "priceUnit" price_unit not null,
-  currency currency_type not null,
-  rating double precision default 0,
-  reviews jsonb default '[]'::jsonb,
-  features jsonb,
-  "maxGuests" integer not null
+-- Create the listings table
+CREATE TABLE listings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    type listing_type NOT NULL,
+    location TEXT NOT NULL,
+    description TEXT,
+    images TEXT[],
+    price NUMERIC(10, 2) NOT NULL,
+    price_unit price_unit_type NOT NULL,
+    currency currency_type NOT NULL,
+    rating NUMERIC(2, 1) DEFAULT 0.0,
+    reviews JSONB DEFAULT '[]'::jsonb,
+    features TEXT[],
+    max_guests INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- LISTING_INVENTORY Table
-create table listing_inventory (
-  id text primary key,
-  "listingId" text references listings(id) on delete cascade,
-  name text not null
+-- Create the listing_inventory table
+CREATE TABLE listing_inventory (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    listing_id UUID REFERENCES listings(id) ON DELETE CASCADE NOT NULL,
+    name TEXT NOT NULL
+);
+CREATE INDEX idx_listing_inventory_listing_id ON listing_inventory(listing_id);
+
+-- Create the bookings table
+CREATE TABLE bookings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    listing_id UUID REFERENCES listings(id) ON DELETE CASCADE NOT NULL,
+    inventory_ids UUID[],
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    guests INTEGER NOT NULL,
+    status booking_status NOT NULL DEFAULT 'Pending',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    action_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    action_at TIMESTAMPTZ,
+    status_message TEXT
+);
+CREATE INDEX idx_bookings_listing_id ON bookings(listing_id);
+CREATE INDEX idx_bookings_user_id ON bookings(user_id);
+
+
+-- Function to create a user profile when a new user signs up in Supabase Auth
+CREATE OR REPLACE FUNCTION on_auth_user_created()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.users (id, name, email, role, status)
+    VALUES (
+        new.id,
+        new.raw_user_meta_data->>'name',
+        new.email,
+        'guest', -- Default role
+        'active' -- Default status
+    );
+    RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to execute the function after a new user is created
+CREATE TRIGGER on_auth_user_created_trigger
+AFTER INSERT ON auth.users
+FOR EACH ROW
+EXECUTE FUNCTION on_auth_user_created();
+
+-- RLS Policies for users table
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view their own profile" ON users FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update their own profile" ON users FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Admins can manage all user profiles" ON users FOR ALL USING (
+    (SELECT role FROM users WHERE id = auth.uid()) = 'admin'
+) WITH CHECK (
+    (SELECT role FROM users WHERE id = auth.uid()) = 'admin'
+);
+CREATE POLICY "Staff can view user profiles" ON users FOR SELECT USING (
+    (SELECT role FROM users WHERE id = auth.uid()) IN ('admin', 'staff')
 );
 
--- BOOKINGS Table
-create table bookings (
-  id text primary key,
-  "listingId" text references listings(id) on delete cascade,
-  "inventoryIds" jsonb,
-  "userId" uuid references users(id) on delete set null,
-  "startDate" date not null,
-  "endDate" date not null,
-  guests integer not null,
-  status booking_status not null,
-  "createdAt" timestamptz default now(),
-  "actionByUserId" uuid references users(id) on delete set null,
-  "actionAt" timestamptz,
-  "statusMessage" text
+
+-- RLS Policies for listings, listing_inventory, and bookings tables
+ALTER TABLE listings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Listings are public" ON listings FOR SELECT USING (true);
+CREATE POLICY "Admins can manage listings" ON listings FOR ALL USING (
+    (SELECT role FROM users WHERE id = auth.uid()) = 'admin'
 );
 
--- Function to get user role
-create or replace function get_user_role(user_id uuid)
-returns text as $$
-declare
-  user_role text;
-begin
-  select role into user_role from public.users where id = user_id;
-  return user_role;
-end;
-$$ language plpgsql;
+ALTER TABLE listing_inventory ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Inventory is public" ON listing_inventory FOR SELECT USING (true);
+CREATE POLICY "Admins can manage inventory" ON listing_inventory FOR ALL USING (
+    (SELECT role FROM users WHERE id = auth.uid()) = 'admin'
+);
+
+ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view their own bookings" ON bookings FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Admins and staff can view all bookings" ON bookings FOR SELECT USING (
+    (SELECT role FROM users WHERE id = auth.uid()) IN ('admin', 'staff')
+);
+CREATE POLICY "Users can create bookings" ON bookings FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Admins and users can update their own bookings" ON bookings FOR UPDATE USING (
+    auth.uid() = user_id OR (SELECT role FROM users WHERE id = auth.uid()) = 'admin'
+);
+CREATE POLICY "Users can cancel their own bookings" ON bookings FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Admins can delete any booking" ON bookings FOR DELETE USING (
+    (SELECT role FROM users WHERE id = auth.uid()) = 'admin'
+);
 
 
--- Row Level Security (RLS) Policies
+-- Helper function to get inventory count for a listing
+CREATE OR REPLACE FUNCTION get_inventory_count(p_listing_id UUID)
+RETURNS INTEGER AS $$
+DECLARE
+    inventory_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO inventory_count
+    FROM listing_inventory
+    WHERE listing_id = p_listing_id;
+    RETURN inventory_count;
+END;
+$$ LANGUAGE plpgsql;
 
--- Users table
-alter table users enable row level security;
-create policy "Users can view their own profile." on users for select using (auth.uid() = id);
-create policy "Admins and staff can view all users." on users for select using (get_user_role(auth.uid()) in ('admin', 'staff'));
-create policy "Users can update their own profile." on users for update using (auth.uid() = id);
-create policy "Admins can update any user." on users for update using (get_user_role(auth.uid()) = 'admin');
+-- Helper view to combine listing data with inventory count
+CREATE OR REPLACE VIEW listings_with_inventory AS
+SELECT 
+    l.*,
+    (SELECT COUNT(*) FROM listing_inventory li WHERE li.listing_id = l.id) as "inventoryCount"
+FROM listings l;
 
--- Listings table
-alter table listings enable row level security;
-create policy "Listings are viewable by everyone." on listings for select using (true);
-create policy "Admins can create listings." on listings for insert with check (get_user_role(auth.uid()) = 'admin');
-create policy "Admins can update listings." on listings for update with check (get_user_role(auth.uid()) = 'admin');
-create policy "Admins can delete listings." on listings for delete using (get_user_role(auth.uid()) = 'admin');
+-----------------------------
+-- BUSINESS LOGIC FUNCTIONS --
+-----------------------------
 
--- Listing_inventory table
-alter table listing_inventory enable row level security;
-create policy "Inventory is viewable by everyone." on listing_inventory for select using (true);
-create policy "Admins can manage inventory." on listing_inventory for all using (get_user_role(auth.uid()) = 'admin');
-
--- Bookings table
-alter table bookings enable row level security;
-create policy "Users can view their own bookings." on bookings for select using (auth.uid() = id);
-create policy "Admins and Staff can view all bookings." on bookings for select using (get_user_role(auth.uid()) in ('admin', 'staff'));
-create policy "Users can create their own bookings." on bookings for insert with check (auth.uid() = userId or auth.uid() is null);
-create policy "Users can update their own bookings." on bookings for update using (auth.uid() = userId);
-create policy "Admins can update any booking." on bookings for update using (get_user_role(auth.uid()) = 'admin');
-create policy "Users can cancel their own bookings." on bookings for delete using (auth.uid() = userId);
-create policy "Admins can cancel any booking." on bookings for delete using (get_user_role(auth.uid()) = 'admin');
-
-
--- Database Functions (RPC)
-
--- Function to handle new user creation
-create function public.handle_new_user()
-returns trigger as $$
-begin
-  insert into public.users (id, name, email, status)
-  values (new.id, new.raw_user_meta_data->>'name', new.email, 'active');
-  return new;
-end;
-$$ language plpgsql security definer;
-
--- Trigger to call the function when a new user signs up in Auth
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure public.handle_new_user();
-
--- Function to get filtered listings with availability check
-create or replace function get_filtered_listings(
-    location_filter text,
-    type_filter text,
-    guests_filter integer,
-    from_date_filter date,
-    to_date_filter date
-)
-returns setof listings
-language plpgsql
-security definer
-as $$
-begin
-    return query
-    select *
-    from listings l
-    where
-        (location_filter is null or l.location ilike '%' || location_filter || '%')
-    and (type_filter is null or l.type = type_filter)
-    and (guests_filter is null or l.maxGuests >= guests_filter)
-    and (
-        from_date_filter is null or
-        (select count(*) from listing_inventory li where li.listingId = l.id) > (
-            select count(distinct inv.id)
-            from bookings b,
-            jsonb_array_elements_text(b.inventoryIds::jsonb) as inv(id)
-            where b.listingId = l.id
-            and b.status = 'Confirmed'
-            and daterange(b.startDate, b.endDate, '[]') && daterange(from_date_filter, to_date_filter, '[]')
-        )
-    )
-    order by l.name;
-end;
-$$;
-
-
--- Function to create a listing and its inventory atomically
-create or replace function create_listing_with_inventory(
-    p_id text,
-    p_name text,
+-- Create a new listing and associated inventory units
+CREATE OR REPLACE FUNCTION create_listing_with_inventory(
+    p_name TEXT,
     p_type listing_type,
-    p_location text,
-    p_description text,
-    p_images jsonb,
-    p_price double precision,
-    p_price_unit price_unit,
+    p_location TEXT,
+    p_description TEXT,
+    p_images TEXT[],
+    p_price NUMERIC,
+    p_price_unit price_unit_type,
     p_currency currency_type,
-    p_max_guests integer,
-    p_features jsonb,
-    p_inventory_count integer
+    p_max_guests INTEGER,
+    p_features TEXT[],
+    p_inventory_count INTEGER
 )
-returns void as $$
-declare
-    i integer;
-    new_inventory_id text;
-begin
-    insert into listings (id, name, type, location, description, images, price, "priceUnit", currency, "maxGuests", features)
-    values (p_id, p_name, p_type, p_location, p_description, p_images, p_price, p_price_unit, p_currency, p_max_guests, p_features);
+RETURNS void AS $$
+DECLARE
+    new_listing_id UUID;
+    i INTEGER;
+BEGIN
+    -- Insert the new listing and get its ID
+    INSERT INTO listings (name, type, location, description, images, price, price_unit, currency, max_guests, features)
+    VALUES (p_name, p_type, p_location, p_description, p_images, p_price, p_price_unit, p_currency, p_max_guests, p_features)
+    RETURNING id INTO new_listing_id;
 
-    if p_inventory_count > 0 then
-        for i in 1..p_inventory_count loop
-            new_inventory_id := p_id || '-inv-' || i;
-            insert into listing_inventory (id, "listingId", name)
-            values (new_inventory_id, p_id, p_name || ' - Unit ' || i);
-        end loop;
-    end if;
-end;
-$$ language plpgsql;
+    -- Create inventory units
+    FOR i IN 1..p_inventory_count LOOP
+        INSERT INTO listing_inventory (listing_id, name)
+        VALUES (new_listing_id, p_name || ' - Unit ' || i);
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function to update a listing and adjust its inventory
-create or replace function update_listing_with_inventory(
-    p_listing_id text,
-    p_name text,
+
+-- Delete a listing, but only if it has no confirmed or pending bookings
+CREATE OR REPLACE FUNCTION delete_listing_with_bookings_check(p_listing_id UUID)
+RETURNS void AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM bookings 
+        WHERE listing_id = p_listing_id AND status IN ('Confirmed', 'Pending')
+    ) THEN
+        RAISE EXCEPTION 'Cannot delete listing with active or pending bookings.';
+    END IF;
+
+    DELETE FROM listings WHERE id = p_listing_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- Update a listing and adjust its inventory count
+CREATE OR REPLACE FUNCTION update_listing_with_inventory(
+    p_listing_id UUID,
+    p_name TEXT,
     p_type listing_type,
-    p_location text,
-    p_description text,
-    p_price double precision,
-    p_price_unit price_unit,
+    p_location TEXT,
+    p_description TEXT,
+    p_price NUMERIC,
+    p_price_unit price_unit_type,
     p_currency currency_type,
-    p_max_guests integer,
-    p_features jsonb,
-    p_images jsonb,
-    p_new_inventory_count integer
+    p_max_guests INTEGER,
+    p_features TEXT[],
+    p_images TEXT[],
+    p_new_inventory_count INTEGER
 )
-returns void as $$
-declare
-    current_inventory_count integer;
-    i integer;
-    new_inventory_id text;
-begin
-    update listings
-    set
-        name = p_name,
+RETURNS void AS $$
+DECLARE
+    current_inventory_count INTEGER;
+    i INTEGER;
+BEGIN
+    -- Update listing details
+    UPDATE listings
+    SET name = p_name,
         type = p_type,
         location = p_location,
         description = p_description,
         price = p_price,
-        "priceUnit" = p_price_unit,
+        price_unit = p_price_unit,
         currency = p_currency,
-        "maxGuests" = p_max_guests,
+        max_guests = p_max_guests,
         features = p_features,
-        images = p_images
-    where id = p_listing_id;
+        images = p_images,
+        updated_at = NOW()
+    WHERE id = p_listing_id;
 
-    select count(*) into current_inventory_count from listing_inventory where "listingId" = p_listing_id;
+    -- Get current inventory count
+    SELECT COUNT(*) INTO current_inventory_count
+    FROM listing_inventory WHERE listing_id = p_listing_id;
 
-    if p_new_inventory_count > current_inventory_count then
-        -- Add new inventory units
-        for i in (current_inventory_count + 1)..p_new_inventory_count loop
-            new_inventory_id := p_listing_id || '-inv-' || i;
-            insert into listing_inventory (id, "listingId", name)
-            values (new_inventory_id, p_listing_id, p_name || ' - Unit ' || i);
-        end loop;
-    elsif p_new_inventory_count < current_inventory_count then
-        -- Remove inventory units (only those not in any booking)
-        delete from listing_inventory
-        where id in (
-            select id from listing_inventory
-            where "listingId" = p_listing_id
-            and id not in (
-                select jsonb_array_elements_text("inventoryIds") from bookings
+    -- Adjust inventory
+    IF p_new_inventory_count > current_inventory_count THEN
+        -- Add new units
+        FOR i IN (current_inventory_count + 1)..p_new_inventory_count LOOP
+            INSERT INTO listing_inventory (listing_id, name)
+            VALUES (p_listing_id, p_name || ' - Unit ' || i);
+        END LOOP;
+    ELSIF p_new_inventory_count < current_inventory_count THEN
+        -- Remove units, ensuring not to remove booked ones
+        DELETE FROM listing_inventory
+        WHERE id IN (
+            SELECT id FROM listing_inventory
+            WHERE listing_id = p_listing_id
+            AND id NOT IN (
+                SELECT unnest(inventory_ids) FROM bookings
+                WHERE listing_id = p_listing_id AND status IN ('Confirmed', 'Pending')
             )
-            limit (current_inventory_count - p_new_inventory_count)
+            ORDER BY id DESC
+            LIMIT (current_inventory_count - p_new_inventory_count)
         );
-    end if;
 
-    -- Update names of existing inventory
-    for i in 1..p_new_inventory_count loop
-        update listing_inventory
-        set name = p_name || ' - Unit ' || i
-        where "listingId" = p_listing_id and id = p_listing_id || '-inv-' || i;
-    end loop;
-end;
-$$ language plpgsql;
-
-
--- Function to create a booking with inventory availability check
-create or replace function create_booking_with_inventory_check(
-    p_listing_id text,
-    p_user_id uuid,
-    p_start_date date,
-    p_end_date date,
-    p_guests integer,
-    p_num_units integer,
-    p_guest_email text default null
-)
-returns text as $$
-declare
-    available_inventory_ids text[];
-    user_id_to_use uuid := p_user_id;
-    new_user_id uuid;
-    final_message text;
-begin
-    -- If no user ID, handle guest booking
-    if user_id_to_use is null and p_guest_email is not null then
-        -- Check if user exists
-        select id into user_id_to_use from users where email = p_guest_email;
+        -- Check if enough units could be deleted
+        SELECT COUNT(*) INTO current_inventory_count
+        FROM listing_inventory WHERE listing_id = p_listing_id;
         
-        if user_id_to_use is null then
-            -- Create provisional user in auth
-            select extensions.http_post(
-                url := current_setting('supautils.url') || '/auth/v1/admin/users',
-                headers := jsonb_build_object(
-                    'apikey', current_setting('supautils.service_role_key'),
-                    'Authorization', 'Bearer ' || current_setting('supautils.service_role_key')
-                ),
-                content := jsonb_build_object(
-                    'email', p_guest_email,
-                    'password', 'temporary_password_placeholder',
-                    'email_confirm', true,
-                    'user_metadata', jsonb_build_object('name', p_guest_email)
-                )
-            ) into new_user_id;
-
-            -- The handle_new_user trigger will create the public.users record
-            -- We need to fetch the new ID
-            select id into user_id_to_use from users where email = p_guest_email;
-            
-            if user_id_to_use is null then
-                raise exception 'Failed to create provisional user.';
-            end if;
-            
-            final_message := 'Booking placed! An account has been created for you. Please check your email to set a password.';
-        else
-            final_message := 'Booking placed! Please log in to manage your booking.';
-        end if;
-    elsif user_id_to_use is null and p_guest_email is null then
-        raise exception 'User session or guest email is required.';
-    else
-        final_message := 'Booking request sent! It is now pending confirmation from the venue.';
-    end if;
-
-    -- Find available inventory units
-    select array_agg(id) into available_inventory_ids
-    from listing_inventory
-    where "listingId" = p_listing_id
-    and id not in (
-        select jsonb_array_elements_text("inventoryIds")
-        from bookings
-        where "listingId" = p_listing_id
-        and status = 'Confirmed'
-        and daterange("startDate", "endDate", '[]') && daterange(p_start_date, p_end_date, '[]')
-    );
-
-    if array_length(available_inventory_ids, 1) < p_num_units then
-        raise exception 'Not enough units available for the selected dates.';
-    end if;
-
-    -- Insert the new booking
-    insert into bookings (id, "listingId", "inventoryIds", "userId", "startDate", "endDate", guests, status)
-    values (
-        'booking-' || gen_random_uuid(),
-        p_listing_id,
-        to_jsonb(available_inventory_ids[1:p_num_units]),
-        user_id_to_use,
-        p_start_date,
-        p_end_date,
-        p_guests,
-        'Pending'
-    );
-    
-    return final_message;
-end;
-$$ language plpgsql;
+        IF current_inventory_count > p_new_inventory_count THEN
+            RAISE EXCEPTION 'Cannot reduce inventory count as units are currently booked.';
+        END IF;
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
--- Function to update a booking
-create or replace function update_booking_with_inventory_check(
-    p_booking_id text,
-    p_new_start_date date,
-    p_new_end_date date,
-    p_new_guests integer,
-    p_new_num_units integer,
-    p_editor_id uuid,
-    p_editor_name text
+-- Filter listings based on various criteria, including availability
+CREATE OR REPLACE FUNCTION get_filtered_listings(
+    location_filter TEXT,
+    type_filter listing_type,
+    guests_filter INTEGER,
+    from_date_filter DATE,
+    to_date_filter DATE
 )
-returns void as $$
-declare
-    v_listing_id text;
-    available_inventory_ids text[];
-begin
-    select "listingId" into v_listing_id from bookings where id = p_booking_id;
-
-    -- Find available inventory units, excluding the current booking being edited
-    select array_agg(id) into available_inventory_ids
-    from listing_inventory
-    where "listingId" = v_listing_id
-    and id not in (
-        select jsonb_array_elements_text("inventoryIds")
-        from bookings
-        where "listingId" = v_listing_id
-        and id != p_booking_id -- Exclude the current booking
-        and status = 'Confirmed'
-        and daterange("startDate", "endDate", '[]') && daterange(p_new_start_date, p_new_end_date, '[]')
-    );
-
-    if array_length(available_inventory_ids, 1) < p_new_num_units then
-        raise exception 'Not enough units available for the newly selected dates. Available: %', array_length(available_inventory_ids, 1);
-    end if;
-
-    update bookings
-    set
-        "startDate" = p_new_start_date,
-        "endDate" = p_new_end_date,
-        guests = p_new_guests,
-        "inventoryIds" = to_jsonb(available_inventory_ids[1:p_new_num_units]),
-        status = 'Pending', -- Reset status to pending after edit
-        "statusMessage" = 'Booking was modified by ' || p_editor_name || ' on ' || to_char(now(), 'YYYY-MM-DD'),
-        "actionByUserId" = p_editor_id,
-        "actionAt" = now()
-    where id = p_booking_id;
-end;
-$$ language plpgsql;
-
-
--- Function to confirm a booking
-create or replace function confirm_booking_with_inventory_check(
-    p_booking_id text,
-    p_admin_id uuid,
-    p_admin_name text
+RETURNS TABLE(
+    id UUID,
+    name TEXT,
+    type listing_type,
+    location TEXT,
+    description TEXT,
+    images TEXT[],
+    price NUMERIC,
+    price_unit price_unit_type,
+    currency currency_type,
+    rating NUMERIC,
+    reviews JSONB,
+    features TEXT[],
+    max_guests INTEGER
 )
-returns void as $$
-declare
-    v_listing_id text;
-    v_start_date date;
-    v_end_date date;
-    v_inventory_ids jsonb;
-    v_num_units integer;
-    available_inventory_count integer;
-begin
-    select "listingId", "startDate", "endDate", "inventoryIds" into v_listing_id, v_start_date, v_end_date, v_inventory_ids
-    from bookings where id = p_booking_id;
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH available_listings AS (
+        SELECT
+            l.id,
+            (SELECT COUNT(*) FROM listing_inventory li WHERE li.listing_id = l.id) - 
+            (
+                SELECT COUNT(DISTINCT b.inv_id)
+                FROM bookings, unnest(inventory_ids) AS inv_id
+                WHERE
+                    bookings.listing_id = l.id
+                    AND bookings.status = 'Confirmed'
+                    AND (bookings.start_date, bookings.end_date) OVERLAPS (from_date_filter, to_date_filter)
+            ) AS available_units
+        FROM listings l
+    )
+    SELECT
+        l.id,
+        l.name,
+        l.type,
+        l.location,
+        l.description,
+        l.images,
+        l.price,
+        l.price_unit,
+        l.currency,
+        l.rating,
+        (
+            SELECT jsonb_agg(r)
+            FROM jsonb_array_elements(l.reviews) AS r
+            WHERE r->>'status' = 'approved'
+        ),
+        l.features,
+        l.max_guests
+    FROM listings l
+    JOIN available_listings al ON l.id = al.id
+    WHERE
+        (location_filter IS NULL OR l.location ILIKE '%' || location_filter || '%')
+        AND (type_filter IS NULL OR l.type = type_filter)
+        AND (guests_filter IS NULL OR l.max_guests >= guests_filter)
+        AND (from_date_filter IS NULL OR al.available_units > 0);
+END;
+$$ LANGUAGE plpgsql;
 
-    v_num_units := jsonb_array_length(v_inventory_ids);
-    
-    -- Check availability again at the time of confirmation
-    select count(*) into available_inventory_count
-    from listing_inventory
-    where "listingId" = v_listing_id
-    and id not in (
-        select jsonb_array_elements_text("inventoryIds")
-        from bookings
-        where "listingId" = v_listing_id
-        and id != p_booking_id -- Exclude the current booking
-        and status = 'Confirmed'
-        and daterange("startDate", "endDate", '[]') && daterange(v_start_date, v_end_date, '[]')
-    );
 
-    if available_inventory_count < v_num_units then
-        raise exception 'Cannot confirm booking. Not enough units available for the selected dates.';
-    end if;
-
-    update bookings
-    set
-        status = 'Confirmed',
-        "statusMessage" = 'Booking confirmed by ' || p_admin_name || ' on ' || to_char(now(), 'YYYY-MM-DD'),
-        "actionByUserId" = p_admin_id,
-        "actionAt" = now()
-    where id = p_booking_id;
-end;
-$$ language plpgsql;
-
--- Function to handle reviews
-create or replace function add_or_update_review(
-    p_listing_id text,
-    p_user_id uuid,
-    p_author_name text,
-    p_avatar_url text,
-    p_rating integer,
-    p_comment text
+-- Add or update a review for a listing
+CREATE OR REPLACE FUNCTION add_or_update_review(
+    p_listing_id UUID,
+    p_user_id UUID,
+    p_author_name TEXT,
+    p_avatar_url TEXT,
+    p_rating INTEGER,
+    p_comment TEXT
 )
-returns void as $$
-declare
-    existing_review jsonb;
-    new_review jsonb;
-    review_id text;
-begin
-    -- Check for existing review by this user
-    select (elem) into existing_review
-    from listings, jsonb_array_elements(reviews) as elem
-    where id = p_listing_id and elem->>'userId' = p_user_id::text;
+RETURNS void AS $$
+DECLARE
+    existing_review JSONB;
+    new_review JSONB;
+    review_index INTEGER;
+BEGIN
+    SELECT review, index - 1 INTO existing_review, review_index
+    FROM listings, jsonb_array_elements(reviews) WITH ORDINALITY arr(review, index)
+    WHERE id = p_listing_id AND review->>'userId' = p_user_id::text;
 
     new_review := jsonb_build_object(
-        'id', 'review-' || gen_random_uuid(),
+        'id', gen_random_uuid()::text,
         'userId', p_user_id,
         'author', p_author_name,
         'avatar', p_avatar_url,
@@ -474,160 +377,301 @@ begin
         'status', 'pending'
     );
 
-    if existing_review is not null then
-        -- Update existing review
-        update listings
-        set reviews = reviews - existing_review || new_review
-        where id = p_listing_id;
-    else
+    IF existing_review IS NOT NULL THEN
+        -- Update existing review, keeping original ID but resetting status
+        new_review := new_review || jsonb_build_object('id', existing_review->'id');
+        UPDATE listings
+        SET reviews = reviews - review_index || new_review
+        WHERE id = p_listing_id;
+    ELSE
         -- Add new review
-        update listings
-        set reviews = reviews || new_review
-        where id = p_listing_id;
-    end if;
+        UPDATE listings
+        SET reviews = reviews || new_review
+        WHERE id = p_listing_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
 
-    -- Recalculate average rating based on approved reviews
-    update listings
-    set rating = (
-        select coalesce(avg((elem->>'rating')::numeric), 0)
-        from jsonb_array_elements(reviews) as elem
-        where elem->>'status' = 'approved'
-    )
-    where id = p_listing_id;
-end;
-$$ language plpgsql;
-
-
--- Function to approve a review
-create or replace function approve_review(p_listing_id text, p_review_id text)
-returns void as $$
-declare
-    review_to_approve jsonb;
-    updated_review jsonb;
-begin
-    select elem into review_to_approve
-    from listings, jsonb_array_elements(reviews) as elem
-    where id = p_listing_id and elem->>'id' = p_review_id;
-
-    if review_to_approve is not null then
-        updated_review := review_to_approve || '{"status": "approved"}';
-        
-        update listings
-        set reviews = reviews - review_to_approve || updated_review
-        where id = p_listing_id;
-        
-        -- Recalculate average rating
-        update listings
-        set rating = (
-            select coalesce(avg((elem->>'rating')::numeric), 0)
-            from jsonb_array_elements(reviews) as elem
-            where elem->>'status' = 'approved'
-        )
-        where id = p_listing_id;
-    end if;
-end;
-$$ language plpgsql;
-
--- Function to delete a review
-create or replace function delete_review(p_listing_id text, p_review_id text)
-returns void as $$
-declare
-    review_to_delete jsonb;
-begin
-    select elem into review_to_delete
-    from listings, jsonb_array_elements(reviews) as elem
-    where id = p_listing_id and elem->>'id' = p_review_id;
-
-    if review_to_delete is not null then
-        update listings
-        set reviews = reviews - review_to_delete
-        where id = p_listing_id;
-
-        -- Recalculate average rating
-        update listings
-        set rating = (
-            select coalesce(avg((elem->>'rating')::numeric), 0)
-            from jsonb_array_elements(reviews) as elem
-            where elem->>'status' = 'approved'
-        )
-        where id = p_listing_id;
-    end if;
-end;
-$$ language plpgsql;
-
--- Function to merge listings
-create or replace function merge_listings(
-    p_primary_listing_id text,
-    p_listing_ids_to_merge text[]
+-- Approve a pending review
+CREATE OR REPLACE FUNCTION approve_review(
+    p_listing_id UUID,
+    p_review_id TEXT
 )
-returns void as $$
-declare
-    merged_images jsonb;
-    merged_features jsonb;
-    merged_reviews jsonb;
-begin
-    -- Combine images, features, and reviews
-    select 
-        jsonb_agg(distinct img) into merged_images
-    from (
-        select jsonb_array_elements_text(images) as img from listings where id = p_primary_listing_id
-        union all
-        select jsonb_array_elements_text(images) as img from listings where id = any(p_listing_ids_to_merge)
-    ) as all_images;
+RETURNS void AS $$
+DECLARE
+    current_reviews JSONB;
+    updated_reviews JSONB := '[]'::jsonb;
+    review JSONB;
+BEGIN
+    SELECT reviews INTO current_reviews FROM listings WHERE id = p_listing_id;
 
-    select 
-        jsonb_agg(distinct feat) into merged_features
-    from (
-        select jsonb_array_elements_text(features) as feat from listings where id = p_primary_listing_id
-        union all
-        select jsonb_array_elements_text(features) as feat from listings where id = any(p_listing_ids_to_merge)
-    ) as all_features;
+    FOR review IN SELECT * FROM jsonb_array_elements(current_reviews)
+    LOOP
+        IF review->>'id' = p_review_id THEN
+            updated_reviews := updated_reviews || (review || '{"status": "approved"}');
+        ELSE
+            updated_reviews := updated_reviews || review;
+        END IF;
+    END LOOP;
 
-    select 
-        jsonb_agg(distinct rev) into merged_reviews
-    from (
-        select jsonb_array_elements(reviews) as rev from listings where id = p_primary_listing_id
-        union all
-        select jsonb_array_elements(reviews) as rev from listings where id = any(p_listing_ids_to_merge)
-    ) as all_reviews;
+    UPDATE listings
+    SET reviews = updated_reviews,
+        rating = (
+            SELECT AVG((r->>'rating')::numeric)
+            FROM jsonb_array_elements(updated_reviews) AS r
+            WHERE r->>'status' = 'approved'
+        )
+    WHERE id = p_listing_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- Delete a review
+CREATE OR REPLACE FUNCTION delete_review(
+    p_listing_id UUID,
+    p_review_id TEXT
+)
+RETURNS void AS $$
+BEGIN
+    UPDATE listings
+    SET reviews = (
+        SELECT jsonb_agg(elem)
+        FROM jsonb_array_elements(reviews) AS elem
+        WHERE elem->>'id' <> p_review_id
+    )
+    WHERE id = p_listing_id;
+
+    -- Recalculate rating
+    UPDATE listings
+    SET rating = COALESCE((
+        SELECT AVG((r->>'rating')::numeric)
+        FROM jsonb_array_elements(reviews) AS r
+        WHERE r->>'status' = 'approved'
+    ), 0)
+    WHERE id = p_listing_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- Create a booking and assign available inventory units
+CREATE OR REPLACE FUNCTION create_booking_with_inventory_check(
+    p_listing_id UUID,
+    p_user_id UUID,
+    p_start_date DATE,
+    p_end_date DATE,
+    p_guests INTEGER,
+    p_num_units INTEGER,
+    p_guest_email TEXT DEFAULT NULL
+)
+RETURNS TEXT AS $$
+DECLARE
+    total_inventory INTEGER;
+    booked_inventory_ids UUID[];
+    available_inventory_ids UUID[];
+    assigned_inventory_ids UUID[];
+    target_user_id UUID := p_user_id;
+    target_user_status user_status;
+    new_user_password TEXT;
+    booking_user RECORD;
+BEGIN
+    -- Handle guest booking
+    IF target_user_id IS NULL AND p_guest_email IS NOT NULL THEN
+        SELECT id, status INTO booking_user FROM users WHERE email = p_guest_email;
+        IF NOT FOUND THEN
+            -- Create a provisional user
+            new_user_password := substr(md5(random()::text), 0, 10);
+            INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, recovery_token, recovery_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, email_change, email_change_sent_at, confirmed_at)
+            VALUES (current_setting('app.instance_id')::UUID, gen_random_uuid(), 'authenticated', 'authenticated', p_guest_email, crypt(new_user_password, gen_salt('bf')), NOW(), NULL, NULL, NULL, '{"provider":"email","providers":["email"]}', '{"provider":"email"}', NOW(), NOW(), NULL, '', NULL, NOW())
+            RETURNING id INTO target_user_id;
+
+            INSERT INTO users (id, name, email, role, status) 
+            VALUES (target_user_id, 'Guest User', p_guest_email, 'guest', 'provisional');
+        ELSE
+            target_user_id := booking_user.id;
+            target_user_status := booking_user.status;
+        END IF;
+    END IF;
+
+    -- Find available inventory
+    SELECT array_agg(id) INTO booked_inventory_ids
+    FROM listing_inventory
+    WHERE id IN (
+        SELECT unnest(inventory_ids)
+        FROM bookings
+        WHERE listing_id = p_listing_id AND status = 'Confirmed' AND (start_date, end_date) OVERLAPS (p_start_date, p_end_date)
+    );
+
+    SELECT array_agg(id) INTO available_inventory_ids
+    FROM listing_inventory
+    WHERE listing_id = p_listing_id AND (booked_inventory_ids IS NULL OR NOT (id = ANY(booked_inventory_ids)));
+
+    -- Check availability
+    IF array_length(available_inventory_ids, 1) < p_num_units THEN
+        RAISE EXCEPTION 'Not enough units available for the selected dates. Available: %', COALESCE(array_length(available_inventory_ids, 1), 0);
+    END IF;
+
+    -- Assign inventory
+    assigned_inventory_ids := available_inventory_ids[1:p_num_units];
+
+    -- Create booking
+    INSERT INTO bookings (listing_id, user_id, inventory_ids, start_date, end_date, guests)
+    VALUES (p_listing_id, target_user_id, assigned_inventory_ids, p_start_date, p_end_date, p_guests);
+
+    IF new_user_password IS NOT NULL THEN
+        RETURN 'Booking created. A provisional account was made for ' || p_guest_email || '. Please check email for details.';
+    ELSE
+        RETURN 'Your booking request has been sent and is pending confirmation.';
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Update a booking, re-checking for inventory availability
+CREATE OR REPLACE FUNCTION update_booking_with_inventory_check(
+    p_booking_id UUID,
+    p_new_start_date DATE,
+    p_new_end_date DATE,
+    p_new_guests INTEGER,
+    p_new_num_units INTEGER,
+    p_editor_id UUID,
+    p_editor_name TEXT
+)
+RETURNS void AS $$
+DECLARE
+    current_listing_id UUID;
+    booked_inventory_ids UUID[];
+    available_inventory_ids UUID[];
+    assigned_inventory_ids UUID[];
+BEGIN
+    SELECT listing_id INTO current_listing_id FROM bookings WHERE id = p_booking_id;
+    
+    -- Find available inventory, excluding units from the current booking
+    SELECT array_agg(id) INTO booked_inventory_ids
+    FROM listing_inventory
+    WHERE id IN (
+        SELECT unnest(inventory_ids)
+        FROM bookings
+        WHERE listing_id = current_listing_id AND id != p_booking_id AND status = 'Confirmed' AND (start_date, end_date) OVERLAPS (p_new_start_date, p_new_end_date)
+    );
+
+    SELECT array_agg(id) INTO available_inventory_ids
+    FROM listing_inventory
+    WHERE listing_id = current_listing_id AND (booked_inventory_ids IS NULL OR NOT (id = ANY(booked_inventory_ids)));
+
+    -- Check availability
+    IF array_length(available_inventory_ids, 1) < p_new_num_units THEN
+        RAISE EXCEPTION 'Not enough units available for the new dates. Available: %', COALESCE(array_length(available_inventory_ids, 1), 0);
+    END IF;
+    
+    assigned_inventory_ids := available_inventory_ids[1:p_new_num_units];
+
+    -- Update booking
+    UPDATE bookings
+    SET start_date = p_new_start_date,
+        end_date = p_new_end_date,
+        guests = p_new_guests,
+        inventory_ids = assigned_inventory_ids,
+        status = 'Pending',
+        action_by_user_id = p_editor_id,
+        action_at = NOW(),
+        status_message = 'Booking was modified by ' || p_editor_name || ' on ' || NOW()::date,
+        updated_at = NOW()
+    WHERE id = p_booking_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Confirm a booking, performing a final availability check
+CREATE OR REPLACE FUNCTION confirm_booking_with_inventory_check(
+    p_booking_id UUID,
+    p_admin_id UUID,
+    p_admin_name TEXT
+)
+RETURNS void AS $$
+DECLARE
+    booking_to_confirm RECORD;
+    booked_inventory_ids UUID[];
+    is_available BOOLEAN := true;
+BEGIN
+    SELECT * INTO booking_to_confirm FROM bookings WHERE id = p_booking_id;
+
+    -- Final check
+    FOR i IN 1..array_length(booking_to_confirm.inventory_ids, 1) LOOP
+        SELECT NOT EXISTS (
+            SELECT 1 FROM bookings b
+            WHERE b.id != p_booking_id
+            AND b.listing_id = booking_to_confirm.listing_id
+            AND b.status = 'Confirmed'
+            AND booking_to_confirm.inventory_ids[i] = ANY(b.inventory_ids)
+            AND (b.start_date, b.end_date) OVERLAPS (booking_to_confirm.start_date, booking_to_confirm.end_date)
+        ) INTO is_available;
+
+        IF NOT is_available THEN
+            RAISE EXCEPTION 'Unit % is no longer available for the selected dates.', booking_to_confirm.inventory_ids[i];
+        END IF;
+    END LOOP;
+
+    UPDATE bookings
+    SET status = 'Confirmed',
+        action_by_user_id = p_admin_id,
+        action_at = NOW(),
+        status_message = 'Booking confirmed by ' || p_admin_name || ' on ' || NOW()::date
+    WHERE id = p_booking_id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Merge multiple listings into a primary one
+CREATE OR REPLACE FUNCTION merge_listings(
+    p_primary_listing_id UUID,
+    p_listing_ids_to_merge UUID[]
+)
+RETURNS void AS $$
+DECLARE
+    merged_images TEXT[];
+    merged_features TEXT[];
+    merged_reviews JSONB;
+BEGIN
+    -- Aggregate data
+    SELECT array_agg(DISTINCT image), array_agg(DISTINCT feature), jsonb_agg(DISTINCT review)
+    INTO merged_images, merged_features, merged_reviews
+    FROM (
+        SELECT unnest(images) as image, NULL as feature, NULL as review FROM listings WHERE id = ANY(p_listing_ids_to_merge) OR id = p_primary_listing_id
+        UNION ALL
+        SELECT NULL, unnest(features), NULL FROM listings WHERE id = ANY(p_listing_ids_to_merge) OR id = p_primary_listing_id
+        UNION ALL
+        SELECT NULL, NULL, jsonb_array_elements(reviews) FROM listings WHERE id = ANY(p_listing_ids_to_merge) OR id = p_primary_listing_id
+    ) as source;
 
     -- Update primary listing
-    update listings
-    set 
-        images = merged_images,
+    UPDATE listings
+    SET images = merged_images,
         features = merged_features,
         reviews = merged_reviews
-    where id = p_primary_listing_id;
+    WHERE id = p_primary_listing_id;
 
-    -- Move inventory and bookings from merged listings to primary
-    update listing_inventory set "listingId" = p_primary_listing_id where "listingId" = any(p_listing_ids_to_merge);
-    update bookings set "listingId" = p_primary_listing_id where "listingId" = any(p_listing_ids_to_merge);
+    -- Move inventory, bookings, etc.
+    UPDATE listing_inventory SET listing_id = p_primary_listing_id WHERE listing_id = ANY(p_listing_ids_to_merge);
+    UPDATE bookings SET listing_id = p_primary_listing_id WHERE listing_id = ANY(p_listing_ids_to_merge);
 
     -- Delete merged listings
-    delete from listings where id = any(p_listing_ids_to_merge);
-end;
-$$ language plpgsql;
+    DELETE FROM listings WHERE id = ANY(p_listing_ids_to_merge);
+END;
+$$ LANGUAGE plpgsql;
 
--- Function to bulk delete listings, checking for active bookings
-create or replace function bulk_delete_listings(p_listing_ids text[])
-returns void as $$
-begin
-    if exists (select 1 from bookings where "listingId" = any(p_listing_ids) and status in ('Confirmed', 'Pending')) then
-        raise exception 'Cannot delete listings with active or pending bookings.';
-    end if;
-    
-    delete from listings where id = any(p_listing_ids);
-end;
-$$ language plpgsql;
+-- Bulk delete listings
+CREATE OR REPLACE FUNCTION bulk_delete_listings(p_listing_ids UUID[])
+RETURNS void AS $$
+DECLARE
+  conflicting_listings INT;
+BEGIN
+  SELECT count(*) INTO conflicting_listings
+  FROM bookings
+  WHERE listing_id = ANY(p_listing_ids) AND status IN ('Confirmed', 'Pending');
 
--- Function to delete a single listing, checking for active bookings
-create or replace function delete_listing_with_bookings_check(p_listing_id text)
-returns void as $$
-begin
-    if exists (select 1 from bookings where "listingId" = p_listing_id and status in ('Confirmed', 'Pending')) then
-        raise exception 'Cannot delete a listing that has active or pending bookings. Please cancel them first.';
-    end if;
-    
-    delete from listings where id = p_listing_id;
-end;
-$$ language plpgsql;
+  IF conflicting_listings > 0 THEN
+    RAISE EXCEPTION 'Cannot delete. % listing(s) have active or pending bookings.', conflicting_listings;
+  END IF;
+
+  DELETE FROM listings WHERE id = ANY(p_listing_ids);
+END;
+$$ LANGUAGE plpgsql;
