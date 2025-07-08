@@ -256,13 +256,13 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuItem onClick={() => router.push(`/listing/${listing.id}`)}>View</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => router.push(`/listing/${listing.id}`)}>Details</DropdownMenuItem>
                                   {isAdmin && (
                                     <>
                                       <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-listing/${listing.id}`)}>Edit</DropdownMenuItem>
                                     </>
                                   )}
-                                  <DropdownMenuItem onClick={() => router.push(`/bookings?listingId=${listing.id}`)}>View Bookings</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => router.push(`/bookings?listingId=${listing.id}`)}>Bookings</DropdownMenuItem>
                                   {isAdmin && (
                                     <>
                                       <DropdownMenuSeparator />
