@@ -28,6 +28,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import { useState, useEffect } from 'react';
 
 const navLinks = [
   { href: '/search', label: 'Search' },
@@ -39,6 +40,11 @@ const navLinks = [
 export function Header({ session }: { session: User | null }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const visibleNavLinks = navLinks.filter(link => {
     if (link.href.startsWith('/dashboard') && session?.role !== 'admin') {
@@ -65,7 +71,7 @@ export function Header({ session }: { session: User | null }) {
                   <DropdownMenuTrigger asChild>
                     <Button 
                         variant="ghost" 
-                        data-active={pathname.startsWith('/dashboard')}
+                        data-active={isClient && pathname.startsWith('/dashboard')}
                         className={cn(
                             'flex items-center gap-1 p-0 h-auto text-sm font-medium hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0',
                             'transition-colors hover:text-primary text-muted-foreground data-[active=true]:text-primary'
@@ -87,7 +93,7 @@ export function Header({ session }: { session: User | null }) {
                 <Link
                   key={link.href}
                   href={link.href}
-                  data-active={pathname === link.href}
+                  data-active={isClient && pathname === link.href}
                   className={cn(
                     'transition-colors hover:text-primary text-muted-foreground data-[active=true]:text-primary'
                   )}
@@ -122,8 +128,8 @@ export function Header({ session }: { session: User | null }) {
                 </SheetTrigger>
                 <SheetContent side="left">
                 <SheetHeader className="sr-only">
-                    <SheetTitle>Navigation Menu</SheetTitle>
-                    <SheetDescription>Main navigation links for the application.</SheetDescription>
+                    <SheetTitle>Mobile Menu</SheetTitle>
+                    <SheetDescription>Main navigation for Book45.</SheetDescription>
                 </SheetHeader>
                 <nav className="grid gap-6 text-lg font-medium">
                     <Link href="/" className="flex items-center gap-2 font-bold text-lg mb-4">
@@ -135,7 +141,7 @@ export function Header({ session }: { session: User | null }) {
                         <Accordion key={link.href} type="single" collapsible className="w-full -my-2">
                             <AccordionItem value="dashboard" className="border-b-0">
                                 <AccordionTrigger
-                                    data-active={pathname.startsWith('/dashboard')}
+                                    data-active={isClient && pathname.startsWith('/dashboard')}
                                     className={cn(
                                         'py-2 hover:no-underline transition-colors hover:text-primary [&[data-state=open]>svg]:text-primary',
                                         'text-muted-foreground data-[active=true]:text-primary'
@@ -145,13 +151,13 @@ export function Header({ session }: { session: User | null }) {
                                 <AccordionContent className="pl-6 pt-4 pb-0 flex flex-col gap-4">
                                     <Link 
                                         href="/dashboard?tab=listings" 
-                                        data-active={pathname === '/dashboard' && (searchParams.get('tab') === 'listings' || !searchParams.has('tab'))}
+                                        data-active={isClient && pathname === '/dashboard' && (searchParams.get('tab') === 'listings' || !searchParams.has('tab'))}
                                         className={cn(
                                             'text-muted-foreground hover:text-primary data-[active=true]:text-primary data-[active=true]:font-semibold'
                                     )}>Listings</Link>
                                     <Link 
                                         href="/dashboard?tab=users"
-                                        data-active={pathname === '/dashboard' && searchParams.get('tab') === 'users'} 
+                                        data-active={isClient && pathname === '/dashboard' && searchParams.get('tab') === 'users'} 
                                         className={cn(
                                             'text-muted-foreground hover:text-primary data-[active=true]:text-primary data-[active=true]:font-semibold'
                                     )}>Users</Link>
@@ -162,7 +168,7 @@ export function Header({ session }: { session: User | null }) {
                         <Link
                             key={link.href}
                             href={link.href}
-                            data-active={pathname === link.href}
+                            data-active={isClient && pathname === link.href}
                             className={cn(
                             'transition-colors hover:text-primary',
                             'text-muted-foreground data-[active=true]:text-primary'
