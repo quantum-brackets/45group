@@ -474,7 +474,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
 
         const stmt = db.prepare(`
           UPDATE bookings 
-          SET startDate = ?, endDate = ?, guests = ?, inventoryIds = ?, status = 'Pending', statusMessage = ?, actionByUserId = NULL, actionAt = NULL
+          SET startDate = ?, endDate = ?, guests = ?, inventoryIds = ?, status = 'Pending', actionByUserId = NULL, actionAt = NULL
           WHERE id = ?
         `);
         
@@ -760,38 +760,73 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
   
     try {
       const db = await getDb();
-      const booking = db.prepare(`
-        SELECT l.name as listingName 
-        FROM bookings b
-        JOIN listings l ON b.listingId = l.id
-        WHERE b.id = ?
-      `).get(bookingId) as { listingName: string } | undefined;
-  
-      if (!booking) {
-        return { error: 'Booking not found.' };
-      }
-      
-      const actionAt = new Date().toISOString();
-      const statusMessage = `Confirmed by ${session.name} on ${new Date(actionAt).toLocaleDateString()}`;
-  
-      const stmt = db.prepare(`
-        UPDATE bookings 
-        SET status = 'Confirmed', actionByUserId = ?, actionAt = ?, statusMessage = ?
-        WHERE id = ? AND status = 'Pending'`);
-      const info = stmt.run(session.id, actionAt, statusMessage, bookingId);
-      
-      if (info.changes === 0) {
-          return { error: 'Failed to confirm booking. It might not be in a pending state.' };
-      }
-  
+      const transaction = db.transaction(() => {
+        const booking = db.prepare(`
+          SELECT b.listingId, b.startDate, b.endDate, b.inventoryIds, l.name as listingName
+          FROM bookings b
+          JOIN listings l ON b.listingId = l.id
+          WHERE b.id = ? AND b.status = 'Pending'
+        `).get(bookingId) as { listingId: string, startDate: string, endDate: string, inventoryIds: string, listingName: string } | undefined;
+    
+        if (!booking) {
+          throw new Error('Booking not found or is not in a pending state.');
+        }
+
+        const requestedUnitsCount = (JSON.parse(booking.inventoryIds) as string[]).length;
+
+        // Get total inventory for the listing
+        const totalInventory = db.prepare('SELECT COUNT(*) as count FROM listing_inventory WHERE listingId = ?').get(booking.listingId) as { count: number };
+        if (!totalInventory) {
+            throw new Error(`Could not find inventory for listing ID ${booking.listingId}.`);
+        }
+
+        // Get all units booked in *other* confirmed reservations during the conflict period
+        const otherBookedUnitsStmt = db.prepare(`
+            SELECT je.value as inventoryId
+            FROM bookings b, json_each(b.inventoryIds) je
+            WHERE b.listingId = ?
+              AND b.status = 'Confirmed'
+              AND b.id != ?
+              AND (b.endDate >= ? AND b.startDate <= ?)
+        `);
+        const otherBookedUnits = otherBookedUnitsStmt.all(booking.listingId, bookingId, booking.startDate, booking.endDate) as { inventoryId: string }[];
+        const otherBookedUnitsCount = new Set(otherBookedUnits.map(u => u.inventoryId)).size;
+        
+        const availableUnitsCount = totalInventory.count - otherBookedUnitsCount;
+
+        if (availableUnitsCount < requestedUnitsCount) {
+            throw new Error(`Cannot confirm booking. Only ${availableUnitsCount} unit(s) are available for these dates, but ${requestedUnitsCount} are requested. Another booking may have been confirmed.`);
+        }
+        
+        const actionAt = new Date().toISOString();
+        const statusMessage = `Confirmed by ${session.name} on ${new Date(actionAt).toLocaleDateString()}`;
+    
+        const stmt = db.prepare(`
+          UPDATE bookings 
+          SET status = 'Confirmed', actionByUserId = ?, actionAt = ?, statusMessage = ?
+          WHERE id = ? AND status = 'Pending'`);
+        const info = stmt.run(session.id, actionAt, statusMessage, bookingId);
+        
+        if (info.changes === 0) {
+            // This could happen in a race condition, so it's a good final check
+            throw new Error('Failed to confirm booking. It might have been changed by another process.');
+        }
+
+        return { listingName: booking.listingName };
+      });
+
+      const result = transaction();
+
       revalidatePath('/bookings');
       revalidatePath(`/booking/${bookingId}`);
       
-      return { success: `Booking for ${booking.listingName} has been confirmed.` };
+      return { success: `Booking for ${result.listingName} has been confirmed.` };
+
     } catch (error) {
       console.error(`[CONFIRM_BOOKING_ACTION] Error: ${error}`);
       const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-      return { error: `Failed to confirm booking in the database: ${message}` };
+      const clientMessage = message.startsWith('Cannot confirm booking') ? message : 'A database error occurred while trying to confirm the booking.';
+      return { error: clientMessage };
     }
 }
 
