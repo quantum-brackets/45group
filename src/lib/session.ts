@@ -11,8 +11,7 @@ import { add } from 'date-fns';
 
 export async function getSession(): Promise<User | null> {
   noStore();
-  const cookieStore = cookies();
-  const token = cookieStore.get('session_token')?.value;
+  const token = (await cookies()).get('session')?.value;
 
   if (!token) {
     return null;
@@ -31,7 +30,7 @@ export async function getSession(): Promise<User | null> {
 
   if (sessionError || !session || !session.user) {
     // If the session is invalid, clear the cookie
-    cookies().delete('session_token');
+    (await cookies()).delete('session');
     return null;
   }
   
@@ -40,7 +39,7 @@ export async function getSession(): Promise<User | null> {
   if (sessionExpires < Date.now()) {
     // Optionally, delete the expired session from DB
     await supabase.from('sessions').delete().eq('id', token);
-    cookies().delete('session_token');
+    (await cookies()).delete('session');
     return null;
   }
   
@@ -49,7 +48,6 @@ export async function getSession(): Promise<User | null> {
 
 export async function createSession(userId: string) {
     const supabase = createSupabaseServerClient();
-    const cookieStore = cookies();
     
     const expiresAt = add(new Date(), {
         hours: 24,
@@ -65,25 +63,25 @@ export async function createSession(userId: string) {
         return null;
     }
 
-    cookieStore.set('session_token', data.id, {
+    (await cookies()).set('session', data.id, {
         httpOnly: true,
         secure: true,
         expires: expiresAt,
         sameSite: 'none',
         path: '/',
     });
+
     return data.id;
 }
 
 
 export async function logout() {
-    const cookieStore = cookies();
-    const token = cookieStore.get('session_token')?.value;
+    const token = (await cookies()).get('session')?.value;
 
     if (token) {
         const supabase = createSupabaseServerClient();
         await supabase.from('sessions').delete().eq('id', token);
     }
-    
-    cookies().delete('session_token');
+
+    (await cookies()).delete('session');
 }

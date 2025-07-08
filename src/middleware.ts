@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  const sessionToken = request.cookies.get('session_token')?.value;
+  const sessionToken = request.cookies.get('session')?.value;
 
   const protectedRoutes = ['/bookings', '/booking', '/recommendations', '/dashboard', '/profile'];
   const authRoutes = ['/login', '/signup'];
