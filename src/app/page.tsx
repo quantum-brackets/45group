@@ -2,22 +2,29 @@
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import StaticCard from '@/components/common/StaticCard';
 
-const locations = [
+const services = [
   {
-    name: 'Abuja',
-    image: 'https://placehold.co/400x600.png',
-    hint: 'hotel bedroom',
+    name: 'Hotel',
+    images: [
+      'https://placehold.co/400x600.png',
+      'https://placehold.co/400x600.png',
+    ],
   },
   {
-    name: 'Calabar',
-    image: 'https://placehold.co/400x600.png',
-    hint: 'restaurant dining',
+    name: 'Events',
+    images: [
+      'https://placehold.co/400x600.png',
+      'https://placehold.co/400x600.png',
+    ],
   },
   {
-    name: 'Ikom',
-    image: 'https://placehold.co/400x600.png',
-    hint: 'hotel room',
+    name: 'Restaurant',
+    images: [
+      'https://placehold.co/400x600.png',
+      'https://placehold.co/400x600.png',
+    ],
   },
 ];
 
@@ -25,13 +32,13 @@ export default async function HomePage() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="bg-card py-20 md:py-32">
+      <section className="bg-card py-20">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl font-headline font-bold tracking-tight lg:text-6xl">
-            Your Perfect Venue Awaits
+            Your Experience Awaits
           </h1>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            From cozy restaurants to grand hotels and event spaces, find and book the perfect spot for any occasion.
+            From cozy restaurants to grand hotels and event spaces, find your next adventure at a 45 group location!
           </p>
           <div className="mt-8">
             <Button asChild size="lg">
@@ -43,33 +50,48 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Lodges Section */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="mb-8 flex items-baseline gap-x-3">
-            <h2 className="text-3xl font-headline font-bold">Lodges</h2>
-            <p className="text-xl text-muted-foreground">
-              ~ Find your next adventure at a 45 group location!
-            </p>
-          </div>
+      {/* Services Section */}
+      <section className="">
+        <div className="container mx-auto px-4 flex flex-col gap-4">
+          <h2 id="services" className="text-3xl font-headline font-bold">Services</h2>
+          <p className="text-l text-muted-foreground">
+            Across a variety of stunning sites.
+            Immerse yourself in unique moments that linger in your mind,
+            creating memories that will last a lifetime.
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {locations.map((location) => (
-              <Link href={`/search?location=${location.name}`} key={location.name} className="group">
-                <div className="relative rounded-2xl overflow-hidden h-[500px] shadow-lg">
-                  <img
-                    src={location.image}
-                    data-ai-hint={location.hint}
-                    alt={`Lodge in ${location.name}`}
-                    className="w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center transition-colors duration-300 group-hover:bg-black/40">
-                    <h3 className="text-white text-4xl font-headline font-bold tracking-wider">
-                      {location.name}
-                    </h3>
-                  </div>
-                </div>
-              </Link>
+          {services.map((srvc) => (
+              <StaticCard
+                name={srvc.name}
+                link={`/search?type=${srvc.name}`}
+                images={srvc.images}
+              />
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Contacts Section */}
+      <section className="py-20">
+        <div className="container mx-auto px-4 flex flex-col gap-4">
+          <h2 id="contact" className="text-3xl font-headline font-bold">Contact</h2>
+          <p className="text-l text-muted-foreground">
+            For comprehensive support and assistance with your travel needs,
+            please don't hesitate to contact the dedicated team at 45 Group,
+            who can expertly help you with booking comfortable lodges for your stay,
+            guide you through the process of attending local events and attractions,
+            or assist in making reservations at the finest restaurants
+            in the area to enhance your dining experience.
+          </p>
+          <div className="flex flex-row justify-center gap-8 py-4">
+            <div className="flex flex-col items-center gap-2">
+              <b>Email</b>
+              <a href="mailto:info@45group.org">info@45group.org</a>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <b>Phone</b>
+              <a href="tel:+2348174683545">+234 8174683545</a>
+            </div>
           </div>
         </div>
       </section>

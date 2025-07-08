@@ -1,4 +1,5 @@
 import type {Metadata} from 'next';
+import Script from 'next/script';
 import './globals.css';
 import { Header } from '@/components/common/Header';
 import { Toaster } from "@/components/ui/toaster"
@@ -32,6 +33,10 @@ export default async function RootLayout({
           {children}
         </main>
         <Toaster />
+        <Script
+          src="https://cdn.jsdelivr.net/gh/iamogbz/oh-my-wcs@6b7a7b0/components/carousel-stack.js"
+          strategy="beforeInteractive"
+        />
       </body>
     </html>
   );
