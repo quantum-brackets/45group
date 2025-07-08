@@ -37,8 +37,8 @@ export interface ListingInventory {
 export interface Booking {
   id: string;
   listingId: string;
-  inventoryId?: string;
-  inventoryName?: string;
+  inventoryIds: string[];
+  inventoryNames?: string[];
   userId: string;
   userName?: string;
   listingName: string;

@@ -74,9 +74,8 @@ export async function getAllBookings(filters: BookingsPageFilters): Promise<Book
 
     const db = await getDb();
     let query = `
-        SELECT b.*, u.name as userName, l.name as listingName, i.name as inventoryName
+        SELECT b.*, u.name as userName, l.name as listingName
         FROM bookings as b
-        LEFT JOIN listing_inventory as i ON b.inventoryId = i.id
         JOIN users as u ON b.userId = u.id
         JOIN listings as l ON b.listingId = l.id
     `;
@@ -106,11 +105,21 @@ export async function getAllBookings(filters: BookingsPageFilters): Promise<Book
     query += ' ORDER BY b.startDate DESC';
 
     const stmt = db.prepare(query);
-    return stmt.all(...params) as Booking[];
+    const bookingRows = stmt.all(...params) as any[];
+
+    return bookingRows.map(row => {
+        const inventoryIds = row.inventoryIds ? JSON.parse(row.inventoryIds) : [];
+        delete row.inventoryIds;
+        return {
+            ...row,
+            inventoryIds,
+        };
+    });
 }
 
 
 export async function getBookingById(id: string): Promise<Booking | null> {
+    noStore();
     const session = await getSession();
     if (!session) {
         return null;
@@ -118,21 +127,48 @@ export async function getBookingById(id: string): Promise<Booking | null> {
     
     const db = await getDb();
     const stmt = db.prepare(`
-        SELECT b.*, l.name as listingName, u.name as userName, i.name as inventoryName
+        SELECT b.*, l.name as listingName, u.name as userName
         FROM bookings as b
         JOIN listings as l on b.listingId = l.id
         JOIN users u ON b.userId = u.id
-        LEFT JOIN listing_inventory i ON b.inventoryId = i.id
         WHERE b.id = ?
     `);
-    const booking = stmt.get(id) as Booking | undefined;
+    const bookingData = stmt.get(id) as any;
 
-    if (!booking) return null;
+    if (!bookingData) return null;
 
     // Admin/staff can view any booking, guests can only view their own
-    if (session.role === 'guest' && booking.userId !== session.id) {
+    if (session.role === 'guest' && bookingData.userId !== session.id) {
         return null;
     }
+
+    const inventoryIds = bookingData.inventoryIds ? JSON.parse(bookingData.inventoryIds) : [];
+    let inventoryNames: string[] = [];
+
+    if (inventoryIds.length > 0) {
+        const placeholders = inventoryIds.map(() => '?').join(',');
+        const inventoryStmt = db.prepare(`SELECT name FROM listing_inventory WHERE id IN (${placeholders})`);
+        const results = inventoryStmt.all(...inventoryIds) as { name: string }[];
+        inventoryNames = results.map(item => item.name);
+    }
+
+    const booking: Booking = {
+        id: bookingData.id,
+        listingId: bookingData.listingId,
+        userId: bookingData.userId,
+        startDate: bookingData.startDate,
+        endDate: bookingData.endDate,
+        guests: bookingData.guests,
+        status: bookingData.status,
+        listingName: bookingData.listingName,
+        userName: bookingData.userName,
+        createdAt: bookingData.createdAt,
+        actionByUserId: bookingData.actionByUserId,
+        actionAt: bookingData.actionAt,
+        statusMessage: bookingData.statusMessage,
+        inventoryIds: inventoryIds,
+        inventoryNames: inventoryNames,
+    };
 
     return booking;
 }
@@ -173,9 +209,9 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
     
     whereClauses.push(`
       (SELECT COUNT(*) FROM listing_inventory WHERE listingId = l.id) >
-      (SELECT COUNT(DISTINCT b.inventoryId) 
-       FROM bookings b
-       JOIN listing_inventory i ON b.inventoryId = i.id
+      (SELECT COUNT(DISTINCT je.value) 
+       FROM bookings b, json_each(b.inventoryIds) je
+       JOIN listing_inventory i ON i.id = je.value
        WHERE i.listingId = l.id
        AND b.status = 'Confirmed'
        AND (b.endDate >= ? AND b.startDate <= ?))

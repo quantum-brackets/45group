@@ -1,5 +1,5 @@
 
-import { getBookingById, getListingById } from '@/lib/data';
+import { getBookingById, getInventoryByListingId, getListingById } from '@/lib/data';
 import { getSession } from '@/lib/session';
 import { notFound, redirect } from 'next/navigation';
 import { BookingDetails } from '@/components/bookings/BookingDetails';
@@ -21,9 +21,11 @@ export default async function BookingDetailsPage({ params }: { params: { id: str
       notFound();
   }
 
+  const inventory = await getInventoryByListingId(booking.listingId);
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <BookingDetails booking={booking} listing={listing} session={session} />
+      <BookingDetails booking={booking} listing={listing} session={session} totalInventoryCount={inventory.length} />
     </div>
   );
 }

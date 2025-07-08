@@ -131,8 +131,13 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
             }
         } else if (newCount < currentCount) {
             // Remove inventory items that are not booked
-            const bookedInventoryIdsStmt = db.prepare(`SELECT DISTINCT inventoryId FROM bookings WHERE inventoryId IN (${currentInventory.map(() => '?').join(',')})`);
-            const bookedInventoryIdsResult = bookedInventoryIdsStmt.all(...currentInventory.map(i => i.id)) as {inventoryId: string}[];
+            const bookedInventoryIdsStmt = db.prepare(`
+              SELECT DISTINCT je.value as inventoryId
+              FROM bookings b, json_each(b.inventoryIds) je
+              JOIN listing_inventory i ON i.id = je.value
+              WHERE i.listingId = ? AND b.status != 'Cancelled'
+            `);
+            const bookedInventoryIdsResult = bookedInventoryIdsStmt.all(id) as {inventoryId: string}[];
             const bookedIds = new Set(bookedInventoryIdsResult.map(r => r.inventoryId));
             
             const deletableInventory = currentInventory.filter(i => !bookedIds.has(i.id));
@@ -178,8 +183,8 @@ export async function deleteListingAction(id: string) {
         // Check for active bookings associated with this listing's inventory
         const bookingCheckStmt = db.prepare(`
             SELECT COUNT(*) as bookingCount 
-            FROM bookings b
-            JOIN listing_inventory i ON b.inventoryId = i.id
+            FROM bookings b, json_each(b.inventoryIds) je
+            JOIN listing_inventory i ON i.id = je.value
             WHERE i.listingId = ? AND b.status != 'Cancelled'
         `);
         const { bookingCount } = bookingCheckStmt.get(id) as { bookingCount: number };
@@ -257,38 +262,38 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
         SELECT id FROM listing_inventory
         WHERE listingId = ? 
         AND id NOT IN (
-            SELECT inventoryId FROM bookings
-            WHERE inventoryId IS NOT NULL
-            AND status = 'Confirmed'
-            AND (endDate >= ? AND startDate <= ?)
+            SELECT je.value FROM bookings b, json_each(b.inventoryIds) je
+            WHERE b.listingId = ?
+            AND b.status = 'Confirmed'
+            AND (b.endDate >= ? AND b.startDate <= ?)
         )
         LIMIT 1
     `);
 
-    const availableInventory = findAvailableInventoryStmt.get(listingId, fromDate, toDate) as { id: string } | undefined;
+    const availableInventory = findAvailableInventoryStmt.get(listingId, listingId, fromDate, toDate) as { id: string } | undefined;
     
     if (!availableInventory) {
         return { success: false, message: 'Sorry, no units are available for these dates. Please try another date range.' };
     }
     
-    const inventoryId = availableInventory.id;
+    const inventoryIds = [availableInventory.id];
 
     const stmt = db.prepare(`
-      INSERT INTO bookings (id, listingId, inventoryId, userId, startDate, endDate, guests, status, listingName, createdAt)
+      INSERT INTO bookings (id, listingId, userId, startDate, endDate, guests, status, listingName, createdAt, inventoryIds)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
       `booking-${randomUUID()}`,
       listingId,
-      inventoryId,
       session.id,
       fromDate,
       toDate,
       guests,
       'Pending',
       listing.name,
-      new Date().toISOString()
+      new Date().toISOString(),
+      JSON.stringify(inventoryIds)
     );
 
     revalidatePath('/bookings');
@@ -307,6 +312,7 @@ const UpdateBookingSchema = z.object({
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
+  numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
 });
 
 export async function updateBookingAction(data: z.infer<typeof UpdateBookingSchema>) {
@@ -320,45 +326,70 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
   }
 
-  const { bookingId, startDate, endDate, guests } = validatedFields.data;
+  const { bookingId, startDate, endDate, guests, numberOfUnits } = validatedFields.data;
+
+  const fromDate = new Date(startDate).toISOString().split('T')[0];
+  const toDate = new Date(endDate).toISOString().split('T')[0];
 
   try {
     const db = await getDb();
-    const booking = db.prepare('SELECT userId, listingId FROM bookings WHERE id = ?').get(bookingId) as { userId: string, listingId: string } | undefined;
+    const transaction = db.transaction(() => {
+        const booking = db.prepare('SELECT userId, listingId FROM bookings WHERE id = ?').get(bookingId) as { userId: string, listingId: string } | undefined;
 
-    if (!booking) {
-      return { success: false, message: 'Booking not found.' };
-    }
-
-    if (session.role !== 'admin' && booking.userId !== session.id) {
-      return { success: false, message: 'You do not have permission to edit this booking.' };
-    }
+        if (!booking) {
+          throw new Error('Booking not found.');
+        }
     
-    const listing = db.prepare('SELECT maxGuests FROM listings WHERE id = ?').get(booking.listingId) as { maxGuests: number } | undefined;
-    if (listing && guests > listing.maxGuests) {
-        return { success: false, message: `Number of guests cannot exceed the maximum of ${listing.maxGuests}.` };
-    }
+        if (session.role !== 'admin' && booking.userId !== session.id) {
+          throw new Error('You do not have permission to edit this booking.');
+        }
+        
+        const listing = db.prepare('SELECT maxGuests FROM listings WHERE id = ?').get(booking.listingId) as { maxGuests: number } | undefined;
+        if (listing && guests > listing.maxGuests) {
+            throw new Error(`Number of guests cannot exceed the maximum of ${listing.maxGuests}.`);
+        }
 
-    const modifiedAt = new Date();
-    const statusMessage = `Modified by ${session.name} on ${modifiedAt.toLocaleDateString()}. Awaiting re-confirmation.`;
+        const findBookedUnitsStmt = db.prepare(`
+            SELECT je.value as inventoryId
+            FROM bookings b, json_each(b.inventoryIds) je
+            WHERE b.listingId = ?
+            AND b.status = 'Confirmed'
+            AND b.id != ?
+            AND (b.endDate >= ? AND b.startDate <= ?)
+        `);
+        const bookedUnitsResult = findBookedUnitsStmt.all(booking.listingId, bookingId, fromDate, toDate) as { inventoryId: string }[];
+        const bookedUnitIds = new Set(bookedUnitsResult.map(r => r.inventoryId));
+        
+        const allInventoryForListing = db.prepare('SELECT id FROM listing_inventory WHERE listingId = ?').all(booking.listingId) as { id: string }[];
+        
+        const availableUnits = allInventoryForListing.filter(inv => !bookedUnitIds.has(inv.id));
+        
+        if (availableUnits.length < numberOfUnits) {
+            throw new Error(`Cannot update booking. Only ${availableUnits.length} units are available for the selected dates, but ${numberOfUnits} were requested.`);
+        }
 
-    const stmt = db.prepare(`
-      UPDATE bookings 
-      SET startDate = ?, endDate = ?, guests = ?, status = 'Pending', statusMessage = ?, actionByUserId = NULL, actionAt = NULL
-      WHERE id = ?
-    `);
-    
-    const info = stmt.run(
-        new Date(startDate).toISOString().split('T')[0],
-        new Date(endDate).toISOString().split('T')[0],
-        guests,
-        statusMessage,
-        bookingId
-    );
+        const newInventoryIds = availableUnits.slice(0, numberOfUnits).map(u => u.id);
 
-    if (info.changes === 0) {
-        return { success: false, message: 'Failed to update booking. No changes were made.' };
-    }
+        const modifiedAt = new Date();
+        const statusMessage = `Modified by ${session.name} on ${modifiedAt.toLocaleDateString()}. Units: ${numberOfUnits}. Awaiting re-confirmation.`;
+
+        const stmt = db.prepare(`
+          UPDATE bookings 
+          SET startDate = ?, endDate = ?, guests = ?, inventoryIds = ?, status = 'Pending', statusMessage = ?, actionByUserId = NULL, actionAt = NULL
+          WHERE id = ?
+        `);
+        
+        stmt.run(
+            fromDate,
+            toDate,
+            guests,
+            JSON.stringify(newInventoryIds),
+            statusMessage,
+            bookingId
+        );
+    });
+
+    transaction();
 
     revalidatePath('/bookings');
     revalidatePath(`/booking/${bookingId}`);

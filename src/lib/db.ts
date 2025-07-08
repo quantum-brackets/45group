@@ -140,6 +140,57 @@ function runInventoryModelMigration(db: Database.Database) {
     }
 }
 
+function runMultiUnitBookingMigration(db: Database.Database) {
+    try {
+        const columns = db.pragma('table_info(bookings)') as { name: string }[];
+        // Check for old column `inventoryId` and if new column `inventoryIds` does NOT exist
+        if (columns.some(col => col.name === 'inventoryId') && !columns.some(col => col.name === 'inventoryIds')) {
+            console.log('[DB_MIGRATE] Applying multi-unit booking migration...');
+
+            const transaction = db.transaction(() => {
+                db.exec(`ALTER TABLE bookings RENAME TO bookings_old;`);
+                db.exec(`
+                    CREATE TABLE bookings (
+                        id TEXT PRIMARY KEY,
+                        listingId TEXT NOT NULL,
+                        userId TEXT NOT NULL,
+                        startDate TEXT NOT NULL,
+                        endDate TEXT NOT NULL,
+                        guests INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        listingName TEXT,
+                        createdAt TEXT,
+                        actionByUserId TEXT,
+                        actionAt TEXT,
+                        statusMessage TEXT,
+                        inventoryIds TEXT
+                    );
+                `);
+
+                const copyStmt = db.prepare(`
+                    INSERT INTO bookings (id, listingId, userId, startDate, endDate, guests, status, listingName, createdAt, actionByUserId, actionAt, statusMessage, inventoryIds)
+                    SELECT 
+                        id, listingId, userId, startDate, endDate, guests, status, listingName, createdAt, actionByUserId, actionAt, statusMessage, 
+                        CASE 
+                            WHEN inventoryId IS NOT NULL THEN json_array(inventoryId)
+                            ELSE NULL
+                        END
+                    FROM bookings_old;
+                `);
+                copyStmt.run();
+                
+                db.exec(`DROP TABLE bookings_old;`);
+            });
+
+            transaction();
+            console.log('[DB_MIGRATE] Multi-unit booking migration successful.');
+        }
+    } catch (error) {
+        console.error("[DB_MIGRATE_ERROR] Critical error during multi-unit booking migration:", error);
+        throw new Error("Database migration for multi-unit bookings failed. The application cannot start.");
+    }
+}
+
 
 /**
  * Provides a stable, cached database connection and applies necessary migrations.
@@ -166,6 +217,7 @@ export async function getDb(): Promise<Database.Database> {
         runUserNotesMigration(db);
         runUserPhoneMigration(db);
         runInventoryModelMigration(db);
+        runMultiUnitBookingMigration(db);
 
         return db;
     } catch (error) {

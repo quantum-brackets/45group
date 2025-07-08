@@ -28,6 +28,7 @@ interface BookingDetailsProps {
   booking: Booking;
   listing: Listing;
   session: User;
+  totalInventoryCount: number;
 }
 
 const formSchema = z.object({
@@ -36,11 +37,12 @@ const formSchema = z.object({
     to: z.date().optional(),
   }).refine(data => !!data.from, { message: "Start date is required" }),
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
+  numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function BookingDetails({ booking, listing, session }: BookingDetailsProps) {
+export function BookingDetails({ booking, listing, session, totalInventoryCount }: BookingDetailsProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -57,6 +59,7 @@ export function BookingDetails({ booking, listing, session }: BookingDetailsProp
         to: parseISO(booking.endDate),
       },
       guests: booking.guests,
+      numberOfUnits: booking.inventoryIds.length || 1,
     }
   });
 
@@ -69,6 +72,7 @@ export function BookingDetails({ booking, listing, session }: BookingDetailsProp
         startDate: data.dates.from.toISOString(),
         endDate: (data.dates.to || data.dates.from).toISOString(),
         guests: data.guests,
+        numberOfUnits: data.numberOfUnits,
       });
 
       if (result.success) {
@@ -117,11 +121,13 @@ export function BookingDetails({ booking, listing, session }: BookingDetailsProp
           </p>
         </div>
       </div>
-      <div className="flex items-start gap-4 p-4 bg-card rounded-lg border">
+      <div className="flex items-start gap-4 p-4 bg-card rounded-lg border md:col-span-2">
         <KeySquare className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
         <div>
-          <p className="font-semibold">Booked Unit</p>
-          <p className="text-muted-foreground">{booking.inventoryName || 'N/A'}</p>
+          <p className="font-semibold">{booking.inventoryIds.length} Unit(s) Booked</p>
+          <p className="text-muted-foreground text-sm">
+            {booking.inventoryNames?.join(', ') || 'N/A'}
+          </p>
         </div>
       </div>
       {session.role === 'admin' && booking.userName && (
@@ -220,7 +226,29 @@ export function BookingDetails({ booking, listing, session }: BookingDetailsProp
                                 />
                             </FormControl>
                             <FormDescription>
-                                Max {listing.maxGuests} guests.
+                                Max {listing.maxGuests} guests per unit.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="numberOfUnits"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Number of Units</FormLabel>
+                            <FormControl>
+                                <Input 
+                                    type="number"
+                                    min="1"
+                                    max={totalInventoryCount}
+                                    {...field}
+                                />
+                            </FormControl>
+                            <FormDescription>
+                                Max {totalInventoryCount} units available.
                             </FormDescription>
                             <FormMessage />
                         </FormItem>
