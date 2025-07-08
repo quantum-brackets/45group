@@ -6,10 +6,10 @@ import { getSession } from '@/lib/session';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Book45',
-    template: '%s | Book45',
+    default: 'Hospitality',
+    template: '%s | Hospitality',
   },
-  description: 'Book hotels, event venues, and restaurants locally.',
+  description: 'Book hotels, event venues, and restaurants.',
 };
 
 export default async function RootLayout({

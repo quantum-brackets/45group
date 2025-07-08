@@ -1,4 +1,4 @@
-# **App Name**: BookLocal
+# **App Name**: 45 Booking
 
 ## Core Features:
 

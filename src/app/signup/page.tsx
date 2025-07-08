@@ -11,7 +11,7 @@ export default function SignupPage() {
           <div className="grid gap-2 text-center">
              <Link href="/" className="flex items-center justify-center gap-2 font-bold text-2xl mb-4">
                 <Mountain className="h-8 w-8 text-primary" />
-                <span className="font-headline">Book45</span>
+                <span className="font-headline">Hospitality</span>
               </Link>
           </div>
           <SignupForm />

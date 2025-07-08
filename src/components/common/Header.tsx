@@ -62,7 +62,7 @@ export function Header({ session }: { session: User | null }) {
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">
             <Mountain className="h-6 w-6 text-primary" />
-            <span className="font-headline">Book45</span>
+            <span className="font-headline">Hospitality</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
             {visibleNavLinks.map((link) => (
@@ -129,12 +129,12 @@ export function Header({ session }: { session: User | null }) {
                 <SheetContent side="left">
                 <SheetHeader className="sr-only">
                     <SheetTitle>Mobile Menu</SheetTitle>
-                    <SheetDescription>Main navigation for Book45.</SheetDescription>
+                    <SheetDescription>Main navigation for Hospitality.</SheetDescription>
                 </SheetHeader>
                 <nav className="grid gap-6 text-lg font-medium">
                     <Link href="/" className="flex items-center gap-2 font-bold text-lg mb-4">
                     <Mountain className="h-6 w-6 text-primary" />
-                    <span className="font-headline">Book45</span>
+                    <span className="font-headline">Hospitality</span>
                     </Link>
                     {visibleNavLinks.map((link) => (
                       link.href.startsWith('/dashboard') ? (
