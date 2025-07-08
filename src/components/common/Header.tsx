@@ -11,7 +11,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Menu, Mountain, ChevronDown } from 'lucide-react';
+import { Menu, ChevronDown } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import type { User } from '@/lib/types';
@@ -61,7 +61,7 @@ export function Header({ session }: { session: User | null }) {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-            <Mountain className="h-6 w-6 text-primary" />
+            <img src="/icon.svg" alt="Hospitality Logo" className="h-6 w-6" />
             <span className="font-headline">Hospitality</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
@@ -133,8 +133,8 @@ export function Header({ session }: { session: User | null }) {
                 </SheetHeader>
                 <nav className="grid gap-6 text-lg font-medium">
                     <Link href="/" className="flex items-center gap-2 font-bold text-lg mb-4">
-                    <Mountain className="h-6 w-6 text-primary" />
-                    <span className="font-headline">Hospitality</span>
+                      <img src="/icon.svg" alt="Hospitality Logo" className="h-6 w-6" />
+                      <span className="font-headline">Hospitality</span>
                     </Link>
                     {visibleNavLinks.map((link) => (
                       link.href.startsWith('/dashboard') ? (
