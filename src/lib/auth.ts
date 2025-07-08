@@ -20,7 +20,12 @@ export async function loginAction(formData: z.infer<typeof LoginSchema>) {
 
   const { email, password } = validatedFields.data;
 
-  const { data: user, error } = await supabase.from('users').select('*').eq('email', email).single();
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('id, password, status, role')
+    .eq('email', email)
+    .single();
+    
   if (error || !user) {
     return { error: "Incorrect email or password." };
   }
