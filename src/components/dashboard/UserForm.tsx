@@ -25,6 +25,7 @@ const formSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
   role: z.enum(['admin', 'guest', 'staff'], { required_error: "Role is required."}),
   status: z.enum(['active', 'disabled'], { required_error: "Status is required."}),
+  phone: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -48,6 +49,7 @@ export function UserForm({ user }: UserFormProps) {
       password: "",
       role: user?.role || 'guest',
       status: user?.status || 'active',
+      phone: user?.phone || "",
       notes: user?.notes || "",
     },
   });
@@ -112,6 +114,22 @@ export function UserForm({ user }: UserFormProps) {
                   <FormControl>
                     <Input type="email" placeholder="user@example.com" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone Number</FormLabel>
+                  <FormControl>
+                    <Input type="tel" placeholder="+1 (555) 555-5555" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    Include country code if applicable.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

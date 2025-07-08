@@ -104,6 +104,20 @@ function runUserNotesMigration(db: Database.Database) {
     }
 }
 
+function runUserPhoneMigration(db: Database.Database) {
+    try {
+        const columns = db.pragma('table_info(users)') as { name: string }[];
+        if (!columns.some(col => col.name === 'phone')) {
+            console.log('[DB_MIGRATE] Adding "phone" column to users...');
+            db.exec("ALTER TABLE users ADD COLUMN phone TEXT");
+            console.log('[DB_MIGRATE] "phone" column added to users table.');
+        }
+    } catch (error) {
+        console.error("[DB_MIGRATE_ERROR] Critical error during user phone migration:", error);
+        throw new Error("Database migration for user phone failed. The application cannot start.");
+    }
+}
+
 
 /**
  * Provides a stable, cached database connection and applies necessary migrations.
@@ -128,6 +142,7 @@ export async function getDb(): Promise<Database.Database> {
         runBookingCreationDateMigration(db);
         runUserStatusMigration(db);
         runUserNotesMigration(db);
+        runUserPhoneMigration(db);
 
         return db;
     } catch (error) {

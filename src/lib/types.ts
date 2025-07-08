@@ -50,5 +50,6 @@ export interface User {
     password?: string;
     role: 'admin' | 'guest' | 'staff';
     status: 'active' | 'disabled';
+    phone?: string;
     notes?: string;
 }

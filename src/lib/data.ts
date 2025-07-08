@@ -17,7 +17,7 @@ function parseListing(listing: any): Listing {
 
 export async function getUserById(id: string): Promise<User | null> {
     const db = await getDb();
-    const stmt = db.prepare('SELECT id, name, email, role, status, notes FROM users WHERE id = ?');
+    const stmt = db.prepare('SELECT id, name, email, role, status, notes, phone FROM users WHERE id = ?');
     const user = stmt.get(id) as User | undefined;
     return user || null;
 }
@@ -29,7 +29,7 @@ export async function getAllUsers(): Promise<User[]> {
     }
     const db = await getDb();
     // Include all users in the list, including the current admin.
-    const stmt = db.prepare('SELECT id, name, email, role, status, notes FROM users');
+    const stmt = db.prepare('SELECT id, name, email, role, status, notes, phone FROM users');
     return stmt.all() as User[];
 }
 

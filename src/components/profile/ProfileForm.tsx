@@ -21,6 +21,7 @@ const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
+  phone: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -41,6 +42,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
       name: user?.name || "",
       email: user?.email || "",
       password: "",
+      phone: user?.phone || "",
       notes: user?.notes || "",
     },
   });
@@ -98,6 +100,22 @@ export function ProfileForm({ user }: ProfileFormProps) {
                   <FormControl>
                     <Input type="email" placeholder="user@example.com" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone Number</FormLabel>
+                  <FormControl>
+                    <Input type="tel" placeholder="+1 (555) 555-5555" {...field} />
+                  </FormControl>
+                   <FormDescription>
+                    Include your country code.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

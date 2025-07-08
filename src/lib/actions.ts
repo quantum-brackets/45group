@@ -615,6 +615,7 @@ const UserFormSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
   role: z.enum(['admin', 'guest', 'staff']),
   status: z.enum(['active', 'disabled']),
+  phone: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -629,7 +630,7 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
     return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
   }
 
-  const { name, email, password, role, status, notes } = validatedFields.data;
+  const { name, email, password, role, status, notes, phone } = validatedFields.data;
 
   if (!password) {
     return { success: false, message: "Password is required for new users." };
@@ -645,8 +646,8 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
     const hashedPassword = await hashPassword(password);
     const userId = `user-${randomUUID()}`;
 
-    const stmt = db.prepare('INSERT INTO users (id, name, email, password, role, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    stmt.run(userId, name, email, hashedPassword, role, status, notes || null);
+    const stmt = db.prepare('INSERT INTO users (id, name, email, password, role, status, notes, phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    stmt.run(userId, name, email, hashedPassword, role, status, notes || null, phone || null);
 
     revalidatePath('/dashboard?tab=users', 'page');
     return { success: true, message: `User "${name}" was created successfully.` };
@@ -668,7 +669,7 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
     return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
   }
 
-  const { name, email, password, role, status, notes } = validatedFields.data;
+  const { name, email, password, role, status, notes, phone } = validatedFields.data;
   
   try {
     const db = await getDb();
@@ -682,12 +683,12 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
     if (password) {
       // Update with new password
       const hashedPassword = await hashPassword(password);
-      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, password = ?, role = ?, status = ?, notes = ? WHERE id = ?');
-      stmt.run(name, email, hashedPassword, role, status, notes || null, id);
+      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, password = ?, role = ?, status = ?, notes = ?, phone = ? WHERE id = ?');
+      stmt.run(name, email, hashedPassword, role, status, notes || null, phone || null, id);
     } else {
       // Update without changing password
-      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, role = ?, status = ?, notes = ? WHERE id = ?');
-      stmt.run(name, email, role, status, notes || null, id);
+      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, role = ?, status = ?, notes = ?, phone = ? WHERE id = ?');
+      stmt.run(name, email, role, status, notes || null, phone || null, id);
     }
 
     revalidatePath('/dashboard?tab=users', 'page');
@@ -705,6 +706,7 @@ const UpdateProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
+  phone: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -719,7 +721,7 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
     return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
   }
 
-  const { name, email, password, notes } = validatedFields.data;
+  const { name, email, password, notes, phone } = validatedFields.data;
 
   try {
     const db = await getDb();
@@ -731,11 +733,11 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
 
     if (password) {
       const hashedPassword = await hashPassword(password);
-      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, password = ?, notes = ? WHERE id = ?');
-      stmt.run(name, email, hashedPassword, notes || null, session.id);
+      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, password = ?, notes = ?, phone = ? WHERE id = ?');
+      stmt.run(name, email, hashedPassword, notes || null, phone || null, session.id);
     } else {
-      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, notes = ? WHERE id = ?');
-      stmt.run(name, email, notes || null, session.id);
+      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, notes = ?, phone = ? WHERE id = ?');
+      stmt.run(name, email, notes || null, phone || null, session.id);
     }
 
     revalidatePath('/profile');
