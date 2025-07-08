@@ -89,7 +89,7 @@ export async function getAllListings(): Promise<Listing[]> {
     .from('listings')
     .select(`
         *,
-        inventoryCount:listing_inventory(count)
+        inventory_count:listing_inventory(count)
     `)
     .order('location')
     .order('type')
@@ -103,7 +103,7 @@ export async function getAllListings(): Promise<Listing[]> {
   // The count is returned as an array of objects, so we need to flatten it.
   return data.map((l: any) => ({
       ...l,
-      inventoryCount: l.inventoryCount[0]?.count || 0,
+      inventoryCount: l.inventory_count[0]?.count || 0,
   })) as Listing[];
 }
 
@@ -120,7 +120,7 @@ export async function getListingsByIds(ids: string[]): Promise<Listing[]> {
 
 export async function getInventoryByListingId(listingId: string): Promise<ListingInventory[]> {
     const supabase = createSupabaseServerClient();
-    const { data, error } = await supabase.from('listing_inventory').select('*').eq('listingId', listingId);
+    const { data, error } = await supabase.from('listing_inventory').select('*').eq('listing_id', listingId);
     if(error) {
         console.error("Error fetching inventory by listing ID:", error);
         return [];
@@ -135,7 +135,7 @@ export async function getListingById(id: string): Promise<Listing | null> {
     .from('listings')
     .select(`
         *,
-        inventoryCount:listing_inventory(count)
+        inventory_count:listing_inventory(count)
     `)
     .eq('id', id)
     .single();
@@ -147,7 +147,7 @@ export async function getListingById(id: string): Promise<Listing | null> {
   
   const listing = {
       ...data,
-      inventoryCount: data.inventoryCount && data.inventoryCount.length > 0 ? data.inventoryCount[0]?.count : 0
+      inventoryCount: data.inventory_count && data.inventory_count.length > 0 ? data.inventory_count[0]?.count : 0
   };
   return listing as Listing;
 }
@@ -174,16 +174,16 @@ export async function getAllBookings(filters: BookingsPageFilters): Promise<Book
         `);
 
     if (session.role === 'guest') {
-        query = query.eq('userId', session.id);
+        query = query.eq('user_id', session.id);
     } else if ((session.role === 'admin' || session.role === 'staff') && filters.userId) {
-        query = query.eq('userId', filters.userId);
+        query = query.eq('user_id', filters.userId);
     }
 
     if (filters.listingId) {
-        query = query.eq('listingId', filters.listingId);
+        query = query.eq('listing_id', filters.listingId);
     }
     
-    const { data, error } = await query.order('startDate', { ascending: false });
+    const { data, error } = await query.order('start_date', { ascending: false });
 
     if (error) {
         console.error("Error fetching all bookings:", error);
@@ -222,16 +222,16 @@ export async function getBookingById(id: string): Promise<Booking | null> {
         return null;
     }
     
-    if (session.role === 'guest' && bookingData.userId !== session.id) {
+    if (session.role === 'guest' && bookingData.user_id !== session.id) {
         return null;
     }
     
     let inventoryNames: string[] = [];
-    if (bookingData.inventoryIds && Array.isArray(bookingData.inventoryIds) && bookingData.inventoryIds.length > 0) {
+    if (bookingData.inventory_ids && Array.isArray(bookingData.inventory_ids) && bookingData.inventory_ids.length > 0) {
         const { data: invData, error: invError } = await supabase
             .from('listing_inventory')
             .select('name')
-            .in('id', bookingData.inventoryIds);
+            .in('id', bookingData.inventory_ids);
         
         if (!invError) {
             inventoryNames = invData.map(item => item.name);
@@ -279,15 +279,15 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
 
   const { data: inventoryData, error: inventoryError } = await supabase
     .from('listing_inventory')
-    .select('listingId, count')
-    .in('listingId', listingIds);
+    .select('listing_id, count')
+    .in('listing_id', listingIds);
     
   if (inventoryError) {
       console.error("Error fetching inventory counts:", inventoryError);
       return listingsData as Listing[]; // return without counts as fallback
   }
 
-  const inventoryMap = new Map(inventoryData.map(item => [item.listingId, item.count]));
+  const inventoryMap = new Map(inventoryData.map(item => [item.listing_id, item.count]));
 
   const listingsWithInventory = listingsData.map((listing: any) => ({
       ...listing,
@@ -302,8 +302,8 @@ export async function getConfirmedBookingsForListing(listingId: string) {
     const supabase = createSupabaseServerClient();
     const { data, error } = await supabase
         .from('bookings')
-        .select('startDate, endDate, inventoryIds')
-        .eq('listingId', listingId)
+        .select('start_date, end_date, inventory_ids')
+        .eq('listing_id', listingId)
         .eq('status', 'Confirmed');
 
     if (error) {

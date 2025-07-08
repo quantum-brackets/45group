@@ -275,7 +275,7 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
   
   const { bookingId } = validatedFields.data;
 
-  const { data: booking, error: fetchError } = await supabase.from('bookings').select('userId, listingName').eq('id', bookingId).single();
+  const { data: booking, error: fetchError } = await supabase.from('bookings').select('user_id, listing_name:listings(name)').eq('id', bookingId).single();
 
   if (fetchError || !booking) {
     return { error: 'Booking not found.' };
@@ -286,15 +286,15 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
   }
   
   // Admin can cancel any booking, guest can only cancel their own.
-  if (session.role !== 'admin' && booking.userId !== session.id) {
+  if (session.role !== 'admin' && booking.user_id !== session.id) {
     return { error: 'You do not have permission to cancel this booking.' };
   }
 
   const { error } = await supabase.from('bookings').update({
     status: 'Cancelled',
-    actionByUserId: session.id,
-    actionAt: new Date().toISOString(),
-    statusMessage: `Cancelled by ${session.name} on ${new Date().toLocaleDateString()}`
+    action_by_user_id: session.id,
+    action_at: new Date().toISOString(),
+    status_message: `Cancelled by ${session.name} on ${new Date().toLocaleDateString()}`
   }).eq('id', bookingId);
   
   if (error) {
@@ -304,7 +304,7 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
   revalidatePath('/bookings');
   revalidatePath(`/booking/${bookingId}`);
   
-  return { success: `Booking for ${booking.listingName} has been cancelled.` };
+  return { success: `Booking for ${(booking.listing_name as any)?.name} has been cancelled.` };
 }
 
 export async function confirmBookingAction(data: z.infer<typeof BookingActionSchema>) {
@@ -674,4 +674,3 @@ export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteLi
     revalidatePath('/dashboard');
     return { success: true, message: `${listingIds.length} listing(s) have been deleted.` };
 }
-
