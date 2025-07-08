@@ -65,11 +65,13 @@ export async function createSession(userId: string) {
         return null;
     }
 
+    const isProduction = process.env.NODE_ENV === 'production';
+
     cookieStore.set('session_token', data.id, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProduction,
         expires: expiresAt,
-        sameSite: 'none',
+        sameSite: isProduction ? 'none' : 'lax',
         path: '/',
     });
     return data.id;
