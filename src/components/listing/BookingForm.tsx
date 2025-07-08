@@ -2,26 +2,38 @@
 "use client";
 
 import { useState, useTransition, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast"
-import type { Listing } from '@/lib/types';
+import type { Listing, User } from '@/lib/types';
 import { Loader2, PartyPopper, Users, Warehouse } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { format, isWithinInterval, parseISO, differenceInCalendarDays } from 'date-fns';
 import { createBookingAction } from '@/lib/actions';
 import { Separator } from '../ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+
 
 interface BookingFormProps {
   listing: Listing;
   confirmedBookings: { startDate: string, endDate: string, inventoryIds: string[] }[];
+  session: User | null;
 }
 
-export function BookingForm({ listing, confirmedBookings }: BookingFormProps) {
+const guestEmailSchema = z.object({
+  email: z.string().email("Please provide a valid email address."),
+});
+
+
+export function BookingForm({ listing, confirmedBookings, session }: BookingFormProps) {
   const [date, setDate] = useState<DateRange | undefined>();
   const [guests, setGuests] = useState(1);
   const [units, setUnits] = useState(1);
@@ -30,10 +42,19 @@ export function BookingForm({ listing, confirmedBookings }: BookingFormProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
+  const [showGuestEmailDialog, setShowGuestEmailDialog] = useState(false);
+
   const [availability, setAvailability] = useState({
     availableCount: listing.inventoryCount || 0,
     message: '',
     isChecking: false,
+  });
+
+  const guestForm = useForm<z.infer<typeof guestEmailSchema>>({
+    resolver: zodResolver(guestEmailSchema),
+    defaultValues: {
+      email: "",
+    },
   });
 
   useEffect(() => {
@@ -88,7 +109,7 @@ export function BookingForm({ listing, confirmedBookings }: BookingFormProps) {
         }
     }, 300);
 
-  }, [date, confirmedBookings, listing.inventoryCount]);
+  }, [date, confirmedBookings, listing.inventoryCount, units]);
 
   useEffect(() => {
     if (!date?.from || !listing.price) {
@@ -139,21 +160,58 @@ export function BookingForm({ listing, confirmedBookings }: BookingFormProps) {
         return;
     }
 
+    if (session) {
+      startTransition(async () => {
+          const result = await createBookingAction({
+              listingId: listing.id,
+              startDate: date.from!.toISOString(),
+              endDate: (date.to || date.from)!.toISOString(),
+              guests: guests,
+              numberOfUnits: units,
+          });
+
+          if (result.success) {
+              toast({
+                  title: "Booking Request Sent!",
+                  description: result.message,
+                  action: <div className="p-2 bg-accent rounded-full"><PartyPopper className="h-5 w-5 text-accent-foreground" /></div>,
+              });
+              setDate(undefined);
+              setGuests(1);
+              setUnits(1);
+          } else {
+              toast({
+                  title: "Booking Failed",
+                  description: result.message || "An unexpected error occurred.",
+                  variant: "destructive",
+              });
+          }
+      });
+    } else {
+      setShowGuestEmailDialog(true);
+    }
+  };
+
+  const handleGuestBookingSubmit = (guestData: z.infer<typeof guestEmailSchema>) => {
     startTransition(async () => {
         const result = await createBookingAction({
             listingId: listing.id,
-            startDate: date.from!.toISOString(),
-            endDate: (date.to || date.from)!.toISOString(),
+            startDate: date!.from!.toISOString(),
+            endDate: (date!.to || date!.from)!.toISOString(),
             guests: guests,
             numberOfUnits: units,
+            guestEmail: guestData.email,
         });
-
+        
         if (result.success) {
             toast({
                 title: "Booking Request Sent!",
                 description: result.message,
+                duration: 9000,
                 action: <div className="p-2 bg-accent rounded-full"><PartyPopper className="h-5 w-5 text-accent-foreground" /></div>,
             });
+            setShowGuestEmailDialog(false);
+            guestForm.reset();
             setDate(undefined);
             setGuests(1);
             setUnits(1);
@@ -165,11 +223,13 @@ export function BookingForm({ listing, confirmedBookings }: BookingFormProps) {
             });
         }
     });
-  };
+};
+
 
   const isBookable = !isPending && date?.from && availability.availableCount > 0 && !availability.isChecking && units > 0 && units <= availability.availableCount;
 
   return (
+    <>
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle>
@@ -288,5 +348,41 @@ export function BookingForm({ listing, confirmedBookings }: BookingFormProps) {
             </div>
        </CardFooter>
     </Card>
+
+    <Dialog open={showGuestEmailDialog} onOpenChange={setShowGuestEmailDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+                <DialogTitle>Continue as Guest</DialogTitle>
+                <DialogDescription>
+                    To complete your booking, please enter your email address. An account will be created for you if one doesn't exist.
+                </DialogDescription>
+            </DialogHeader>
+            <Form {...guestForm}>
+                <form onSubmit={guestForm.handleSubmit(handleGuestBookingSubmit)} className="space-y-4 py-4">
+                    <FormField
+                        control={guestForm.control}
+                        name="email"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Email Address</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="you@example.com" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                      <DialogFooter>
+                        <Button type="button" variant="ghost" onClick={() => setShowGuestEmailDialog(false)} disabled={isPending}>Cancel</Button>
+                        <Button type="submit" disabled={isPending}>
+                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Submit Booking
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </Form>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }

@@ -8,6 +8,7 @@ import type { User } from './types';
 import { hashPassword, verifyPassword } from './password';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { randomUUID } from 'crypto';
 
 /**
  * Authenticates a user based on email and password. This is the centralized
@@ -95,24 +96,31 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
     }
 
     const { name, email, password } = validatedFields.data;
-    const userId = `user-${Math.random().toString(36).substring(2, 11)}`;
 
     try {
       const db = await getDb();
-      const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-      if (existingUser) {
-          return { error: 'A user with this email already exists.' };
-      }
+      const existingUser = db.prepare('SELECT id, status FROM users WHERE email = ?').get(email) as User | undefined;
+      let userId: string;
 
       const hashedPassword = await hashPassword(password);
 
-      const stmt = db.prepare('INSERT INTO users (id, name, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?)');
-      stmt.run(userId, name, email, hashedPassword, 'guest', 'active');
+      if (existingUser) {
+          if (existingUser.status === 'provisional') {
+              userId = existingUser.id;
+              db.prepare('UPDATE users SET password = ?, name = ?, status = ? WHERE id = ?').run(hashedPassword, name, 'active', userId);
+          } else {
+              return { error: 'A user with this email already exists.' };
+          }
+      } else {
+          userId = `user-${randomUUID()}`;
+          const stmt = db.prepare('INSERT INTO users (id, name, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?)');
+          stmt.run(userId, name, email, hashedPassword, 'guest', 'active');
+      }
       
       const sessionId = await createSession(userId);
 
       if (!sessionId) {
-          return { error: 'Account created, but failed to log you in. Please try logging in manually.' };
+          return { error: 'Account created/updated, but failed to log you in. Please try logging in manually.' };
       }
 
       const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);

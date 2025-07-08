@@ -25,7 +25,7 @@ const formSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
   role: z.enum(['admin', 'guest', 'staff'], { required_error: "Role is required."}),
-  status: z.enum(['active', 'disabled'], { required_error: "Status is required."}),
+  status: z.enum(['active', 'disabled', 'provisional'], { required_error: "Status is required."}),
   phone: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -196,6 +196,12 @@ export function UserForm({ user }: UserFormProps) {
                             <RadioGroupItem value="disabled" />
                             </FormControl>
                             <FormLabel className="font-normal">Disabled</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                            <RadioGroupItem value="provisional" />
+                            </FormControl>
+                            <FormLabel className="font-normal">Provisional</FormLabel>
                         </FormItem>
                         </RadioGroup>
                     </FormControl>

@@ -286,20 +286,13 @@ const CreateBookingSchema = z.object({
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
   numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
+  guestEmail: z.string().email("Please enter a valid email address.").optional(),
 });
 
 export async function createBookingAction(data: z.infer<typeof CreateBookingSchema>) {
   const session = await getSession();
-  if (!session) {
-    return { success: false, message: 'You must be logged in to book.' };
-  }
-  
-  if (session.role === 'staff') {
-    return { success: false, message: 'Staff accounts cannot create new bookings.' };
-  }
 
   const validatedFields = CreateBookingSchema.safeParse(data);
-
   if (!validatedFields.success) {
     return {
       success: false,
@@ -307,8 +300,37 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       errors: validatedFields.error.flatten().fieldErrors,
     }
   }
+  
+  const { listingId, startDate, endDate, guests, numberOfUnits, guestEmail } = validatedFields.data;
+  let userId: string;
+  let isNewUser = false;
 
-  const { listingId, startDate, endDate, guests, numberOfUnits } = validatedFields.data;
+  if (session) {
+    if (session.role === 'staff') {
+      return { success: false, message: 'Staff accounts cannot create new bookings.' };
+    }
+    userId = session.id;
+  } else if (guestEmail) {
+    try {
+        const db = await getDb();
+        const existingUser = db.prepare('SELECT id, status FROM users WHERE email = ?').get(guestEmail) as User | undefined;
+        if (existingUser) {
+            userId = existingUser.id;
+        } else {
+            isNewUser = true;
+            userId = `user-${randomUUID()}`;
+            const hashedPassword = await hashPassword(randomUUID());
+            const stmt = db.prepare('INSERT INTO users (id, name, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?)');
+            stmt.run(userId, guestEmail.split('@')[0], guestEmail, hashedPassword, 'guest', 'provisional');
+        }
+    } catch (error) {
+        console.error(`[CREATE_GUEST_USER_ACTION] Error: ${error}`);
+        const message = error instanceof Error ? error.message : "An unknown database error occurred.";
+        return { success: false, message: `Failed to create guest user account: ${message}` };
+    }
+  } else {
+    return { success: false, message: "You must be logged in or provide an email to book." };
+  }
 
   try {
     const db = await getDb();
@@ -354,7 +376,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     stmt.run(
       `booking-${randomUUID()}`,
       listingId,
-      session.id,
+      userId,
       fromDate,
       toDate,
       guests,
@@ -366,8 +388,17 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
 
     revalidatePath('/bookings');
     revalidatePath(`/listing/${listingId}`);
+
+    let successMessage = `Your booking request for ${listing.name} is now pending confirmation.`;
+    if (!session && guestEmail) {
+      if (isNewUser) {
+        successMessage += ` An account has been reserved for ${guestEmail}. Please go to the sign-up page to create a password and manage your bookings.`;
+      } else {
+        successMessage += ` This booking has been added to the account for ${guestEmail}. Please log in to manage your bookings.`;
+      }
+    }
     
-    return { success: true, message: `Your booking request for ${listing.name} is now pending confirmation.` };
+    return { success: true, message: successMessage };
   } catch (error) {
     console.error(`[CREATE_BOOKING_ACTION] Error: ${error}`);
     const message = error instanceof Error ? error.message : "An unknown database error occurred.";
@@ -769,7 +800,7 @@ const UserFormSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
   role: z.enum(['admin', 'guest', 'staff']),
-  status: z.enum(['active', 'disabled']),
+  status: z.enum(['active', 'disabled', 'provisional']),
   phone: z.string().optional(),
   notes: z.string().optional(),
 });

@@ -109,7 +109,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
         {/* Booking Form */}
         <div className="lg:col-span-1">
           <div className="sticky top-24">
-            <BookingForm listing={listing} confirmedBookings={confirmedBookings} />
+            <BookingForm listing={listing} confirmedBookings={confirmedBookings} session={session} />
           </div>
         </div>
       </div>
