@@ -1,3 +1,4 @@
+
 import { createBrowserClient } from '@supabase/ssr'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
@@ -45,7 +46,17 @@ export function createSupabaseAdminClient() {
                 autoRefreshToken: false,
                 persistSession: false,
             },
-            cookies: {}
+            cookies: {
+                get(name: string) {
+                    return undefined;
+                },
+                set(name: string, value: string, options: CookieOptions) {
+                    // The admin client does not need to set cookies.
+                },
+                remove(name: string, options: CookieOptions) {
+                    // The admin client does not need to remove cookies.
+                },
+            },
         }
     )
 }
