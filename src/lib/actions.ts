@@ -127,12 +127,12 @@ export async function deleteListingAction(id: string) {
 }
 
 const CreateBookingSchema = z.object({
-  listing_id: z.string(),
-  start_date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
-  end_date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
+  listingId: z.string(),
+  startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
+  endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
-  number_of_units: z.coerce.number().int().min(1, "At least one unit is required."),
-  guest_email: z.string().email("Please enter a valid email address.").optional(),
+  numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
+  guestEmail: z.string().email("Please enter a valid email address.").optional(),
 });
 
 export async function createBookingAction(data: z.infer<typeof CreateBookingSchema>) {
@@ -141,9 +141,14 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
 
   const validatedFields = CreateBookingSchema.safeParse(data);
   if (!validatedFields.success) {
+    const errorMessages = Object.values(validatedFields.error.flatten().fieldErrors)
+        .map((errors) => errors?.[0])
+        .filter(Boolean)
+        .join(', ');
+
     return {
       success: false,
-      message: "Invalid data provided.",
+      message: `Invalid data provided: ${errorMessages || 'Please check your input.'}`,
       errors: validatedFields.error.flatten().fieldErrors,
     }
   }
@@ -152,16 +157,16 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     return { success: false, message: 'Staff accounts cannot create new bookings.' };
   }
 
-  const { listing_id, start_date, end_date, guests, number_of_units, guest_email } = validatedFields.data;
+  const { listingId, startDate, endDate, guests, numberOfUnits, guestEmail } = validatedFields.data;
   
   const { data: message, error } = await supabase.rpc('create_booking_with_inventory_check', {
-    p_listing_id: listing_id,
+    p_listing_id: listingId,
     p_user_id: session?.id || null,
-    p_start_date: new Date(start_date).toISOString(),
-    p_end_date: new Date(end_date).toISOString(),
+    p_start_date: new Date(startDate).toISOString(),
+    p_end_date: new Date(endDate).toISOString(),
     p_guests: guests,
-    p_num_units: number_of_units,
-    p_guest_email: guest_email
+    p_num_units: numberOfUnits,
+    p_guest_email: guestEmail
   });
 
   if (error) {
@@ -170,7 +175,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
   }
   
   revalidatePath('/bookings');
-  revalidatePath(`/listing/${listing_id}`);
+  revalidatePath(`/listing/${listingId}`);
   
   return { success: true, message: message as string };
 }
