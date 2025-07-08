@@ -130,7 +130,13 @@ export async function getInventoryByListingId(listingId: string): Promise<Listin
 
 export async function getListingById(id: string): Promise<Listing | null> {
   const db = await getDb();
-  const stmt = db.prepare('SELECT * FROM listings WHERE id = ?');
+  const stmt = db.prepare(`
+    SELECT l.*, COUNT(i.id) as inventoryCount
+    FROM listings l
+    LEFT JOIN listing_inventory i ON l.id = i.listingId
+    WHERE l.id = ?
+    GROUP BY l.id
+  `);
   const listing = stmt.get(id) as any;
   if (!listing) return null;
   return parseListing(listing);
@@ -304,4 +310,21 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
   const stmt = db.prepare(query);
   const listings = stmt.all(...params) as any[];
   return listings.map(parseListing);
+}
+
+export async function getConfirmedBookingsForListing(listingId: string) {
+    noStore();
+    const db = await getDb();
+    const stmt = db.prepare(`
+        SELECT startDate, endDate, inventoryIds
+        FROM bookings
+        WHERE listingId = ? AND status = 'Confirmed'
+    `);
+    const bookings = stmt.all(listingId) as { startDate: string, endDate: string, inventoryIds: string }[];
+    
+    return bookings.map(b => ({
+        startDate: b.startDate,
+        endDate: b.endDate,
+        inventoryIds: JSON.parse(b.inventoryIds) as string[],
+    }));
 }

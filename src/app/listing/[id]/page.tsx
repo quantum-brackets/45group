@@ -1,6 +1,6 @@
 
 import { notFound } from 'next/navigation';
-import { getListingById } from '@/lib/data';
+import { getListingById, getConfirmedBookingsForListing } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { BookingForm } from '@/components/listing/BookingForm';
@@ -24,6 +24,7 @@ const AITypeHints = {
 export default async function ListingDetailPage({ params }: { params: { id: string } }) {
   const listing = await getListingById(params.id);
   const session = await getSession();
+  const confirmedBookings = await getConfirmedBookingsForListing(params.id);
 
   if (!listing) {
     notFound();
@@ -108,7 +109,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
         {/* Booking Form */}
         <div className="lg:col-span-1">
           <div className="sticky top-24">
-            <BookingForm listing={listing} />
+            <BookingForm listing={listing} confirmedBookings={confirmedBookings} />
           </div>
         </div>
       </div>

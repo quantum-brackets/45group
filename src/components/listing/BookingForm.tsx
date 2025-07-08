@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -11,18 +11,74 @@ import { useToast } from "@/hooks/use-toast"
 import type { Listing } from '@/lib/types';
 import { Loader2, PartyPopper } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
-import { format } from 'date-fns';
+import { format, isWithinInterval, parseISO } from 'date-fns';
 import { createBookingAction } from '@/lib/actions';
 
 interface BookingFormProps {
   listing: Listing;
+  confirmedBookings: { startDate: string, endDate: string, inventoryIds: string[] }[];
 }
 
-export function BookingForm({ listing }: BookingFormProps) {
+export function BookingForm({ listing, confirmedBookings }: BookingFormProps) {
   const [date, setDate] = useState<DateRange | undefined>();
   const [guests, setGuests] = useState(1);
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+
+  const [availability, setAvailability] = useState({
+    availableCount: listing.inventoryCount || 0,
+    message: '',
+    isChecking: false,
+  });
+
+  useEffect(() => {
+    if (!date?.from) {
+      setAvailability({
+        availableCount: listing.inventoryCount || 0,
+        message: '',
+        isChecking: false
+      });
+      return;
+    }
+
+    setAvailability(prev => ({ ...prev, isChecking: true, message: 'Checking availability...' }));
+
+    const checkRange = {
+      start: date.from,
+      end: date.to || date.from,
+    };
+
+    const bookedUnits = new Set<string>();
+
+    for (const booking of confirmedBookings) {
+      const bookingRange = {
+        start: parseISO(booking.startDate),
+        end: parseISO(booking.endDate),
+      };
+
+      if (
+        isWithinInterval(checkRange.start, bookingRange) ||
+        isWithinInterval(checkRange.end, bookingRange) ||
+        isWithinInterval(bookingRange.start, checkRange) ||
+        isWithinInterval(bookingRange.end, checkRange)
+      ) {
+        booking.inventoryIds.forEach(id => bookedUnits.add(id));
+      }
+    }
+    
+    const totalInventory = listing.inventoryCount || 0;
+    const availableCount = totalInventory - bookedUnits.size;
+
+    setTimeout(() => {
+        setAvailability({
+          availableCount,
+          message: availableCount <= 0 ? 'No units available for the selected dates.' : `${availableCount} unit(s) available.`,
+          isChecking: false,
+        });
+    }, 300);
+
+  }, [date, confirmedBookings, listing.inventoryCount]);
+
 
   const handleBooking = () => {
     if (!date?.from) {
@@ -114,12 +170,23 @@ export function BookingForm({ listing }: BookingFormProps) {
           />
         </div>
         <div className="px-6 pt-2">
-          <Button onClick={handleBooking} disabled={isPending || !date?.from} className="w-full text-lg" size="lg">
-            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Request to Book"}
-          </Button>
-          <div className="text-center text-sm text-muted-foreground mt-2">
-            You won't be charged yet
-          </div>
+            <div className="h-6 text-center text-sm mb-2">
+                {availability.message && (
+                    <span className={availability.availableCount <= 0 ? 'text-destructive' : 'text-accent'}>
+                        {availability.message}
+                    </span>
+                )}
+            </div>
+            <Button 
+                onClick={handleBooking} 
+                disabled={isPending || !date?.from || availability.availableCount <= 0 || availability.isChecking} 
+                className="w-full text-lg" 
+                size="lg">
+                {isPending || availability.isChecking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Request to Book"}
+            </Button>
+            <div className="text-center text-sm text-muted-foreground mt-2">
+                You won't be charged yet
+            </div>
         </div>
       </CardContent>
     </Card>
