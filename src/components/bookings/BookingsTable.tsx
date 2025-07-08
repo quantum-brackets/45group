@@ -12,6 +12,7 @@ import type { Booking, User } from '@/lib/types';
 import { useTransition } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { cancelBookingAction, confirmBookingAction } from '@/lib/actions';
+import { format, parseISO } from 'date-fns';
 
 interface BookingsTableProps {
   bookings: Booking[];
@@ -94,8 +95,8 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
                 )}
                 <TableCell>
                   {booking.startDate === booking.endDate
-                    ? booking.startDate
-                    : `${booking.startDate} to ${booking.endDate}`}
+                    ? format(parseISO(booking.startDate), 'PPP')
+                    : `${format(parseISO(booking.startDate), 'PPP')} to ${format(parseISO(booking.endDate), 'PPP')}`}
                 </TableCell>
                 <TableCell>{booking.guests}</TableCell>
                 <TableCell>
