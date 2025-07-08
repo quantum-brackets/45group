@@ -18,7 +18,7 @@ export default async function DashboardLayout({
     redirect(`/login?${params.toString()}`);
   }
 
-  if (session.role !== 'admin') {
+  if (session.role !== 'admin' && session.role !== 'staff') {
     // The user is logged in but doesn't have the required role.
     const params = new URLSearchParams();
     params.set('error', 'Permission Denied');

@@ -24,7 +24,7 @@ interface DashboardTablesProps {
   defaultTab?: string;
 }
 
-const UserStatusSwitch = ({ user, isCurrentUser }: { user: User; isCurrentUser: boolean }) => {
+const UserStatusSwitch = ({ user, isCurrentUser, disabled }: { user: User; isCurrentUser: boolean, disabled: boolean }) => {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -53,7 +53,7 @@ const UserStatusSwitch = ({ user, isCurrentUser }: { user: User; isCurrentUser: 
     <Switch
       checked={user.status === 'active'}
       onCheckedChange={handleToggle}
-      disabled={isCurrentUser || isPending}
+      disabled={disabled || isCurrentUser || isPending}
       aria-label={`Toggle user status for ${user.name}`}
     />
   );
@@ -86,6 +86,8 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
     });
   };
 
+  const isAdmin = session?.role === 'admin';
+
   return (
     <>
       <Tabs defaultValue={defaultTab || 'listings'} onValueChange={(value) => router.push(`/dashboard?tab=${value}`)}>
@@ -106,12 +108,14 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                 <CardTitle>Manage Listings</CardTitle>
                 <CardDescription>View, create, and manage all property listings.</CardDescription>
                </div>
-               <Button asChild>
-                <Link href="/dashboard/add-listing">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Listing
-                </Link>
-              </Button>
+               {isAdmin && (
+                  <Button asChild>
+                    <Link href="/dashboard/add-listing">
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Add Listing
+                    </Link>
+                  </Button>
+               )}
             </CardHeader>
             <CardContent>
               <Table>
@@ -142,16 +146,24 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                               <DropdownMenuContent align="end">
                                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                   <DropdownMenuItem onClick={() => router.push(`/listing/${listing.id}`)}>View</DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-listing/${listing.id}`)}>Edit</DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => router.push(`/dashboard/add-listing?duplicate=${listing.id}`)}>
-                                    Duplicate
-                                  </DropdownMenuItem>
+                                  {isAdmin && (
+                                    <>
+                                      <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-listing/${listing.id}`)}>Edit</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => router.push(`/dashboard/add-listing?duplicate=${listing.id}`)}>
+                                        Duplicate
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                                   <DropdownMenuItem onClick={() => router.push(`/bookings?listingId=${listing.id}`)}>View Bookings</DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="text-destructive" onSelect={() => setListingToDelete(listing)}>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                  </DropdownMenuItem>
+                                  {isAdmin && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem className="text-destructive" onSelect={() => setListingToDelete(listing)}>
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                               </DropdownMenuContent>
                           </DropdownMenu>
                       </TableCell>
@@ -169,12 +181,14 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                 <CardTitle>Manage Users</CardTitle>
                 <CardDescription>View, create, and manage user accounts.</CardDescription>
               </div>
-              <Button asChild>
-                <Link href="/dashboard/add-user">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add User
-                </Link>
-              </Button>
+              {isAdmin && (
+                <Button asChild>
+                  <Link href="/dashboard/add-user">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add User
+                  </Link>
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <Table>
@@ -198,25 +212,27 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                                   </Badge>
                               </TableCell>
                               <TableCell>
-                                <UserStatusSwitch user={user} isCurrentUser={user.id === session?.id} />
+                                <UserStatusSwitch user={user} isCurrentUser={user.id === session?.id} disabled={!isAdmin} />
                               </TableCell>
                               <TableCell className="text-right">
-                                  <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" className="h-8 w-8 p-0" disabled={user.id === session?.id}>
-                                              <span className="sr-only">Open menu</span>
-                                              <MoreHorizontal className="h-4 w-4" />
-                                          </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                          <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-user/${user.id}`)}>
-                                              Edit User
-                                          </DropdownMenuItem>
-                                          <DropdownMenuSeparator />
-                                          <DropdownMenuItem className="text-destructive" disabled={user.id === session?.id}>Delete User</DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                  </DropdownMenu>
+                                  {isAdmin && (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" className="h-8 w-8 p-0" disabled={user.id === session?.id}>
+                                                <span className="sr-only">Open menu</span>
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                            <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-user/${user.id}`)}>
+                                                Edit User
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem className="text-destructive" disabled={user.id === session?.id}>Delete User</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
                               </TableCell>
                           </TableRow>
                       ))}

@@ -1,9 +1,18 @@
 
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { getListingById } from '@/lib/data';
 import { ListingForm } from '@/components/dashboard/ListingForm';
+import { getSession } from '@/lib/session';
 
 export default async function AddListingPage({ searchParams }: { searchParams: { duplicate?: string } }) {
+  const session = await getSession();
+  if (session?.role !== 'admin') {
+    const params = new URLSearchParams();
+    params.set('error', 'Permission Denied');
+    params.set('message', 'You do not have permission to add new listings.');
+    redirect(`/forbidden?${params.toString()}`);
+  }
+
   let listingToDuplicate = null;
   const isDuplicateMode = !!searchParams.duplicate;
 

@@ -47,7 +47,7 @@ export function Header({ session }: { session: User | null }) {
   }, []);
 
   const visibleNavLinks = navLinks.filter(link => {
-    if (link.href.startsWith('/dashboard') && session?.role !== 'admin') {
+    if (link.href.startsWith('/dashboard') && session?.role !== 'admin' && session?.role !== 'staff') {
       return false;
     }
     if (link.href.startsWith('/bookings') && !session) {
