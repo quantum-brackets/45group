@@ -3,7 +3,14 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { Menu, Mountain, ChevronDown } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -56,10 +63,13 @@ export function Header({ session }: { session: User | null }) {
               link.href.startsWith('/dashboard') ? (
                 <DropdownMenu key={link.href}>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className={cn(
-                      'flex items-center gap-1 transition-colors hover:text-primary p-0 h-auto text-sm font-medium hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0',
-                      pathname.startsWith('/dashboard') ? 'text-primary' : 'text-muted-foreground'
-                    )}>
+                    <Button 
+                        variant="ghost" 
+                        data-active={pathname.startsWith('/dashboard')}
+                        className={cn(
+                            'flex items-center gap-1 p-0 h-auto text-sm font-medium hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0',
+                            'transition-colors hover:text-primary text-muted-foreground data-[active=true]:text-primary'
+                        )}>
                       {link.label}
                       <ChevronDown className="h-4 w-4" />
                     </Button>
@@ -77,9 +87,9 @@ export function Header({ session }: { session: User | null }) {
                 <Link
                   key={link.href}
                   href={link.href}
+                  data-active={pathname === link.href}
                   className={cn(
-                    'transition-colors hover:text-primary',
-                    pathname === link.href ? 'text-primary' : 'text-muted-foreground'
+                    'transition-colors hover:text-primary text-muted-foreground data-[active=true]:text-primary'
                   )}
                 >
                   {link.label}
@@ -124,20 +134,26 @@ export function Header({ session }: { session: User | null }) {
                       link.href.startsWith('/dashboard') ? (
                         <Accordion key={link.href} type="single" collapsible className="w-full -my-2">
                             <AccordionItem value="dashboard" className="border-b-0">
-                                <AccordionTrigger className={cn(
-                                    'py-2 hover:no-underline transition-colors hover:text-primary [&[data-state=open]>svg]:text-primary',
-                                    pathname.startsWith('/dashboard') ? 'text-primary' : 'text-muted-foreground'
+                                <AccordionTrigger
+                                    data-active={pathname.startsWith('/dashboard')}
+                                    className={cn(
+                                        'py-2 hover:no-underline transition-colors hover:text-primary [&[data-state=open]>svg]:text-primary',
+                                        'text-muted-foreground data-[active=true]:text-primary'
                                 )}>
                                     {link.label}
                                 </AccordionTrigger>
                                 <AccordionContent className="pl-6 pt-4 pb-0 flex flex-col gap-4">
-                                    <Link href="/dashboard?tab=listings" className={cn(
-                                        'text-muted-foreground hover:text-primary',
-                                        (pathname === '/dashboard' && (searchParams.get('tab') === 'listings' || !searchParams.has('tab'))) ? 'text-primary font-semibold' : ''
+                                    <Link 
+                                        href="/dashboard?tab=listings" 
+                                        data-active={pathname === '/dashboard' && (searchParams.get('tab') === 'listings' || !searchParams.has('tab'))}
+                                        className={cn(
+                                            'text-muted-foreground hover:text-primary data-[active=true]:text-primary data-[active=true]:font-semibold'
                                     )}>Listings</Link>
-                                    <Link href="/dashboard?tab=users" className={cn(
-                                        'text-muted-foreground hover:text-primary',
-                                        pathname === '/dashboard' && searchParams.get('tab') === 'users' ? 'text-primary font-semibold' : ''
+                                    <Link 
+                                        href="/dashboard?tab=users"
+                                        data-active={pathname === '/dashboard' && searchParams.get('tab') === 'users'} 
+                                        className={cn(
+                                            'text-muted-foreground hover:text-primary data-[active=true]:text-primary data-[active=true]:font-semibold'
                                     )}>Users</Link>
                                 </AccordionContent>
                             </AccordionItem>
@@ -146,9 +162,10 @@ export function Header({ session }: { session: User | null }) {
                         <Link
                             key={link.href}
                             href={link.href}
+                            data-active={pathname === link.href}
                             className={cn(
                             'transition-colors hover:text-primary',
-                            pathname === link.href ? 'text-primary' : 'text-muted-foreground'
+                            'text-muted-foreground data-[active=true]:text-primary'
                             )}
                         >
                             {link.label}
