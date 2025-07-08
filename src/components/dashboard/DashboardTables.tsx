@@ -245,7 +245,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                             <span>{listing.inventoryCount}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">{listing.price} {listing.currency}/{listing.priceUnit}</TableCell>
+                      <TableCell className="text-right">{listing.price.toLocaleString()} {listing.currency}/{listing.price_unit}</TableCell>
                       <TableCell className="text-right">
                           <DropdownMenu>
                               <DropdownMenuTrigger asChild>
