@@ -87,7 +87,8 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
             name,
             email,
             password: hashedPassword,
-            status: 'active'
+            status: 'active',
+            role: 'guest',
         }).select('id').single();
 
         if (insertError || !newUser) {
