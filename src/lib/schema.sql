@@ -21,6 +21,7 @@ CREATE TABLE "public"."users" (
     "id" "uuid" NOT NULL,
     "name" "text" NOT NULL,
     "email" "text" NOT NULL,
+    "password" TEXT NOT NULL,
     "phone" "text",
     "role" "public"."user_role" DEFAULT 'guest'::public.user_role NOT NULL,
     "status" "public"."user_status" DEFAULT 'active'::public.user_status NOT NULL,
