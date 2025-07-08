@@ -34,7 +34,7 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
   const handleFilter = () => {
     const params = new URLSearchParams(searchParams.toString());
     if (listingId) params.set('listingId', listingId); else params.delete('listingId');
-    if (userId && session?.role === 'admin') params.set('userId', userId); else params.delete('userId');
+    if (userId && canFilterUsers) params.set('userId', userId); else params.delete('userId');
     if (status && status !== 'all') params.set('status', status); else params.delete('status');
     router.push(`/bookings?${params.toString()}`);
   };
@@ -43,11 +43,15 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
     router.push('/bookings');
   }
 
-  const isAdmin = session?.role === 'admin';
+  const canFilterUsers = session?.role === 'admin' || session?.role === 'staff';
 
-  const listingOptions = listings.map(listing => ({ label: listing.name, value: listing.id }));
+  const listingOptions = [
+    ...new Map(listings.map((item) => [item.name, { label: item.name, value: item.id }])).values(),
+  ];
 
-  const userOptions = users.map(user => ({ label: user.name, value: user.id }));
+  const userOptions = [
+    ...new Map(users.map((item) => [item.name, { label: item.name, value: item.id }])).values(),
+  ];
 
   return (
     <div className="flex flex-col md:flex-row md:justify-between gap-4">
@@ -65,7 +69,7 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
                 />
             </div>
             
-            {isAdmin && (
+            {canFilterUsers && (
                 <div className="flex items-center gap-2">
                     <UserIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <Combobox 

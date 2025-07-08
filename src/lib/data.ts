@@ -24,7 +24,7 @@ export async function getUserById(id: string): Promise<User | null> {
 
 export async function getAllUsers(): Promise<User[]> {
     const session = await getSession();
-    if (session?.role !== 'admin') {
+    if (session?.role !== 'admin' && session?.role !== 'staff') {
         return [];
     }
     const db = await getDb();
@@ -74,8 +74,8 @@ export async function getAllBookings(filters: BookingsPageFilters): Promise<Book
     if (session.role === 'guest') {
         whereClauses.push('b.userId = ?');
         params.push(session.id);
-    } else if (session.role === 'admin' && filters.userId) {
-        // Admin can filter by a specific user.
+    } else if ((session.role === 'admin' || session.role === 'staff') && filters.userId) {
+        // Admin or staff can filter by a specific user.
         whereClauses.push('b.userId = ?');
         params.push(filters.userId);
     }

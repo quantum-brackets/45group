@@ -26,7 +26,7 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
   // Fetch data needed for filter dropdowns.
   const listings = await getAllListings();
   let users: User[] = [];
-  if (session?.role === 'admin') {
+  if (session?.role === 'admin' || session?.role === 'staff') {
       users = await getAllUsers();
   }
 
