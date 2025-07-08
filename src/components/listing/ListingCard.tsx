@@ -68,7 +68,7 @@ export function ListingCard({ listing }: ListingCardProps) {
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between items-center">
         <div>
-          <span className="text-xl font-bold text-primary">
+          <span className="text-lg font-bold text-primary">
              {new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency || 'NGN', minimumFractionDigits: 0 }).format(listing.price)}
           </span>
           <span className="text-sm text-muted-foreground">/{listing.priceUnit}</span>

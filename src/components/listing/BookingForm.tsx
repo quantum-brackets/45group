@@ -64,7 +64,7 @@ export function BookingForm({ listing }: BookingFormProps) {
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle>
-          <span className="text-2xl font-bold text-primary">
+          <span className="text-xl font-bold text-primary">
             {new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency || 'NGN', minimumFractionDigits: 0 }).format(listing.price)}
           </span>
           <span className="text-base font-normal text-muted-foreground">/{listing.priceUnit}</span>
