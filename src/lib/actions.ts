@@ -3,16 +3,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getDb } from './db'
-import { randomUUID } from 'crypto'
-import { createSession, getSession } from './session'
+import { getSession } from './session'
 import { redirect } from 'next/navigation'
-import type { Review, User } from './types'
-import { logToFile } from './logger'
-import { hashPassword, verifyPassword } from './password'
-import { cookies } from 'next/headers'
-import { getInventoryByListingId, getListingById, getListingsByIds } from './data'
-import { authenticateUser } from './auth'
+import { randomUUID } from 'crypto'
+import { createSupabaseServerClient } from './supabase'
 
 const ListingFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -28,70 +22,9 @@ const ListingFormSchema = z.object({
   inventoryCount: z.coerce.number().int().min(0, "Inventory count must be 0 or more."),
 });
 
-const BulkCreateSchema = z.object({
-  listingId: z.string(),
-  count: z.coerce.number().int().min(1, "Please enter a number greater than 0."),
-});
-
-export async function bulkCreateListingsAction(data: z.infer<typeof BulkCreateSchema>) {
-    const session = await getSession();
-    if (session?.role !== 'admin') {
-        return { success: false, message: 'Unauthorized' };
-    }
-
-    const validatedFields = BulkCreateSchema.safeParse(data);
-    if (!validatedFields.success) {
-        return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
-    }
-    
-    const { listingId, count } = validatedFields.data;
-    const originalListing = await getListingById(listingId);
-    
-    if (!originalListing) {
-      return { success: false, message: "Original listing not found." };
-    }
-
-    // Exclude fields that should be unique or are generated
-    const { id, rating, reviews, ...duplicatableData } = originalListing;
-
-    try {
-        const db = await getDb();
-        const transaction = db.transaction(() => {
-            const stmt = db.prepare(`
-                INSERT INTO listings (id, name, type, location, description, images, price, priceUnit, currency, rating, reviews, features, maxGuests)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-            for (let i = 0; i < count; i++) {
-                stmt.run(
-                    `listing-${randomUUID()}`,
-                    duplicatableData.name,
-                    duplicatableData.type,
-                    duplicatableData.location,
-                    duplicatableData.description,
-                    JSON.stringify(duplicatableData.images),
-                    duplicatableData.price,
-                    duplicatableData.priceUnit,
-                    duplicatableData.currency,
-                    0, // Default rating
-                    '[]', // Default empty reviews
-                    JSON.stringify(duplicatableData.features),
-                    duplicatableData.maxGuests
-                );
-            }
-        });
-
-        transaction();
-        
-        revalidatePath('/dashboard?tab=listings', 'page');
-        return { success: true, message: `${count} duplicate(s) of "${originalListing.name}" have been created.` };
-    } catch (error) {
-        console.error(`[BULK_CREATE_ACTION] Error: ${error}`);
-        const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-        return { success: false, message: `Failed to create duplicates: ${message}` };
-    }
-}
 
 export async function createListingAction(data: z.infer<typeof ListingFormSchema>) {
+    const supabase = createSupabaseServerClient();
     const session = await getSession();
     if (session?.role !== 'admin') {
         return { success: false, message: 'Unauthorized' };
@@ -103,60 +36,39 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
     }
 
     const { name, type, location, description, price, priceUnit, currency, maxGuests, features, images, inventoryCount } = validatedFields.data;
-    const featuresAsArray = features.split(',').map(f => f.trim());
-    const newListingId = `listing-${randomUUID()}`;
+    
+    const { error } = await supabase.rpc('create_listing_with_inventory', {
+        p_id: `listing-${randomUUID()}`,
+        p_name: name,
+        p_type: type,
+        p_location: location,
+        p_description: description,
+        p_images: JSON.stringify(images),
+        p_price: price,
+        p_price_unit: priceUnit,
+        p_currency: currency,
+        p_max_guests: maxGuests,
+        p_features: JSON.stringify(features.split(',').map(f => f.trim())),
+        p_inventory_count: inventoryCount
+    });
 
-    const defaultReviews = [];
-    const defaultRating = 0;
-
-    try {
-        const db = await getDb();
-        const transaction = db.transaction(() => {
-            const listingStmt = db.prepare(`
-                INSERT INTO listings (id, name, type, location, description, images, price, priceUnit, currency, rating, reviews, features, maxGuests)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-            listingStmt.run(
-                newListingId,
-                name,
-                type,
-                location,
-                description,
-                JSON.stringify(images),
-                price,
-                priceUnit,
-                currency,
-                defaultRating,
-                JSON.stringify(defaultReviews),
-                JSON.stringify(featuresAsArray),
-                maxGuests
-            );
-
-            const inventoryStmt = db.prepare('INSERT INTO listing_inventory (id, listingId, name) VALUES (?, ?, ?)');
-            for (let i = 0; i < inventoryCount; i++) {
-                inventoryStmt.run(`inv-${randomUUID()}`, newListingId, `${name} - Unit ${i + 1}`);
-            }
-        });
-
-        transaction();
-        
-        revalidatePath('/dashboard?tab=listings', 'page');
-        return { success: true, message: `Listing "${name}" has been created with ${inventoryCount} units.` };
-    } catch (error) {
-        console.error(`[CREATE_LISTING_ACTION] Error: ${error}`);
-        const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-        return { success: false, message: `Failed to create listing: ${message}` };
+    if (error) {
+        console.error('[CREATE_LISTING_ACTION] Error:', error);
+        return { success: false, message: `Failed to create listing: ${error.message}` };
     }
+        
+    revalidatePath('/dashboard?tab=listings', 'page');
+    return { success: true, message: `Listing "${name}" has been created with ${inventoryCount} units.` };
 }
 
 export async function updateListingAction(id: string, data: z.infer<typeof ListingFormSchema>) {
+  const supabase = createSupabaseServerClient();
   const session = await getSession();
   if (session?.role !== 'admin') {
     return { success: false, message: 'Unauthorized' };
   }
   
   const validatedFields = ListingFormSchema.safeParse(data);
-
   if (!validatedFields.success) {
     return {
       success: false,
@@ -166,118 +78,52 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
   }
   
   const { name, type, location, description, price, priceUnit, currency, maxGuests, features, images, inventoryCount } = validatedFields.data;
-  const featuresAsArray = features.split(',').map((f) => f.trim());
 
-  try {
-    const db = await getDb();
-    const transaction = db.transaction(() => {
-        // 1. Update the parent listing details
-        const stmt = db.prepare(`
-        UPDATE listings
-        SET 
-            name = ?, type = ?, location = ?, description = ?, price = ?,
-            priceUnit = ?, currency = ?, maxGuests = ?, features = ?, images = ?
-        WHERE id = ?
-        `);
-        stmt.run(name, type, location, description, price, priceUnit, currency, maxGuests, JSON.stringify(featuresAsArray), JSON.stringify(images), id);
-        
-        // 2. Reconcile inventory count
-        const currentInventory = db.prepare('SELECT id FROM listing_inventory WHERE listingId = ?').all(id) as { id: string }[];
-        const currentCount = currentInventory.length;
-        const newCount = inventoryCount;
+  const { error } = await supabase.rpc('update_listing_with_inventory', {
+    p_listing_id: id,
+    p_name: name,
+    p_type: type,
+    p_location: location,
+    p_description: description,
+    p_price: price,
+    p_price_unit: priceUnit,
+    p_currency: currency,
+    p_max_guests: maxGuests,
+    p_features: JSON.stringify(features.split(',').map(f => f.trim())),
+    p_images: JSON.stringify(images),
+    p_new_inventory_count: inventoryCount
+  });
 
-        if (newCount > currentCount) {
-            // Add new inventory items
-            const inventoryStmt = db.prepare('INSERT INTO listing_inventory (id, listingId, name) VALUES (?, ?, ?)');
-            for (let i = currentCount; i < newCount; i++) {
-                inventoryStmt.run(`inv-${randomUUID()}`, id, `${name} - Unit ${i + 1}`);
-            }
-        } else if (newCount < currentCount) {
-            // Remove inventory items that are not booked
-            const bookedInventoryIdsStmt = db.prepare(`
-              SELECT DISTINCT je.value as inventoryId
-              FROM bookings b, json_each(b.inventoryIds) je
-              JOIN listing_inventory i ON i.id = je.value
-              WHERE i.listingId = ? AND b.status != 'Cancelled'
-            `);
-            const bookedInventoryIdsResult = bookedInventoryIdsStmt.all(id) as {inventoryId: string}[];
-            const bookedIds = new Set(bookedInventoryIdsResult.map(r => r.inventoryId));
-            
-            const deletableInventory = currentInventory.filter(i => !bookedIds.has(i.id));
-            const countToDelete = currentCount - newCount;
-
-            if (deletableInventory.length < countToDelete) {
-                throw new Error(`Cannot reduce inventory to ${newCount}. Only ${deletableInventory.length} units are available for removal, but ${countToDelete} need to be removed. Please cancel active bookings first.`);
-            }
-
-            const idsToDelete = deletableInventory.slice(0, countToDelete).map(i => i.id);
-            if (idsToDelete.length > 0) {
-                const deleteStmt = db.prepare(`DELETE FROM listing_inventory WHERE id IN (${idsToDelete.map(() => '?').join(',')})`);
-                deleteStmt.run(...idsToDelete);
-            }
-        }
-    });
-
-    transaction();
-
-    revalidatePath('/dashboard?tab=listings', 'page');
-    revalidatePath(`/listing/${id}`);
-    revalidatePath('/bookings');
-    
-    return { success: true, message: `The details for "${name}" have been saved.` };
-
-  } catch (error) {
+  if (error) {
     console.error(`[UPDATE_LISTING_ACTION] Error: ${error}`);
-    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-    return { success: false, message: `Failed to update listing: ${message}` };
+    return { success: false, message: `Failed to update listing: ${error.message}` };
   }
+
+  revalidatePath('/dashboard?tab=listings', 'page');
+  revalidatePath(`/listing/${id}`);
+  revalidatePath('/bookings');
+  
+  return { success: true, message: `The details for "${name}" have been saved.` };
 }
 
 export async function deleteListingAction(id: string) {
+  const supabase = createSupabaseServerClient();
   const session = await getSession();
   if (session?.role !== 'admin') {
     return { success: false, message: 'Unauthorized' };
   }
 
-  try {
-    const db = await getDb();
-    
-    const transaction = db.transaction(() => {
-        // Check for active bookings associated with this listing's inventory
-        const bookingCheckStmt = db.prepare(`
-            SELECT COUNT(*) as bookingCount 
-            FROM bookings b, json_each(b.inventoryIds) je
-            JOIN listing_inventory i ON i.id = je.value
-            WHERE i.listingId = ? AND b.status != 'Cancelled'
-        `);
-        const { bookingCount } = bookingCheckStmt.get(id) as { bookingCount: number };
-        
-        if (bookingCount > 0) {
-            throw new Error(`This listing cannot be deleted because it has ${bookingCount} active or pending bookings.`);
-        }
+  const { error } = await supabase.rpc('delete_listing_with_bookings_check', {
+    p_listing_id: id
+  });
 
-        // Delete associated inventory items
-        const deleteInventoryStmt = db.prepare('DELETE FROM listing_inventory WHERE listingId = ?');
-        deleteInventoryStmt.run(id);
-
-        // Delete the main listing
-        const deleteListingStmt = db.prepare('DELETE FROM listings WHERE id = ?');
-        const info = deleteListingStmt.run(id);
-
-        if (info.changes === 0) {
-            throw new Error('Listing not found or could not be deleted.');
-        }
-    });
-    
-    transaction();
-
-    revalidatePath('/dashboard?tab=listings', 'page');
-    return { success: true, message: 'Listing and all its inventory have been deleted.' };
-  } catch (error) {
+  if (error) {
     console.error(`[DELETE_LISTING_ACTION] Error: ${error}`);
-    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-    return { success: false, message: `${message}` };
+    return { success: false, message: `${error.message}` };
   }
+
+  revalidatePath('/dashboard?tab=listings', 'page');
+  return { success: true, message: 'Listing and all its inventory have been deleted.' };
 }
 
 const CreateBookingSchema = z.object({
@@ -290,6 +136,7 @@ const CreateBookingSchema = z.object({
 });
 
 export async function createBookingAction(data: z.infer<typeof CreateBookingSchema>) {
+  const supabase = createSupabaseServerClient();
   const session = await getSession();
 
   const validatedFields = CreateBookingSchema.safeParse(data);
@@ -300,110 +147,32 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       errors: validatedFields.error.flatten().fieldErrors,
     }
   }
-  
+
+  if (session?.role === 'staff') {
+    return { success: false, message: 'Staff accounts cannot create new bookings.' };
+  }
+
   const { listingId, startDate, endDate, guests, numberOfUnits, guestEmail } = validatedFields.data;
-  let userId: string;
-  let isNewUser = false;
+  
+  const { data: message, error } = await supabase.rpc('create_booking_with_inventory_check', {
+    p_listing_id: listingId,
+    p_user_id: session?.id || null,
+    p_start_date: new Date(startDate).toISOString(),
+    p_end_date: new Date(endDate).toISOString(),
+    p_guests: guests,
+    p_num_units: numberOfUnits,
+    p_guest_email: guestEmail
+  });
 
-  if (session) {
-    if (session.role === 'staff') {
-      return { success: false, message: 'Staff accounts cannot create new bookings.' };
-    }
-    userId = session.id;
-  } else if (guestEmail) {
-    try {
-        const db = await getDb();
-        const existingUser = db.prepare('SELECT id, status FROM users WHERE email = ?').get(guestEmail) as User | undefined;
-        if (existingUser) {
-            userId = existingUser.id;
-        } else {
-            isNewUser = true;
-            userId = `user-${randomUUID()}`;
-            const hashedPassword = await hashPassword(randomUUID());
-            const stmt = db.prepare('INSERT INTO users (id, name, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?)');
-            stmt.run(userId, guestEmail.split('@')[0], guestEmail, hashedPassword, 'guest', 'provisional');
-        }
-    } catch (error) {
-        console.error(`[CREATE_GUEST_USER_ACTION] Error: ${error}`);
-        const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-        return { success: false, message: `Failed to create guest user account: ${message}` };
-    }
-  } else {
-    return { success: false, message: "You must be logged in or provide an email to book." };
-  }
-
-  try {
-    const db = await getDb();
-
-    const listing = await getListingById(listingId);
-    if (!listing) {
-        return { success: false, message: 'The venue you are trying to book does not exist.' };
-    }
-
-    if (guests > listing.maxGuests * numberOfUnits) {
-      return { success: false, message: `The number of guests exceeds the capacity for ${numberOfUnits} unit(s).` };
-    }
-
-    const fromDate = new Date(startDate).toISOString().split('T')[0];
-    const toDate = new Date(endDate).toISOString().split('T')[0];
-
-    // Find ALL available inventory items for the given dates
-    const findAvailableInventoryStmt = db.prepare(`
-        SELECT id FROM listing_inventory
-        WHERE listingId = ? 
-        AND id NOT IN (
-            SELECT je.value FROM bookings b, json_each(b.inventoryIds) je
-            WHERE b.listingId = ?
-            AND b.status = 'Confirmed'
-            AND (b.endDate >= ? AND b.startDate <= ?)
-        )
-    `);
-
-    const availableInventory = findAvailableInventoryStmt.all(listingId, listingId, fromDate, toDate) as { id: string }[];
-    
-    if (availableInventory.length < numberOfUnits) {
-        return { success: false, message: `Sorry, only ${availableInventory.length} units are available for these dates. Please try another date range or reduce the number of units.` };
-    }
-    
-    const inventoryToBook = availableInventory.slice(0, numberOfUnits);
-    const inventoryIds = inventoryToBook.map(inv => inv.id);
-
-    const stmt = db.prepare(`
-      INSERT INTO bookings (id, listingId, userId, startDate, endDate, guests, status, listingName, createdAt, inventoryIds)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    stmt.run(
-      `booking-${randomUUID()}`,
-      listingId,
-      userId,
-      fromDate,
-      toDate,
-      guests,
-      'Pending',
-      listing.name,
-      new Date().toISOString(),
-      JSON.stringify(inventoryIds)
-    );
-
-    revalidatePath('/bookings');
-    revalidatePath(`/listing/${listingId}`);
-
-    let successMessage = `Your booking request for ${listing.name} is now pending confirmation.`;
-    if (!session && guestEmail) {
-      if (isNewUser) {
-        successMessage += ` An account has been reserved for ${guestEmail}. Please go to the sign-up page to create a password and manage your bookings.`;
-      } else {
-        successMessage += ` This booking has been added to the account for ${guestEmail}. Please log in to manage your bookings.`;
-      }
-    }
-    
-    return { success: true, message: successMessage };
-  } catch (error) {
+  if (error) {
     console.error(`[CREATE_BOOKING_ACTION] Error: ${error}`);
-    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-    return { success: false, message: `Failed to create booking: ${message}` };
+    return { success: false, message: `Failed to create booking: ${error.message}` };
   }
+  
+  revalidatePath('/bookings');
+  revalidatePath(`/listing/${listingId}`);
+  
+  return { success: true, message: message as string };
 }
 
 const UpdateBookingSchema = z.object({
@@ -415,271 +184,79 @@ const UpdateBookingSchema = z.object({
 });
 
 export async function updateBookingAction(data: z.infer<typeof UpdateBookingSchema>) {
-  const session = await getSession();
-  if (!session) {
-    return { success: false, message: 'Unauthorized' };
-  }
+    const supabase = createSupabaseServerClient();
+    const session = await getSession();
+    if (!session) {
+      return { success: false, message: 'Unauthorized' };
+    }
+  
+    const validatedFields = UpdateBookingSchema.safeParse(data);
+    if (!validatedFields.success) {
+      return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
+    }
 
-  const validatedFields = UpdateBookingSchema.safeParse(data);
-  if (!validatedFields.success) {
-    return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
-  }
+    const { bookingId, startDate, endDate, guests, numberOfUnits } = validatedFields.data;
 
-  const { bookingId, startDate, endDate, guests, numberOfUnits } = validatedFields.data;
-
-  const fromDate = new Date(startDate).toISOString().split('T')[0];
-  const toDate = new Date(endDate).toISOString().split('T')[0];
-
-  try {
-    const db = await getDb();
-    const transaction = db.transaction(() => {
-        const booking = db.prepare('SELECT userId, listingId FROM bookings WHERE id = ?').get(bookingId) as { userId: string, listingId: string } | undefined;
-
-        if (!booking) {
-          throw new Error('Booking not found.');
-        }
-    
-        if (session.role !== 'admin' && booking.userId !== session.id) {
-          throw new Error('You do not have permission to edit this booking.');
-        }
-        
-        const listing = db.prepare('SELECT maxGuests FROM listings WHERE id = ?').get(booking.listingId) as { maxGuests: number } | undefined;
-        if (listing && guests > (listing.maxGuests * numberOfUnits)) {
-            throw new Error(`Number of guests cannot exceed the maximum capacity for ${numberOfUnits} units.`);
-        }
-
-        const findBookedUnitsStmt = db.prepare(`
-            SELECT je.value as inventoryId
-            FROM bookings b, json_each(b.inventoryIds) je
-            WHERE b.listingId = ?
-            AND b.status = 'Confirmed'
-            AND b.id != ?
-            AND (b.endDate >= ? AND b.startDate <= ?)
-        `);
-        const bookedUnitsResult = findBookedUnitsStmt.all(booking.listingId, bookingId, fromDate, toDate) as { inventoryId: string }[];
-        const bookedUnitIds = new Set(bookedUnitsResult.map(r => r.inventoryId));
-        
-        const allInventoryForListing = db.prepare('SELECT id FROM listing_inventory WHERE listingId = ?').all(booking.listingId) as { id: string }[];
-        
-        const availableUnits = allInventoryForListing.filter(inv => !bookedUnitIds.has(inv.id));
-        
-        if (availableUnits.length < numberOfUnits) {
-            throw new Error(`Cannot update booking. Only ${availableUnits.length} units are available for the selected dates, but ${numberOfUnits} were requested.`);
-        }
-
-        const newInventoryIds = availableUnits.slice(0, numberOfUnits).map(u => u.id);
-
-        const modifiedAt = new Date();
-        const statusMessage = `Modified by ${session.name} on ${modifiedAt.toLocaleDateString()}. Units: ${numberOfUnits}. Awaiting re-confirmation.`;
-
-        const stmt = db.prepare(`
-          UPDATE bookings 
-          SET startDate = ?, endDate = ?, guests = ?, inventoryIds = ?, status = 'Pending', actionByUserId = NULL, actionAt = NULL
-          WHERE id = ?
-        `);
-        
-        stmt.run(
-            fromDate,
-            toDate,
-            guests,
-            JSON.stringify(newInventoryIds),
-            statusMessage,
-            bookingId
-        );
+    const { error } = await supabase.rpc('update_booking_with_inventory_check', {
+        p_booking_id: bookingId,
+        p_new_start_date: new Date(startDate).toISOString(),
+        p_new_end_date: new Date(endDate).toISOString(),
+        p_new_guests: guests,
+        p_new_num_units: numberOfUnits,
+        p_editor_id: session.id,
+        p_editor_name: session.name
     });
 
-    transaction();
+    if (error) {
+        console.error(`[UPDATE_BOOKING_ACTION] Error: ${error}`);
+        return { success: false, message: `Failed to update booking: ${error.message}` };
+    }
 
     revalidatePath('/bookings');
     revalidatePath(`/booking/${bookingId}`);
 
     return { success: true, message: 'Booking has been updated and is now pending re-confirmation.' };
-  } catch (error) {
-    console.error(`[UPDATE_BOOKING_ACTION] Error: ${error}`);
-    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-    return { success: false, message: `Failed to update booking: ${message}` };
-  }
 }
 
 export async function logoutAction() {
-    const cookieStore = cookies();
-    const sessionId = cookieStore.get('session')?.value;
-
-    if (sessionId) {
-        try {
-            const db = await getDb();
-            const stmt = db.prepare('DELETE FROM sessions WHERE id = ?');
-            stmt.run(sessionId);
-        } catch (error) {
-            console.error(`[SESSION_DELETE] Error deleting session ${sessionId} from database: ${error}`);
-        }
-        
-        cookieStore.set('session', '', {
-            expires: new Date(0),
-            path: '/',
-            httpOnly: true,
-            secure: true,
-            sameSite: 'none',
-        });
-    }
-    
+    const supabase = createSupabaseServerClient();
+    await supabase.auth.signOut();
     revalidatePath('/', 'layout');
     redirect('/login');
 }
-
 
 const UpdatePasswordSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
+// This action is for admins to reset passwords. A user-initiated password reset
+// would use Supabase's built-in email flow.
 export async function updatePasswordAction(data: z.infer<typeof UpdatePasswordSchema>) {
-  const validatedFields = UpdatePasswordSchema.safeParse(data);
-  if (!validatedFields.success) {
-    return { error: 'Invalid fields.' };
-  }
-  const { email, password } = validatedFields.data;
-
-  try {
-    const db = await getDb();
-    const user = db.prepare('SELECT id, password FROM users WHERE email = ?').get(email) as User | undefined;
-
-    if (!user) {
-      return { error: `Update failed: User with email "${email}" does not exist.` };
+    const supabase = createSupabaseServerClient();
+    const validatedFields = UpdatePasswordSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { error: 'Invalid fields.' };
     }
+    const { email, password } = validatedFields.data;
 
-    const hashedPassword = await hashPassword(password);
+    const { data: user, error: userError } = await supabase.from('users').select('id').eq('email', email).single();
 
-    const stmt = db.prepare('UPDATE users SET password = ? WHERE email = ?');
-    const info = stmt.run(hashedPassword, email);
-    if (info.changes === 0) {
-        return { error: 'Database update failed: Could not find user to update.' };
-    }
-
-    // --- Automatic Verification Step ---
-    const updatedUser = db.prepare('SELECT id, password FROM users WHERE email = ?').get(email) as User | undefined;
-    if (!updatedUser || !updatedUser.password) {
-      return { error: 'Verification failed: Password was updated, but user could not be found immediately after.' };
-    }
-
-    const passwordsMatch = await verifyPassword(password, updatedUser.password);
-
-    if (passwordsMatch) {
-      return { success: `Password for ${email} was updated and verified successfully.` };
-    } else {
-      return { error: `Verification FAILED: The password for ${email} was updated, but it could not be verified. This indicates a potential problem with the hashing or database logic.` };
-    }
-
-  } catch (error) {
-    console.error(error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return { error: `An unexpected error occurred during the process: ${errorMessage}` };
-  }
-}
-
-const TestLoginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
-
-export async function testLoginAction(data: z.infer<typeof TestLoginSchema>) {
-  const validatedFields = TestLoginSchema.safeParse(data);
-  if (!validatedFields.success) {
-    return { error: 'Invalid fields provided.' };
-  }
-  const { email, password } = validatedFields.data;
-
-  try {
-    const authResult = await authenticateUser(email, password);
-    if (authResult.error) {
-      return { error: authResult.error };
+    if (userError || !user) {
+        return { error: `Update failed: User with email "${email}" does not exist.` };
     }
     
-    const { user } = authResult;
-    const sessionId = await createSession(user.id);
-    if (!sessionId) {
-      return { error: 'Server error: Could not create a session record in the database.' };
+    const { error } = await supabase.auth.admin.updateUserById(
+        user.id,
+        { password: password }
+    );
+    
+    if (error) {
+        console.error('[UPDATE_PASSWORD_ACTION] Supabase Error:', error);
+        return { error: `Password update failed: ${error.message}` };
     }
-
-    return { success: sessionId };
-  } catch (error) {
-    console.error('[TEST_LOGIN_ACTION_ERROR]', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
-    return { error: errorMessage };
-  }
-}
-
-const GetSessionByEmailSchema = z.object({
-  email: z.string().email(),
-});
-
-export async function getSessionTokenByEmailAction(data: z.infer<typeof GetSessionByEmailSchema>) {
-    const validatedFields = GetSessionByEmailSchema.safeParse(data);
-    if (!validatedFields.success) {
-        return { error: 'Invalid email provided.' };
-    }
-    const { email } = validatedFields.data;
-
-    try {
-        const db = await getDb();
-        const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as { id: string } | undefined;
-
-        if (!user) {
-            return { error: `No user found with email: ${email}` };
-        }
-
-        const session = db.prepare('SELECT id FROM sessions WHERE userId = ? AND expiresAt > ? ORDER BY expiresAt DESC LIMIT 1').get(user.id, new Date().toISOString()) as { id: string } | undefined;
-
-        if (!session) {
-            return { error: `No active session found for user: ${email}` };
-        }
-
-        return { success: session.id };
-    } catch (error) {
-        console.error('[GET_SESSION_BY_EMAIL_ACTION_ERROR]', error);
-        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
-        return { error: `Database query failed: ${errorMessage}` };
-    }
-}
-
-export async function verifySessionByIdAction(sessionId: string) {
-    if (!sessionId) {
-        return { error: 'No Session ID provided to verify.' };
-    }
-
-    try {
-        const db = await getDb();
-        const sessionRecord = db.prepare('SELECT userId, expiresAt FROM sessions WHERE id = ?').get(sessionId) as { userId: string, expiresAt: string } | undefined;
-
-        if (!sessionRecord) {
-            return { error: `Session with ID "${sessionId}" was not found in the database.` };
-        }
-
-        const expiresAtDate = new Date(sessionRecord.expiresAt);
-        if (expiresAtDate < new Date()) {
-             return { error: `Session with ID "${sessionId}" was found but has expired on ${expiresAtDate.toLocaleString()}.` };
-        }
-
-        const user = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(sessionRecord.userId) as User | undefined;
-        if (!user) {
-            return { error: `Session is valid, but the associated user (ID: ${sessionRecord.userId}) could not be found.` };
-        }
-
-        cookies().set('session', sessionId, {
-          expires: expiresAtDate,
-          httpOnly: true,
-          path: '/',
-          secure: true,
-          sameSite: 'none',
-        });
-
-        const successMessage = `Session for ${user.email} (${user.role}) is valid until ${expiresAtDate.toLocaleString()}. Cookie set.`;
-        return { success: successMessage };
-    } catch (error) {
-        console.error('[VERIFY_SESSION_BY_ID_ACTION_ERROR]', error);
-        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
-        return { error: `Database query failed: ${errorMessage}` };
-    }
+    
+    return { success: `Password for ${email} was updated successfully.` };
 }
 
 const BookingActionSchema = z.object({
@@ -687,6 +264,7 @@ const BookingActionSchema = z.object({
 });
 
 export async function cancelBookingAction(data: z.infer<typeof BookingActionSchema>) {
+  const supabase = createSupabaseServerClient();
   const session = await getSession();
   if (!session) {
     return { error: 'Unauthorized' };
@@ -699,53 +277,40 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
   
   const { bookingId } = validatedFields.data;
 
-  try {
-    const db = await getDb();
-    const booking = db.prepare(`
-        SELECT b.userId, l.name as listingName 
-        FROM bookings b
-        JOIN listings l ON b.listingId = l.id
-        WHERE b.id = ?
-    `).get(bookingId) as { userId: string, listingName: string } | undefined;
+  const { data: booking, error: fetchError } = await supabase.from('bookings').select('userId, listingName').eq('id', bookingId).single();
 
-    if (!booking) {
-      return { error: 'Booking not found.' };
-    }
-
-    if (session.role === 'staff') {
-        return { error: 'You do not have permission to cancel this booking.' };
-    }
-
-    // Admin can cancel any booking, guest can only cancel their own.
-    if (session.role !== 'admin' && booking.userId !== session.id) {
-      return { error: 'You do not have permission to cancel this booking.' };
-    }
-    
-    const actionAt = new Date().toISOString();
-    const statusMessage = `Cancelled by ${session.name} on ${new Date(actionAt).toLocaleDateString()}`;
-
-    const stmt = db.prepare(`
-        UPDATE bookings 
-        SET status = 'Cancelled', actionByUserId = ?, actionAt = ?, statusMessage = ?
-        WHERE id = ?`);
-    const info = stmt.run(session.id, actionAt, statusMessage, bookingId);
-    
-    if (info.changes === 0) {
-        return { error: 'Failed to cancel booking.' };
-    }
-
-    revalidatePath('/bookings');
-    revalidatePath(`/booking/${bookingId}`);
-    
-    return { success: `Booking for ${booking.listingName} has been cancelled.` };
-  } catch (error) {
-    console.error(`[CANCEL_BOOKING_ACTION] Error: ${error}`);
-    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-    return { error: `Failed to cancel booking in the database: ${message}` };
+  if (fetchError || !booking) {
+    return { error: 'Booking not found.' };
   }
+  
+  if (session.role === 'staff') {
+      return { error: 'You do not have permission to cancel this booking.' };
+  }
+  
+  // Admin can cancel any booking, guest can only cancel their own.
+  if (session.role !== 'admin' && booking.userId !== session.id) {
+    return { error: 'You do not have permission to cancel this booking.' };
+  }
+
+  const { error } = await supabase.from('bookings').update({
+    status: 'Cancelled',
+    actionByUserId: session.id,
+    actionAt: new Date().toISOString(),
+    statusMessage: `Cancelled by ${session.name} on ${new Date().toLocaleDateString()}`
+  }).eq('id', bookingId);
+  
+  if (error) {
+    return { error: `Failed to cancel booking in the database: ${error.message}` };
+  }
+
+  revalidatePath('/bookings');
+  revalidatePath(`/booking/${bookingId}`);
+  
+  return { success: `Booking for ${booking.listingName} has been cancelled.` };
 }
 
 export async function confirmBookingAction(data: z.infer<typeof BookingActionSchema>) {
+    const supabase = createSupabaseServerClient();
     const session = await getSession();
     if (session?.role !== 'admin') {
       return { error: 'Unauthorized: Only administrators can confirm bookings.' };
@@ -758,76 +323,21 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     
     const { bookingId } = validatedFields.data;
   
-    try {
-      const db = await getDb();
-      const transaction = db.transaction(() => {
-        const booking = db.prepare(`
-          SELECT b.listingId, b.startDate, b.endDate, b.inventoryIds, l.name as listingName
-          FROM bookings b
-          JOIN listings l ON b.listingId = l.id
-          WHERE b.id = ? AND b.status = 'Pending'
-        `).get(bookingId) as { listingId: string, startDate: string, endDate: string, inventoryIds: string, listingName: string } | undefined;
-    
-        if (!booking) {
-          throw new Error('Booking not found or is not in a pending state.');
-        }
+    const { error } = await supabase.rpc('confirm_booking_with_inventory_check', {
+        p_booking_id: bookingId,
+        p_admin_id: session.id,
+        p_admin_name: session.name
+    });
 
-        const requestedUnitsCount = (JSON.parse(booking.inventoryIds) as string[]).length;
-
-        // Get total inventory for the listing
-        const totalInventory = db.prepare('SELECT COUNT(*) as count FROM listing_inventory WHERE listingId = ?').get(booking.listingId) as { count: number };
-        if (!totalInventory) {
-            throw new Error(`Could not find inventory for listing ID ${booking.listingId}.`);
-        }
-
-        // Get all units booked in *other* confirmed reservations during the conflict period
-        const otherBookedUnitsStmt = db.prepare(`
-            SELECT je.value as inventoryId
-            FROM bookings b, json_each(b.inventoryIds) je
-            WHERE b.listingId = ?
-              AND b.status = 'Confirmed'
-              AND b.id != ?
-              AND (b.endDate >= ? AND b.startDate <= ?)
-        `);
-        const otherBookedUnits = otherBookedUnitsStmt.all(booking.listingId, bookingId, booking.startDate, booking.endDate) as { inventoryId: string }[];
-        const otherBookedUnitsCount = new Set(otherBookedUnits.map(u => u.inventoryId)).size;
-        
-        const availableUnitsCount = totalInventory.count - otherBookedUnitsCount;
-
-        if (availableUnitsCount < requestedUnitsCount) {
-            throw new Error(`Cannot confirm booking. Only ${availableUnitsCount} unit(s) are available for these dates, but ${requestedUnitsCount} are requested. Another booking may have been confirmed.`);
-        }
-        
-        const actionAt = new Date().toISOString();
-        const statusMessage = `Confirmed by ${session.name} on ${new Date(actionAt).toLocaleDateString()}`;
-    
-        const stmt = db.prepare(`
-          UPDATE bookings 
-          SET status = 'Confirmed', actionByUserId = ?, actionAt = ?, statusMessage = ?
-          WHERE id = ? AND status = 'Pending'`);
-        const info = stmt.run(session.id, actionAt, statusMessage, bookingId);
-        
-        if (info.changes === 0) {
-            // This could happen in a race condition, so it's a good final check
-            throw new Error('Failed to confirm booking. It might have been changed by another process.');
-        }
-
-        return { listingName: booking.listingName };
-      });
-
-      const result = transaction();
-
-      revalidatePath('/bookings');
-      revalidatePath(`/booking/${bookingId}`);
-      
-      return { success: `Booking for ${result.listingName} has been confirmed.` };
-
-    } catch (error) {
-      console.error(`[CONFIRM_BOOKING_ACTION] Error: ${error}`);
-      const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-      const clientMessage = message.startsWith('Cannot confirm booking') ? message : 'A database error occurred while trying to confirm the booking.';
-      return { error: clientMessage };
+    if (error) {
+        console.error(`[CONFIRM_BOOKING_ACTION] Error: ${error}`);
+        return { error: error.message };
     }
+
+    revalidatePath('/bookings');
+    revalidatePath(`/booking/${bookingId}`);
+    
+    return { success: `Booking has been confirmed.` };
 }
 
 const UserFormSchema = z.object({
@@ -841,6 +351,7 @@ const UserFormSchema = z.object({
 });
 
 export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
+  const supabase = createSupabaseServerClient();
   const session = await getSession();
   if (session?.role !== 'admin') {
     return { success: false, message: 'Unauthorized' };
@@ -857,29 +368,36 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
     return { success: false, message: "Password is required for new users." };
   }
 
-  try {
-    const db = await getDb();
-    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-    if (existingUser) {
-      return { success: false, message: 'A user with this email already exists.' };
-    }
-    
-    const hashedPassword = await hashPassword(password);
-    const userId = `user-${randomUUID()}`;
+  // Create auth user
+  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true, // Auto-confirm user
+    user_metadata: { name }
+  });
 
-    const stmt = db.prepare('INSERT INTO users (id, name, email, password, role, status, notes, phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-    stmt.run(userId, name, email, hashedPassword, role, status, notes || null, phone || null);
-
-    revalidatePath('/dashboard?tab=users', 'page');
-    return { success: true, message: `User "${name}" was created successfully.` };
-  } catch (error) {
-    console.error(`[ADD_USER_ACTION] Error: ${error}`);
-    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-    return { success: false, message: `Failed to create user in the database: ${message}` };
+  if (authError || !authData.user) {
+    return { success: false, message: authError?.message || 'Failed to create user.' };
   }
+
+  // The trigger 'on_auth_user_created' creates the public user record.
+  // Now, we update it with the additional details.
+  const { error: profileError } = await supabase.from('users').update({
+    role, status, notes, phone
+  }).eq('id', authData.user.id);
+  
+  if (profileError) {
+    // Attempt to clean up the auth user if profile update fails
+    await supabase.auth.admin.deleteUser(authData.user.id);
+    return { success: false, message: `Failed to set user profile: ${profileError.message}` };
+  }
+
+  revalidatePath('/dashboard?tab=users', 'page');
+  return { success: true, message: `User "${name}" was created successfully.` };
 }
 
 export async function updateUserAction(id: string, data: z.infer<typeof UserFormSchema>) {
+  const supabase = createSupabaseServerClient();
   const session = await getSession();
   if (session?.role !== 'admin') {
     return { success: false, message: 'Unauthorized' };
@@ -892,35 +410,33 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
 
   const { name, email, password, role, status, notes, phone } = validatedFields.data;
   
-  try {
-    const db = await getDb();
-    
-    // Check if another user already has the new email
-    const otherUserWithEmail = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, id);
-    if (otherUserWithEmail) {
-        return { success: false, message: 'Another user with this email already exists.' };
-    }
-
-    if (password) {
-      // Update with new password
-      const hashedPassword = await hashPassword(password);
-      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, password = ?, role = ?, status = ?, notes = ?, phone = ? WHERE id = ?');
-      stmt.run(name, email, hashedPassword, role, status, notes || null, phone || null, id);
-    } else {
-      // Update without changing password
-      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, role = ?, status = ?, notes = ?, phone = ? WHERE id = ?');
-      stmt.run(name, email, role, status, notes || null, phone || null, id);
-    }
-
-    revalidatePath('/dashboard?tab=users', 'page');
-    revalidatePath(`/dashboard/edit-user/${id}`);
-    
-    return { success: true, message: `User "${name}" was updated successfully.` };
-  } catch (error) {
-    console.error(`[UPDATE_USER_ACTION] Error: ${error}`);
-    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-    return { success: false, message: `Failed to update user in the database: ${message}` };
+  // Update auth user if password or email changes
+  if (password) {
+    const { error } = await supabase.auth.admin.updateUserById(id, { password });
+    if (error) return { success: false, message: `Failed to update password: ${error.message}` };
   }
+  
+  const { data: authUser, error: authErr } = await supabase.auth.admin.getUserById(id);
+  if(authErr || !authUser.user) return { success: false, message: 'Could not fetch user to update.' };
+  
+  if (email !== authUser.user.email) {
+    const { error } = await supabase.auth.admin.updateUserById(id, { email });
+    if (error) return { success: false, message: `Failed to update email: ${error.message}` };
+  }
+
+  // Update public profile
+  const { error: profileError } = await supabase.from('users').update({
+    name, email, role, status, notes, phone
+  }).eq('id', id);
+
+  if (profileError) {
+    return { success: false, message: `Failed to update user profile: ${profileError.message}` };
+  }
+
+  revalidatePath('/dashboard?tab=users', 'page');
+  revalidatePath(`/dashboard/edit-user/${id}`);
+  
+  return { success: true, message: `User "${name}" was updated successfully.` };
 }
 
 const UpdateProfileSchema = z.object({
@@ -932,6 +448,7 @@ const UpdateProfileSchema = z.object({
 });
 
 export async function updateUserProfileAction(data: z.infer<typeof UpdateProfileSchema>) {
+  const supabase = createSupabaseServerClient();
   const session = await getSession();
   if (!session) {
     return { success: false, message: 'Unauthorized' };
@@ -944,32 +461,36 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
 
   const { name, email, password, notes, phone } = validatedFields.data;
 
-  try {
-    const db = await getDb();
-    
-    const otherUserWithEmail = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, session.id);
-    if (otherUserWithEmail) {
-        return { success: false, message: 'Another user with this email already exists.' };
-    }
-
-    if (password) {
-      const hashedPassword = await hashPassword(password);
-      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, password = ?, notes = ?, phone = ? WHERE id = ?');
-      stmt.run(name, email, hashedPassword, notes || null, phone || null, session.id);
-    } else {
-      const stmt = db.prepare('UPDATE users SET name = ?, email = ?, notes = ?, phone = ? WHERE id = ?');
-      stmt.run(name, email, notes || null, phone || null, session.id);
-    }
-
-    revalidatePath('/profile');
-    revalidatePath('/', 'layout');
-    
-    return { success: true, message: `Your profile has been updated successfully.` };
-  } catch (error) {
-    console.error(`[UPDATE_PROFILE_ACTION] Error: ${error}`);
-    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-    return { success: false, message: `Failed to update your profile in the database: ${message}` };
+  // Update auth user
+  if (password) {
+    const { error } = await supabase.auth.updateUser({ password });
+    if(error) return { success: false, message: `Failed to update password: ${error.message}` };
   }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user && email !== user.email) {
+    const { error } = await supabase.auth.updateUser({ email });
+    if (error) return { success: false, message: `Failed to update email: ${error.message}` };
+  }
+  
+  if (user && name !== user.user_metadata.name) {
+    const { error } = await supabase.auth.updateUser({ data: { name } });
+    if(error) return { success: false, message: `Failed to update name: ${error.message}` };
+  }
+
+  // Update public profile
+  const { error: profileError } = await supabase.from('users').update({
+    name, email, notes, phone
+  }).eq('id', session.id);
+
+  if (profileError) {
+    return { success: false, message: `Failed to update profile: ${profileError.message}` };
+  }
+  
+  revalidatePath('/profile');
+  revalidatePath('/', 'layout');
+  
+  return { success: true, message: `Your profile has been updated successfully.` };
 }
 
 const ReviewSchema = z.object({
@@ -979,6 +500,7 @@ const ReviewSchema = z.object({
 });
 
 export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>) {
+    const supabase = createSupabaseServerClient();
     const session = await getSession();
     if (!session) {
         return { success: false, message: 'You must be logged in to submit a review.' };
@@ -990,58 +512,23 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
     }
 
     const { listingId, rating, comment } = validatedFields.data;
+    
+    const { error } = await supabase.rpc('add_or_update_review', {
+        p_listing_id: listingId,
+        p_user_id: session.id,
+        p_author_name: session.name,
+        p_avatar_url: `https://avatar.vercel.sh/${session.email}.png`,
+        p_rating: rating,
+        p_comment: comment
+    });
 
-    try {
-        const db = await getDb();
-        const listing = await getListingById(listingId);
-
-        if (!listing) {
-            return { success: false, message: 'Listing not found.' };
-        }
-
-        let reviews = listing.reviews;
-        const existingReviewIndex = reviews.findIndex(r => r.userId === session.id);
-        
-        if (existingReviewIndex > -1) {
-            // Update existing review and set status to pending for re-approval
-            reviews[existingReviewIndex].rating = rating;
-            reviews[existingReviewIndex].comment = comment;
-            reviews[existingReviewIndex].status = 'pending';
-        } else {
-            // Add new review with pending status
-            const newReview: Review = {
-                id: `review-${randomUUID()}`,
-                userId: session.id,
-                author: session.name,
-                avatar: `https://avatar.vercel.sh/${session.email}.png`,
-                rating,
-                comment,
-                status: 'pending',
-            };
-            reviews.push(newReview);
-        }
-
-        // Recalculate average rating based on APPROVED reviews only
-        const approvedReviews = reviews.filter(r => r.status === 'approved');
-        const totalRating = approvedReviews.reduce((sum, review) => sum + review.rating, 0);
-        const newAverageRating = approvedReviews.length > 0 ? totalRating / approvedReviews.length : 0;
-
-        const stmt = db.prepare(`
-            UPDATE listings
-            SET reviews = ?, rating = ?
-            WHERE id = ?
-        `);
-        
-        stmt.run(JSON.stringify(reviews), newAverageRating, listingId);
-
-        revalidatePath(`/listing/${listingId}`);
-        return { success: true, message: 'Your review has been submitted and is awaiting approval.' };
-
-    } catch (error) {
+    if (error) {
         console.error(`[ADD_REVIEW_ACTION] Error: ${error}`);
-        const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-        return { success: false, message: `Failed to submit review: ${message}` };
+        return { success: false, message: `Failed to submit review: ${error.message}` };
     }
+
+    revalidatePath(`/listing/${listingId}`);
+    return { success: true, message: 'Your review has been submitted and is awaiting approval.' };
 }
 
 
@@ -1051,74 +538,48 @@ const ReviewActionSchema = z.object({
 });
 
 export async function approveReviewAction(data: z.infer<typeof ReviewActionSchema>) {
+    const supabase = createSupabaseServerClient();
     const session = await getSession();
     if (session?.role !== 'admin') {
         return { success: false, message: 'Unauthorized action.' };
     }
     const { listingId, reviewId } = data;
 
-    try {
-        const db = await getDb();
-        const listing = await getListingById(listingId);
-        if (!listing) {
-            return { success: false, message: 'Listing not found.' };
-        }
+    const { error } = await supabase.rpc('approve_review', {
+        p_listing_id: listingId,
+        p_review_id: reviewId
+    });
 
-        const reviews = listing.reviews;
-        const reviewIndex = reviews.findIndex(r => r.id === reviewId);
-        if (reviewIndex === -1) {
-            return { success: false, message: 'Review not found.' };
-        }
-
-        reviews[reviewIndex].status = 'approved';
-
-        const approvedReviews = reviews.filter(r => r.status === 'approved');
-        const totalRating = approvedReviews.reduce((sum, r) => sum + r.rating, 0);
-        const newAverageRating = approvedReviews.length > 0 ? totalRating / approvedReviews.length : 0;
-
-        const stmt = db.prepare('UPDATE listings SET reviews = ?, rating = ? WHERE id = ?');
-        stmt.run(JSON.stringify(reviews), newAverageRating, listingId);
-
-        revalidatePath(`/listing/${listingId}`);
-        return { success: true, message: 'Review approved successfully.' };
-    } catch (error) {
+    if (error) {
         console.error(`[APPROVE_REVIEW_ACTION] Error: ${error}`);
-        const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-        return { success: false, message: `Failed to approve review: ${message}` };
+        return { success: false, message: `Failed to approve review: ${error.message}` };
     }
+
+    revalidatePath(`/listing/${listingId}`);
+    return { success: true, message: 'Review approved successfully.' };
 }
 
 
 export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema>) {
+    const supabase = createSupabaseServerClient();
     const session = await getSession();
     if (session?.role !== 'admin') {
         return { success: false, message: 'Unauthorized action.' };
     }
     const { listingId, reviewId } = data;
 
-    try {
-        const db = await getDb();
-        const listing = await getListingById(listingId);
-        if (!listing) {
-            return { success: false, message: 'Listing not found.' };
-        }
+    const { error } = await supabase.rpc('delete_review', {
+        p_listing_id: listingId,
+        p_review_id: reviewId
+    });
 
-        const updatedReviews = listing.reviews.filter(r => r.id !== reviewId);
-
-        const approvedReviews = updatedReviews.filter(r => r.status === 'approved');
-        const totalRating = approvedReviews.reduce((sum, r) => sum + r.rating, 0);
-        const newAverageRating = approvedReviews.length > 0 ? totalRating / approvedReviews.length : 0;
-        
-        const stmt = db.prepare('UPDATE listings SET reviews = ?, rating = ? WHERE id = ?');
-        stmt.run(JSON.stringify(updatedReviews), newAverageRating, listingId);
-
-        revalidatePath(`/listing/${listingId}`);
-        return { success: true, message: 'Review deleted successfully.' };
-    } catch (error) {
+    if (error) {
         console.error(`[DELETE_REVIEW_ACTION] Error: ${error}`);
-        const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-        return { success: false, message: `Failed to delete review: ${message}` };
+        return { success: false, message: `Failed to delete review: ${error.message}` };
     }
+
+    revalidatePath(`/listing/${listingId}`);
+    return { success: true, message: 'Review deleted successfully.' };
 }
 
 const ToggleUserStatusSchema = z.object({
@@ -1127,6 +588,7 @@ const ToggleUserStatusSchema = z.object({
 });
 
 export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStatusSchema>) {
+  const supabase = createSupabaseServerClient();
   const session = await getSession();
   if (session?.role !== 'admin') {
     return { success: false, message: 'Unauthorized' };
@@ -1142,23 +604,15 @@ export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStat
   if (userId === session.id) {
     return { success: false, message: "You cannot change your own status." };
   }
+  
+  const { error } = await supabase.from('users').update({ status }).eq('id', userId);
 
-  try {
-    const db = await getDb();
-    const stmt = db.prepare('UPDATE users SET status = ? WHERE id = ?');
-    const info = stmt.run(status, userId);
-
-    if (info.changes === 0) {
-      return { success: false, message: 'User not found or status is already the same.' };
-    }
-
-    revalidatePath('/dashboard?tab=users', 'page');
-    return { success: true, message: `User status has been updated to ${status}.` };
-  } catch (error) {
-    console.error(`[TOGGLE_USER_STATUS_ACTION] Error: ${error}`);
-    const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-    return { success: false, message: `Database error: ${message}` };
+  if (error) {
+    return { success: false, message: `Database error: ${error.message}` };
   }
+
+  revalidatePath('/dashboard?tab=users', 'page');
+  return { success: true, message: `User status has been updated to ${status}.` };
 }
 
 const MergeListingsSchema = z.object({
@@ -1167,6 +621,7 @@ const MergeListingsSchema = z.object({
 });
 
 export async function mergeListingsAction(data: z.infer<typeof MergeListingsSchema>) {
+    const supabase = createSupabaseServerClient();
     const session = await getSession();
     if (session?.role !== 'admin') {
       return { success: false, message: 'Unauthorized' };
@@ -1179,66 +634,18 @@ export async function mergeListingsAction(data: z.infer<typeof MergeListingsSche
   
     const { primaryListingId, listingIdsToMerge } = validatedFields.data;
   
-    try {
-      const db = await getDb();
-      const allListings = await getListingsByIds([primaryListingId, ...listingIdsToMerge]);
+    const { error } = await supabase.rpc('merge_listings', {
+      p_primary_listing_id: primaryListingId,
+      p_listing_ids_to_merge: listingIdsToMerge
+    });
   
-      const primaryListing = allListings.find(l => l.id === primaryListingId);
-      const otherListings = allListings.filter(l => l.id !== primaryListingId);
-  
-      if (!primaryListing || otherListings.length === 0) {
-        return { success: false, message: 'Could not find the listings to merge.' };
-      }
-  
-      const transaction = db.transaction(() => {
-        // 1. Combine unique images, features, and all reviews
-        const mergedImages = [...new Set([...primaryListing.images, ...otherListings.flatMap(l => l.images)])];
-        const mergedFeatures = [...new Set([...primaryListing.features, ...otherListings.flatMap(l => l.features)])];
-        const mergedReviews = [...primaryListing.reviews, ...otherListings.flatMap(l => l.reviews)];
-  
-        // 2. Recalculate rating
-        const totalRating = mergedReviews.reduce((sum, review) => sum + review.rating, 0);
-        const newAverageRating = mergedReviews.length > 0 ? totalRating / mergedReviews.length : 0;
-  
-        // 3. Update the primary listing
-        const updateListingStmt = db.prepare(`
-          UPDATE listings
-          SET images = ?, features = ?, reviews = ?, rating = ?
-          WHERE id = ?
-        `);
-        updateListingStmt.run(
-          JSON.stringify(mergedImages),
-          JSON.stringify(mergedFeatures),
-          JSON.stringify(mergedReviews),
-          newAverageRating,
-          primaryListingId
-        );
-  
-        const idsToMergePlaceholders = listingIdsToMerge.map(() => '?').join(',');
-        
-        // 4. Re-assign inventory
-        const updateInventoryStmt = db.prepare(`UPDATE listing_inventory SET listingId = ? WHERE listingId IN (${idsToMergePlaceholders})`);
-        updateInventoryStmt.run(primaryListingId, ...listingIdsToMerge);
-  
-        // 5. Re-assign bookings
-        const updateBookingsStmt = db.prepare(`UPDATE bookings SET listingId = ?, listingName = ? WHERE listingId IN (${idsToMergePlaceholders})`);
-        updateBookingsStmt.run(primaryListingId, primaryListing.name, ...listingIdsToMerge);
-  
-        // 6. Delete the other listings
-        const deleteListingsStmt = db.prepare(`DELETE FROM listings WHERE id IN (${idsToMergePlaceholders})`);
-        deleteListingsStmt.run(...listingIdsToMerge);
-      });
-  
-      transaction();
-  
-      revalidatePath('/dashboard');
-      return { success: true, message: `${listingIdsToMerge.length} listing(s) were successfully merged into "${primaryListing.name}".` };
-  
-    } catch (error) {
+    if (error) {
       console.error(`[MERGE_LISTINGS_ACTION] Error: ${error}`);
-      const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-      return { success: false, message: `Failed to merge listings: ${message}` };
+      return { success: false, message: `Failed to merge listings: ${error.message}` };
     }
+  
+    revalidatePath('/dashboard');
+    return { success: true, message: `${listingIdsToMerge.length} listing(s) were successfully merged.` };
 }
 
 const BulkDeleteListingsSchema = z.object({
@@ -1246,6 +653,7 @@ const BulkDeleteListingsSchema = z.object({
 });
 
 export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteListingsSchema>) {
+    const supabase = createSupabaseServerClient();
     const session = await getSession();
     if (session?.role !== 'admin') {
         return { success: false, message: 'Unauthorized' };
@@ -1258,48 +666,13 @@ export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteLi
     
     const { listingIds } = validatedFields.data;
 
-    try {
-        const db = await getDb();
-        const transaction = db.transaction(() => {
-            const placeholders = listingIds.map(() => '?').join(',');
+    const { error } = await supabase.rpc('bulk_delete_listings', { p_listing_ids: listingIds });
 
-            // Check for active bookings across all listings to be deleted
-            const bookingCheckStmt = db.prepare(`
-                SELECT l.name, COUNT(b.id) as bookingCount 
-                FROM listings l
-                LEFT JOIN bookings b ON l.id = b.listingId AND b.status != 'Cancelled'
-                WHERE l.id IN (${placeholders})
-                GROUP BY l.id
-            `);
-
-            const bookingCounts = bookingCheckStmt.all(...listingIds) as { name: string, bookingCount: number }[];
-            const listingsWithBookings = bookingCounts.filter(r => r.bookingCount > 0);
-            
-            if (listingsWithBookings.length > 0) {
-                const names = listingsWithBookings.map(l => l.name).join(', ');
-                throw new Error(`Cannot delete. The following listings have active bookings: ${names}`);
-            }
-
-            // Delete associated inventory items
-            const deleteInventoryStmt = db.prepare(`DELETE FROM listing_inventory WHERE listingId IN (${placeholders})`);
-            deleteInventoryStmt.run(...listingIds);
-
-            // Delete the main listings
-            const deleteListingsStmt = db.prepare(`DELETE FROM listings WHERE id IN (${placeholders})`);
-            const info = deleteListingsStmt.run(...listingIds);
-
-            if (info.changes < listingIds.length) {
-                console.warn(`[BULK_DELETE_WARN] Expected to delete ${listingIds.length} listings, but only deleted ${info.changes}. Some might have been deleted already.`);
-            }
-        });
-
-        transaction();
-
-        revalidatePath('/dashboard');
-        return { success: true, message: `${listingIds.length} listing(s) have been deleted.` };
-    } catch (error) {
+    if (error) {
         console.error(`[BULK_DELETE_ACTION] Error: ${error}`);
-        const message = error instanceof Error ? error.message : "An unknown database error occurred.";
-        return { success: false, message: `Failed to delete listings: ${message}` };
+        return { success: false, message: `Failed to delete listings: ${error.message}` };
     }
+    
+    revalidatePath('/dashboard');
+    return { success: true, message: `${listingIds.length} listing(s) have been deleted.` };
 }

@@ -2,47 +2,7 @@
 'use server'
 
 import { z } from 'zod';
-import { getDb } from './db';
-import { createSession } from './session';
-import type { User } from './types';
-import { hashPassword, verifyPassword } from './password';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { randomUUID } from 'crypto';
-
-/**
- * Authenticates a user based on email and password. This is the centralized
- * function for credential validation.
- * @param email The user's email.
- * @param password The user's password.
- * @returns An object with either the user object on success or an error message.
- */
-export async function authenticateUser(email, password) {
-    try {
-        const db = await getDb();
-        const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
-
-        if (!user || !user.password) {
-            return { error: 'Incorrect email or password.' };
-        }
-
-        if (user.status === 'disabled') {
-            return { error: 'Your account has been disabled. Please contact an administrator.' };
-        }
-            
-        const passwordsMatch = await verifyPassword(password, user.password);
-
-        if (!passwordsMatch) {
-            return { error: 'Incorrect email or password.' };
-        }
-
-        return { user };
-    } catch (error) {
-        console.error(`[AUTH_ERROR]`, error);
-        return { error: 'An unexpected server error occurred during authentication.' };
-    }
-}
-
+import { createSupabaseServerClient } from './supabase';
 
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address.'),
@@ -50,6 +10,7 @@ const LoginSchema = z.object({
 });
 
 export async function loginAction(formData: z.infer<typeof LoginSchema>) {
+  const supabase = createSupabaseServerClient();
   const validatedFields = LoginSchema.safeParse(formData);
   if (!validatedFields.success) {
     return { error: 'Invalid fields provided.' };
@@ -57,29 +18,18 @@ export async function loginAction(formData: z.infer<typeof LoginSchema>) {
 
   const { email, password } = validatedFields.data;
 
-  const authResult = await authenticateUser(email, password);
-
-  if (authResult.error) {
-      return { error: authResult.error };
-  }
-  
-  const { user } = authResult;
-  const sessionId = await createSession(user.id);
-  
-  if (!sessionId) {
-      return { error: 'Server error: Could not create a session. Please try again.' };
-  }
-
-  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
-  cookies().set('session', sessionId, {
-    expires,
-    httpOnly: true,
-    path: '/',
-    secure: true,
-    sameSite: 'none',
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
   });
+
+  if (error) {
+      return { error: error.message };
+  }
+
+  const { data: { user } } = await supabase.from('users').select('role').eq('email', email).single();
   
-  const redirectTo = user.role === 'admin' ? '/dashboard' : '/bookings';
+  const redirectTo = user?.role === 'admin' ? '/dashboard' : '/bookings';
   return { success: true, redirectTo };
 }
 
@@ -90,6 +40,7 @@ const SignupSchema = z.object({
 });
 
 export async function signup(formData: z.infer<typeof SignupSchema>) {
+    const supabase = createSupabaseServerClient();
     const validatedFields = SignupSchema.safeParse(formData);
     if (!validatedFields.success) {
         return { error: "Invalid fields provided." };
@@ -97,44 +48,19 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
 
     const { name, email, password } = validatedFields.data;
 
-    try {
-      const db = await getDb();
-      const existingUser = db.prepare('SELECT id, status FROM users WHERE email = ?').get(email) as User | undefined;
-      let userId: string;
+    const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+            data: {
+                name: name,
+            },
+        },
+    });
 
-      const hashedPassword = await hashPassword(password);
-
-      if (existingUser) {
-          if (existingUser.status === 'provisional') {
-              userId = existingUser.id;
-              db.prepare('UPDATE users SET password = ?, name = ?, status = ? WHERE id = ?').run(hashedPassword, name, 'active', userId);
-          } else {
-              return { error: 'A user with this email already exists.' };
-          }
-      } else {
-          userId = `user-${randomUUID()}`;
-          const stmt = db.prepare('INSERT INTO users (id, name, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?)');
-          stmt.run(userId, name, email, hashedPassword, 'guest', 'active');
-      }
-      
-      const sessionId = await createSession(userId);
-
-      if (!sessionId) {
-          return { error: 'Account created/updated, but failed to log you in. Please try logging in manually.' };
-      }
-
-      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      cookies().set('session', sessionId, {
-          expires,
-          httpOnly: true,
-          path: '/',
-          secure: true,
-          sameSite: 'none',
-      });
-
-      return { success: true, redirectTo: '/bookings' };
-    } catch(error) {
-        console.error(`[SIGNUP_ERROR]`, error);
-        return { error: 'An unexpected server error occurred during signup.' };
+    if (error) {
+        return { error: error.message };
     }
+
+    return { success: true, redirectTo: '/bookings' };
 }

@@ -1,150 +1,155 @@
 
 import type { Listing, Booking, ListingType, User, ListingInventory, Review } from './types';
-import { getDb } from './db';
-import { DateRange } from 'react-day-picker';
 import { getSession } from '@/lib/session';
 import { unstable_noStore as noStore } from 'next/cache';
-
-// Helper to parse listing data from the database
-function parseListing(listing: any): Listing {
-  const reviews = (JSON.parse(listing.reviews) as Review[]).map(review => ({
-      ...review,
-      status: review.status || 'approved' // Default to approved if status is missing
-  }));
-  return {
-    ...listing,
-    images: JSON.parse(listing.images),
-    reviews: reviews,
-    features: JSON.parse(listing.features),
-  };
-}
+import { createSupabaseServerClient } from './supabase';
 
 export async function getUserById(id: string): Promise<User | null> {
-    const db = await getDb();
-    const stmt = db.prepare('SELECT id, name, email, role, status, notes, phone FROM users WHERE id = ?');
-    const user = stmt.get(id) as User | undefined;
-    return user || null;
+    const supabase = createSupabaseServerClient();
+    const { data: user, error } = await supabase
+        .from('users')
+        .select('id, name, email, role, status, notes, phone')
+        .eq('id', id)
+        .single();
+    
+    if (error) {
+        console.error("Error fetching user by ID:", error);
+        return null;
+    }
+    return user as User | null;
 }
 
 export async function getAllUsers(): Promise<User[]> {
+    const supabase = createSupabaseServerClient();
     const session = await getSession();
     if (session?.role !== 'admin' && session?.role !== 'staff') {
         return [];
     }
-    const db = await getDb();
-    // Include all users in the list, including the current admin.
-    const stmt = db.prepare('SELECT id, name, email, role, status, notes, phone FROM users');
-    return stmt.all() as User[];
+    
+    const { data: users, error } = await supabase
+        .from('users')
+        .select('id, name, email, role, status, notes, phone');
+
+    if (error) {
+        console.error("Error fetching all users:", error);
+        return [];
+    }
+    return users as User[];
 }
 
 export async function getListingTypesWithSampleImages(): Promise<{ name: string, images: string[] }[]> {
     noStore();
-    const db = await getDb();
+    const supabase = createSupabaseServerClient();
     
-    // 1. Get all unique listing types, ordered for consistency
-    const types = db.prepare('SELECT DISTINCT type FROM listings ORDER BY type').all() as { type: ListingType }[];
-    
-    if (!types || types.length === 0) {
+    const { data: types, error: typesError } = await supabase
+        .from('listings')
+        .select('type')
+        .order('type');
+
+    if (typesError || !types) {
+      console.error("Error fetching listing types:", typesError);
       return [];
     }
     
+    const uniqueTypes = [...new Set(types.map(t => t.type))];
     const servicesData: { name: string, images: string[] }[] = [];
     
-    // 2. For each type, get a sample of images
-    for (const typeInfo of types) {
-      const listingType = typeInfo.type;
-      
-      const listingsForType = db.prepare('SELECT images FROM listings WHERE type = ?').all(listingType) as { images: string }[];
-      
-      const allImages = listingsForType.flatMap(listing => {
-          try {
-              // Images are stored as a JSON string array, so parse them
-              return JSON.parse(listing.images);
-          } catch (e) {
-              console.error(`Error parsing images for a listing of type ${listingType}:`, e);
-              return []; // Return empty array on parse error to avoid crashing
-          }
-      });
-  
-      if (allImages.length > 0) {
-        // Shuffle the images array to get a random sample
-        for (let i = allImages.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [allImages[i], allImages[j]] = [allImages[j], allImages[i]];
-        }
-        
-        // Take up to 5 images for the carousel display.
-        const sampleImages = allImages.slice(0, 5);
+    for (const listingType of uniqueTypes) {
+        const { data: listingsForType, error: listingsError } = await supabase
+            .from('listings')
+            .select('images')
+            .eq('type', listingType)
+            .limit(5);
 
-        // The carousel component looks best with at least 2 images.
-        // If we only have one, we duplicate it.
-        if (sampleImages.length === 1) {
-            sampleImages.push(sampleImages[0]);
+        if (listingsError) {
+            console.error(`Error fetching listings for type ${listingType}:`, listingsError);
+            continue;
         }
-        
-        servicesData.push({
-          name: listingType.charAt(0).toUpperCase() + listingType.slice(1),
-          images: sampleImages
-        });
-      } else {
-          // Fallback with placeholder images if no images are found for this type
-          servicesData.push({
+
+        const allImages = listingsForType.flatMap(listing => (listing.images as string[]) || []);
+  
+        if (allImages.length > 0) {
+            const sampleImages = allImages.slice(0, 5);
+            if (sampleImages.length === 1) {
+                sampleImages.push(sampleImages[0]);
+            }
+            servicesData.push({
               name: listingType.charAt(0).toUpperCase() + listingType.slice(1),
-              images: [
-                  'https://placehold.co/400x600.png',
-                  'https://placehold.co/400x600.png',
-                  'https://placehold.co/400x600.png',
-              ]
-          });
-      }
+              images: sampleImages
+            });
+        }
     }
     
     return servicesData;
 }
 
 export async function getAllListings(): Promise<Listing[]> {
-  const db = await getDb();
-  const stmt = db.prepare(`
-    SELECT l.*, COUNT(i.id) as inventoryCount
-    FROM listings l
-    LEFT JOIN listing_inventory i ON l.id = i.listingId
-    GROUP BY l.id
-    ORDER BY l.location, l.type, l.name
-  `);
-  const listings = stmt.all() as any[];
-  return listings.map(parseListing);
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('listings')
+    .select(`
+        *,
+        inventoryCount:listing_inventory(count)
+    `)
+    .order('location')
+    .order('type')
+    .order('name');
+  
+  if (error) {
+      console.error("Error fetching all listings:", error);
+      return [];
+  }
+  
+  // The count is returned as an array of objects, so we need to flatten it.
+  return data.map((l: any) => ({
+      ...l,
+      inventoryCount: l.inventoryCount[0]?.count || 0,
+  })) as Listing[];
 }
 
 export async function getListingsByIds(ids: string[]): Promise<Listing[]> {
-  if (ids.length === 0) {
-    return [];
+  if (ids.length === 0) return [];
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase.from('listings').select('*').in('id', ids);
+  if (error) {
+      console.error("Error fetching listings by IDs:", error);
+      return [];
   }
-  const db = await getDb();
-  const placeholders = ids.map(() => '?').join(',');
-  const stmt = db.prepare(`SELECT * FROM listings WHERE id IN (${placeholders})`);
-  const listings = stmt.all(...ids) as any[];
-  return listings.map(parseListing);
+  return data as Listing[];
 }
 
 export async function getInventoryByListingId(listingId: string): Promise<ListingInventory[]> {
-    const db = await getDb();
-    const stmt = db.prepare('SELECT * FROM listing_inventory WHERE listingId = ?');
-    return stmt.all(listingId) as ListingInventory[];
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase.from('listing_inventory').select('*').eq('listingId', listingId);
+    if(error) {
+        console.error("Error fetching inventory by listing ID:", error);
+        return [];
+    }
+    return data as ListingInventory[];
 }
 
 export async function getListingById(id: string): Promise<Listing | null> {
   noStore();
-  const db = await getDb();
-  const stmt = db.prepare(`
-    SELECT l.*, COUNT(i.id) as inventoryCount
-    FROM listings l
-    LEFT JOIN listing_inventory i ON l.id = i.listingId
-    WHERE l.id = ?
-    GROUP BY l.id
-  `);
-  const listing = stmt.get(id) as any;
-  if (!listing) return null;
-  return parseListing(listing);
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('listings')
+    .select(`
+        *,
+        inventoryCount:listing_inventory(count)
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    console.error("Error fetching listing by ID:", error);
+    return null;
+  }
+  
+  const listing = {
+      ...data,
+      inventoryCount: data.inventoryCount[0]?.count || 0
+  };
+  return listing as Listing;
 }
 
 interface BookingsPageFilters {
@@ -154,108 +159,91 @@ interface BookingsPageFilters {
 
 export async function getAllBookings(filters: BookingsPageFilters): Promise<Booking[]> {
     noStore();
+    const supabase = createSupabaseServerClient();
     const session = await getSession();
     if (!session) {
         return [];
     }
 
-    const db = await getDb();
-    let query = `
-        SELECT b.*, u.name as userName, l.name as listingName
-        FROM bookings as b
-        JOIN users as u ON b.userId = u.id
-        JOIN listings as l ON b.listingId = l.id
-    `;
-    const whereClauses: string[] = [];
-    const params: (string | number)[] = [];
+    let query = supabase
+        .from('bookings')
+        .select(`
+            *,
+            userName:users(name),
+            listingName:listings(name)
+        `);
 
-    // For non-admin/staff users, they can only see their own bookings.
     if (session.role === 'guest') {
-        whereClauses.push('b.userId = ?');
-        params.push(session.id);
+        query = query.eq('userId', session.id);
     } else if ((session.role === 'admin' || session.role === 'staff') && filters.userId) {
-        // Admin or staff can filter by a specific user.
-        whereClauses.push('b.userId = ?');
-        params.push(filters.userId);
+        query = query.eq('userId', filters.userId);
     }
 
-    // This filter is available for everyone
     if (filters.listingId) {
-        whereClauses.push('b.listingId = ?');
-        params.push(filters.listingId);
+        query = query.eq('listingId', filters.listingId);
     }
     
-    if (whereClauses.length > 0) {
-        query += ' WHERE ' + whereClauses.join(' AND ');
+    const { data, error } = await query.order('startDate', { ascending: false });
+
+    if (error) {
+        console.error("Error fetching all bookings:", error);
+        return [];
     }
-    
-    query += ' ORDER BY b.startDate DESC';
 
-    const stmt = db.prepare(query);
-    const bookingRows = stmt.all(...params) as any[];
-
-    return bookingRows.map(row => {
-        const inventoryIds = row.inventoryIds ? JSON.parse(row.inventoryIds) : [];
-        delete row.inventoryIds;
-        return {
-            ...row,
-            inventoryIds,
-        };
-    });
+    // Flatten the joined user and listing names
+    return data.map((b: any) => ({
+        ...b,
+        userName: b.userName?.name,
+        listingName: b.listingName?.name,
+    })) as Booking[];
 }
 
 
 export async function getBookingById(id: string): Promise<Booking | null> {
     noStore();
+    const supabase = createSupabaseServerClient();
     const session = await getSession();
     if (!session) {
         return null;
     }
     
-    const db = await getDb();
-    const stmt = db.prepare(`
-        SELECT b.*, l.name as listingName, u.name as userName
-        FROM bookings as b
-        JOIN listings as l on b.listingId = l.id
-        JOIN users u ON b.userId = u.id
-        WHERE b.id = ?
-    `);
-    const bookingData = stmt.get(id) as any;
+    const { data: bookingData, error } = await supabase
+        .from('bookings')
+        .select(`
+            *,
+            listing:listings(name),
+            user:users(id, name)
+        `)
+        .eq('id', id)
+        .single();
 
-    if (!bookingData) return null;
-
-    // Admin/staff can view any booking, guests can only view their own
+    if (error || !bookingData) {
+        console.error("Error fetching booking by ID:", error);
+        return null;
+    }
+    
     if (session.role === 'guest' && bookingData.userId !== session.id) {
         return null;
     }
-
-    const inventoryIds = bookingData.inventoryIds ? JSON.parse(bookingData.inventoryIds) : [];
+    
     let inventoryNames: string[] = [];
-
-    if (inventoryIds.length > 0) {
-        const placeholders = inventoryIds.map(() => '?').join(',');
-        const inventoryStmt = db.prepare(`SELECT name FROM listing_inventory WHERE id IN (${placeholders})`);
-        const results = inventoryStmt.all(...inventoryIds) as { name: string }[];
-        inventoryNames = results.map(item => item.name);
+    if (bookingData.inventoryIds && Array.isArray(bookingData.inventoryIds) && bookingData.inventoryIds.length > 0) {
+        const { data: invData, error: invError } = await supabase
+            .from('listing_inventory')
+            .select('name')
+            .in('id', bookingData.inventoryIds);
+        
+        if (!invError) {
+            inventoryNames = invData.map(item => item.name);
+        }
     }
 
     const booking: Booking = {
-        id: bookingData.id,
-        listingId: bookingData.listingId,
-        userId: bookingData.userId,
-        startDate: bookingData.startDate,
-        endDate: bookingData.endDate,
-        guests: bookingData.guests,
-        status: bookingData.status,
-        listingName: bookingData.listingName,
-        userName: bookingData.userName,
-        createdAt: bookingData.createdAt,
-        actionByUserId: bookingData.actionByUserId,
-        actionAt: bookingData.actionAt,
-        statusMessage: bookingData.statusMessage,
-        inventoryIds: inventoryIds,
+        ...bookingData,
+        listingName: (bookingData.listing as any)?.name,
+        userName: (bookingData.user as any)?.name,
         inventoryNames: inventoryNames,
-    };
+    }
 
     return booking;
 }
@@ -264,72 +252,41 @@ interface FilterValues {
   location: string;
   type: ListingType | '';
   guests: string;
-  date: DateRange | undefined;
+  date?: { from: Date; to?: Date };
 }
 
 export async function getFilteredListings(filters: FilterValues): Promise<Listing[]> {
   noStore();
-  const db = await getDb();
-  let query = 'SELECT * FROM listings l';
-  const whereClauses: string[] = [];
-  const params: (string | number)[] = [];
+  const supabase = createSupabaseServerClient();
+  
+  const { data, error } = await supabase.rpc('get_filtered_listings', {
+      location_filter: filters.location || null,
+      type_filter: filters.type || null,
+      guests_filter: filters.guests ? parseInt(filters.guests, 10) : null,
+      from_date_filter: filters.date?.from ? filters.date.from.toISOString() : null,
+      to_date_filter: filters.date?.to ? filters.date.to.toISOString() : (filters.date?.from ? filters.date.from.toISOString() : null),
+  });
 
-  if (filters.location) {
-    whereClauses.push('l.location LIKE ?');
-    params.push(`%${filters.location}%`);
+  if (error) {
+    console.error("Error fetching filtered listings:", error);
+    return [];
   }
-  if (filters.type) {
-    whereClauses.push('l.type = ?');
-    params.push(filters.type);
-  }
-  if (filters.guests) {
-    const numGuests = parseInt(filters.guests, 10);
-    if (!isNaN(numGuests)) {
-      whereClauses.push('l.maxGuests >= ?');
-      params.push(numGuests);
-    }
-  }
-
-  if (filters.date?.from) {
-    const fromDate = filters.date.from.toISOString().split('T')[0];
-    const toDate = (filters.date.to || filters.date.from).toISOString().split('T')[0];
-    
-    whereClauses.push(`
-      (SELECT COUNT(*) FROM listing_inventory WHERE listingId = l.id) >
-      (SELECT COUNT(DISTINCT je.value) 
-       FROM bookings b, json_each(b.inventoryIds) je
-       JOIN listing_inventory i ON i.id = je.value
-       WHERE i.listingId = l.id
-       AND b.status = 'Confirmed'
-       AND (b.endDate >= ? AND b.startDate <= ?))
-    `);
-    params.push(fromDate, toDate);
-  }
-
-  if (whereClauses.length > 0) {
-    query += ' WHERE ' + whereClauses.join(' AND ');
-  }
-
-  query += ' ORDER BY l.location, l.type, l.name';
-
-  const stmt = db.prepare(query);
-  const listings = stmt.all(...params) as any[];
-  return listings.map(parseListing);
+  return data as Listing[];
 }
 
 export async function getConfirmedBookingsForListing(listingId: string) {
     noStore();
-    const db = await getDb();
-    const stmt = db.prepare(`
-        SELECT startDate, endDate, inventoryIds
-        FROM bookings
-        WHERE listingId = ? AND status = 'Confirmed'
-    `);
-    const bookings = stmt.all(listingId) as { startDate: string, endDate: string, inventoryIds: string }[];
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase
+        .from('bookings')
+        .select('startDate, endDate, inventoryIds')
+        .eq('listingId', listingId)
+        .eq('status', 'Confirmed');
+
+    if (error) {
+        console.error("Error fetching confirmed bookings:", error);
+        return [];
+    }
     
-    return bookings.map(b => ({
-        startDate: b.startDate,
-        endDate: b.endDate,
-        inventoryIds: JSON.parse(b.inventoryIds) as string[],
-    }));
+    return data as { startDate: string, endDate: string, inventoryIds: string[] }[];
 }
