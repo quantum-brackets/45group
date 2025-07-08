@@ -366,7 +366,7 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
                             <FormItem>
                                 <FormLabel>Email Address</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="you@example.com" {...field} />
+                                    <Input placeholder="user@example.com" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

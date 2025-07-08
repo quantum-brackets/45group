@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -66,7 +67,7 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="m@example.com" {...field} disabled={isPending} />
+                <Input placeholder="user@example.com" {...field} disabled={isPending} />
               </FormControl>
               <FormMessage />
             </FormItem>
