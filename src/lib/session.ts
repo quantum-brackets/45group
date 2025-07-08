@@ -31,7 +31,7 @@ export async function getSession(): Promise<User | null> {
 
   if (sessionError || !session || !session.user) {
     // If the session is invalid, clear the cookie
-    cookieStore.delete('session_token');
+    cookies().delete('session_token');
     return null;
   }
   
@@ -40,7 +40,7 @@ export async function getSession(): Promise<User | null> {
   if (sessionExpires < Date.now()) {
     // Optionally, delete the expired session from DB
     await supabase.from('sessions').delete().eq('id', token);
-    cookieStore.delete('session_token');
+    cookies().delete('session_token');
     return null;
   }
   
@@ -69,7 +69,7 @@ export async function createSession(userId: string) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         expires: expiresAt,
-        sameSite: 'lax',
+        sameSite: 'none',
         path: '/',
     });
     return data.id;
@@ -85,5 +85,5 @@ export async function logout() {
         await supabase.from('sessions').delete().eq('id', token);
     }
     
-    cookieStore.delete('session_token');
+    cookies().delete('session_token');
 }
