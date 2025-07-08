@@ -1,4 +1,4 @@
-import Image from 'next/image';
+
 import { notFound } from 'next/navigation';
 import { getListingById } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,11 +53,9 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
             <CarouselContent>
               {listing.images.map((src, index) => (
                 <CarouselItem key={index}>
-                  <Image
+                  <img
                     src={src}
                     alt={`${listing.name} image ${index + 1}`}
-                    width={800}
-                    height={600}
                     className="w-full h-[500px] object-cover"
                     data-ai-hint={AITypeHints[listing.type]}
                   />

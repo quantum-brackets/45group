@@ -1,6 +1,5 @@
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,11 +34,9 @@ export function ListingCard({ listing }: ListingCardProps) {
       <CardHeader className="p-0">
         <div className="relative">
           <Link href={`/listing/${listing.id}`}>
-            <Image
+            <img
               src={listing.images[0]}
               alt={listing.name}
-              width={400}
-              height={300}
               className="w-full h-48 object-cover"
               data-ai-hint={AITypeHints[listing.type]}
             />
