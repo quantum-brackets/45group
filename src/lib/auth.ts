@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { createSupabaseServerClient, createSupabaseAdminClient } from './supabase';
 import { verifyPassword, hashPassword } from './password';
 import { createSession } from './session';
+import { randomUUID } from 'crypto';
 
 const LoginSchema = z.object({
   email: z.string().email('Invalid email address.'),
@@ -83,19 +84,21 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
         }
     } else {
         // Create a new user if they don't exist at all
-        const { data: newUser, error: insertError } = await supabase.from('users').insert({
+        const newUserId = randomUUID();
+        const { error: insertError } = await supabase.from('users').insert({
+            id: newUserId,
             name,
             email,
             password: hashedPassword,
             status: 'active',
             role: 'guest',
-        }).select('id').single();
+        });
 
-        if (insertError || !newUser) {
+        if (insertError) {
             console.error('[SIGNUP_ERROR]', insertError);
             return { error: "Database error saving new user" };
         }
-        userId = newUser.id;
+        userId = newUserId;
     }
 
     await createSession(userId);
