@@ -93,66 +93,71 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
   };
 
   const DisplayView = () => (
-    <CardContent className="grid md:grid-cols-2 gap-6 text-base">
-      <div className="flex items-start gap-4 p-4 bg-card rounded-lg border">
-        <CalendarLucide className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-        <div>
-          <p className="font-semibold">Booking Dates</p>
-          <p className="text-muted-foreground">
-            {format(parseISO(booking.startDate), 'PPP')} to {format(parseISO(booking.endDate), 'PPP')}
-          </p>
-        </div>
-      </div>
-      <div className="flex items-start gap-4 p-4 bg-card rounded-lg border">
-        <Users className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-        <div>
-          <p className="font-semibold">Number of Guests</p>
-          <p className="text-muted-foreground">{booking.guests}</p>
-        </div>
-      </div>
-      <div className="flex items-start gap-4 p-4 bg-card rounded-lg border">
-        <Info className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-        <div>
-          <p className="font-semibold">Status</p>
-          <p>
-            <Badge variant={booking.status === 'Confirmed' ? 'default' : 'secondary'} className={booking.status === 'Confirmed' ? 'bg-accent text-accent-foreground' : ''}>
-              {booking.status}
-            </Badge>
-          </p>
-        </div>
-      </div>
-      <div className="flex items-start gap-4 p-4 bg-card rounded-lg border md:col-span-2">
-        <KeySquare className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-        <div>
-          <p className="font-semibold">{booking.inventoryIds.length} Unit(s) Booked</p>
-          <p className="text-muted-foreground text-sm">
-            {booking.inventoryNames?.join(', ') || 'N/A'}
-          </p>
-        </div>
-      </div>
-      {session.role === 'admin' && booking.userName && (
-        <div className="flex items-start gap-4 p-4 bg-card rounded-lg border">
-          <UserIcon className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+    <CardContent className="space-y-6 pt-6 text-base">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+          <CalendarLucide className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
           <div>
-            <p className="font-semibold">Booked By</p>
+            <p className="font-semibold">Booking Dates</p>
             <p className="text-muted-foreground">
-              {booking.userName}
-              {booking.createdAt && (
-                <span className="block text-sm">on {format(parseISO(booking.createdAt), 'PPP')}</span>
-              )}
+              {format(parseISO(booking.startDate), 'PPP')} to {format(parseISO(booking.endDate), 'PPP')}
             </p>
           </div>
         </div>
-      )}
-       {booking.statusMessage && (
-        <div className="md:col-span-2 flex items-start gap-4 p-4 bg-card rounded-lg border">
-          <History className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+        <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+          <Users className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
           <div>
-            <p className="font-semibold">Booking History</p>
-            <p className="text-muted-foreground">{booking.statusMessage}</p>
+            <p className="font-semibold">Number of Guests</p>
+            <p className="text-muted-foreground">{booking.guests}</p>
           </div>
         </div>
-      )}
+        <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+          <Info className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+          <div>
+            <p className="font-semibold">Status</p>
+            <p>
+              <Badge variant={booking.status === 'Confirmed' ? 'default' : 'secondary'} className={booking.status === 'Confirmed' ? 'bg-accent text-accent-foreground' : ''}>
+                {booking.status}
+              </Badge>
+            </p>
+          </div>
+        </div>
+        {session.role === 'admin' && booking.userName && (
+          <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+            <UserIcon className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+            <div>
+              <p className="font-semibold">Booked By</p>
+              <p className="text-muted-foreground">
+                {booking.userName}
+                {booking.createdAt && (
+                  <span className="block text-sm">on {format(parseISO(booking.createdAt), 'PPP')}</span>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+          <KeySquare className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+          <div>
+            <p className="font-semibold">{booking.inventoryIds.length} Unit(s) Booked</p>
+            <p className="text-muted-foreground text-sm">
+              {booking.inventoryNames?.join(', ') || 'N/A'}
+            </p>
+          </div>
+        </div>
+        {booking.statusMessage && (
+          <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+            <History className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+            <div>
+              <p className="font-semibold">Booking History</p>
+              <p className="text-muted-foreground">{booking.statusMessage}</p>
+            </div>
+          </div>
+        )}
+      </div>
     </CardContent>
   );
 
