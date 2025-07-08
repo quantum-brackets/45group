@@ -1,3 +1,13 @@
+-- Enable UUID generation
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Custom Types
+-- CREATE TYPE "public"."listing_type" AS ENUM ('hotel', 'events', 'restaurant');
+-- CREATE TYPE "public"."price_unit_type" AS ENUM ('night', 'hour', 'person');
+-- CREATE TYPE "public"."currency_type" AS ENUM ('USD', 'EUR', 'GBP', 'NGN');
+-- CREATE TYPE "public"."user_role" AS ENUM ('admin', 'guest', 'staff');
+-- CREATE TYPE "public"."user_status" AS ENUM ('active', 'disabled', 'provisional');
+-- CREATE TYPE "public"."booking_status" AS ENUM ('Confirmed', 'Pending', 'Cancelled');
 
 -- Drop existing objects to prevent conflicts during re-run.
 -- Drop functions first
@@ -15,11 +25,11 @@ DROP FUNCTION IF EXISTS public.approve_review(uuid, uuid);
 DROP FUNCTION IF EXISTS public.delete_review(uuid, uuid);
 
 -- Drop tables last due to dependencies
-DROP TABLE IF EXISTS public.bookings;
-DROP TABLE IF EXISTS public.listing_inventory;
-DROP TABLE IF EXISTS public.listings;
-DROP TABLE IF EXISTS public.sessions;
-DROP TABLE IF EXISTS public.users;
+DROP TABLE IF EXISTS public.bookings CASCADE;
+DROP TABLE IF EXISTS public.listing_inventory CASCADE;
+DROP TABLE IF EXISTS public.listings CASCADE;
+DROP TABLE IF EXISTS public.sessions CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
 
 -- ============================
 -- 1. TABLES

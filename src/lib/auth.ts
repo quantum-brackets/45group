@@ -13,7 +13,7 @@ const LoginSchema = z.object({
 });
 
 export async function loginAction(formData: z.infer<typeof LoginSchema>) {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const validatedFields = LoginSchema.safeParse(formData);
   if (!validatedFields.success) {
     return { error: 'Invalid fields provided.' };
