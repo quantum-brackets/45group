@@ -285,6 +285,7 @@ const CreateBookingSchema = z.object({
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
+  numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
 });
 
 export async function createBookingAction(data: z.infer<typeof CreateBookingSchema>) {
@@ -307,7 +308,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     }
   }
 
-  const { listingId, startDate, endDate, guests } = validatedFields.data;
+  const { listingId, startDate, endDate, guests, numberOfUnits } = validatedFields.data;
 
   try {
     const db = await getDb();
@@ -317,10 +318,14 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
         return { success: false, message: 'The venue you are trying to book does not exist.' };
     }
 
+    if (guests > listing.maxGuests * numberOfUnits) {
+      return { success: false, message: `The number of guests exceeds the capacity for ${numberOfUnits} unit(s).` };
+    }
+
     const fromDate = new Date(startDate).toISOString().split('T')[0];
     const toDate = new Date(endDate).toISOString().split('T')[0];
 
-    // Find an available inventory item for the given dates
+    // Find ALL available inventory items for the given dates
     const findAvailableInventoryStmt = db.prepare(`
         SELECT id FROM listing_inventory
         WHERE listingId = ? 
@@ -330,16 +335,16 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
             AND b.status = 'Confirmed'
             AND (b.endDate >= ? AND b.startDate <= ?)
         )
-        LIMIT 1
     `);
 
-    const availableInventory = findAvailableInventoryStmt.get(listingId, listingId, fromDate, toDate) as { id: string } | undefined;
+    const availableInventory = findAvailableInventoryStmt.all(listingId, listingId, fromDate, toDate) as { id: string }[];
     
-    if (!availableInventory) {
-        return { success: false, message: 'Sorry, no units are available for these dates. Please try another date range.' };
+    if (availableInventory.length < numberOfUnits) {
+        return { success: false, message: `Sorry, only ${availableInventory.length} units are available for these dates. Please try another date range or reduce the number of units.` };
     }
     
-    const inventoryIds = [availableInventory.id];
+    const inventoryToBook = availableInventory.slice(0, numberOfUnits);
+    const inventoryIds = inventoryToBook.map(inv => inv.id);
 
     const stmt = db.prepare(`
       INSERT INTO bookings (id, listingId, userId, startDate, endDate, guests, status, listingName, createdAt, inventoryIds)
@@ -408,8 +413,8 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
         }
         
         const listing = db.prepare('SELECT maxGuests FROM listings WHERE id = ?').get(booking.listingId) as { maxGuests: number } | undefined;
-        if (listing && guests > listing.maxGuests) {
-            throw new Error(`Number of guests cannot exceed the maximum of ${listing.maxGuests}.`);
+        if (listing && guests > (listing.maxGuests * numberOfUnits)) {
+            throw new Error(`Number of guests cannot exceed the maximum capacity for ${numberOfUnits} units.`);
         }
 
         const findBookedUnitsStmt = db.prepare(`
