@@ -25,12 +25,12 @@ const formSchema = z.object({
   location: z.string().min(1, "Location is required."),
   description: z.string().min(10, "Description must be at least 10 characters."),
   price: z.coerce.number().positive("Price must be a positive number."),
-  priceUnit: z.enum(['night', 'hour', 'person'], { required_error: "Price unit is required."}),
+  price_unit: z.enum(['night', 'hour', 'person'], { required_error: "Price unit is required."}),
   currency: z.enum(['USD', 'EUR', 'GBP', 'NGN'], { required_error: "Currency is required."}),
-  maxGuests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
+  max_guests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
   features: z.string().min(1, "Please list at least one feature."),
   images: z.array(z.string().url({ message: "Please enter a valid image URL." })).min(1, "At least one image is required."),
-  inventoryCount: z.coerce.number().int().min(0, "Inventory count must be 0 or more."),
+  inventory_count: z.coerce.number().int().min(0, "Inventory count must be 0 or more."),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -56,12 +56,12 @@ export function ListingForm({ listing, initialInventoryCount = 1 }: ListingFormP
       location: listing?.location || "",
       description: listing?.description || "",
       price: listing?.price || 0,
-      priceUnit: listing?.priceUnit || undefined,
+      price_unit: listing?.price_unit || undefined,
       currency: listing?.currency || 'NGN',
-      maxGuests: listing?.maxGuests || 1,
+      max_guests: listing?.max_guests || 1,
       features: listing?.features.join(', ') || "",
       images: (listing?.images && listing.images.length > 0) ? listing.images : ["https://placehold.co/800x600.png"],
-      inventoryCount: isEditMode ? initialInventoryCount : 1,
+      inventory_count: isEditMode ? initialInventoryCount : 1,
     },
   });
 
@@ -162,7 +162,7 @@ export function ListingForm({ listing, initialInventoryCount = 1 }: ListingFormP
               />
               <FormField
                 control={form.control}
-                name="maxGuests"
+                name="max_guests"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Max Guests</FormLabel>
@@ -214,7 +214,7 @@ export function ListingForm({ listing, initialInventoryCount = 1 }: ListingFormP
                   />
                   <FormField
                       control={form.control}
-                      name="priceUnit"
+                      name="price_unit"
                       render={({ field }) => (
                           <FormItem>
                           <FormLabel>Unit</FormLabel>
@@ -239,7 +239,7 @@ export function ListingForm({ listing, initialInventoryCount = 1 }: ListingFormP
                <div className="md:col-span-2">
                 <FormField
                     control={form.control}
-                    name="inventoryCount"
+                    name="inventory_count"
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Inventory Count</FormLabel>

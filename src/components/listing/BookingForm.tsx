@@ -129,7 +129,7 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
     // For 'night' based pricing, duration is nights, not days.
     const nights = duration > 1 ? duration - 1 : 1;
 
-    switch (listing.priceUnit) {
+    switch (listing.price_unit) {
       case 'night':
         calculatedPrice = listing.price * nights * units;
         breakdown = `${new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency, minimumFractionDigits: 0 }).format(listing.price)} x ${nights} night(s) x ${units} unit(s)`;
@@ -236,7 +236,7 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
           <span className="text-xl font-bold text-primary">
             {new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency || 'NGN', minimumFractionDigits: 0 }).format(listing.price)}
           </span>
-          <span className="text-base font-normal text-muted-foreground">/{listing.priceUnit}</span>
+          <span className="text-base font-normal text-muted-foreground">/{listing.price_unit}</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -288,7 +288,7 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
                 id="guests"
                 type="number"
                 min="1"
-                max={listing.maxGuests * units}
+                max={listing.max_guests * units}
                 value={guests}
                 onChange={(e) => setGuests(parseInt(e.target.value, 10) || 1)}
                 className="pl-9"

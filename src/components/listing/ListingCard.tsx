@@ -71,7 +71,7 @@ export function ListingCard({ listing }: ListingCardProps) {
           <span className="text-lg font-bold text-primary">
              {new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency || 'NGN', minimumFractionDigits: 0 }).format(listing.price)}
           </span>
-          <span className="text-sm text-muted-foreground">/{listing.priceUnit}</span>
+          <span className="text-sm text-muted-foreground">/{listing.price_unit}</span>
         </div>
         <Button asChild>
           <Link href={`/listing/${listing.id}`}>Book Now</Link>
