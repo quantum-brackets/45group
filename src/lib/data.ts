@@ -147,7 +147,7 @@ export async function getListingById(id: string): Promise<Listing | null> {
   
   const listing = {
       ...data,
-      inventoryCount: data.inventoryCount[0]?.count || 0
+      inventoryCount: data.inventoryCount && data.inventoryCount.length > 0 ? data.inventoryCount[0]?.count : 0
   };
   return listing as Listing;
 }
@@ -259,7 +259,7 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
   noStore();
   const supabase = createSupabaseServerClient();
   
-  const { data, error } = await supabase.rpc('get_filtered_listings', {
+  const { data: listingsData, error } = await supabase.rpc('get_filtered_listings', {
       location_filter: filters.location || null,
       type_filter: filters.type || null,
       guests_filter: filters.guests ? parseInt(filters.guests, 10) : null,
@@ -271,7 +271,30 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
     console.error("Error fetching filtered listings:", error);
     return [];
   }
-  return data as Listing[];
+  if (!listingsData || listingsData.length === 0) {
+      return [];
+  }
+
+  const listingIds = listingsData.map((l: any) => l.id);
+
+  const { data: inventoryData, error: inventoryError } = await supabase
+    .from('listing_inventory')
+    .select('listingId, count')
+    .in('listingId', listingIds);
+    
+  if (inventoryError) {
+      console.error("Error fetching inventory counts:", inventoryError);
+      return listingsData as Listing[]; // return without counts as fallback
+  }
+
+  const inventoryMap = new Map(inventoryData.map(item => [item.listingId, item.count]));
+
+  const listingsWithInventory = listingsData.map((listing: any) => ({
+      ...listing,
+      inventoryCount: inventoryMap.get(listing.id) || 0,
+  }));
+
+  return listingsWithInventory as Listing[];
 }
 
 export async function getConfirmedBookingsForListing(listingId: string) {
