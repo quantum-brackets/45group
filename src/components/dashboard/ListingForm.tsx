@@ -351,7 +351,7 @@ export function ListingForm({ listing, initialInventoryCount = 1 }: ListingFormP
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
-              <BackButton disabled={isPending}>Cancel</BackButton>
+              <BackButton disabled={isPending} />
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isEditMode ? 'Save Changes' : 'Create Listing'}

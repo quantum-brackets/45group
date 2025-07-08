@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { User } from '@/lib/types';
@@ -73,7 +74,7 @@ export function UserDetails({ user }: UserDetailsProps) {
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end">
-                    <BackButton>Back to Dashboard</BackButton>
+                    <BackButton />
                 </CardFooter>
             </Card>
         </div>

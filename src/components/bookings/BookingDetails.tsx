@@ -299,7 +299,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
       
       {!isEditing && (
           <CardFooter className="flex justify-end">
-              <BackButton>Back to Bookings</BackButton>
+              <BackButton />
           </CardFooter>
       )}
     </Card>
