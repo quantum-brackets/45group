@@ -7,6 +7,7 @@ import { BookingForm } from '@/components/listing/BookingForm';
 import { BedDouble, Building2, CheckCircle, MapPin, Star, Utensils } from 'lucide-react';
 import { getSession } from '@/lib/session';
 import { ReviewSection } from '@/components/listing/ReviewSection';
+import { BackButton } from '@/components/common/BackButton';
 
 const typeIcons = {
   hotel: <BedDouble className="w-5 h-5 mr-2" />,
@@ -30,6 +31,9 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <BackButton>Back to Search</BackButton>
+      </div>
       <div className="grid lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2">
           {/* Title and meta */}

@@ -158,6 +158,9 @@ export function ProfileForm({ user }: ProfileFormProps) {
             />
           </CardContent>
           <CardFooter className="flex justify-end gap-2">
+            <Button variant="ghost" type="button" onClick={() => router.back()} disabled={isPending}>
+                Cancel
+            </Button>
             <Button type="submit" disabled={isPending}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
