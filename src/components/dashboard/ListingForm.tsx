@@ -59,7 +59,7 @@ export function ListingForm({ listing, initialInventoryCount = 1 }: ListingFormP
       price_unit: listing?.price_unit || undefined,
       currency: listing?.currency || 'NGN',
       max_guests: listing?.max_guests || 1,
-      features: listing?.features.join(', ') || "",
+      features: (Array.isArray(listing?.features) ? listing.features.join(', ') : listing?.features) || "",
       images: (listing?.images && listing.images.length > 0) ? listing.images : ["https://placehold.co/800x600.png"],
       inventory_count: isEditMode ? initialInventoryCount : 1,
     },

@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -110,11 +111,8 @@ export function Header({ session }: { session: User | null }) {
                 <UserNav user={session} />
             ) : (
                 <div className="hidden md:flex items-center gap-2">
-                    <Button variant="ghost" asChild>
-                        <Link href="/login">Login</Link>
-                    </Button>
                     <Button asChild>
-                        <Link href="/signup">Sign Up</Link>
+                        <Link href="/login">Account</Link>
                     </Button>
                 </div>
             )}
@@ -183,8 +181,7 @@ export function Header({ session }: { session: User | null }) {
                              <UserNav user={session} />
                         ): (
                             <div className="grid gap-4">
-                                <Button variant="ghost" asChild><Link href="/login">Login</Link></Button>
-                                <Button asChild><Link href="/signup">Sign Up</Link></Button>
+                                <Button asChild><Link href="/login">Account</Link></Button>
                             </div>
                         )}
                     </div>
