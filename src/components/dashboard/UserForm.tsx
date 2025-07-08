@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "../ui/textarea";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -24,6 +25,7 @@ const formSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
   role: z.enum(['admin', 'guest', 'staff'], { required_error: "Role is required."}),
   status: z.enum(['active', 'disabled'], { required_error: "Status is required."}),
+  notes: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -46,6 +48,7 @@ export function UserForm({ user }: UserFormProps) {
       password: "",
       role: user?.role || 'guest',
       status: user?.status || 'active',
+      notes: user?.notes || "",
     },
   });
 
@@ -181,6 +184,26 @@ export function UserForm({ user }: UserFormProps) {
                     </FormItem>
                 )}
                 />
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>Admin Notes</FormLabel>
+                      <FormControl>
+                          <Textarea
+                              placeholder="Internal notes about the user..."
+                              rows={4}
+                              {...field}
+                          />
+                      </FormControl>
+                      <FormDescription>
+                          These notes are visible to other administrators and the user themselves.
+                      </FormDescription>
+                      <FormMessage />
+                  </FormItem>
+              )}
+            />
           </CardContent>
           <CardFooter className="flex justify-end gap-2">
             <Button variant="outline" type="button" onClick={() => router.push('/dashboard?tab=users')} disabled={isPending}>Cancel</Button>

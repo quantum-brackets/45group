@@ -15,11 +15,13 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { Textarea } from "../ui/textarea";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
+  notes: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -39,6 +41,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
       name: user?.name || "",
       email: user?.email || "",
       password: "",
+      notes: user?.notes || "",
     },
   });
 
@@ -112,6 +115,26 @@ export function ProfileForm({ user }: ProfileFormProps) {
                     Leave blank to keep your current password.
                   </FormDescription>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                        <Textarea
+                            placeholder="Personal notes or reminders..."
+                            rows={4}
+                            {...field}
+                        />
+                    </FormControl>
+                    <FormDescription>
+                        These notes are visible to you and administrators.
+                    </FormDescription>
+                    <FormMessage />
                 </FormItem>
               )}
             />

@@ -90,6 +90,20 @@ function runUserStatusMigration(db: Database.Database) {
     }
 }
 
+function runUserNotesMigration(db: Database.Database) {
+    try {
+        const columns = db.pragma('table_info(users)') as { name: string }[];
+        if (!columns.some(col => col.name === 'notes')) {
+            console.log('[DB_MIGRATE] Adding "notes" column to users...');
+            db.exec("ALTER TABLE users ADD COLUMN notes TEXT");
+            console.log('[DB_MIGRATE] "notes" column added to users table.');
+        }
+    } catch (error) {
+        console.error("[DB_MIGRATE_ERROR] Critical error during user notes migration:", error);
+        throw new Error("Database migration for user notes failed. The application cannot start.");
+    }
+}
+
 
 /**
  * Provides a stable, cached database connection and applies necessary migrations.
@@ -113,6 +127,7 @@ export async function getDb(): Promise<Database.Database> {
         runBookingActionTrackingMigration(db);
         runBookingCreationDateMigration(db);
         runUserStatusMigration(db);
+        runUserNotesMigration(db);
 
         return db;
     } catch (error) {
