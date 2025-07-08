@@ -4,6 +4,8 @@ import './globals.css';
 import { Header } from '@/components/common/Header';
 import { Toaster } from "@/components/ui/toaster"
 import { getSession } from '@/lib/session';
+import { Twitter, Instagram, Facebook } from 'lucide-react';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: {
@@ -32,6 +34,24 @@ export default async function RootLayout({
         <main className="flex-grow">
           {children}
         </main>
+        <footer className="bg-card border-t">
+          <div className="container mx-auto px-4 py-6 flex justify-between items-center">
+            <Link href={"/#contact"}>
+              <img src="/icon.svg" alt="Hospitality Logo" className="h-8 w-8" />
+            </Link>
+            <div className="flex items-center gap-6">
+              <Link href={"https://x.com/hotel45ng"} target="_blank" rel="noopener noreferrer" aria-label="Twitter">
+                <Twitter className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
+              </Link>
+              <Link href={"https://www.instagram.com/hotel45.ng"} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                <Instagram className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
+              </Link>
+              <Link href={"https://www.facebook.com/Hotel45.ng"} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                <Facebook className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
+              </Link>
+            </div>
+          </div>
+        </footer>
         <Toaster />
         <Script
           src="https://cdn.jsdelivr.net/gh/iamogbz/oh-my-wcs@6b7a7b0/components/carousel-stack.js"
