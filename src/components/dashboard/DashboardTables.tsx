@@ -153,6 +153,8 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
   }
 
   const isAdmin = session?.role === 'admin';
+  const isAllSelected = selectedIds.length === listings.length && listings.length > 0;
+  const isSomeSelected = selectedIds.length > 0 && selectedIds.length < listings.length;
 
   return (
     <>
@@ -209,8 +211,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                         <TableHead className="w-[40px]">
                             <Checkbox
                                 onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                                checked={selectedIds.length > 0 && selectedIds.length === listings.length}
-                                indeterminate={selectedIds.length > 0 && selectedIds.length < listings.length}
+                                checked={isSomeSelected ? 'indeterminate' : isAllSelected}
                                 aria-label="Select all listings"
                             />
                         </TableHead>
