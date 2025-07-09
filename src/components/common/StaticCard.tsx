@@ -61,7 +61,11 @@ export default function StaticCard({ name, images, link }: Props) {
   }, [imageSources]);
 
   return (
-    <Link href={link} className="flex flex-col items-center gap-12 tablet_768:gap-8">
+    <Link 
+      href={link} 
+      className="flex flex-col items-center gap-12 tablet_768:gap-8"
+      aria-label={`Explore our ${name} services, a part of our premier hospitality offerings.`}
+    >
       <carousel-stack
         ref={carouselRef}
         id="carousel"

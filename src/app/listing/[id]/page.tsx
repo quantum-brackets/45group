@@ -60,7 +60,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
                 <CarouselItem key={index}>
                   <img
                     src={src}
-                    alt={`${listing.name} image ${index + 1}`}
+                    alt={`Photo ${index + 1} of ${listing.name}, a premium ${listing.type} venue offering outstanding hospitality services in ${listing.location}`}
                     className="w-full h-[300px] sm:h-[400px] lg:h-[500px] object-cover"
                     data-ai-hint={AITypeHints[listing.type]}
                   />

@@ -36,7 +36,7 @@ export function ListingCard({ listing }: ListingCardProps) {
           <Link href={`/listing/${listing.id}`}>
             <img
               src={listing.images[0]}
-              alt={listing.name}
+              alt={`Image of ${listing.name}, our ${typeLabels[listing.type]} venue for great hospitality in ${listing.location}`}
               className="w-full h-48 object-cover"
               data-ai-hint={AITypeHints[listing.type]}
             />

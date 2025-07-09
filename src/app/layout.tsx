@@ -9,10 +9,11 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Hospitality | 45 Group',
-    template: '%s | Hospitality',
+    default: '45 Booking | Premier Hotel, Event & Restaurant Hospitality',
+    template: '%s | 45 Booking Hospitality',
   },
-  description: 'Book hotels, event venues, and restaurants.',
+  description: 'Discover and book premier hotel rooms, event venues, and restaurants with 45 Booking. Your expert partner in hospitality, ensuring memorable experiences.',
+  keywords: 'hotel booking, restaurant reservations, event center, hospitality services, 45 Booking, book hotels, book restaurants, event spaces',
 };
 
 export default async function RootLayout({
@@ -25,6 +26,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className="h-full">
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&display=swap" rel="stylesheet" />
