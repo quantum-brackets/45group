@@ -4,11 +4,33 @@ import { getSession } from '@/lib/session';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createSupabaseServerClient } from './supabase';
 
+
+// Helper function to unpack the 'data' JSONB field
+const unpackUser = (dbUser: any): User => {
+    if (!dbUser) return null as any;
+    const { data, ...rest } = dbUser;
+    return { ...rest, ...data };
+};
+
+const unpackListing = (dbListing: any): Listing => {
+    if (!dbListing) return null as any;
+    const { data, listing_inventory, ...rest } = dbListing;
+    const inventoryCount = listing_inventory ? (Array.isArray(listing_inventory) ? listing_inventory[0]?.count : 0) : 0;
+    return { ...rest, ...data, inventoryCount };
+};
+
+const unpackBooking = (dbBooking: any): Booking => {
+    if (!dbBooking) return null as any;
+    const { data, ...rest } = dbBooking;
+    return { ...rest, ...data };
+};
+
+
 export async function getUserById(id: string): Promise<User | null> {
     const supabase = createSupabaseServerClient();
     const { data: user, error } = await supabase
         .from('users')
-        .select('id, name, email, role, status, notes, phone')
+        .select('id, email, role, status, data')
         .eq('id', id)
         .single();
     
@@ -16,7 +38,7 @@ export async function getUserById(id: string): Promise<User | null> {
         console.error("Error fetching user by ID:", error);
         return null;
     }
-    return user as User | null;
+    return unpackUser(user);
 }
 
 export async function getAllUsers(): Promise<User[]> {
@@ -28,14 +50,14 @@ export async function getAllUsers(): Promise<User[]> {
     
     const { data: users, error } = await supabase
         .from('users')
-        .select('id, name, email, role, status, notes, phone')
-        .order('name', { ascending: true });
+        .select('id, email, role, status, data')
+        .order('data->>name', { ascending: true });
 
     if (error) {
         console.error("Error fetching all users:", error);
         return [];
     }
-    return users as User[];
+    return users.map(unpackUser);
 }
 
 export async function getListingTypesWithSampleImages(): Promise<{ name: string, images: string[] }[]> {
@@ -58,7 +80,7 @@ export async function getListingTypesWithSampleImages(): Promise<{ name: string,
     for (const listingType of uniqueTypes) {
         const { data: listingsForType, error: listingsError } = await supabase
             .from('listings')
-            .select('images')
+            .select('data')
             .eq('type', listingType)
             .limit(5);
 
@@ -66,8 +88,8 @@ export async function getListingTypesWithSampleImages(): Promise<{ name: string,
             console.error(`Error fetching listings for type ${listingType}:`, listingsError);
             continue;
         }
-
-        const allImages = listingsForType.flatMap(listing => (listing.images as string[]) || []);
+        
+        const allImages = listingsForType.flatMap(listing => (listing.data.images as string[]) || []);
   
         if (allImages.length > 0) {
             const sampleImages = allImages.slice(0, 5);
@@ -88,32 +110,28 @@ export async function getAllListings(): Promise<Listing[]> {
   const supabase = createSupabaseServerClient();
   const { data: listingsData, error: listingsError } = await supabase
     .from('listings')
-    .select('*, listing_inventory(count)')
+    .select('id, type, location, data, listing_inventory(count)')
     .order('location')
     .order('type')
-    .order('name');
+    .order('data->>name');
   
   if (listingsError) {
       console.error("Error fetching all listings:", listingsError);
       return [];
   }
 
-  return listingsData.map((l: any) => ({
-      ...l,
-      inventoryCount: l.listing_inventory[0]?.count || 0,
-      listing_inventory: undefined, // clean up
-  })) as Listing[];
+  return listingsData.map(unpackListing);
 }
 
 export async function getListingsByIds(ids: string[]): Promise<Listing[]> {
   if (ids.length === 0) return [];
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase.from('listings').select('*').in('id', ids);
+  const { data, error } = await supabase.from('listings').select('id, type, location, data').in('id', ids);
   if (error) {
       console.error("Error fetching listings by IDs:", error);
       return [];
   }
-  return data as Listing[];
+  return data.map(unpackListing);
 }
 
 export async function getInventoryByListingId(listingId: string): Promise<ListingInventory[]> {
@@ -132,7 +150,7 @@ export async function getListingById(id: string): Promise<Listing | null> {
   
   const { data: listingData, error: listingError } = await supabase
     .from('listings')
-    .select('*, listing_inventory(count)')
+    .select('id, type, location, data, listing_inventory(count)')
     .eq('id', id)
     .single();
 
@@ -141,13 +159,7 @@ export async function getListingById(id: string): Promise<Listing | null> {
     return null;
   }
   
-  const listing = {
-      ...listingData,
-      inventoryCount: listingData.listing_inventory[0]?.count || 0,
-      listing_inventory: undefined, // clean up
-  };
-  
-  return listing as Listing;
+  return unpackListing(listingData);
 }
 
 interface BookingsPageFilters {
@@ -163,7 +175,7 @@ export async function getAllBookings(filters: BookingsPageFilters): Promise<Book
         return [];
     }
 
-    let query = supabase.from('bookings').select('*');
+    let query = supabase.from('bookings').select('id, listing_id, user_id, inventory_ids, status, start_date, end_date, data');
 
     if (session.role === 'guest') {
         query = query.eq('user_id', session.id);
@@ -190,36 +202,27 @@ export async function getAllBookings(filters: BookingsPageFilters): Promise<Book
 
     const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('id, name')
+        .select('id, data')
         .in('id', userIds);
 
     const { data: listingsData, error: listingsError } = await supabase
         .from('listings')
-        .select('id, name')
+        .select('id, data')
         .in('id', listingIds);
         
     if (usersError) console.error("Error fetching user names for bookings:", usersError);
     if (listingsError) console.error("Error fetching listing names for bookings:", listingsError);
 
-    const usersMap = new Map(usersData?.map(u => [u.id, u.name]));
-    const listingsMap = new Map(listingsData?.map(l => [l.id, l.name]));
+    const usersMap = new Map(usersData?.map(u => [u.id, u.data.name]));
+    const listingsMap = new Map(listingsData?.map(l => [l.id, l.data.name]));
+    
+    const unpackedBookings = bookingsData.map(unpackBooking);
 
-    return bookingsData.map((b) => ({
-      id: b.id,
-      listingId: b.listing_id,
-      inventoryIds: b.inventory_ids,
-      userId: b.user_id,
-      startDate: b.start_date,
-      endDate: b.end_date,
-      guests: b.guests,
-      status: b.status,
-      createdAt: b.created_at,
-      actionByUserId: b.action_by_user_id,
-      actionAt: b.action_at,
-      statusMessage: b.status_message,
-      userName: usersMap.get(b.user_id),
-      listingName: listingsMap.get(b.listing_id) || 'Unknown Listing',
-    })) as Booking[];
+    return unpackedBookings.map((b) => ({
+      ...b,
+      userName: usersMap.get(b.userId),
+      listingName: listingsMap.get(b.listingId) || 'Unknown Listing',
+    }));
 }
 
 
@@ -234,7 +237,7 @@ export async function getBookingById(id: string): Promise<Booking | null> {
     // 1. Fetch the booking by ID
     const { data: bookingData, error } = await supabase
         .from('bookings')
-        .select('*')
+        .select('id, listing_id, user_id, inventory_ids, status, start_date, end_date, data')
         .eq('id', id)
         .single();
 
@@ -247,27 +250,29 @@ export async function getBookingById(id: string): Promise<Booking | null> {
     if (session.role === 'guest' && bookingData.user_id !== session.id) {
         return null;
     }
+    
+    const unpackedBooking = unpackBooking(bookingData);
 
     // 2. Fetch related listing and user names
     const { data: listingData } = await supabase
         .from('listings')
-        .select('name')
-        .eq('id', bookingData.listing_id)
+        .select('data')
+        .eq('id', unpackedBooking.listingId)
         .single();
 
     const { data: userData } = await supabase
         .from('users')
-        .select('name')
-        .eq('id', bookingData.user_id)
+        .select('data')
+        .eq('id', unpackedBooking.userId)
         .single();
     
     // 3. Fetch inventory names
     let inventoryNames: string[] = [];
-    if (bookingData.inventory_ids && Array.isArray(bookingData.inventory_ids) && bookingData.inventory_ids.length > 0) {
+    if (unpackedBooking.inventoryIds && Array.isArray(unpackedBooking.inventoryIds) && unpackedBooking.inventoryIds.length > 0) {
         const { data: invData, error: invError } = await supabase
             .from('listing_inventory')
             .select('name')
-            .in('id', bookingData.inventory_ids);
+            .in('id', unpackedBooking.inventoryIds);
         
         if (!invError) {
             inventoryNames = invData.map(item => item.name);
@@ -275,25 +280,12 @@ export async function getBookingById(id: string): Promise<Booking | null> {
     }
 
     // 4. Assemble the final booking object
-    const booking: Booking = {
-      id: bookingData.id,
-      listingId: bookingData.listing_id,
-      inventoryIds: bookingData.inventory_ids,
-      userId: bookingData.user_id,
-      startDate: bookingData.start_date,
-      endDate: bookingData.end_date,
-      guests: bookingData.guests,
-      status: bookingData.status,
-      createdAt: bookingData.created_at,
-      actionByUserId: bookingData.action_by_user_id,
-      actionAt: bookingData.action_at,
-      statusMessage: bookingData.status_message,
-      listingName: listingData?.name || 'Unknown Listing',
-      userName: userData?.name || 'Unknown User',
+    return {
+      ...unpackedBooking,
+      listingName: listingData?.data.name || 'Unknown Listing',
+      userName: userData?.data.name || 'Unknown User',
       inventoryNames: inventoryNames,
     };
-
-    return booking;
 }
 
 interface FilterValues {
@@ -309,7 +301,7 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
   
   let query = supabase
     .from('listings')
-    .select('*, listing_inventory(id)');
+    .select('id, type, location, data, listing_inventory(id)');
 
   if (filters.location) {
     query = query.ilike('location', `%${filters.location}%`);
@@ -318,7 +310,7 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
     query = query.eq('type', filters.type);
   }
   if (filters.guests && parseInt(filters.guests, 10) > 0) {
-    query = query.gte('max_guests', parseInt(filters.guests, 10));
+    query = query.gte('data->>max_guests', parseInt(filters.guests, 10));
   }
 
   const { data: listingsData, error } = await query;
@@ -329,13 +321,12 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
   }
   
   let listingsWithInventoryCount = listingsData.map(l => ({
-    ...l,
+    ...unpackListing(l),
     inventoryCount: l.listing_inventory.length,
-    listing_inventory: undefined, // remove to clean up
   }));
 
   if (!filters.date?.from) {
-    return listingsWithInventoryCount as Listing[];
+    return listingsWithInventoryCount;
   }
   
   const listingIds = listingsWithInventoryCount.map(l => l.id);
@@ -356,7 +347,7 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
 
   if (bookingsError) {
       console.error("Error fetching bookings for date filter:", bookingsError);
-      return listingsWithInventoryCount as Listing[];
+      return listingsWithInventoryCount;
   }
 
   const bookedUnitsByListing: Record<string, Set<string>> = {};
@@ -373,7 +364,7 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
       return totalInventory > bookedCount;
   });
 
-  return availableListings as Listing[];
+  return availableListings;
 }
 
 export async function getConfirmedBookingsForListing(listingId: string) {

@@ -50,7 +50,7 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
   ];
 
   const userOptions = [
-    ...new Map(users.map((item) => [item.name, { label: item.name, value: item.id }])).values(),
+    ...new Map(users.map((item) => [item.name, { label: `${item.name} (${item.email})`, value: item.id }])).values(),
   ];
 
   return (

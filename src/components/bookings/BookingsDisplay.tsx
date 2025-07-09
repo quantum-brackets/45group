@@ -6,15 +6,19 @@ import { useSearchParams } from 'next/navigation';
 import { BookingsTable } from '@/components/bookings/BookingsTable';
 import { BookingsFilters } from '@/components/bookings/BookingsFilters';
 import type { Booking, Listing, User } from '@/lib/types';
+import { Button } from '../ui/button';
+import Link from 'next/link';
+import { PlusCircle } from 'lucide-react';
 
 interface BookingsDisplayProps {
   allBookings: Booking[];
   listings: Listing[];
   users: User[];
   session: User | null;
+  canCreate: boolean;
 }
 
-export function BookingsDisplay({ allBookings, listings, users, session }: BookingsDisplayProps) {
+export function BookingsDisplay({ allBookings, listings, users, session, canCreate }: BookingsDisplayProps) {
   const searchParams = useSearchParams();
   const statusFilter = searchParams.get('status');
 
@@ -30,7 +34,19 @@ export function BookingsDisplay({ allBookings, listings, users, session }: Booki
   return (
     <div className="grid gap-8">
       <section className="bg-card p-4 rounded-lg shadow-md border">
-        <BookingsFilters listings={listings} users={users} session={session} />
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <div className="flex-grow">
+                <BookingsFilters listings={listings} users={users} session={session} />
+            </div>
+            {canCreate && (
+                <Button asChild>
+                    <Link href="/dashboard/add-booking">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Booking
+                    </Link>
+                </Button>
+            )}
+        </div>
       </section>
       
       {filteredBookings.length > 0 ? (

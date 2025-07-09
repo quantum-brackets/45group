@@ -69,23 +69,37 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
 
     const { name, type, location, description, price, price_unit, currency, max_guests, features, images, inventory_count } = validatedFields.data;
     
-    const { error } = await supabase.rpc('create_listing_with_inventory', {
-        p_name: name,
-        p_type: type,
-        p_location: location,
-        p_description: description,
-        p_images: images,
-        p_price: price,
-        p_price_unit: price_unit,
-        p_currency: currency,
-        p_max_guests: max_guests,
-        p_features: features.split(',').map(f => f.trim()),
-        p_inventory_count: inventory_count
-    });
+    const listingJsonData = {
+        name, description, price, price_unit, currency, max_guests, 
+        features: features.split(',').map(f => f.trim()),
+        images,
+        rating: 0,
+        reviews: [],
+    };
 
-    if (error) {
-        console.error('[CREATE_LISTING_ACTION] Error:', error);
-        return { success: false, message: `Failed to create listing: ${error.message}` };
+    const { data: newListing, error: listingError } = await supabase.from('listings').insert({
+        type,
+        location,
+        data: listingJsonData
+    }).select('id').single();
+
+    if (listingError || !newListing) {
+        console.error('[CREATE_LISTING_ACTION] Error creating listing:', listingError);
+        return { success: false, message: `Failed to create listing: ${listingError?.message}` };
+    }
+
+    if (inventory_count > 0) {
+        const inventoryItems = Array.from({ length: inventory_count }, (_, i) => ({
+            listing_id: newListing.id,
+            name: `${name} Unit ${i + 1}`,
+        }));
+        const { error: inventoryError } = await supabase.from('listing_inventory').insert(inventoryItems);
+        if (inventoryError) {
+            console.error('[CREATE_LISTING_ACTION] Error creating inventory:', inventoryError);
+            // Optionally delete the created listing for consistency
+            await supabase.from('listings').delete().eq('id', newListing.id);
+            return { success: false, message: `Failed to create inventory: ${inventoryError.message}` };
+        }
     }
         
     revalidatePath('/dashboard?tab=listings', 'page');
@@ -108,27 +122,75 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
       errors: validatedFields.error.flatten().fieldErrors,
     }
   }
+
+  // Fetch existing listing to preserve reviews and rating
+  const { data: existingListing, error: fetchError } = await supabase
+    .from('listings')
+    .select('data')
+    .eq('id', id)
+    .single();
+
+  if (fetchError || !existingListing) {
+      return { success: false, message: 'Listing not found.' };
+  }
   
   const { name, type, location, description, price, price_unit, currency, max_guests, features, images, inventory_count } = validatedFields.data;
 
-  const { error } = await supabase.rpc('update_listing_with_inventory', {
-    p_listing_id: id,
-    p_name: name,
-    p_type: type,
-    p_location: location,
-    p_description: description,
-    p_price: price,
-    p_price_unit: price_unit,
-    p_currency: currency,
-    p_max_guests: max_guests,
-    p_features: features.split(',').map(f => f.trim()),
-    p_images: images,
-    p_new_inventory_count: inventory_count
-  });
+  const listingJsonData = {
+      ...existingListing.data, // Preserve existing data like reviews, rating
+      name, description, price, price_unit, currency, max_guests,
+      features: features.split(',').map(f => f.trim()),
+      images,
+  };
 
-  if (error) {
-    console.error(`[UPDATE_LISTING_ACTION] Error: ${error}`);
-    return { success: false, message: `Failed to update listing: ${error.message}` };
+  const { error: updateError } = await supabase.from('listings').update({
+      type, location, data: listingJsonData
+  }).eq('id', id);
+
+  if (updateError) {
+    console.error(`[UPDATE_LISTING_ACTION] Error updating listing: ${updateError.message}`);
+    return { success: false, message: `Failed to update listing: ${updateError.message}` };
+  }
+
+  // Adjust inventory
+  const { data: currentInventory, error: invFetchError } = await supabase
+    .from('listing_inventory')
+    .select('id')
+    .eq('listing_id', id);
+
+  if (invFetchError) {
+    return { success: false, message: `Could not fetch current inventory: ${invFetchError.message}` };
+  }
+
+  const currentCount = currentInventory.length;
+  const diff = inventory_count - currentCount;
+
+  if (diff > 0) {
+      // Add new inventory
+      const newItems = Array.from({ length: diff }, (_, i) => ({
+          listing_id: id,
+          name: `${name} Unit ${currentCount + i + 1}`
+      }));
+      const { error: addError } = await supabase.from('listing_inventory').insert(newItems);
+      if (addError) return { success: false, message: `Failed to add inventory: ${addError.message}` };
+  } else if (diff < 0) {
+      // Remove inventory (safely)
+      const { data: bookedInv, error: bookedError } = await supabase
+        .from('bookings')
+        .select('inventory_ids')
+        .eq('listing_id', id)
+        .in('status', ['Pending', 'Confirmed']);
+      
+      if (bookedError) return { success: false, message: `Failed to check bookings: ${bookedError.message}` };
+      
+      const bookedIds = new Set(bookedInv.flatMap(b => b.inventory_ids));
+      const removableInventory = currentInventory.filter(inv => !bookedIds.has(inv.id));
+      
+      const idsToRemove = removableInventory.slice(0, Math.abs(diff)).map(inv => inv.id);
+      if (idsToRemove.length > 0) {
+        const { error: deleteError } = await supabase.from('listing_inventory').delete().in('id', idsToRemove);
+        if (deleteError) return { success: false, message: `Failed to remove inventory: ${deleteError.message}` };
+      }
   }
 
   revalidatePath('/dashboard?tab=listings', 'page');
@@ -145,14 +207,28 @@ export async function deleteListingAction(id: string) {
   if (!session || !hasPermission(session, 'listing:delete')) {
     return { success: false, message: 'Unauthorized' };
   }
+  
+  // Check for active bookings before deleting
+  const { data: activeBookings, error: bookingCheckError } = await supabase
+    .from('bookings')
+    .select('id')
+    .eq('listing_id', id)
+    .in('status', ['Pending', 'Confirmed'])
+    .limit(1);
 
-  const { error } = await supabase.rpc('delete_listing_with_bookings_check', {
-    p_listing_id: id
-  });
+  if (bookingCheckError) {
+    return { success: false, message: `Database error: ${bookingCheckError.message}` };
+  }
+  if (activeBookings && activeBookings.length > 0) {
+    return { success: false, message: 'Cannot delete listing with active or pending bookings. Please cancel them first.' };
+  }
+
+  // Deleting the listing will cascade to inventory due to foreign key constraints
+  const { error } = await supabase.from('listings').delete().eq('id', id);
 
   if (error) {
     console.error(`[DELETE_LISTING_ACTION] Error: ${error}`);
-    return { success: false, message: `${error.message}` };
+    return { success: false, message: `Failed to delete listing: ${error.message}` };
   }
 
   revalidatePath('/dashboard?tab=listings', 'page');
@@ -166,60 +242,118 @@ const CreateBookingSchema = z.object({
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
   numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
   guestEmail: z.string().email("Please enter a valid email address.").optional(),
+  bookingName: z.string().min(1, 'Booking name is required.').optional(),
 });
+
+async function findAvailableInventory(supabase: any, listingId: string, startDate: string, endDate: string, excludeBookingId?: string): Promise<string[]> {
+    const { data: allInventory, error: invError } = await supabase
+        .from('listing_inventory')
+        .select('id')
+        .eq('listing_id', listingId);
+
+    if (invError) throw new Error('Could not fetch inventory.');
+
+    const allInventoryIds = allInventory.map((inv: any) => inv.id);
+
+    let bookingsQuery = supabase
+        .from('bookings')
+        .select('inventory_ids')
+        .eq('listing_id', listingId)
+        .eq('status', 'Confirmed')
+        .lte('start_date', endDate)
+        .gte('end_date', startDate);
+    
+    if (excludeBookingId) {
+        bookingsQuery = bookingsQuery.neq('id', excludeBookingId);
+    }
+        
+    const { data: overlappingBookings, error: bookingsError } = await bookingsQuery;
+    
+    if (bookingsError) throw new Error('Could not check for overlapping bookings.');
+    
+    const bookedInventoryIds = new Set(overlappingBookings.flatMap((b: any) => b.inventory_ids));
+    return allInventoryIds.filter((id: string) => !bookedInventoryIds.has(id));
+}
 
 export async function createBookingAction(data: z.infer<typeof CreateBookingSchema>) {
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
-  const session = await getSession();
-
-  const canCreateForOwn = hasPermission(session, 'booking:create:own');
-  const canCreateForAny = hasPermission(session, 'booking:create');
-  
-  if (!session && !data.guestEmail) {
-    return { success: false, message: "You must be logged in to book."}
-  }
-
-  if (session && !canCreateForOwn && !canCreateForAny) {
-    return { success: false, message: 'You do not have permission to create bookings.' };
-  }
+  let session = await getSession();
 
   const validatedFields = CreateBookingSchema.safeParse(data);
   if (!validatedFields.success) {
-    const errorMessages = Object.values(validatedFields.error.flatten().fieldErrors)
-        .map((errors) => errors?.[0])
-        .filter(Boolean)
-        .join(', ');
-
-    return {
-      success: false,
-      message: `Invalid data provided: ${errorMessages || 'Please check your input.'}`,
-      errors: validatedFields.error.flatten().fieldErrors,
-    }
+      const errorMessages = Object.values(validatedFields.error.flatten().fieldErrors).map(e => e?.[0]).filter(Boolean).join(', ');
+      return { success: false, message: `Invalid data provided: ${errorMessages || 'Please check your input.'}` };
   }
 
-  const { listingId, startDate, endDate, guests, numberOfUnits, guestEmail } = validatedFields.data;
-  
-  const { data: message, error } = await supabase.rpc('create_booking_with_inventory_check', {
-    p_listing_id: listingId,
-    p_user_id: session?.id || null,
-    p_start_date: new Date(startDate).toISOString(),
-    p_end_date: new Date(endDate).toISOString(),
-    p_guests: guests,
-    p_num_units: numberOfUnits,
-    p_guest_email: guestEmail,
-    p_creator_id: session?.id || null
-  });
+  const { listingId, startDate, endDate, guests, numberOfUnits, guestEmail, bookingName } = validatedFields.data;
+  let userId = session?.id;
+  let finalBookingName = bookingName || session?.name;
 
-  if (error) {
-    console.error(`[CREATE_BOOKING_ACTION] Error: ${error}`);
-    return { success: false, message: `Failed to create booking: ${error.message}` };
+  if (!session && guestEmail) {
+      const { data: existingUser, error: findError } = await supabase.from('users').select('id, data').eq('email', guestEmail).single();
+      if (findError && findError.code !== 'PGRST116') {
+          return { success: false, message: `Database error: ${findError.message}` };
+      }
+      if (existingUser) {
+          userId = existingUser.id;
+          finalBookingName = bookingName || existingUser.data.name;
+      } else {
+          const newUserId = randomUUID();
+          const { data: newUser, error: createError } = await supabase.from('users').insert({
+              id: newUserId,
+              email: guestEmail,
+              status: 'provisional',
+              role: 'guest',
+              data: { name: bookingName }
+          }).select('id').single();
+          if (createError || !newUser) {
+              return { success: false, message: `Could not create guest account: ${createError.message}` };
+          }
+          userId = newUser.id;
+          finalBookingName = bookingName;
+      }
+  } else if (!session && !guestEmail) {
+      return { success: false, message: 'You must be logged in or provide an email to book.' };
   }
-  
-  revalidatePath('/bookings');
-  revalidatePath(`/listing/${listingId}`);
-  
-  return { success: true, message: message as string };
+
+  if (!hasPermission(session, 'booking:create:own', { ownerId: userId }) && !hasPermission(session, 'booking:create')) {
+      return { success: false, message: 'You do not have permission to create this booking.' };
+  }
+
+  try {
+      const availableInventory = await findAvailableInventory(supabase, listingId, startDate, endDate);
+      if (availableInventory.length < numberOfUnits) {
+          return { success: false, message: `Not enough units available for the selected dates. Only ${availableInventory.length} left.` };
+      }
+      const inventoryToBook = availableInventory.slice(0, numberOfUnits);
+
+      const bookingData = {
+          guests,
+          created_at: new Date().toISOString(),
+          status_message: 'Booking request received.',
+          booking_name: finalBookingName
+      };
+
+      const { error: createBookingError } = await supabase.from('bookings').insert({
+          listing_id: listingId,
+          user_id: userId,
+          inventory_ids: inventoryToBook,
+          start_date: startDate,
+          end_date: endDate,
+          status: 'Pending',
+          data: bookingData
+      });
+
+      if (createBookingError) throw createBookingError;
+
+      revalidatePath('/bookings');
+      revalidatePath(`/listing/${listingId}`);
+      return { success: true, message: 'Your booking request has been sent and is pending confirmation.' };
+
+  } catch (e: any) {
+      return { success: false, message: e.message };
+  }
 }
 
 const UpdateBookingSchema = z.object({
@@ -234,45 +368,49 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session) {
-      return { success: false, message: 'Unauthorized' };
-    }
+    if (!session) return { success: false, message: 'Unauthorized' };
   
     const validatedFields = UpdateBookingSchema.safeParse(data);
-    if (!validatedFields.success) {
-      return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
-    }
+    if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
 
     const { bookingId, startDate, endDate, guests, numberOfUnits } = validatedFields.data;
 
-    const { data: booking } = await supabase.from('bookings').select('user_id').eq('id', bookingId).single();
+    const { data: booking, error: fetchError } = await supabase.from('bookings').select('user_id, listing_id, data').eq('id', bookingId).single();
+    if (fetchError || !booking) return { success: false, message: 'Booking not found.' };
 
-    const canUpdateOwn = hasPermission(session, 'booking:update:own', { ownerId: booking?.user_id });
-    const canUpdateAny = hasPermission(session, 'booking:update');
-
-    if (!canUpdateOwn && !canUpdateAny) {
+    if (!hasPermission(session, 'booking:update:own', { ownerId: booking.user_id }) && !hasPermission(session, 'booking:update')) {
       return { success: false, message: 'You do not have permission to update this booking.' };
     }
 
-    const { error } = await supabase.rpc('update_booking_with_inventory_check', {
-        p_booking_id: bookingId,
-        p_new_start_date: new Date(startDate).toISOString(),
-        p_new_end_date: new Date(endDate).toISOString(),
-        p_new_guests: guests,
-        p_new_num_units: numberOfUnits,
-        p_editor_id: session.id,
-        p_editor_name: session.name
-    });
+    try {
+        const availableInventory = await findAvailableInventory(supabase, booking.listing_id, startDate, endDate, bookingId);
+        if (availableInventory.length < numberOfUnits) {
+            return { success: false, message: `Not enough units available for the new dates. Only ${availableInventory.length} left.` };
+        }
+        const inventoryToBook = availableInventory.slice(0, numberOfUnits);
 
-    if (error) {
-        console.error(`[UPDATE_BOOKING_ACTION] Error: ${error}`);
-        return { success: false, message: `Failed to update booking: ${error.message}` };
+        const updatedBookingData = {
+            ...booking.data,
+            guests,
+            status_message: `Booking updated by ${session.name} on ${new Date().toLocaleDateString()}. Awaiting re-confirmation.`,
+        };
+
+        const { error } = await supabase.from('bookings').update({
+            start_date: startDate,
+            end_date: endDate,
+            inventory_ids: inventoryToBook,
+            status: 'Pending',
+            data: updatedBookingData,
+        }).eq('id', bookingId);
+        
+        if (error) throw error;
+        
+        revalidatePath('/bookings');
+        revalidatePath(`/booking/${bookingId}`);
+        return { success: true, message: 'Booking has been updated and is now pending re-confirmation.' };
+    } catch(e: any) {
+        return { success: false, message: e.message };
     }
-
-    revalidatePath('/bookings');
-    revalidatePath(`/booking/${bookingId}`);
-
-    return { success: true, message: 'Booking has been updated and is now pending re-confirmation.' };
 }
 
 export async function logoutAction() {
@@ -288,45 +426,35 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (!session) {
-    return { error: 'Unauthorized' };
-  }
+  if (!session) return { error: 'Unauthorized' };
 
-  const validatedFields = BookingActionSchema.safeParse(data);
-  if (!validatedFields.success) {
-    return { error: 'Invalid booking ID.' };
-  }
-  
-  const { bookingId } = validatedFields.data;
+  const { bookingId } = BookingActionSchema.parse(data);
 
-  const { data: booking, error: fetchError } = await supabase.from('bookings').select('user_id, listing_name:listings(name)').eq('id', bookingId).single();
+  const { data: booking, error: fetchError } = await supabase.from('bookings').select('user_id, listing_id, data').eq('id', bookingId).single();
+  if (fetchError || !booking) return { error: 'Booking not found.' };
 
-  if (fetchError || !booking) {
-    return { error: 'Booking not found.' };
-  }
-
-  const canCancelOwn = hasPermission(session, 'booking:cancel:own', { ownerId: booking.user_id });
-  const canCancelAny = hasPermission(session, 'booking:cancel');
-  
-  if (!canCancelOwn && !canCancelAny) {
+  if (!hasPermission(session, 'booking:cancel:own', { ownerId: booking.user_id }) && !hasPermission(session, 'booking:cancel')) {
     return { error: 'You do not have permission to cancel this booking.' };
   }
+  
+  const { data: listing } = await supabase.from('listings').select('data').eq('id', booking.listing_id).single();
 
   const { error } = await supabase.from('bookings').update({
     status: 'Cancelled',
-    action_by_user_id: session.id,
-    action_at: new Date().toISOString(),
-    status_message: `Cancelled by ${session.name} on ${new Date().toLocaleDateString()}`
+    data: {
+      ...booking.data,
+      action_by_user_id: session.id,
+      action_at: new Date().toISOString(),
+      status_message: `Cancelled by ${session.name} on ${new Date().toLocaleDateString()}`
+    }
   }).eq('id', bookingId);
   
-  if (error) {
-    return { error: `Failed to cancel booking in the database: ${error.message}` };
-  }
+  if (error) return { error: `Failed to cancel booking: ${error.message}` };
 
   revalidatePath('/bookings');
   revalidatePath(`/booking/${bookingId}`);
   
-  return { success: `Booking for ${(booking.listing_name as any)?.name} has been cancelled.` };
+  return { success: `Booking for ${listing?.data.name || 'listing'} has been cancelled.` };
 }
 
 export async function confirmBookingAction(data: z.infer<typeof BookingActionSchema>) {
@@ -337,28 +465,50 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
       return { error: 'Unauthorized: Only administrators can confirm bookings.' };
     }
   
-    const validatedFields = BookingActionSchema.safeParse(data);
-    if (!validatedFields.success) {
-      return { error: 'Invalid booking ID.' };
-    }
-    
-    const { bookingId } = validatedFields.data;
+    const { bookingId } = BookingActionSchema.parse(data);
   
-    const { error } = await supabase.rpc('confirm_booking_with_inventory_check', {
-        p_booking_id: bookingId,
-        p_admin_id: session.id,
-        p_admin_name: session.name
-    });
+    const { data: booking, error: fetchError } = await supabase.from('bookings').select('*').eq('id', bookingId).single();
+    if(fetchError || !booking) return { error: 'Booking not found.' };
 
-    if (error) {
-        console.error(`[CONFIRM_BOOKING_ACTION] Error: ${error}`);
-        return { error: error.message };
+    try {
+        const availableInventory = await findAvailableInventory(supabase, booking.listing_id, booking.start_date, booking.end_date, bookingId);
+        
+        const currentlyHeldIds = new Set(booking.inventory_ids);
+        const stillAvailable = availableInventory.filter(id => currentlyHeldIds.has(id));
+
+        if (stillAvailable.length < booking.inventory_ids.length) {
+            await supabase.from('bookings').update({
+                status: 'Cancelled',
+                data: {
+                    ...booking.data,
+                    status_message: `Booking automatically cancelled on ${new Date().toLocaleDateString()} due to inventory conflict during confirmation.`,
+                    action_by_user_id: session.id,
+                    action_at: new Date().toISOString(),
+                }
+            }).eq('id', bookingId);
+            revalidatePath('/bookings');
+            revalidatePath(`/booking/${bookingId}`);
+            return { error: 'Inventory conflict detected. The booking has been cancelled.' };
+        }
+
+        const { error } = await supabase.from('bookings').update({
+            status: 'Confirmed',
+            data: {
+                ...booking.data,
+                status_message: `Confirmed by ${session.name} on ${new Date().toLocaleDateString()}`,
+                action_by_user_id: session.id,
+                action_at: new Date().toISOString(),
+            }
+        }).eq('id', bookingId);
+
+        if (error) throw error;
+        
+        revalidatePath('/bookings');
+        revalidatePath(`/booking/${bookingId}`);
+        return { success: `Booking has been confirmed.` };
+    } catch (e: any) {
+        return { error: e.message };
     }
-
-    revalidatePath('/bookings');
-    revalidatePath(`/booking/${bookingId}`);
-    
-    return { success: `Booking has been confirmed.` };
 }
 
 const UserFormSchema = z.object({
@@ -380,36 +530,20 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   }
 
   const validatedFields = UserFormSchema.safeParse(data);
-  if (!validatedFields.success) {
-    return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
-  }
+  if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
 
   const { name, email, password, role, status, notes, phone } = validatedFields.data;
-
-  if (!password) {
-    return { success: false, message: "Password is required for new users." };
-  }
+  if (!password) return { success: false, message: "Password is required for new users." };
   
   const { data: existingUser } = await supabase.from('users').select('id').eq('email', email).single();
-  if (existingUser) {
-    return { success: false, message: 'A user with this email already exists.' };
-  }
+  if (existingUser) return { success: false, message: 'A user with this email already exists.' };
 
   const hashedPassword = await hashPassword(password);
+  const userJsonData = { name, password: hashedPassword, notes, phone };
 
-  const { error } = await supabase.from('users').insert({
-    name,
-    email,
-    password: hashedPassword,
-    role,
-    status,
-    notes,
-    phone
-  });
+  const { error } = await supabase.from('users').insert({ email, role, status, data: userJsonData });
 
-  if (error) {
-    return { success: false, message: `Failed to create user: ${error.message}` };
-  }
+  if (error) return { success: false, message: `Failed to create user: ${error.message}` };
 
   revalidatePath('/dashboard?tab=users', 'page');
   return { success: true, message: `User "${name}" was created successfully.` };
@@ -424,23 +558,21 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
   }
 
   const validatedFields = UserFormSchema.safeParse(data);
-  if (!validatedFields.success) {
-    return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
-  }
+  if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
+  
+  const { data: existingUser, error: fetchError } = await supabase.from('users').select('data').eq('id', id).single();
+  if(fetchError || !existingUser) return { success: false, message: 'User not found.' };
 
   const { name, email, password, role, status, notes, phone } = validatedFields.data;
-  
-  let updateData: any = { name, email, role, status, notes, phone };
+  let userJsonData = { ...existingUser.data, name, notes, phone };
   
   if (password) {
-    updateData.password = await hashPassword(password);
+    userJsonData.password = await hashPassword(password);
   }
 
-  const { error } = await supabase.from('users').update(updateData).eq('id', id);
+  const { error } = await supabase.from('users').update({ email, role, status, data: userJsonData }).eq('id', id);
 
-  if (error) {
-    return { success: false, message: `Failed to update user profile: ${error.message}` };
-  }
+  if (error) return { success: false, message: `Failed to update user: ${error.message}` };
 
   revalidatePath('/dashboard?tab=users', 'page');
   revalidatePath(`/dashboard/edit-user/${id}`);
@@ -460,33 +592,27 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (!session) {
-    return { success: false, message: 'Unauthorized' };
-  }
+  if (!session) return { success: false, message: 'Unauthorized' };
   
-  const canUpdateOwn = hasPermission(session, 'user:update:own', { ownerId: session.id });
-  if (!canUpdateOwn) {
+  if (!hasPermission(session, 'user:update:own', { ownerId: session.id })) {
     return { success: false, message: 'You do not have permission to update your profile.'}
   }
 
   const validatedFields = UpdateProfileSchema.safeParse(data);
-  if (!validatedFields.success) {
-    return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
-  }
+  if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
 
-  const { name, email, password, notes, phone } = validatedFields.data;
+  const { data: existingUser, error: fetchError } = await supabase.from('users').select('data').eq('id', session.id).single();
+  if (fetchError || !existingUser) return { success: false, message: 'Could not find your user profile.' };
   
-  let updateData: any = { name, email, notes, phone };
+  const { name, email, password, notes, phone } = validatedFields.data;
+  let userJsonData = { ...existingUser.data, name, notes, phone };
 
   if (password) {
-    updateData.password = await hashPassword(password);
+    userJsonData.password = await hashPassword(password);
   }
 
-  const { error } = await supabase.from('users').update(updateData).eq('id', session.id);
-
-  if (error) {
-    return { success: false, message: `Failed to update profile: ${error.message}` };
-  }
+  const { error } = await supabase.from('users').update({ email, data: userJsonData }).eq('id', session.id);
+  if (error) return { success: false, message: `Failed to update profile: ${error.message}` };
   
   revalidatePath('/profile');
   revalidatePath('/', 'layout');
@@ -503,30 +629,19 @@ const ReviewSchema = z.object({
 export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>) {
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-
-    if (!session) {
-        return { success: false, message: 'You must be logged in to submit a review.' };
-    }
+    if (!session) return { success: false, message: 'You must be logged in to submit a review.' };
+    
+    if (!hasPermission(session, 'review:create:own')) return { success: false, message: 'Unauthorized action.'};
 
     const validatedFields = ReviewSchema.safeParse(data);
-    if (!validatedFields.success) {
-        return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
-    }
+    if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
 
     const { listingId, rating, comment } = validatedFields.data;
     
-    const { data: listing, error: fetchError } = await supabase
-        .from('listings')
-        .select('reviews')
-        .eq('id', listingId)
-        .single();
-    
-    if (fetchError || !listing) {
-        console.error(`[ADD_REVIEW_ACTION] Error fetching listing: ${fetchError?.message}`);
-        return { success: false, message: `Could not find the listing.` };
-    }
+    const { data: listing, error: fetchError } = await supabase.from('listings').select('data').eq('id', listingId).single();
+    if (fetchError || !listing) return { success: false, message: `Could not find the listing.` };
 
-    const reviews = (listing.reviews || []) as Review[];
+    const reviews = (listing.data.reviews || []) as Review[];
     const existingReviewIndex = reviews.findIndex(r => r.user_id === session.id);
 
     const newReviewData: Review = {
@@ -545,15 +660,8 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
         reviews.push(newReviewData);
     }
     
-    const { error: updateError } = await supabase
-        .from('listings')
-        .update({ reviews: reviews })
-        .eq('id', listingId);
-
-    if (updateError) {
-        console.error(`[ADD_REVIEW_ACTION] Error: ${updateError.message}`);
-        return { success: false, message: `Failed to submit review: ${updateError.message}` };
-    }
+    const { error: updateError } = await supabase.from('listings').update({ data: { ...listing.data, reviews: reviews } }).eq('id', listingId);
+    if (updateError) return { success: false, message: `Failed to submit review: ${updateError.message}` };
 
     revalidatePath(`/listing/${listingId}`);
     return { success: true, message: 'Your review has been submitted and is awaiting approval.' };
@@ -569,27 +677,15 @@ export async function approveReviewAction(data: z.infer<typeof ReviewActionSchem
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session || !hasPermission(session, 'review:approve')) {
-        return { success: false, message: 'Unauthorized action.' };
-    }
+    if (!session || !hasPermission(session, 'review:approve')) return { success: false, message: 'Unauthorized action.' };
+
     const { listingId, reviewId } = data;
+    const { data: listing, error: fetchError } = await supabase.from('listings').select('data').eq('id', listingId).single();
+    if (fetchError || !listing) return { success: false, message: 'Listing not found.' };
 
-    const { data: listing, error: fetchError } = await supabase
-        .from('listings')
-        .select('reviews')
-        .eq('id', listingId)
-        .single();
-
-    if (fetchError || !listing) {
-        return { success: false, message: 'Listing not found.' };
-    }
-
-    const reviews = (listing.reviews || []) as Review[];
+    const reviews = (listing.data.reviews || []) as Review[];
     const reviewIndex = reviews.findIndex(r => r.id === reviewId);
-
-    if (reviewIndex === -1) {
-        return { success: false, message: 'Review not found.' };
-    }
+    if (reviewIndex === -1) return { success: false, message: 'Review not found.' };
 
     reviews[reviewIndex].status = 'approved';
 
@@ -597,16 +693,11 @@ export async function approveReviewAction(data: z.infer<typeof ReviewActionSchem
     const newAverageRating = approvedReviews.length > 0
         ? approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length
         : 0;
+    
+    const updatedData = { ...listing.data, reviews: reviews, rating: newAverageRating };
 
-    const { error: updateError } = await supabase
-        .from('listings')
-        .update({ reviews: reviews, rating: newAverageRating })
-        .eq('id', listingId);
-
-    if (updateError) {
-        console.error(`[APPROVE_REVIEW_ACTION] Error: ${updateError.message}`);
-        return { success: false, message: `Failed to approve review: ${updateError.message}` };
-    }
+    const { error: updateError } = await supabase.from('listings').update({ data: updatedData }).eq('id', listingId);
+    if (updateError) return { success: false, message: `Failed to approve review: ${updateError.message}` };
 
     revalidatePath(`/listing/${listingId}`);
     return { success: true, message: 'Review approved successfully.' };
@@ -617,22 +708,13 @@ export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session || !hasPermission(session, 'review:delete')) {
-        return { success: false, message: 'Unauthorized action.' };
-    }
+    if (!session || !hasPermission(session, 'review:delete')) return { success: false, message: 'Unauthorized action.' };
+    
     const { listingId, reviewId } = data;
-
-    const { data: listing, error: fetchError } = await supabase
-        .from('listings')
-        .select('reviews')
-        .eq('id', listingId)
-        .single();
+    const { data: listing, error: fetchError } = await supabase.from('listings').select('data').eq('id', listingId).single();
+    if (fetchError || !listing) return { success: false, message: 'Listing not found.' };
     
-    if (fetchError || !listing) {
-        return { success: false, message: 'Listing not found.' };
-    }
-    
-    const reviews = (listing.reviews || []) as Review[];
+    const reviews = (listing.data.reviews || []) as Review[];
     const updatedReviews = reviews.filter(r => r.id !== reviewId);
     
     const approvedReviews = updatedReviews.filter(r => r.status === 'approved');
@@ -640,15 +722,10 @@ export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema
         ? approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length
         : 0;
 
-    const { error: updateError } = await supabase
-        .from('listings')
-        .update({ reviews: updatedReviews, rating: newAverageRating })
-        .eq('id', listingId);
+    const updatedData = { ...listing.data, reviews: updatedReviews, rating: newAverageRating };
 
-    if (updateError) {
-        console.error(`[DELETE_REVIEW_ACTION] Error: ${updateError.message}`);
-        return { success: false, message: `Failed to delete review: ${updateError.message}` };
-    }
+    const { error: updateError } = await supabase.from('listings').update({ data: updatedData }).eq('id', listingId);
+    if (updateError) return { success: false, message: `Failed to delete review: ${updateError.message}` };
 
     revalidatePath(`/listing/${listingId}`);
     return { success: true, message: 'Review deleted successfully.' };
@@ -667,59 +744,14 @@ export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStat
     return { success: false, message: 'Unauthorized' };
   }
 
-  const validatedFields = ToggleUserStatusSchema.safeParse(data);
-  if (!validatedFields.success) {
-    return { success: false, message: 'Invalid data provided.' };
-  }
-
-  const { userId, status } = validatedFields.data;
-
-  if (userId === session.id) {
-    return { success: false, message: "You cannot change your own status." };
-  }
+  const { userId, status } = ToggleUserStatusSchema.parse(data);
+  if (userId === session.id) return { success: false, message: "You cannot change your own status." };
   
   const { error } = await supabase.from('users').update({ status }).eq('id', userId);
-
-  if (error) {
-    return { success: false, message: `Database error: ${error.message}` };
-  }
+  if (error) return { success: false, message: `Database error: ${error.message}` };
 
   revalidatePath('/dashboard?tab=users', 'page');
   return { success: true, message: `User status has been updated to ${status}.` };
-}
-
-const MergeListingsSchema = z.object({
-  primaryListingId: z.string(),
-  listingIdsToMerge: z.array(z.string()).min(1, "At least one listing must be selected to merge."),
-});
-
-export async function mergeListingsAction(data: z.infer<typeof MergeListingsSchema>) {
-    await preloadPermissions();
-    const supabase = createSupabaseAdminClient();
-    const session = await getSession();
-    if (!session || !hasPermission(session, 'listing:merge')) {
-      return { success: false, message: 'Unauthorized' };
-    }
-  
-    const validatedFields = MergeListingsSchema.safeParse(data);
-    if (!validatedFields.success) {
-      return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
-    }
-  
-    const { primaryListingId, listingIdsToMerge } = validatedFields.data;
-  
-    const { error } = await supabase.rpc('merge_listings', {
-      p_primary_listing_id: primaryListingId,
-      p_listing_ids_to_merge: listingIdsToMerge
-    });
-  
-    if (error) {
-      console.error(`[MERGE_LISTINGS_ACTION] Error: ${error}`);
-      return { success: false, message: `Failed to merge listings: ${error.message}` };
-    }
-  
-    revalidatePath('/dashboard');
-    return { success: true, message: `${listingIdsToMerge.length} listing(s) were successfully merged.` };
 }
 
 const BulkDeleteListingsSchema = z.object({
@@ -734,19 +766,20 @@ export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteLi
         return { success: false, message: 'Unauthorized' };
     }
 
-    const validatedFields = BulkDeleteListingsSchema.safeParse(data);
-    if (!validatedFields.success) {
-        return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
-    }
-    
-    const { listingIds } = validatedFields.data;
+    const { listingIds } = BulkDeleteListingsSchema.parse(data);
 
-    const { error } = await supabase.rpc('bulk_delete_listings', { p_listing_ids: listingIds });
+    const { data: activeBookings, error: bookingCheckError } = await supabase
+      .from('bookings')
+      .select('listing_id')
+      .in('listing_id', listingIds)
+      .in('status', ['Pending', 'Confirmed'])
+      .limit(1);
 
-    if (error) {
-        console.error(`[BULK_DELETE_ACTION] Error: ${error}`);
-        return { success: false, message: `Failed to delete listings: ${error.message}` };
-    }
+    if(bookingCheckError) return { success: false, message: `DB Error: ${bookingCheckError.message}` };
+    if(activeBookings && activeBookings.length > 0) return { success: false, message: `One or more selected listings have active bookings. Please cancel them first.` };
+
+    const { error } = await supabase.from('listings').delete().in('id', listingIds);
+    if (error) return { success: false, message: `Failed to delete listings: ${error.message}` };
     
     revalidatePath('/dashboard');
     return { success: true, message: `${listingIds.length} listing(s) have been deleted.` };
@@ -781,36 +814,66 @@ export async function addBookingByAdminAction(data: z.infer<typeof AdminBookingF
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-
     if (!session || !hasPermission(session, 'booking:create')) {
         return { success: false, message: 'You do not have permission to create bookings.' };
     }
 
     const validatedFields = AdminBookingFormSchema.safeParse(data);
-    if (!validatedFields.success) {
-        return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
+    if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
+
+    const { listingId, dates, guests, numberOfUnits, isNewUser, newUserName, newUserEmail } = validatedFields.data;
+    let userId = validatedFields.data.userId;
+
+    if(isNewUser && newUserEmail && newUserName) {
+        const { data: existingUser } = await supabase.from('users').select('id').eq('email', newUserEmail).single();
+        if (existingUser) {
+            userId = existingUser.id;
+        } else {
+            const { data: newUser, error: createError } = await supabase.from('users').insert({
+                id: randomUUID(),
+                email: newUserEmail,
+                role: 'guest',
+                status: 'provisional',
+                data: { name: newUserName }
+            }).select('id').single();
+            if (createError || !newUser) return { success: false, message: `Could not create guest account: ${createError?.message}` };
+            userId = newUser.id;
+        }
     }
+    
+    if(!userId) return { success: false, message: 'User could not be identified or created.' };
+    
+    const { data: bookingUser, error: userFetchError } = await supabase.from('users').select('data').eq('id', userId).single();
+    if(userFetchError || !bookingUser) return { success: false, message: 'Could not fetch user details for booking.' };
 
-    const { listingId, dates, guests, numberOfUnits, isNewUser, newUserName, newUserEmail, userId } = validatedFields.data;
+    try {
+        const availableInventory = await findAvailableInventory(supabase, listingId, dates.from.toISOString(), (dates.to || dates.from).toISOString());
+        if (availableInventory.length < numberOfUnits) return { success: false, message: `Not enough units available. Only ${availableInventory.length} left.` };
+        
+        const inventoryToBook = availableInventory.slice(0, numberOfUnits);
+        
+        const bookingData = {
+          guests,
+          created_at: new Date().toISOString(),
+          status_message: `Booking created by staff member ${session.name}.`,
+          booking_name: bookingUser.data.name,
+        };
 
-    const { data: message, error } = await supabase.rpc('create_booking_with_inventory_check', {
-        p_listing_id: listingId,
-        p_user_id: userId,
-        p_start_date: dates.from.toISOString(),
-        p_end_date: (dates.to || dates.from).toISOString(),
-        p_guests: guests,
-        p_num_units: numberOfUnits,
-        p_guest_email: isNewUser ? newUserEmail : undefined,
-        p_guest_name: isNewUser ? newUserName : undefined,
-        p_creator_id: session.id,
-    });
+        const { error: createBookingError } = await supabase.from('bookings').insert({
+            listing_id: listingId,
+            user_id: userId,
+            inventory_ids: inventoryToBook,
+            start_date: dates.from.toISOString(),
+            end_date: (dates.to || dates.from).toISOString(),
+            status: 'Pending',
+            data: bookingData,
+        });
 
-    if (error) {
-        console.error(`[ADMIN_CREATE_BOOKING_ACTION] Error: ${error}`);
-        return { success: false, message: `Failed to create booking: ${error.message}` };
+        if (createBookingError) throw createBookingError;
+        
+        revalidatePath('/bookings');
+        redirect('/bookings');
+    } catch (e: any) {
+        return { success: false, message: e.message };
     }
-
-    revalidatePath('/bookings');
-    revalidatePath('/dashboard/add-booking');
-    redirect('/bookings');
 }

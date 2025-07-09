@@ -13,13 +13,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { deleteListingAction, toggleUserStatusAction, bulkDeleteListingsAction, mergeListingsAction } from '@/lib/actions';
+import { deleteListingAction, toggleUserStatusAction, bulkDeleteListingsAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 
 interface DashboardTablesProps {
@@ -74,8 +71,6 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
   
   const [selectedRowIds, setSelectedRowIds] = useState<Record<string, boolean>>({});
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
-  const [primaryListingId, setPrimaryListingId] = useState<string>('');
   
   const [userSearch, setUserSearch] = useState('');
   const [listingSearch, setListingSearch] = useState('');
@@ -84,7 +79,6 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
     if (!userSearch) return true;
     const searchTerm = userSearch.toLowerCase();
     
-    // Search across all string values of the user object
     return Object.values(user).some(value => {
       return typeof value === 'string' && value.toLowerCase().includes(searchTerm);
     });
@@ -97,32 +91,31 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
   });
 
   const selectedIds = Object.keys(selectedRowIds).filter((id) => selectedRowIds[id]);
-  const selectedListings = listings.filter(l => selectedIds.includes(l.id));
 
   const handleSelectAll = (checked: boolean) => {
-    const newSelected = { ...selectedRowIds };
-    filteredListings.forEach(l => {
-      if (checked) {
+    const newSelected: Record<string, boolean> = {};
+    if (checked) {
+      filteredListings.forEach(l => {
         newSelected[l.id] = true;
-      } else {
-        delete newSelected[l.id];
-      }
-    });
+      });
+    }
     setSelectedRowIds(newSelected);
   };
 
   const handleRowSelect = (id: string, checked: boolean) => {
-      setSelectedRowIds(prev => ({ ...prev, [id]: checked }));
+      setSelectedRowIds(prev => {
+        const newSelected = { ...prev };
+        if (checked) {
+            newSelected[id] = true;
+        } else {
+            delete newSelected[id];
+        }
+        return newSelected;
+      });
   };
 
   const clearSelection = () => setSelectedRowIds({});
 
-  const handleOpenMergeDialog = () => {
-      if (selectedIds.length > 0) {
-          setPrimaryListingId(selectedIds[0]);
-          setIsMergeDialogOpen(true);
-      }
-  };
 
   const handleDeleteListing = () => {
     if (!listingToDelete) return;
@@ -155,24 +148,6 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
             toast({ title: "Error", description: result.message, variant: "destructive" });
         }
         setIsDeleteDialogOpen(false);
-    });
-  }
-
-  const handleMerge = () => {
-    const listingIdsToMerge = selectedIds.filter(id => id !== primaryListingId);
-    if (!primaryListingId || listingIdsToMerge.length === 0) {
-        toast({ title: "Merge Error", description: "You must select a primary listing and at least one other listing to merge.", variant: "destructive" });
-        return;
-    }
-    startBulkActionTransition(async () => {
-        const result = await mergeListingsAction({ primaryListingId, listingIdsToMerge });
-        if(result.success) {
-            toast({ title: "Success", description: result.message });
-            clearSelection();
-        } else {
-            toast({ title: "Error", description: result.message, variant: "destructive" });
-        }
-        setIsMergeDialogOpen(false);
     });
   }
 
@@ -224,10 +199,6 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                       <span className="text-sm font-medium">{selectedIds.length} selected</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={handleOpenMergeDialog} disabled={selectedIds.length < 2 || isBulkActionPending}>
-                            <Merge className="mr-2 h-4 w-4" />
-                            Merge
-                        </Button>
                         <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)} disabled={isBulkActionPending}>
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete
@@ -442,35 +413,6 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Merge Dialog */}
-      <Dialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Merge {selectedIds.length} Listings</DialogTitle>
-                <DialogDescription>
-                    Select a primary listing to merge the others into. Data like images, features, reviews, and inventory will be combined. Other details (name, price, etc.) will be taken from the primary listing. This action cannot be undone.
-                </DialogDescription>
-            </DialogHeader>
-            <RadioGroup value={primaryListingId} onValueChange={setPrimaryListingId} className="space-y-2 max-h-60 overflow-y-auto p-1">
-                {selectedListings.map((listing) => (
-                    <Label key={listing.id} htmlFor={listing.id} className="flex items-center gap-4 p-3 border rounded-md has-[:checked]:bg-muted has-[:checked]:border-primary transition-all cursor-pointer">
-                        <RadioGroupItem value={listing.id} id={listing.id} />
-                        <div>
-                            <p className="font-semibold">{listing.name}</p>
-                            <p className="text-sm text-muted-foreground">{listing.location}</p>
-                        </div>
-                    </Label>
-                ))}
-            </RadioGroup>
-            <DialogFooter>
-                <Button variant="ghost" onClick={() => setIsMergeDialogOpen(false)} disabled={isBulkActionPending}>Cancel</Button>
-                <Button onClick={handleMerge} disabled={isBulkActionPending || !primaryListingId}>
-                    {isBulkActionPending ? "Merging..." : `Merge into "${selectedListings.find(l => l.id === primaryListingId)?.name}"`}
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

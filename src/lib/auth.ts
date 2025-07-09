@@ -2,7 +2,7 @@
 'use server'
 
 import { z } from 'zod';
-import { createSupabaseServerClient, createSupabaseAdminClient } from './supabase';
+import { createSupabaseAdminClient } from './supabase';
 import { verifyPassword, hashPassword } from './password';
 import { createSession } from './session';
 import { randomUUID } from 'crypto';
@@ -23,15 +23,20 @@ export async function loginAction(formData: z.infer<typeof LoginSchema>) {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, password, status, role')
+    .select('id, status, role, data')
     .eq('email', email)
     .single();
     
-  if (error || !user) {
+  if (error || !user || !user.data) {
     return { error: "Incorrect email or password." };
   }
 
-  const isPasswordValid = await verifyPassword(user.password, password);
+  const userData = user.data as { password?: string };
+  if (!userData.password) {
+    return { error: "Account not fully set up. Please sign up." };
+  }
+
+  const isPasswordValid = await verifyPassword(userData.password, password);
   if (!isPasswordValid) {
     return { error: "Incorrect email or password." };
   }
@@ -61,18 +66,20 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
 
     const { name, email, password } = validatedFields.data;
 
-    const { data: existingUser } = await supabase.from('users').select('id, status').eq('email', email).single();
+    const { data: existingUser } = await supabase.from('users').select('id, status, data').eq('email', email).single();
     
     const hashedPassword = await hashPassword(password);
     let userId: string;
 
     if (existingUser) {
-        // If user exists and is provisional (e.g., from a guest booking), update them to active.
         if (existingUser.status === 'provisional') {
             const { data: updatedUser, error: updateError } = await supabase.from('users').update({
-                password: hashedPassword,
                 status: 'active',
-                name: name,
+                data: {
+                  ...existingUser.data,
+                  name: name,
+                  password: hashedPassword,
+                }
             }).eq('id', existingUser.id).select('id').single();
 
             if (updateError || !updatedUser) {
@@ -83,15 +90,13 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
             return { error: "A user with this email already exists." };
         }
     } else {
-        // Create a new user if they don't exist at all
         const newUserId = randomUUID();
         const { error: insertError } = await supabase.from('users').insert({
             id: newUserId,
-            name,
             email,
-            password: hashedPassword,
             status: 'active',
             role: 'guest',
+            data: { name, password: hashedPassword }
         });
 
         if (insertError) {
