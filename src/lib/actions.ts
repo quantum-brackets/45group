@@ -5,9 +5,39 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession } from './session'
 import { redirect } from 'next/navigation'
-import { createSupabaseAdminClient, createSupabaseServerClient } from './supabase'
+import { createSupabaseAdminClient } from './supabase'
 import { hashPassword } from './password'
 import { logout as sessionLogout } from './session'
+import { hasPermission, preloadPermissions } from './permissions'
+import type { Booking, Listing, ListingInventory, Permission, Role, Review, User } from './types'
+import { randomUUID } from 'crypto'
+
+
+export async function updatePermissionsAction(permissions: Record<Role, Permission[]>) {
+    await preloadPermissions();
+    const session = await getSession();
+    if (!session || !hasPermission(session, 'permissions:update')) {
+      return { success: false, message: 'Unauthorized' };
+    }
+  
+    const supabase = createSupabaseAdminClient();
+    
+    const updates = Object.entries(permissions).map(([role, perms]) => ({
+      role: role,
+      permissions: perms
+    }));
+
+    const { error } = await supabase.from('role_permissions').upsert(updates);
+  
+    if (error) {
+      console.error('Error saving permissions:', error);
+      return { success: false, message: `Failed to save permissions: ${error.message}` };
+    }
+  
+    revalidatePath('/dashboard/permissions');
+    return { success: true, message: 'Permissions updated successfully.' };
+  }
+
 
 const ListingFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -25,9 +55,10 @@ const ListingFormSchema = z.object({
 
 
 export async function createListingAction(data: z.infer<typeof ListingFormSchema>) {
+    await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (session?.role !== 'admin') {
+    if (!session || !hasPermission(session, 'listing:create')) {
         return { success: false, message: 'Unauthorized' };
     }
 
@@ -62,9 +93,10 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
 }
 
 export async function updateListingAction(id: string, data: z.infer<typeof ListingFormSchema>) {
+  await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (session?.role !== 'admin') {
+  if (!session || !hasPermission(session, 'listing:update')) {
     return { success: false, message: 'Unauthorized' };
   }
   
@@ -107,9 +139,10 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
 }
 
 export async function deleteListingAction(id: string) {
+  await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (session?.role !== 'admin') {
+  if (!session || !hasPermission(session, 'listing:delete')) {
     return { success: false, message: 'Unauthorized' };
   }
 
@@ -136,8 +169,20 @@ const CreateBookingSchema = z.object({
 });
 
 export async function createBookingAction(data: z.infer<typeof CreateBookingSchema>) {
+  await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
+
+  const canCreateForOwn = hasPermission(session, 'booking:create:own');
+  const canCreateForAny = hasPermission(session, 'booking:create');
+  
+  if (!session && !data.guestEmail) {
+    return { success: false, message: "You must be logged in to book."}
+  }
+
+  if (session && !canCreateForOwn && !canCreateForAny) {
+    return { success: false, message: 'You do not have permission to create bookings.' };
+  }
 
   const validatedFields = CreateBookingSchema.safeParse(data);
   if (!validatedFields.success) {
@@ -153,10 +198,6 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     }
   }
 
-  if (session?.role === 'staff') {
-    return { success: false, message: 'Staff accounts cannot create new bookings.' };
-  }
-
   const { listingId, startDate, endDate, guests, numberOfUnits, guestEmail } = validatedFields.data;
   
   const { data: message, error } = await supabase.rpc('create_booking_with_inventory_check', {
@@ -166,7 +207,8 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     p_end_date: new Date(endDate).toISOString(),
     p_guests: guests,
     p_num_units: numberOfUnits,
-    p_guest_email: guestEmail
+    p_guest_email: guestEmail,
+    p_creator_id: session?.id || null
   });
 
   if (error) {
@@ -189,6 +231,7 @@ const UpdateBookingSchema = z.object({
 });
 
 export async function updateBookingAction(data: z.infer<typeof UpdateBookingSchema>) {
+    await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session) {
@@ -201,6 +244,15 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     }
 
     const { bookingId, startDate, endDate, guests, numberOfUnits } = validatedFields.data;
+
+    const { data: booking } = await supabase.from('bookings').select('user_id').eq('id', bookingId).single();
+
+    const canUpdateOwn = hasPermission(session, 'booking:update:own', { ownerId: booking?.user_id });
+    const canUpdateAny = hasPermission(session, 'booking:update');
+
+    if (!canUpdateOwn && !canUpdateAny) {
+      return { success: false, message: 'You do not have permission to update this booking.' };
+    }
 
     const { error } = await supabase.rpc('update_booking_with_inventory_check', {
         p_booking_id: bookingId,
@@ -233,7 +285,8 @@ const BookingActionSchema = z.object({
 });
 
 export async function cancelBookingAction(data: z.infer<typeof BookingActionSchema>) {
-  const supabase = createSupabaseServerClient();
+  await preloadPermissions();
+  const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (!session) {
     return { error: 'Unauthorized' };
@@ -251,12 +304,11 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
   if (fetchError || !booking) {
     return { error: 'Booking not found.' };
   }
+
+  const canCancelOwn = hasPermission(session, 'booking:cancel:own', { ownerId: booking.user_id });
+  const canCancelAny = hasPermission(session, 'booking:cancel');
   
-  if (session.role === 'staff') {
-      return { error: 'You do not have permission to cancel this booking.' };
-  }
-  
-  if (session.role !== 'admin' && booking.user_id !== session.id) {
+  if (!canCancelOwn && !canCancelAny) {
     return { error: 'You do not have permission to cancel this booking.' };
   }
 
@@ -278,9 +330,10 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
 }
 
 export async function confirmBookingAction(data: z.infer<typeof BookingActionSchema>) {
+    await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (session?.role !== 'admin') {
+    if (!session || !hasPermission(session, 'booking:confirm')) {
       return { error: 'Unauthorized: Only administrators can confirm bookings.' };
     }
   
@@ -319,9 +372,10 @@ const UserFormSchema = z.object({
 });
 
 export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
+  await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (session?.role !== 'admin') {
+  if (!session || !hasPermission(session, 'user:create')) {
     return { success: false, message: 'Unauthorized' };
   }
 
@@ -362,9 +416,10 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
 }
 
 export async function updateUserAction(id: string, data: z.infer<typeof UserFormSchema>) {
+  await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (session?.role !== 'admin') {
+  if (!session || !hasPermission(session, 'user:update')) {
     return { success: false, message: 'Unauthorized' };
   }
 
@@ -402,10 +457,16 @@ const UpdateProfileSchema = z.object({
 });
 
 export async function updateUserProfileAction(data: z.infer<typeof UpdateProfileSchema>) {
-  const supabase = createSupabaseServerClient();
+  await preloadPermissions();
+  const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (!session) {
     return { success: false, message: 'Unauthorized' };
+  }
+  
+  const canUpdateOwn = hasPermission(session, 'user:update:own', { ownerId: session.id });
+  if (!canUpdateOwn) {
+    return { success: false, message: 'You do not have permission to update your profile.'}
   }
 
   const validatedFields = UpdateProfileSchema.safeParse(data);
@@ -440,10 +501,12 @@ const ReviewSchema = z.object({
 });
 
 export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>) {
+    await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session) {
-        return { success: false, message: 'You must be logged in to submit a review.' };
+
+    if (!session || !hasPermission(session, 'review:create:own')) {
+        return { success: false, message: 'You do not have permission to submit a review.' };
     }
 
     const validatedFields = ReviewSchema.safeParse(data);
@@ -453,18 +516,44 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
 
     const { listingId, rating, comment } = validatedFields.data;
     
-    const { error } = await supabase.rpc('add_or_update_review', {
-        p_listing_id: listingId,
-        p_user_id: session.id,
-        p_author_name: session.name,
-        p_avatar_url: `https://avatar.vercel.sh/${session.email}.png`,
-        p_rating: rating,
-        p_comment: comment
-    });
+    const { data: listing, error: fetchError } = await supabase
+        .from('listings')
+        .select('reviews')
+        .eq('id', listingId)
+        .single();
+    
+    if (fetchError || !listing) {
+        console.error(`[ADD_REVIEW_ACTION] Error fetching listing: ${fetchError?.message}`);
+        return { success: false, message: `Could not find the listing.` };
+    }
 
-    if (error) {
-        console.error(`[ADD_REVIEW_ACTION] Error: ${error}`);
-        return { success: false, message: `Failed to submit review: ${error.message}` };
+    const reviews = (listing.reviews || []) as Review[];
+    const existingReviewIndex = reviews.findIndex(r => r.user_id === session.id);
+
+    const newReviewData: Review = {
+        id: existingReviewIndex > -1 ? reviews[existingReviewIndex].id : randomUUID(),
+        user_id: session.id,
+        author: session.name,
+        avatar: `https://avatar.vercel.sh/${session.email}.png`,
+        rating: rating,
+        comment: comment,
+        status: 'pending',
+    };
+
+    if (existingReviewIndex > -1) {
+        reviews[existingReviewIndex] = newReviewData;
+    } else {
+        reviews.push(newReviewData);
+    }
+    
+    const { error: updateError } = await supabase
+        .from('listings')
+        .update({ reviews: reviews }) // Only update the reviews array
+        .eq('id', listingId);
+
+    if (updateError) {
+        console.error(`[ADD_REVIEW_ACTION] Error: ${updateError.message}`);
+        return { success: false, message: `Failed to submit review: ${updateError.message}` };
     }
 
     revalidatePath(`/listing/${listingId}`);
@@ -478,9 +567,10 @@ const ReviewActionSchema = z.object({
 });
 
 export async function approveReviewAction(data: z.infer<typeof ReviewActionSchema>) {
+    await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (session?.role !== 'admin') {
+    if (!session || !hasPermission(session, 'review:approve')) {
         return { success: false, message: 'Unauthorized action.' };
     }
     const { listingId, reviewId } = data;
@@ -501,9 +591,10 @@ export async function approveReviewAction(data: z.infer<typeof ReviewActionSchem
 
 
 export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema>) {
+    await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (session?.role !== 'admin') {
+    if (!session || !hasPermission(session, 'review:delete')) {
         return { success: false, message: 'Unauthorized action.' };
     }
     const { listingId, reviewId } = data;
@@ -528,9 +619,10 @@ const ToggleUserStatusSchema = z.object({
 });
 
 export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStatusSchema>) {
+  await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (session?.role !== 'admin') {
+  if (!session || !hasPermission(session, 'user:update')) {
     return { success: false, message: 'Unauthorized' };
   }
 
@@ -561,9 +653,10 @@ const MergeListingsSchema = z.object({
 });
 
 export async function mergeListingsAction(data: z.infer<typeof MergeListingsSchema>) {
+    await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (session?.role !== 'admin') {
+    if (!session || !hasPermission(session, 'listing:merge')) {
       return { success: false, message: 'Unauthorized' };
     }
   
@@ -593,9 +686,10 @@ const BulkDeleteListingsSchema = z.object({
 });
 
 export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteListingsSchema>) {
+    await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (session?.role !== 'admin') {
+    if (!session || !hasPermission(session, 'listing:delete')) {
         return { success: false, message: 'Unauthorized' };
     }
 
@@ -615,4 +709,67 @@ export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteLi
     
     revalidatePath('/dashboard');
     return { success: true, message: `${listingIds.length} listing(s) have been deleted.` };
+}
+
+
+const AdminBookingFormSchema = z.object({
+    listingId: z.string().min(1, 'Please select a venue.'),
+    userId: z.string().optional(),
+    isNewUser: z.boolean().optional(),
+    newUserName: z.string().optional(),
+    newUserEmail: z.string().optional(),
+    dates: z.object({
+      from: z.date({ required_error: "A start date is required." }),
+      to: z.date().optional(),
+    }).refine(data => !!data.from, { message: "Start date is required" }),
+    guests: z.coerce.number().int().min(1, "At least one guest is required."),
+    numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
+  }).refine(data => {
+    return data.isNewUser ? data.newUserName && data.newUserEmail : data.userId;
+  }, {
+    message: "Either select an existing user or provide details for a new user.",
+    path: ['userId'],
+  }).refine(data => {
+    return !data.isNewUser || (data.isNewUser && z.string().email().safeParse(data.newUserEmail).success);
+  }, {
+    message: "A valid email is required for new users.",
+    path: ['newUserEmail'],
+  });
+
+export async function addBookingByAdminAction(data: z.infer<typeof AdminBookingFormSchema>) {
+    await preloadPermissions();
+    const supabase = createSupabaseAdminClient();
+    const session = await getSession();
+
+    if (!session || !hasPermission(session, 'booking:create')) {
+        return { success: false, message: 'You do not have permission to create bookings.' };
+    }
+
+    const validatedFields = AdminBookingFormSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
+    }
+
+    const { listingId, dates, guests, numberOfUnits, isNewUser, newUserName, newUserEmail, userId } = validatedFields.data;
+
+    const { data: message, error } = await supabase.rpc('create_booking_with_inventory_check', {
+        p_listing_id: listingId,
+        p_user_id: userId,
+        p_start_date: dates.from.toISOString(),
+        p_end_date: (dates.to || dates.from).toISOString(),
+        p_guests: guests,
+        p_num_units: numberOfUnits,
+        p_guest_email: isNewUser ? newUserEmail : undefined,
+        p_guest_name: isNewUser ? newUserName : undefined,
+        p_creator_id: session.id,
+    });
+
+    if (error) {
+        console.error(`[ADMIN_CREATE_BOOKING_ACTION] Error: ${error}`);
+        return { success: false, message: `Failed to create booking: ${error.message}` };
+    }
+
+    revalidatePath('/bookings');
+    revalidatePath('/dashboard/add-booking');
+    redirect('/bookings');
 }
