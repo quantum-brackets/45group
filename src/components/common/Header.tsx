@@ -60,7 +60,6 @@ export function Header({ session }: { session: User | null }) {
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">
             <img src="/icon.svg" alt="Hospitality Logo" className="h-6 w-6" />
-            <span className="font-headline">Hospitality</span>
           </Link>
         </div>
 
@@ -130,7 +129,6 @@ export function Header({ session }: { session: User | null }) {
                 <nav className="grid gap-6 text-lg font-medium">
                     <Link href="/" className="flex items-center gap-2 font-bold text-lg mb-4">
                       <img src="/icon.svg" alt="Hospitality Logo" className="h-6 w-6" />
-                      <span className="font-headline">Hospitality</span>
                     </Link>
                     {visibleNavLinks.map((link) => (
                       link.href.startsWith('/dashboard') ? (

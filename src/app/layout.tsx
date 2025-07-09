@@ -9,7 +9,7 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Hospitality',
+    default: 'Hospitality | 45 Group',
     template: '%s | Hospitality',
   },
   description: 'Book hotels, event venues, and restaurants.',
