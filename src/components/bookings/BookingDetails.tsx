@@ -196,11 +196,9 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
             )}
         </div>
         </CardContent>
-        <CardFooter className="flex justify-between items-center bg-muted/50 p-4 border-t">
-            <div>
-                <BackButton />
-            </div>
-            <div className="flex items-center gap-2">
+        <CardFooter className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-4 bg-muted/50 p-4 border-t">
+            <BackButton />
+            <div className="flex flex-wrap justify-end items-center gap-2">
                 {canEdit && isActionable && (
                     <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} disabled={isAnyActionPending}>
                         <Edit className="mr-2 h-4 w-4" />

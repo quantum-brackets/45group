@@ -38,27 +38,28 @@ type FormValues = z.infer<typeof formSchema>;
 interface ListingFormProps {
   listing?: Listing | null;
   initialInventoryCount?: number;
+  isDuplicate?: boolean;
 }
 
 
-export function ListingForm({ listing, initialInventoryCount = 1 }: ListingFormProps) {
+export function ListingForm({ listing, initialInventoryCount = 1, isDuplicate = false }: ListingFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const isEditMode = !!listing;
+  const isEditMode = !!listing && !isDuplicate;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: listing?.name || "",
+      name: listing?.name ? (isDuplicate ? `${listing.name} (Copy)`: listing.name) : "",
       type: listing?.type || undefined,
       location: listing?.location || "",
       description: listing?.description || "",
       price: listing?.price || 0,
       price_unit: listing?.price_unit || undefined,
       currency: listing?.currency || 'NGN',
-      max_guests: listing?.max_guests || 1,
+      max_guests: listing?.maxGuests || 1,
       features: (Array.isArray(listing?.features) ? listing.features.join(', ') : listing?.features) || "",
       images: (listing?.images && listing.images.length > 0) ? listing.images : ["https://placehold.co/800x600.png"],
       inventory_count: isEditMode ? initialInventoryCount : 1,
@@ -82,6 +83,7 @@ export function ListingForm({ listing, initialInventoryCount = 1 }: ListingFormP
           description: result.message,
         });
         router.push('/dashboard?tab=listings');
+        router.refresh();
       } else {
         toast({
           title: `Error ${isEditMode ? 'updating' : 'creating'} listing`,
@@ -94,11 +96,13 @@ export function ListingForm({ listing, initialInventoryCount = 1 }: ListingFormP
 
   const getTitle = () => {
     if (isEditMode) return 'Edit Listing';
+    if (isDuplicate) return 'Duplicate Listing';
     return 'Add New Listing';
   }
 
   const getDescription = () => {
     if (isEditMode) return `Update the information for ${listing!.name}.`;
+    if (isDuplicate) return `Create a new listing based on ${listing!.name}.`;
     return "Fill in the details to create a new listing.";
   }
 
@@ -302,7 +306,7 @@ export function ListingForm({ listing, initialInventoryCount = 1 }: ListingFormP
                 <FormLabel>Images</FormLabel>
                 <div className="space-y-4">
                   {fields.map((field, index) => (
-                    <div key={field.id} className="flex items-center gap-2 sm:gap-4 p-2 border rounded-md bg-muted/20">
+                    <div key={field.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-2 border rounded-md bg-muted/20">
                       <img
                           src={form.watch(`images.${index}`) || 'https://placehold.co/100x100.png'}
                           alt={`Preview ${index + 1}`}
@@ -311,7 +315,7 @@ export function ListingForm({ listing, initialInventoryCount = 1 }: ListingFormP
                           className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-md bg-muted"
                           onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/100x100.png'; }}
                       />
-                      <div className="flex-grow">
+                      <div className="flex-grow w-full">
                         <FormField
                           control={form.control}
                           name={`images.${index}`}
@@ -354,7 +358,7 @@ export function ListingForm({ listing, initialInventoryCount = 1 }: ListingFormP
               <BackButton disabled={isPending} />
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditMode ? 'Save Changes' : 'Create Listing'}
+                {isEditMode ? 'Save Changes' : isDuplicate ? 'Create Duplicate' : 'Create Listing'}
               </Button>
             </CardFooter>
           </form>

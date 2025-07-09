@@ -63,7 +63,7 @@ export default async function HomePage() {
             or assist in making reservations at the finest restaurants
             in the area to enhance your dining experience.
           </p>
-          <div className="flex flex-row justify-center gap-8 py-4">
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-8 py-4">
             <div className="flex flex-col items-center gap-2">
               <b>Email</b>
               <a href="mailto:info@45group.org">info@45group.org</a>
