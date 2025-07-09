@@ -153,6 +153,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
   }
 
   const isAdmin = session?.role === 'admin';
+  const isStaff = session?.role === 'staff';
   const isAllSelected = selectedIds.length === listings.length && listings.length > 0;
   const isSomeSelected = selectedIds.length > 0 && selectedIds.length < listings.length;
 
@@ -325,10 +326,10 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                                 <UserStatusSwitch user={user} isCurrentUser={user.id === session?.id} disabled={!isAdmin} />
                               </TableCell>
                               <TableCell className="text-right">
-                                  {isAdmin && (
+                                  {(isAdmin || isStaff) && (
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" className="h-8 w-8 p-0" disabled={user.id === session?.id}>
+                                            <Button variant="ghost" className="h-8 w-8 p-0" disabled={isAdmin && user.id === session?.id}>
                                                 <span className="sr-only">Open menu</span>
                                                 <MoreHorizontal className="h-4 w-4" />
                                             </Button>
@@ -336,10 +337,14 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                             <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-user/${user.id}`)}>
-                                                Edit User
+                                                {isAdmin ? 'Edit User' : 'View User'}
                                             </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem className="text-destructive" disabled={user.id === session?.id}>Delete User</DropdownMenuItem>
+                                            {isAdmin && (
+                                                <>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem className="text-destructive" disabled={user.id === session?.id}>Delete User</DropdownMenuItem>
+                                                </>
+                                            )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                   )}
