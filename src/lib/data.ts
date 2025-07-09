@@ -28,7 +28,8 @@ export async function getAllUsers(): Promise<User[]> {
     
     const { data: users, error } = await supabase
         .from('users')
-        .select('id, name, email, role, status, notes, phone');
+        .select('id, name, email, role, status, notes, phone')
+        .order('name', { ascending: true });
 
     if (error) {
         console.error("Error fetching all users:", error);
