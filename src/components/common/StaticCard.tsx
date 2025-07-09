@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -24,20 +25,24 @@ export default function StaticCard({ name, images, link }: Props) {
       .join("|");
   }, [images]);
 
-  const timeoutRef = useRef<NodeJS.Timeout>();
-  if (!timeoutRef.current) {
-    timeoutRef.current = setTimeout(() => {
-      timeoutRef.current = undefined;
-      setImageIdx((prev) => (prev + 1));
-    }, 3000);
-  }
-
   const carouselRef = useRef<CarouselStackElement | null>(null);
 
+  // Set up the auto-play timer for the carousel
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const timer = setTimeout(() => {
+      setImageIdx((prev) => (prev + 1) % images.length);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [imageIdx, images.length]);
+
+  // Manually set attributes on the custom element to avoid React property conflicts
   useEffect(() => {
     if (carouselRef.current) {
+      carouselRef.current.setAttribute('images', imageSources);
+      
       const shadowRoot = carouselRef.current.shadowRoot;
-      if (shadowRoot) {
+      if (shadowRoot && !shadowRoot.querySelector('style')) {
         const style = document.createElement("style");
         style.textContent = `
           div {
@@ -53,12 +58,11 @@ export default function StaticCard({ name, images, link }: Props) {
         shadowRoot.appendChild(style);
       }
     }
-  }, []);
+  }, [imageSources]);
 
   return (
     <Link href={link} className="flex flex-col items-center gap-12 tablet_768:gap-8">
       <carousel-stack
-        images={imageSources}
         ref={carouselRef}
         id="carousel"
         style={{
