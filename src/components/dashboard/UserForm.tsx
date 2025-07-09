@@ -214,7 +214,7 @@ export function UserForm({ user }: UserFormProps) {
               name="notes"
               render={({ field }) => (
                   <FormItem>
-                      <FormLabel>Admin Notes</FormLabel>
+                      <FormLabel>Notes</FormLabel>
                       <FormControl>
                           <Textarea
                               placeholder="Internal notes about the user..."

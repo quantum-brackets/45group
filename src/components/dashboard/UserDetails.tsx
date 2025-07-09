@@ -68,7 +68,7 @@ export function UserDetails({ user }: UserDetailsProps) {
                      <div className="flex items-start gap-3 pt-4 border-t">
                         <FileText className="h-5 w-5 text-muted-foreground mt-1" />
                         <div>
-                            <p className="font-semibold text-sm">Admin Notes</p>
+                            <p className="font-semibold text-sm">Notes</p>
                             <p className="text-muted-foreground whitespace-pre-wrap">{user.notes || 'No notes available.'}</p>
                         </div>
                     </div>
