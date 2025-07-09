@@ -4,7 +4,7 @@
 import { useState, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, Users, List, PlusCircle, Trash2, AlertCircle, Warehouse, Merge, X } from 'lucide-react';
+import { MoreHorizontal, Users, List, PlusCircle, Trash2, AlertCircle, Warehouse, Merge, X, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
@@ -20,6 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 interface DashboardTablesProps {
   listings: Listing[];
@@ -75,9 +76,24 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
   const [primaryListingId, setPrimaryListingId] = useState<string>('');
+  
+  const [userSearch, setUserSearch] = useState('');
 
   const selectedIds = Object.keys(selectedRowIds).filter((id) => selectedRowIds[id]);
   const selectedListings = listings.filter(l => selectedIds.includes(l.id));
+
+  const filteredUsers = users.filter(user => {
+    const searchTerm = userSearch.toLowerCase();
+    // Check against all relevant fields, handling optional fields gracefully
+    return (
+      user.name.toLowerCase().includes(searchTerm) ||
+      user.email.toLowerCase().includes(searchTerm) ||
+      user.role.toLowerCase().includes(searchTerm) ||
+      user.status.toLowerCase().includes(searchTerm) ||
+      (user.phone && user.phone.toLowerCase().includes(searchTerm)) ||
+      (user.notes && user.notes.toLowerCase().includes(searchTerm))
+    );
+  });
 
   const handleSelectAll = (checked: boolean) => {
     const newSelectedRows: Record<string, boolean> = {};
@@ -302,6 +318,17 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
               )}
             </CardHeader>
             <CardContent>
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Filter users by name, email, role..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    className="w-full max-w-sm pl-10"
+                  />
+                </div>
+              </div>
               <Table>
                   <TableHeader>
                       <TableRow>
@@ -313,7 +340,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                       </TableRow>
                   </TableHeader>
                   <TableBody>
-                      {users.map((user) => (
+                      {filteredUsers.map((user) => (
                           <TableRow key={user.id}>
                               <TableCell className="font-medium">{user.name}</TableCell>
                               <TableCell className="hidden sm:table-cell">{user.email}</TableCell>
