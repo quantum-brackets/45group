@@ -83,16 +83,13 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
   const selectedListings = listings.filter(l => selectedIds.includes(l.id));
 
   const filteredUsers = users.filter(user => {
+    if (!userSearch) return true;
     const searchTerm = userSearch.toLowerCase();
-    // Check against all relevant fields, handling optional fields gracefully
-    return (
-      user.name.toLowerCase().includes(searchTerm) ||
-      user.email.toLowerCase().includes(searchTerm) ||
-      user.role.toLowerCase().includes(searchTerm) ||
-      user.status.toLowerCase().includes(searchTerm) ||
-      (user.phone && user.phone.toLowerCase().includes(searchTerm)) ||
-      (user.notes && user.notes.toLowerCase().includes(searchTerm))
-    );
+    
+    // Search across all string values of the user object
+    return Object.values(user).some(value => {
+      return typeof value === 'string' && value.toLowerCase().includes(searchTerm);
+    });
   });
 
   const handleSelectAll = (checked: boolean) => {
