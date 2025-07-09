@@ -300,11 +300,16 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
         </TabsContent>
         <TabsContent value="users">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Manage Users</CardTitle>
-                <CardDescription>View, create, and manage user accounts.</CardDescription>
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+               <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Filter users by name, email, role..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    className="w-full max-w-sm pl-10"
+                  />
+                </div>
               {isAdmin && (
                 <Button asChild>
                   <Link href="/dashboard/add-user">
@@ -315,17 +320,6 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
               )}
             </CardHeader>
             <CardContent>
-              <div className="mb-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Filter users by name, email, role..."
-                    value={userSearch}
-                    onChange={(e) => setUserSearch(e.target.value)}
-                    className="w-full max-w-sm pl-10"
-                  />
-                </div>
-              </div>
               <Table>
                   <TableHeader>
                       <TableRow>
