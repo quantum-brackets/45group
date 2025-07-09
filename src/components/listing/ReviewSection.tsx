@@ -72,7 +72,6 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
 
   const isAdmin = session?.role === 'admin';
   const approvedReviews = reviews.filter(review => review.status === 'approved');
-  const reviewsToDisplay = isAdmin ? reviews.sort((a,b) => (a.status === 'pending' ? -1 : 1)) : approvedReviews;
   const reviewCount = approvedReviews.length;
   const currentUserReview = reviews.find(review => review.user_id === session?.id);
   
@@ -83,6 +82,16 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
       comment: currentUserReview?.comment || '',
     }
   });
+
+  const reviewsToDisplay = isAdmin 
+    ? [...reviews].sort((a, b) => {
+        const aIsApproved = a.status === 'approved';
+        const bIsApproved = b.status === 'approved';
+        if (!aIsApproved && bIsApproved) return -1;
+        if (aIsApproved && !bIsApproved) return 1;
+        return 0;
+      })
+    : approvedReviews;
 
   const onSubmit = (data: ReviewFormValues) => {
     startTransition(async () => {
@@ -204,7 +213,7 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
                     </div>
                     {isAdmin && (
                         <Badge variant={review.status === 'approved' ? 'default' : 'secondary'} className={review.status === 'approved' ? 'bg-accent text-accent-foreground' : ''}>
-                            {review.status}
+                            {review.status || 'pending'}
                         </Badge>
                     )}
                   </div>
@@ -212,7 +221,7 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
                 </div>
                 {isAdmin && (
                     <div className="flex items-center gap-2 mt-2 sm:mt-0 self-end sm:self-start">
-                        {review.status === 'pending' && (
+                        {review.status !== 'approved' && (
                             <Button size="sm" variant="outline" onClick={() => handleApprove(review.id)} disabled={adminActionPending}>
                                 {adminActionPending ? <Loader2 className="mr-0 sm:mr-2 h-4 w-4 animate-spin"/> : <Check className="mr-0 sm:mr-2 h-4 w-4"/>}
                                 <span className="hidden sm:inline">Approve</span>
