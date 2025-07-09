@@ -218,7 +218,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                     )}
                     <TableHead>Name</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Location</TableHead>
+                    <TableHead className="hidden md:table-cell">Location</TableHead>
                     <TableHead>Inventory</TableHead>
                     <TableHead className="text-right">Price</TableHead>
                     <TableHead><span className="sr-only">Actions</span></TableHead>
@@ -238,14 +238,14 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                       )}
                       <TableCell className="font-medium">{listing.name}</TableCell>
                       <TableCell>{listing.type.charAt(0).toUpperCase() + listing.type.slice(1)}</TableCell>
-                      <TableCell>{listing.location}</TableCell>
+                      <TableCell className="hidden md:table-cell">{listing.location}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                             <Warehouse className="h-4 w-4 text-muted-foreground" />
                             <span>{listing.inventoryCount}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">{listing.price.toLocaleString()} {listing.currency}/{listing.price_unit}</TableCell>
+                      <TableCell className="text-right">{new Intl.NumberFormat().format(listing.price)} {listing.currency}/{listing.price_unit}</TableCell>
                       <TableCell className="text-right">
                           <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -305,7 +305,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                   <TableHeader>
                       <TableRow>
                           <TableHead>Name</TableHead>
-                          <TableHead>Email</TableHead>
+                          <TableHead className="hidden sm:table-cell">Email</TableHead>
                           <TableHead>Role</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead><span className="sr-only">Actions</span></TableHead>
@@ -315,7 +315,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                       {users.map((user) => (
                           <TableRow key={user.id}>
                               <TableCell className="font-medium">{user.name}</TableCell>
-                              <TableCell>{user.email}</TableCell>
+                              <TableCell className="hidden sm:table-cell">{user.email}</TableCell>
                               <TableCell>
                                   <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
                                       {user.role}
