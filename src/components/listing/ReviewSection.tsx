@@ -134,7 +134,7 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
         <div className="flex items-center justify-between">
             <CardTitle className="flex items-center">
                 <Star className="w-5 h-5 mr-2" />
-                {averageRating.toFixed(1)} &middot; {reviewCount} approved review{reviewCount === 1 ? '' : 's'}
+                {averageRating.toFixed(1)} &middot; {reviewCount} review{reviewCount === 1 ? '' : 's'}
             </CardTitle>
             {session && (
               <Button variant="outline" onClick={handleToggleForm}>
@@ -214,7 +214,8 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
                     <div className="flex items-center gap-2 mt-2 sm:mt-0 self-end sm:self-start">
                         {review.status === 'pending' && (
                             <Button size="sm" variant="outline" onClick={() => handleApprove(review.id)} disabled={adminActionPending}>
-                                <Check className="mr-0 sm:mr-2 h-4 w-4"/><span className="hidden sm:inline">Approve</span>
+                                {adminActionPending ? <Loader2 className="mr-0 sm:mr-2 h-4 w-4 animate-spin"/> : <Check className="mr-0 sm:mr-2 h-4 w-4"/>}
+                                <span className="hidden sm:inline">Approve</span>
                             </Button>
                         )}
                         <AlertDialog>

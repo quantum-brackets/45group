@@ -575,14 +575,38 @@ export async function approveReviewAction(data: z.infer<typeof ReviewActionSchem
     }
     const { listingId, reviewId } = data;
 
-    const { error } = await supabase.rpc('approve_review', {
-        p_listing_id: listingId,
-        p_review_id: reviewId
-    });
+    const { data: listing, error: fetchError } = await supabase
+        .from('listings')
+        .select('reviews')
+        .eq('id', listingId)
+        .single();
 
-    if (error) {
-        console.error(`[APPROVE_REVIEW_ACTION] Error: ${error}`);
-        return { success: false, message: `Failed to approve review: ${error.message}` };
+    if (fetchError || !listing) {
+        return { success: false, message: 'Listing not found.' };
+    }
+
+    const reviews = (listing.reviews || []) as Review[];
+    const reviewIndex = reviews.findIndex(r => r.id === reviewId);
+
+    if (reviewIndex === -1) {
+        return { success: false, message: 'Review not found.' };
+    }
+
+    reviews[reviewIndex].status = 'approved';
+
+    const approvedReviews = reviews.filter(r => r.status === 'approved');
+    const newAverageRating = approvedReviews.length > 0
+        ? approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length
+        : 0;
+
+    const { error: updateError } = await supabase
+        .from('listings')
+        .update({ reviews: reviews, rating: newAverageRating })
+        .eq('id', listingId);
+
+    if (updateError) {
+        console.error(`[APPROVE_REVIEW_ACTION] Error: ${updateError.message}`);
+        return { success: false, message: `Failed to approve review: ${updateError.message}` };
     }
 
     revalidatePath(`/listing/${listingId}`);
@@ -599,14 +623,32 @@ export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema
     }
     const { listingId, reviewId } = data;
 
-    const { error } = await supabase.rpc('delete_review', {
-        p_listing_id: listingId,
-        p_review_id: reviewId
-    });
+    const { data: listing, error: fetchError } = await supabase
+        .from('listings')
+        .select('reviews')
+        .eq('id', listingId)
+        .single();
+    
+    if (fetchError || !listing) {
+        return { success: false, message: 'Listing not found.' };
+    }
+    
+    const reviews = (listing.reviews || []) as Review[];
+    const updatedReviews = reviews.filter(r => r.id !== reviewId);
+    
+    const approvedReviews = updatedReviews.filter(r => r.status === 'approved');
+    const newAverageRating = approvedReviews.length > 0
+        ? approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length
+        : 0;
 
-    if (error) {
-        console.error(`[DELETE_REVIEW_ACTION] Error: ${error}`);
-        return { success: false, message: `Failed to delete review: ${error.message}` };
+    const { error: updateError } = await supabase
+        .from('listings')
+        .update({ reviews: updatedReviews, rating: newAverageRating })
+        .eq('id', listingId);
+
+    if (updateError) {
+        console.error(`[DELETE_REVIEW_ACTION] Error: ${updateError.message}`);
+        return { success: false, message: `Failed to delete review: ${updateError.message}` };
     }
 
     revalidatePath(`/listing/${listingId}`);
