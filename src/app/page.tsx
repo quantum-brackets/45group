@@ -13,7 +13,7 @@ export default async function HomePage() {
       {/* Hero Section */}
       <section className="bg-card py-20">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl font-headline font-bold tracking-tight lg:text-6xl">
+          <h1 className="text-4xl font-headline font-bold tracking-tight md:text-5xl lg:text-6xl">
             Your Experience Awaits
           </h1>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">

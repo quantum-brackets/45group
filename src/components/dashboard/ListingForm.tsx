@@ -59,7 +59,7 @@ export function ListingForm({ listing, initialInventoryCount = 1, isDuplicate = 
       price: listing?.price || 0,
       price_unit: listing?.price_unit || undefined,
       currency: listing?.currency || 'NGN',
-      max_guests: listing?.maxGuests || 1,
+      max_guests: listing?.max_guests || 1,
       features: (Array.isArray(listing?.features) ? listing.features.join(', ') : listing?.features) || "",
       images: (listing?.images && listing.images.length > 0) ? listing.images : ["https://placehold.co/800x600.png"],
       inventory_count: isEditMode ? initialInventoryCount : 1,
@@ -179,7 +179,7 @@ export function ListingForm({ listing, initialInventoryCount = 1, isDuplicate = 
                 )}
               />
 
-              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-6">
                   <FormField
                       control={form.control}
                       name="price"

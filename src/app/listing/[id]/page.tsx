@@ -84,7 +84,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
                 <p className="text-foreground/80">{listing.description}</p>
                 <div className="mt-6">
                   <h3 className="font-semibold mb-3">What this place offers</h3>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
                     {listing.features.map((feature, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-accent" />

@@ -48,8 +48,9 @@ export function ListingFilters() {
 
   return (
     <div className="bg-card p-4 rounded-lg shadow-md border">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 items-center">
-        <div className="lg:col-span-2">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 items-center">
+        
+        <div className="w-full sm:flex-1 sm:min-w-[200px]">
           <label htmlFor="location" className="sr-only">Location</label>
           <div className="relative">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -62,12 +63,13 @@ export function ListingFilters() {
             />
           </div>
         </div>
-        <div className="lg:col-span-1">
+
+        <div className="w-full sm:w-auto">
           <Select
             onValueChange={(value) => setType(value === "all" ? "" : (value as ListingType))}
             value={type || "all"}
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[150px]">
               <SlidersHorizontal className="mr-2 h-4 w-4 text-muted-foreground" />
               <SelectValue placeholder="Type" />
             </SelectTrigger>
@@ -79,20 +81,22 @@ export function ListingFilters() {
             </SelectContent>
           </Select>
         </div>
-        <div className="lg:col-span-1">
+
+        <div className="w-full sm:w-auto">
           <div className="relative">
             <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input 
               type="number" 
               placeholder="Guests" 
-              className="pl-10"
+              className="pl-10 w-full sm:w-[120px]"
               value={guests}
               min="1"
               onChange={(e) => setGuests(e.target.value)}
             />
           </div>
         </div>
-        <div className="lg:col-span-2">
+
+        <div className="w-full sm:flex-1 sm:min-w-[240px]">
           <Popover>
             <PopoverTrigger asChild>
                <Button
@@ -131,10 +135,13 @@ export function ListingFilters() {
             </PopoverContent>
           </Popover>
         </div>
-        <Button className="w-full lg:col-span-1" onClick={handleSearch}>
-            <Search className="mr-2 h-4 w-4" />
-            Search
-        </Button>
+
+        <div className="w-full sm:w-auto">
+            <Button className="w-full" onClick={handleSearch}>
+                <Search className="mr-2 h-4 w-4" />
+                Search
+            </Button>
+        </div>
       </div>
     </div>
   );
