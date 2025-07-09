@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -76,8 +76,7 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
   const [processingReviewId, setProcessingReviewId] = useState<string | null>(null);
 
   const isAdmin = session?.role === 'admin';
-  const approvedReviews = reviews.filter(review => review.status === 'approved');
-  const reviewCount = approvedReviews.length;
+  const approvedReviewsCount = reviews.filter(review => review.status === 'approved').length;
   const currentUserReview = reviews.find(review => review.user_id === session?.id);
   
   const form = useForm<ReviewFormValues>({
@@ -88,14 +87,27 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
     }
   });
 
-  const reviewsToDisplay = isAdmin 
-    ? [...reviews].sort((a, b) => {
-        const aIsApproved = a.status === 'approved';
-        const bIsApproved = b.status === 'approved';
-        if (aIsApproved === bIsApproved) return 0;
-        return aIsApproved ? 1 : -1;
-      })
-    : approvedReviews;
+  const reviewsToDisplay = useMemo(() => {
+    if (isAdmin) {
+      return [...reviews].sort((a, b) => {
+        const aIsNotApproved = a.status !== 'approved';
+        const bIsNotApproved = b.status !== 'approved';
+        if (aIsNotApproved === bIsNotApproved) return 0;
+        return aIsNotApproved ? -1 : 1; // Show pending reviews first for admin
+      });
+    }
+
+    // For regular users and guests, show their own review (if any) plus all other approved reviews.
+    const otherApprovedReviews = reviews.filter(
+      (review) => review.status === 'approved' && review.user_id !== session?.id
+    );
+
+    if (currentUserReview) {
+      return [currentUserReview, ...otherApprovedReviews];
+    }
+    
+    return reviews.filter((review) => review.status === 'approved');
+  }, [reviews, session, isAdmin, currentUserReview]);
 
   const onSubmit = (data: ReviewFormValues) => {
     startTransition(async () => {
@@ -159,7 +171,7 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
         <div className="flex items-center justify-between">
             <CardTitle className="flex items-center">
                 <Star className="w-5 h-5 mr-2" />
-                {averageRating.toFixed(1)} &middot; {reviewCount} review{reviewCount === 1 ? '' : 's'}
+                {averageRating.toFixed(1)} &middot; {approvedReviewsCount} review{approvedReviewsCount === 1 ? '' : 's'}
             </CardTitle>
             <Button variant="outline" onClick={handleWriteReviewClick}>
               {currentUserReview ? 'Edit Your Review' : 'Write a Review'}
@@ -225,7 +237,7 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
                         <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-current' : 'fill-muted stroke-muted-foreground'}`} />
                       ))}
                     </div>
-                    {isAdmin && review.status !== 'approved' && (
+                    {review.status !== 'approved' && (isAdmin || review.user_id === session?.id) && (
                       <Badge variant={'secondary'}>
                         pending
                       </Badge>
