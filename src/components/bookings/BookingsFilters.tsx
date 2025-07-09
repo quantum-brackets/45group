@@ -54,59 +54,57 @@ export function BookingsFilters({ listings, users, session }: BookingsFiltersPro
   ];
 
   return (
-    <div className="flex flex-col md:flex-row md:justify-between gap-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex items-center gap-2">
-                <Building className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+    <div className="flex flex-col sm:flex-row sm:flex-wrap items-center gap-4">
+        <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[200px] flex items-center gap-2">
+            <Building className="h-4 w-4 text-muted-foreground hidden sm:block" />
+            <Combobox 
+                options={listingOptions}
+                value={listingId}
+                onChange={setListingId}
+                placeholder="Filter by Venue"
+                searchPlaceholder="Search venues..."
+                emptyPlaceholder="No venues found."
+                className="w-full"
+            />
+        </div>
+        
+        {canFilterUsers && (
+            <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[200px] flex items-center gap-2">
+                <UserIcon className="h-4 w-4 text-muted-foreground hidden sm:block" />
                 <Combobox 
-                    options={listingOptions}
-                    value={listingId}
-                    onChange={setListingId}
-                    placeholder="Filter by Venue"
-                    searchPlaceholder="Search venues..."
-                    emptyPlaceholder="No venues found."
-                    className="w-full sm:w-[200px]"
+                    options={userOptions}
+                    value={userId}
+                    onChange={setUserId}
+                    placeholder="Filter by User"
+                    searchPlaceholder="Search users..."
+                    emptyPlaceholder="No users found."
+                    className="w-full"
                 />
             </div>
-            
-            {canFilterUsers && (
-                <div className="flex items-center gap-2">
-                    <UserIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <Combobox 
-                        options={userOptions}
-                        value={userId}
-                        onChange={setUserId}
-                        placeholder="Filter by User"
-                        searchPlaceholder="Search users..."
-                        emptyPlaceholder="No users found."
-                        className="w-full sm:w-[200px]"
-                    />
-                </div>
-            )}
+        )}
 
-            <div className="flex items-center gap-2">
-                <ListFilter className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <Select onValueChange={setStatus} value={status}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
-                        <SelectValue placeholder="Filter by Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="Confirmed">Confirmed</SelectItem>
-                        <SelectItem value="Pending">Pending</SelectItem>
-                        <SelectItem value="Cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
+        <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[180px] flex items-center gap-2">
+            <ListFilter className="h-4 w-4 text-muted-foreground hidden sm:block" />
+            <Select onValueChange={setStatus} value={status}>
+                <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Filter by Status" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="Confirmed">Confirmed</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Cancelled">Cancelled</SelectItem>
+                </SelectContent>
+            </Select>
         </div>
 
-        <div className="flex gap-2 self-end md:self-center">
-            <Button onClick={handleFilter}>
+        <div className="flex gap-2 w-full sm:w-auto">
+            <Button onClick={handleFilter} className="flex-1 sm:flex-none">
                 <Search className="mr-2 h-4 w-4" />
                 Filter
             </Button>
             {isFiltered && (
-              <Button variant="ghost" onClick={handleClear}>
+              <Button variant="ghost" onClick={handleClear} className="flex-1 sm:flex-none">
                   <XCircle className="mr-2 h-4 w-4" />
                   Clear
               </Button>
