@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useTransition } from 'react';
@@ -67,8 +68,10 @@ const StarRating = ({ field }: { field: any }) => {
 export function ReviewSection({ listingId, reviews, averageRating, session }: ReviewSectionProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const [adminActionPending, startAdminActionTransition] = useTransition();
   const [showForm, setShowForm] = useState(false);
+  
+  const [isAdminActionPending, startAdminActionTransition] = useTransition();
+  const [processingReviewId, setProcessingReviewId] = useState<string | null>(null);
 
   const isAdmin = session?.role === 'admin';
   const approvedReviews = reviews.filter(review => review.status === 'approved');
@@ -87,8 +90,8 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
     ? [...reviews].sort((a, b) => {
         const aIsApproved = a.status === 'approved';
         const bIsApproved = b.status === 'approved';
-        if (!aIsApproved && bIsApproved) return -1;
         if (aIsApproved && !bIsApproved) return 1;
+        if (!aIsApproved && bIsApproved) return -1;
         return 0;
       })
     : approvedReviews;
@@ -117,23 +120,27 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
 
   const handleApprove = (reviewId: string) => {
     startAdminActionTransition(async () => {
+      setProcessingReviewId(reviewId);
       const result = await approveReviewAction({ listingId, reviewId });
       if (result.success) {
         toast({ title: 'Success', description: result.message });
       } else {
         toast({ title: 'Error', description: result.message, variant: 'destructive' });
       }
+      setProcessingReviewId(null);
     });
   };
 
   const handleDelete = (reviewId: string) => {
     startAdminActionTransition(async () => {
+      setProcessingReviewId(reviewId);
       const result = await deleteReviewAction({ listingId, reviewId });
       if (result.success) {
         toast({ title: 'Success', description: result.message });
       } else {
         toast({ title: 'Error', description: result.message, variant: 'destructive' });
       }
+      setProcessingReviewId(null);
     });
   };
 
@@ -222,14 +229,14 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
                 {isAdmin && (
                     <div className="flex items-center gap-2 mt-2 sm:mt-0 self-end sm:self-start">
                         {review.status !== 'approved' && (
-                            <Button size="sm" variant="outline" onClick={() => handleApprove(review.id)} disabled={adminActionPending}>
-                                {adminActionPending ? <Loader2 className="mr-0 sm:mr-2 h-4 w-4 animate-spin"/> : <Check className="mr-0 sm:mr-2 h-4 w-4"/>}
+                            <Button size="sm" variant="outline" onClick={() => handleApprove(review.id)} disabled={isAdminActionPending}>
+                                {isAdminActionPending && processingReviewId === review.id ? <Loader2 className="mr-0 sm:mr-2 h-4 w-4 animate-spin"/> : <Check className="mr-0 sm:mr-2 h-4 w-4"/>}
                                 <span className="hidden sm:inline">Approve</span>
                             </Button>
                         )}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                             <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={adminActionPending}>
+                             <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={isAdminActionPending}>
                                 <Trash2 className="h-4 w-4 mr-0 sm:mr-2"/><span className="hidden sm:inline">Delete</span>
                             </Button>
                           </AlertDialogTrigger>
@@ -241,8 +248,15 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(review.id)} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Delete</AlertDialogAction>
+                              <AlertDialogCancel disabled={isAdminActionPending}>Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDelete(review.id)}
+                                disabled={isAdminActionPending}
+                                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                              >
+                                {isAdminActionPending && processingReviewId === review.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Delete
+                              </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
