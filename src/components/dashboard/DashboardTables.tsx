@@ -78,9 +78,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
   const [primaryListingId, setPrimaryListingId] = useState<string>('');
   
   const [userSearch, setUserSearch] = useState('');
-
-  const selectedIds = Object.keys(selectedRowIds).filter((id) => selectedRowIds[id]);
-  const selectedListings = listings.filter(l => selectedIds.includes(l.id));
+  const [listingSearch, setListingSearch] = useState('');
 
   const filteredUsers = users.filter(user => {
     if (!userSearch) return true;
@@ -92,12 +90,25 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
     });
   });
 
+  const filteredListings = listings.filter(listing => {
+    if (!listingSearch) return true;
+    const searchTerm = listingSearch.toLowerCase();
+    return JSON.stringify(listing).toLowerCase().includes(searchTerm);
+  });
+
+  const selectedIds = Object.keys(selectedRowIds).filter((id) => selectedRowIds[id]);
+  const selectedListings = listings.filter(l => selectedIds.includes(l.id));
+
   const handleSelectAll = (checked: boolean) => {
-    const newSelectedRows: Record<string, boolean> = {};
-    if (checked) {
-        listings.forEach(l => { newSelectedRows[l.id] = true; });
-    }
-    setSelectedRowIds(newSelectedRows);
+    const newSelected = { ...selectedRowIds };
+    filteredListings.forEach(l => {
+      if (checked) {
+        newSelected[l.id] = true;
+      } else {
+        delete newSelected[l.id];
+      }
+    });
+    setSelectedRowIds(newSelected);
   };
 
   const handleRowSelect = (id: string, checked: boolean) => {
@@ -167,8 +178,9 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
 
   const isAdmin = session?.role === 'admin';
   const isStaff = session?.role === 'staff';
-  const isAllSelected = selectedIds.length === listings.length && listings.length > 0;
-  const isSomeSelected = selectedIds.length > 0 && selectedIds.length < listings.length;
+
+  const allFilteredSelected = filteredListings.length > 0 && filteredListings.every(l => selectedRowIds[l.id]);
+  const someFilteredSelected = filteredListings.some(l => selectedRowIds[l.id]) && !allFilteredSelected;
 
   return (
     <>
@@ -185,11 +197,16 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
         </TabsList>
         <TabsContent value="listings">
           <Card>
-            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-               <div>
-                <CardTitle>Manage Listings</CardTitle>
-                <CardDescription>View, create, and manage all property listings.</CardDescription>
-               </div>
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+               <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Filter listings..."
+                    value={listingSearch}
+                    onChange={(e) => setListingSearch(e.target.value)}
+                    className="w-full max-w-sm pl-10"
+                  />
+                </div>
                {isAdmin && (
                   <Button asChild>
                     <Link href="/dashboard/add-listing">
@@ -225,7 +242,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                         <TableHead className="w-[40px]">
                             <Checkbox
                                 onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                                checked={isSomeSelected ? 'indeterminate' : isAllSelected}
+                                checked={someFilteredSelected ? 'indeterminate' : allFilteredSelected}
                                 aria-label="Select all listings"
                             />
                         </TableHead>
@@ -239,7 +256,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {listings.map((listing) => (
+                  {filteredListings.map((listing) => (
                     <TableRow key={listing.id} data-state={selectedRowIds[listing.id] ? 'selected' : undefined}>
                       {isAdmin && (
                         <TableCell>
