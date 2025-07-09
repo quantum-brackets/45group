@@ -43,12 +43,12 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
         p_type: type,
         p_location: location,
         p_description: description,
-        p_images: JSON.stringify(images),
+        p_images: images,
         p_price: price,
         p_price_unit: price_unit,
         p_currency: currency,
         p_max_guests: max_guests,
-        p_features: JSON.stringify(features.split(',').map(f => f.trim())),
+        p_features: features.split(',').map(f => f.trim()),
         p_inventory_count: inventory_count
     });
 
@@ -89,8 +89,8 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
     p_price_unit: price_unit,
     p_currency: currency,
     p_max_guests: max_guests,
-    p_features: JSON.stringify(features.split(',').map(f => f.trim())),
-    p_images: JSON.stringify(images),
+    p_features: features.split(',').map(f => f.trim()),
+    p_images: images,
     p_new_inventory_count: inventory_count
   });
 
@@ -181,11 +181,11 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
 }
 
 const UpdateBookingSchema = z.object({
-  booking_id: z.string(),
-  start_date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
-  end_date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
+  bookingId: z.string(),
+  startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
+  endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
-  number_of_units: z.coerce.number().int().min(1, "At least one unit is required."),
+  numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
 });
 
 export async function updateBookingAction(data: z.infer<typeof UpdateBookingSchema>) {
@@ -200,14 +200,14 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
       return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
     }
 
-    const { booking_id, start_date, end_date, guests, number_of_units } = validatedFields.data;
+    const { bookingId, startDate, endDate, guests, numberOfUnits } = validatedFields.data;
 
     const { error } = await supabase.rpc('update_booking_with_inventory_check', {
-        p_booking_id: booking_id,
-        p_new_start_date: new Date(start_date).toISOString(),
-        p_new_end_date: new Date(end_date).toISOString(),
+        p_booking_id: bookingId,
+        p_new_start_date: new Date(startDate).toISOString(),
+        p_new_end_date: new Date(endDate).toISOString(),
         p_new_guests: guests,
-        p_new_num_units: number_of_units,
+        p_new_num_units: numberOfUnits,
         p_editor_id: session.id,
         p_editor_name: session.name
     });
@@ -218,7 +218,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     }
 
     revalidatePath('/bookings');
-    revalidatePath(`/booking/${booking_id}`);
+    revalidatePath(`/booking/${bookingId}`);
 
     return { success: true, message: 'Booking has been updated and is now pending re-confirmation.' };
 }
@@ -229,7 +229,7 @@ export async function logoutAction() {
 }
 
 const BookingActionSchema = z.object({
-  booking_id: z.string(),
+  bookingId: z.string(),
 });
 
 export async function cancelBookingAction(data: z.infer<typeof BookingActionSchema>) {
@@ -244,9 +244,9 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
     return { error: 'Invalid booking ID.' };
   }
   
-  const { booking_id } = validatedFields.data;
+  const { bookingId } = validatedFields.data;
 
-  const { data: booking, error: fetchError } = await supabase.from('bookings').select('user_id, listing_name:listings(name)').eq('id', booking_id).single();
+  const { data: booking, error: fetchError } = await supabase.from('bookings').select('user_id, listing_name:listings(name)').eq('id', bookingId).single();
 
   if (fetchError || !booking) {
     return { error: 'Booking not found.' };
@@ -265,14 +265,14 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
     action_by_user_id: session.id,
     action_at: new Date().toISOString(),
     status_message: `Cancelled by ${session.name} on ${new Date().toLocaleDateString()}`
-  }).eq('id', booking_id);
+  }).eq('id', bookingId);
   
   if (error) {
     return { error: `Failed to cancel booking in the database: ${error.message}` };
   }
 
   revalidatePath('/bookings');
-  revalidatePath(`/booking/${booking_id}`);
+  revalidatePath(`/booking/${bookingId}`);
   
   return { success: `Booking for ${(booking.listing_name as any)?.name} has been cancelled.` };
 }
@@ -289,10 +289,10 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
       return { error: 'Invalid booking ID.' };
     }
     
-    const { booking_id } = validatedFields.data;
+    const { bookingId } = validatedFields.data;
   
     const { error } = await supabase.rpc('confirm_booking_with_inventory_check', {
-        p_booking_id: booking_id,
+        p_booking_id: bookingId,
         p_admin_id: session.id,
         p_admin_name: session.name
     });
@@ -303,7 +303,7 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     }
 
     revalidatePath('/bookings');
-    revalidatePath(`/booking/${booking_id}`);
+    revalidatePath(`/booking/${bookingId}`);
     
     return { success: `Booking has been confirmed.` };
 }
@@ -434,7 +434,7 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
 }
 
 const ReviewSchema = z.object({
-    listing_id: z.string(),
+    listingId: z.string(),
     rating: z.coerce.number().min(1).max(5),
     comment: z.string().min(10, "Comment must be at least 10 characters long.")
 });
@@ -451,10 +451,10 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
         return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
     }
 
-    const { listing_id, rating, comment } = validatedFields.data;
+    const { listingId, rating, comment } = validatedFields.data;
     
     const { error } = await supabase.rpc('add_or_update_review', {
-        p_listing_id: listing_id,
+        p_listing_id: listingId,
         p_user_id: session.id,
         p_author_name: session.name,
         p_avatar_url: `https://avatar.vercel.sh/${session.email}.png`,
@@ -467,14 +467,14 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
         return { success: false, message: `Failed to submit review: ${error.message}` };
     }
 
-    revalidatePath(`/listing/${listing_id}`);
+    revalidatePath(`/listing/${listingId}`);
     return { success: true, message: 'Your review has been submitted and is awaiting approval.' };
 }
 
 
 const ReviewActionSchema = z.object({
-  listing_id: z.string(),
-  review_id: z.string(),
+  listingId: z.string(),
+  reviewId: z.string(),
 });
 
 export async function approveReviewAction(data: z.infer<typeof ReviewActionSchema>) {
@@ -483,11 +483,11 @@ export async function approveReviewAction(data: z.infer<typeof ReviewActionSchem
     if (session?.role !== 'admin') {
         return { success: false, message: 'Unauthorized action.' };
     }
-    const { listing_id, review_id } = data;
+    const { listingId, reviewId } = data;
 
     const { error } = await supabase.rpc('approve_review', {
-        p_listing_id: listing_id,
-        p_review_id: review_id
+        p_listing_id: listingId,
+        p_review_id: reviewId
     });
 
     if (error) {
@@ -495,7 +495,7 @@ export async function approveReviewAction(data: z.infer<typeof ReviewActionSchem
         return { success: false, message: `Failed to approve review: ${error.message}` };
     }
 
-    revalidatePath(`/listing/${listing_id}`);
+    revalidatePath(`/listing/${listingId}`);
     return { success: true, message: 'Review approved successfully.' };
 }
 
@@ -506,11 +506,11 @@ export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema
     if (session?.role !== 'admin') {
         return { success: false, message: 'Unauthorized action.' };
     }
-    const { listing_id, review_id } = data;
+    const { listingId, reviewId } = data;
 
     const { error } = await supabase.rpc('delete_review', {
-        p_listing_id: listing_id,
-        p_review_id: review_id
+        p_listing_id: listingId,
+        p_review_id: reviewId
     });
 
     if (error) {
@@ -518,12 +518,12 @@ export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema
         return { success: false, message: `Failed to delete review: ${error.message}` };
     }
 
-    revalidatePath(`/listing/${listing_id}`);
+    revalidatePath(`/listing/${listingId}`);
     return { success: true, message: 'Review deleted successfully.' };
 }
 
 const ToggleUserStatusSchema = z.object({
-  user_id: z.string(),
+  userId: z.string(),
   status: z.enum(['active', 'disabled']),
 });
 
@@ -539,13 +539,13 @@ export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStat
     return { success: false, message: 'Invalid data provided.' };
   }
 
-  const { user_id, status } = validatedFields.data;
+  const { userId, status } = validatedFields.data;
 
-  if (user_id === session.id) {
+  if (userId === session.id) {
     return { success: false, message: "You cannot change your own status." };
   }
   
-  const { error } = await supabase.from('users').update({ status }).eq('id', user_id);
+  const { error } = await supabase.from('users').update({ status }).eq('id', userId);
 
   if (error) {
     return { success: false, message: `Database error: ${error.message}` };
@@ -556,8 +556,8 @@ export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStat
 }
 
 const MergeListingsSchema = z.object({
-  primary_listing_id: z.string(),
-  listing_ids_to_merge: z.array(z.string()).min(1, "At least one listing must be selected to merge."),
+  primaryListingId: z.string(),
+  listingIdsToMerge: z.array(z.string()).min(1, "At least one listing must be selected to merge."),
 });
 
 export async function mergeListingsAction(data: z.infer<typeof MergeListingsSchema>) {
@@ -572,11 +572,11 @@ export async function mergeListingsAction(data: z.infer<typeof MergeListingsSche
       return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
     }
   
-    const { primary_listing_id, listing_ids_to_merge } = validatedFields.data;
+    const { primaryListingId, listingIdsToMerge } = validatedFields.data;
   
     const { error } = await supabase.rpc('merge_listings', {
-      p_primary_listing_id: primary_listing_id,
-      p_listing_ids_to_merge: listing_ids_to_merge
+      p_primary_listing_id: primaryListingId,
+      p_listing_ids_to_merge: listingIdsToMerge
     });
   
     if (error) {
@@ -585,11 +585,11 @@ export async function mergeListingsAction(data: z.infer<typeof MergeListingsSche
     }
   
     revalidatePath('/dashboard');
-    return { success: true, message: `${listing_ids_to_merge.length} listing(s) were successfully merged.` };
+    return { success: true, message: `${listingIdsToMerge.length} listing(s) were successfully merged.` };
 }
 
 const BulkDeleteListingsSchema = z.object({
-  listing_ids: z.array(z.string()).min(1, "At least one listing must be selected for deletion."),
+  listingIds: z.array(z.string()).min(1, "At least one listing must be selected for deletion."),
 });
 
 export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteListingsSchema>) {
@@ -604,9 +604,9 @@ export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteLi
         return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
     }
     
-    const { listing_ids } = validatedFields.data;
+    const { listingIds } = validatedFields.data;
 
-    const { error } = await supabase.rpc('bulk_delete_listings', { p_listing_ids: listing_ids });
+    const { error } = await supabase.rpc('bulk_delete_listings', { p_listing_ids: listingIds });
 
     if (error) {
         console.error(`[BULK_DELETE_ACTION] Error: ${error}`);
@@ -614,5 +614,5 @@ export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteLi
     }
     
     revalidatePath('/dashboard');
-    return { success: true, message: `${listing_ids.length} listing(s) have been deleted.` };
+    return { success: true, message: `${listingIds.length} listing(s) have been deleted.` };
 }
