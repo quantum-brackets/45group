@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useTransition } from 'react';
@@ -220,7 +219,7 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
                     </div>
                     {isAdmin && (
                         <Badge variant={review.status === 'approved' ? 'default' : 'secondary'} className={review.status === 'approved' ? 'bg-accent text-accent-foreground' : ''}>
-                            {review.status || 'pending'}
+                            {review.status === 'approved' ? 'approved' : 'pending'}
                         </Badge>
                     )}
                   </div>
