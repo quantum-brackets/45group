@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useTransition } from 'react';
@@ -7,6 +8,7 @@ import { z } from 'zod';
 import type { Review, User } from '@/lib/types';
 import { addOrUpdateReviewAction, approveReviewAction, deleteReviewAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -66,6 +68,7 @@ const StarRating = ({ field }: { field: any }) => {
 
 export function ReviewSection({ listingId, reviews, averageRating, session }: ReviewSectionProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showForm, setShowForm] = useState(false);
   
@@ -89,9 +92,8 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
     ? [...reviews].sort((a, b) => {
         const aIsApproved = a.status === 'approved';
         const bIsApproved = b.status === 'approved';
-        if (aIsApproved && !bIsApproved) return 1;
-        if (!aIsApproved && bIsApproved) return -1;
-        return 0;
+        if (aIsApproved === bIsApproved) return 0;
+        return aIsApproved ? 1 : -1;
       })
     : approvedReviews;
 
@@ -114,6 +116,14 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
         rating: currentUserReview?.rating || 0,
         comment: currentUserReview?.comment || '',
       });
+    }
+  };
+
+  const handleWriteReviewClick = () => {
+    if (session) {
+      handleToggleForm();
+    } else {
+      router.push('/login');
     }
   };
 
@@ -151,11 +161,9 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
                 <Star className="w-5 h-5 mr-2" />
                 {averageRating.toFixed(1)} &middot; {reviewCount} review{reviewCount === 1 ? '' : 's'}
             </CardTitle>
-            {session && (
-              <Button variant="outline" onClick={handleToggleForm}>
-                {currentUserReview ? 'Edit Your Review' : 'Write a Review'}
-              </Button>
-            )}
+            <Button variant="outline" onClick={handleWriteReviewClick}>
+              {currentUserReview ? 'Edit Your Review' : 'Write a Review'}
+            </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -217,10 +225,10 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
                         <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-current' : 'fill-muted stroke-muted-foreground'}`} />
                       ))}
                     </div>
-                    {isAdmin && (
-                        <Badge variant={review.status === 'approved' ? 'default' : 'secondary'} className={review.status === 'approved' ? 'bg-accent text-accent-foreground' : ''}>
-                            {review.status === 'approved' ? 'approved' : 'pending'}
-                        </Badge>
+                    {isAdmin && review.status !== 'approved' && (
+                      <Badge variant={'secondary'}>
+                        pending
+                      </Badge>
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground">{review.comment}</p>

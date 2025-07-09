@@ -501,12 +501,11 @@ const ReviewSchema = z.object({
 });
 
 export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>) {
-    await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
 
-    if (!session || !hasPermission(session, 'review:create:own')) {
-        return { success: false, message: 'You do not have permission to submit a review.' };
+    if (!session) {
+        return { success: false, message: 'You must be logged in to submit a review.' };
     }
 
     const validatedFields = ReviewSchema.safeParse(data);
@@ -548,7 +547,7 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
     
     const { error: updateError } = await supabase
         .from('listings')
-        .update({ reviews: reviews }) // Only update the reviews array
+        .update({ reviews: reviews })
         .eq('id', listingId);
 
     if (updateError) {
