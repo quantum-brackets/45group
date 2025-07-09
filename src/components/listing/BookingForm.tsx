@@ -240,44 +240,38 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-lg border">
-          <div className="flex">
-            <div className="flex-1 p-3">
-              <Label className="text-xs font-bold uppercase">Check-in</Label>
-              <div className="text-sm">{date?.from ? format(date.from, 'MM/dd/yyyy') : 'Add date'}</div>
-            </div>
-            <Separator orientation="vertical" className="h-auto" />
-             <div className="flex-1 p-3">
-              <Label className="text-xs font-bold uppercase">Check-out</Label>
-              <div className="text-sm">{date?.to ? format(date.to, 'MM/dd/yyyy') : 'Add date'}</div>
-            </div>
-          </div>
-           <Separator/>
-          <div className="p-3">
-            <Popover>
-              <PopoverTrigger asChild>
-                <div className="cursor-pointer">
-                  <Label className="text-xs font-bold uppercase">Dates</Label>
-                   <div className="text-sm text-muted-foreground">
-                    {date?.from ? 'Click to change dates' : 'Select your dates'}
-                   </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className="w-full rounded-lg border text-left font-normal hover:border-primary/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
+              aria-label="Select booking dates"
+            >
+              <div className="flex">
+                <div className="flex-1 p-3">
+                  <Label className="text-xs font-bold uppercase text-muted-foreground">Check-in</Label>
+                  <div className="text-sm mt-1">{date?.from ? format(date.from, 'MM/dd/yyyy') : 'Add date'}</div>
                 </div>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={date?.from}
-                  selected={date}
-                  onSelect={setDate}
-                  numberOfMonths={1}
-                  className="rounded-md"
-                  disabled={(day) => day < new Date(new Date().setHours(0, 0, 0, 0))}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
+                <Separator orientation="vertical" className="h-auto" />
+                 <div className="flex-1 p-3">
+                  <Label className="text-xs font-bold uppercase text-muted-foreground">Check-out</Label>
+                  <div className="text-sm mt-1">{date?.to ? format(date.to, 'MM/dd/yyyy') : 'Add date'}</div>
+                </div>
+              </div>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={date?.from}
+              selected={date}
+              onSelect={setDate}
+              numberOfMonths={1}
+              className="rounded-md"
+              disabled={(day) => day < new Date(new Date().setHours(0, 0, 0, 0))}
+            />
+          </PopoverContent>
+        </Popover>
         
         <div className="grid grid-cols-2 gap-4">
           <div>
