@@ -46,17 +46,22 @@ export function hasPermission(
     permission: string,
     context?: { ownerId?: string }
   ): boolean {
+      if (!user) {
+          return false;
+      }
+      
+      // Admin role has all permissions. This is a hardcoded override.
+      if (user.role === 'admin') {
+          return true;
+      }
+
       const rolePermissions = cachedPermissions;
   
-      if (!user || !user.role || !rolePermissions) {
+      if (!user.role || !rolePermissions) {
           return false;
       }
   
       const userPermissions = rolePermissions[user.role] || [];
-  
-      if (userPermissions.includes('*')) {
-          return true;
-      }
   
       // Handle scoped permissions like 'booking:cancel:own'
       if (permission.endsWith(':own')) {
