@@ -230,13 +230,10 @@ export async function getBookingById(id: string): Promise<Booking | null> {
         return null;
     }
     
+    // 1. Fetch the booking by ID
     const { data: bookingData, error } = await supabase
         .from('bookings')
-        .select(`
-            *,
-            listing:listings(name),
-            user:users(id, name)
-        `)
+        .select('*')
         .eq('id', id)
         .single();
 
@@ -245,10 +242,25 @@ export async function getBookingById(id: string): Promise<Booking | null> {
         return null;
     }
     
+    // RLS check
     if (session.role === 'guest' && bookingData.user_id !== session.id) {
         return null;
     }
+
+    // 2. Fetch related listing and user names
+    const { data: listingData } = await supabase
+        .from('listings')
+        .select('name')
+        .eq('id', bookingData.listing_id)
+        .single();
+
+    const { data: userData } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', bookingData.user_id)
+        .single();
     
+    // 3. Fetch inventory names
     let inventoryNames: string[] = [];
     if (bookingData.inventory_ids && Array.isArray(bookingData.inventory_ids) && bookingData.inventory_ids.length > 0) {
         const { data: invData, error: invError } = await supabase
@@ -261,6 +273,7 @@ export async function getBookingById(id: string): Promise<Booking | null> {
         }
     }
 
+    // 4. Assemble the final booking object
     const booking: Booking = {
       id: bookingData.id,
       listingId: bookingData.listing_id,
@@ -274,8 +287,8 @@ export async function getBookingById(id: string): Promise<Booking | null> {
       actionByUserId: bookingData.action_by_user_id,
       actionAt: bookingData.action_at,
       statusMessage: bookingData.status_message,
-      listingName: (bookingData.listing as any)?.name,
-      userName: (bookingData.user as any)?.name,
+      listingName: listingData?.name || 'Unknown Listing',
+      userName: userData?.name || 'Unknown User',
       inventoryNames: inventoryNames,
     };
 
