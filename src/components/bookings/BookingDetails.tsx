@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X, CircleUser, ArrowRight } from 'lucide-react';
+import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X, CircleUser, ArrowRight, Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -35,6 +35,7 @@ interface BookingDetailsProps {
 }
 
 const formSchema = z.object({
+  bookingName: z.string().min(1, "Booking name is required."),
   dates: z.object({
     from: z.date({ required_error: "A start date is required." }),
     to: z.date().optional(),
@@ -63,12 +64,13 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      bookingName: booking.bookingName || '',
       dates: {
         from: parseISO(booking.startDate),
         to: parseISO(booking.endDate),
       },
       guests: booking.guests,
-      numberOfUnits: booking.inventoryIds.length || 1,
+      numberOfUnits: booking.inventoryIds?.length || 1,
     }
   });
 
@@ -78,6 +80,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
     startUpdateTransition(async () => {
       const result = await updateBookingAction({
         bookingId: booking.id,
+        bookingName: data.bookingName,
         startDate: data.dates.from.toISOString(),
         endDate: (data.dates.to || data.dates.from).toISOString(),
         guests: data.guests,
@@ -130,6 +133,13 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
     <>
         <CardContent className="space-y-6 pt-6 text-base">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border md:col-span-2">
+                <Pencil className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+                <div>
+                    <p className="font-semibold">Booking Name</p>
+                    <p className="text-muted-foreground">{booking.bookingName || 'Not set'}</p>
+                </div>
+            </div>
             <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
             <CalendarLucide className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
             <div>
@@ -179,7 +189,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
             <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
             <KeySquare className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
             <div>
-                <p className="font-semibold">{booking.inventoryIds.length} Unit(s) Booked</p>
+                <p className="font-semibold">{(booking.inventoryIds || []).length} Unit(s) Booked</p>
                 <p className="text-muted-foreground text-sm">
                 {booking.inventoryNames?.join(', ') || 'N/A'}
                 </p>
@@ -269,6 +279,21 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
     <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
             <CardContent className="grid md:grid-cols-2 gap-6 pt-6">
+                <div className="md:col-span-2">
+                    <FormField
+                        control={form.control}
+                        name="bookingName"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Booking Name</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="e.g., Smith Family Vacation" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
                 <div className="md:col-span-2">
                 <FormField
                     control={form.control}

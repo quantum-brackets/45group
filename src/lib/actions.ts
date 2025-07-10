@@ -349,7 +349,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
 
       const bookingData = {
           guests,
-          booking_name: finalBookingName,
+          bookingName: finalBookingName,
           inventoryIds: inventoryToBook,
           actions: [initialAction],
           createdAt: createdAt
@@ -377,6 +377,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
 
 const UpdateBookingSchema = z.object({
   bookingId: z.string(),
+  bookingName: z.string().min(1, "Booking name is required."),
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
@@ -392,7 +393,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     const validatedFields = UpdateBookingSchema.safeParse(data);
     if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
 
-    const { bookingId, startDate, endDate, guests, numberOfUnits } = validatedFields.data;
+    const { bookingId, startDate, endDate, guests, numberOfUnits, bookingName } = validatedFields.data;
 
     const { data: booking, error: fetchError } = await supabase.from('bookings').select('user_id, listing_id, data').eq('id', bookingId).single();
     if (fetchError || !booking) return { success: false, message: 'Booking not found.' };
@@ -420,6 +421,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
             ...booking.data,
             guests,
             inventoryIds: inventoryToBook,
+            bookingName: bookingName,
             actions: [...(booking.data.actions || []), updateAction]
         };
 
