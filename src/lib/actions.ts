@@ -27,7 +27,7 @@ export async function updatePermissionsAction(permissions: Record<Role, Permissi
       data: { permissions: perms }
     }));
 
-    const { error } = await supabase.from('role_permissions').upsert(updates);
+    const { error } = await supabase.from('role_permissions').upsert(updates, { onConflict: 'role' });
   
     if (error) {
       console.error('Error saving permissions:', error);
@@ -177,13 +177,13 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
       // Remove inventory (safely)
       const { data: bookedInv, error: bookedError } = await supabase
         .from('bookings')
-        .select('inventory_ids')
+        .select('data')
         .eq('listing_id', id)
         .in('status', ['Pending', 'Confirmed']);
       
       if (bookedError) return { success: false, message: `Failed to check bookings: ${bookedError.message}` };
       
-      const bookedIds = new Set(bookedInv.flatMap(b => b.inventory_ids));
+      const bookedIds = new Set(bookedInv.flatMap(b => b.data.inventoryIds || []));
       const removableInventory = currentInventory.filter(inv => !bookedIds.has(inv.id));
       
       const idsToRemove = removableInventory.slice(0, Math.abs(diff)).map(inv => inv.id);
@@ -257,7 +257,7 @@ async function findAvailableInventory(supabase: any, listingId: string, startDat
 
     let bookingsQuery = supabase
         .from('bookings')
-        .select('inventory_ids')
+        .select('data')
         .eq('listing_id', listingId)
         .eq('status', 'Confirmed')
         .lte('start_date', endDate)
@@ -271,7 +271,7 @@ async function findAvailableInventory(supabase: any, listingId: string, startDat
     
     if (bookingsError) throw new Error('Could not check for overlapping bookings.');
     
-    const bookedInventoryIds = new Set(overlappingBookings.flatMap((b: any) => b.inventory_ids));
+    const bookedInventoryIds = new Set(overlappingBookings.flatMap((b: any) => b.data.inventoryIds || []));
     return allInventoryIds.filter((id: string) => !bookedInventoryIds.has(id));
 }
 
@@ -336,13 +336,13 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
           guests,
           created_at: new Date().toISOString(),
           status_message: 'Booking request received.',
-          booking_name: finalBookingName
+          booking_name: finalBookingName,
+          inventoryIds: inventoryToBook,
       };
 
       const { error: createBookingError } = await supabase.from('bookings').insert({
           listing_id: listingId,
           user_id: userId,
-          inventory_ids: inventoryToBook,
           start_date: startDate,
           end_date: endDate,
           status: 'Pending',
@@ -397,12 +397,12 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
             ...booking.data,
             guests,
             status_message: `Booking updated by ${session.name} on ${new Date().toLocaleDateString()}. Awaiting re-confirmation.`,
+            inventoryIds: inventoryToBook,
         };
 
         const { error } = await supabase.from('bookings').update({
             start_date: startDate,
             end_date: endDate,
-            inventory_ids: inventoryToBook,
             status: 'Pending',
             data: updatedBookingData,
         }).eq('id', bookingId);
@@ -477,10 +477,10 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     try {
         const availableInventory = await findAvailableInventory(supabase, booking.listing_id, booking.start_date, booking.end_date, bookingId);
         
-        const currentlyHeldIds = new Set(booking.inventory_ids);
+        const currentlyHeldIds = new Set(booking.data.inventoryIds || []);
         const stillAvailable = availableInventory.filter(id => currentlyHeldIds.has(id));
 
-        if (stillAvailable.length < booking.inventory_ids.length) {
+        if (stillAvailable.length < (booking.data.inventoryIds || []).length) {
             await supabase.from('bookings').update({
                 status: 'Cancelled',
                 data: {
@@ -864,12 +864,12 @@ export async function addBookingByAdminAction(data: z.infer<typeof AdminBookingF
           created_at: new Date().toISOString(),
           status_message: `Booking created by staff member ${session.name}.`,
           booking_name: bookingUser.data.name,
+          inventoryIds: inventoryToBook,
         };
 
         const { error: createBookingError } = await supabase.from('bookings').insert({
             listing_id: listingId,
             user_id: userId,
-            inventory_ids: inventoryToBook,
             start_date: dates.from.toISOString(),
             end_date: (dates.to || dates.from).toISOString(),
             status: 'Pending',

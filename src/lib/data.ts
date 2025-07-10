@@ -175,7 +175,7 @@ export async function getAllBookings(filters: BookingsPageFilters): Promise<Book
         return [];
     }
 
-    let query = supabase.from('bookings').select('id, listing_id, user_id, inventory_ids, status, start_date, end_date, data');
+    let query = supabase.from('bookings').select('id, listing_id, user_id, status, start_date, end_date, data');
 
     if (session.role === 'guest') {
         query = query.eq('user_id', session.id);
@@ -237,7 +237,7 @@ export async function getBookingById(id: string): Promise<Booking | null> {
     // 1. Fetch the booking by ID
     const { data: bookingData, error } = await supabase
         .from('bookings')
-        .select('id, listing_id, user_id, inventory_ids, status, start_date, end_date, data')
+        .select('id, listing_id, user_id, status, start_date, end_date, data')
         .eq('id', id)
         .single();
 
@@ -339,7 +339,7 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
 
   const { data: overlappingBookings, error: bookingsError } = await supabase
       .from('bookings')
-      .select('listing_id, inventory_ids')
+      .select('listing_id, data')
       .in('listing_id', listingIds)
       .eq('status', 'Confirmed')
       .lte('start_date', to) // booking starts before or on the same day the search range ends
@@ -355,7 +355,7 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
       if (!bookedUnitsByListing[booking.listing_id]) {
           bookedUnitsByListing[booking.listing_id] = new Set();
       }
-      booking.inventory_ids.forEach(invId => bookedUnitsByListing[booking.listing_id].add(invId));
+      (booking.data.inventoryIds || []).forEach((invId: string) => bookedUnitsByListing[booking.listing_id].add(invId));
   }
   
   const availableListings = listingsWithInventoryCount.filter(listing => {
@@ -372,7 +372,7 @@ export async function getConfirmedBookingsForListing(listingId: string) {
     const supabase = createSupabaseServerClient();
     const { data, error } = await supabase
         .from('bookings')
-        .select('start_date, end_date, inventory_ids')
+        .select('start_date, end_date, data')
         .eq('listing_id', listingId)
         .eq('status', 'Confirmed');
 
@@ -381,5 +381,9 @@ export async function getConfirmedBookingsForListing(listingId: string) {
         return [];
     }
     
-    return data as { startDate: string, endDate: string, inventoryIds: string[] }[];
+    return data.map(d => ({ 
+        startDate: d.start_date, 
+        endDate: d.end_date, 
+        inventoryIds: d.data.inventoryIds || [] 
+    }));
 }
