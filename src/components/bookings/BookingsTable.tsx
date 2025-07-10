@@ -31,7 +31,7 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
       if (result.success) {
         toast({
           title: "Booking Cancelled",
-          description: result.success,
+          description: result.message,
         });
       } else {
         toast({
@@ -129,7 +129,7 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
                             {(session?.role === 'admin' || session?.role === 'staff') && (
                                 <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-user/${booking.userId}`)}>View Guest</DropdownMenuItem>
                              )}
-                             {session?.role === 'admin' && (
+                             {(session?.role === 'admin' || session?.role === 'staff') && (
                                 <>
                                  {booking.status === 'Pending' && (
                                     <DropdownMenuItem 
@@ -137,13 +137,15 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
                                         onClick={() => handleConfirm(booking.id)}
                                     >Confirm Booking</DropdownMenuItem>
                                  )}
+                                </>
+                             )}
+                             {session?.role === 'admin' && (
                                  <DropdownMenuItem 
                                     className="text-destructive"
                                     disabled={isCancelPending || booking.status === 'Cancelled'}
                                     onClick={() => handleCancel(booking.id)}
                                  >Cancel Booking</DropdownMenuItem>
-                                </>
-                            )}
+                             )}
                              {session?.role === 'guest' && booking.userId === session.id && (
                                  <DropdownMenuItem 
                                     className="text-destructive"

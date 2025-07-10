@@ -224,12 +224,14 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
   const { toast } = useToast();
   const router = useRouter();
 
-  const canEdit = session.role === 'admin' || session.id === booking.userId;
+  const isAdmin = session.role === 'admin';
+  const isAdminOrStaff = isAdmin || session.role === 'staff';
+
+  const canEdit = isAdminOrStaff || session.id === booking.userId;
   const isActionable = booking.status !== 'Cancelled';
-  const canConfirm = session.role === 'admin' && booking.status === 'Pending';
-  const canCancel = (session.role === 'admin' || (session.role === 'guest' && session.id === booking.userId)) && isActionable;
+  const canConfirm = isAdminOrStaff && booking.status === 'Pending';
+  const canCancel = (isAdmin || (session.role === 'guest' && session.id === booking.userId)) && isActionable;
   const isAnyActionPending = isUpdatePending || isConfirmPending || isCancelPending;
-  const isAdminOrStaff = session.role === 'admin' || session.role === 'staff';
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -376,7 +378,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                     </p>
                 </div>
                 </div>
-                {(session.role === 'admin' || session.role === 'staff') && booking.userName && (
+                {isAdminOrStaff && booking.userName && (
                 <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
                     <UserIcon className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
                     <div>
@@ -395,7 +397,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
             </div>
 
             <div className="space-y-6">
-                {(session.role === 'admin' || session.role === 'staff') && (
+                {isAdminOrStaff && (
                     <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
                         <FileText className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
                         <div>

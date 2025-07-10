@@ -25,7 +25,7 @@ export default async function EditUserPage({ params }: { params: { id: string } 
     const urlParams = new URLSearchParams();
     urlParams.set('error', 'Permission Denied');
     urlParams.set('message', 'You do not have permission to view other users.');
-    redirect(`/forbidden?${urlParams.toString()}`);
+    redirect(`/forbidden?${params.toString()}`);
   }
 
   // Admins can edit anyone (including themselves via this form).
@@ -46,5 +46,6 @@ export default async function EditUserPage({ params }: { params: { id: string } 
   const urlParams = new URLSearchParams();
   urlParams.set('error', 'Permission Denied');
   urlParams.set('message', 'You do not have permission to perform this action.');
-  redirect(`/forbidden?${urlParams.toString()}`);
+  redirect(`/forbidden?${params.toString()}`);
 }
+

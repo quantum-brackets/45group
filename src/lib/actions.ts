@@ -708,7 +708,7 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
   const { data: booking, error: fetchError } = await supabase.from('bookings').select('user_id, listing_id, data').eq('id', bookingId).single();
   if (fetchError || !booking) return { error: 'Booking not found.' };
 
-  // Security: Check permissions.
+  // Security: Check permissions. Staff cannot cancel bookings.
   if (!hasPermission(session, 'booking:cancel:own', { ownerId: booking.user_id }) && !hasPermission(session, 'booking:cancel')) {
     return { error: 'You do not have permission to cancel this booking.' };
   }
@@ -750,7 +750,7 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session || !hasPermission(session, 'booking:confirm')) {
-      return { error: 'Unauthorized: Only administrators can confirm bookings.' };
+      return { error: 'Unauthorized: Only administrators or staff can confirm bookings.' };
     }
   
     const { bookingId } = BookingActionSchema.parse(data);
