@@ -5,7 +5,7 @@ import { useState, useTransition, useMemo, useEffect } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInCalendarDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 
 import type { Booking, Listing, User, Bill, Payment } from '@/lib/types';
@@ -216,7 +216,32 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
     }
   });
   
-  const totalBill = useMemo(() => (booking.bills || []).reduce((sum, bill) => sum + bill.amount, 0), [booking.bills]);
+  const baseBookingCost = useMemo(() => {
+    if (!booking.startDate || !booking.endDate || !listing.price || !listing.price_unit) return 0;
+
+    const from = parseISO(booking.startDate);
+    const to = parseISO(booking.endDate);
+    const units = (booking.inventoryIds || []).length;
+    const guests = booking.guests;
+
+    const durationDays = differenceInCalendarDays(to, from) + 1;
+    const nights = durationDays > 1 ? durationDays - 1 : 1;
+
+    switch(listing.price_unit) {
+        case 'night':
+            return listing.price * nights * units;
+        case 'hour':
+            // This assumes a standard 8-hour day for daily-booked hourly rentals.
+            return listing.price * durationDays * 8 * units;
+        case 'person':
+            return listing.price * guests * units;
+        default:
+            return 0;
+    }
+  }, [booking, listing]);
+
+  const addedBillsTotal = useMemo(() => (booking.bills || []).reduce((sum, bill) => sum + bill.amount, 0), [booking.bills]);
+  const totalBill = baseBookingCost + addedBillsTotal;
   const totalPayments = useMemo(() => (booking.payments || []).reduce((sum, payment) => sum + payment.amount, 0), [booking.payments]);
   const balance = totalBill - totalPayments;
   
@@ -428,7 +453,14 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {(booking.bills || []).length > 0 ? booking.bills?.map(bill => (
+                                             <TableRow>
+                                                <TableCell>
+                                                    <p className="font-medium">Base Booking Cost</p>
+                                                    <p className="text-xs text-muted-foreground">Initial reservation cost</p>
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium">{formatCurrency(baseBookingCost)}</TableCell>
+                                            </TableRow>
+                                            {booking.bills?.map(bill => (
                                                 <TableRow key={bill.id}>
                                                     <TableCell>
                                                         <p>{bill.description}</p>
@@ -436,9 +468,10 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">{formatCurrency(bill.amount)}</TableCell>
                                                 </TableRow>
-                                            )) : (
+                                            ))}
+                                            {(booking.bills || []).length === 0 && (
                                                 <TableRow>
-                                                    <TableCell colSpan={2} className="text-center text-muted-foreground">No bills added yet.</TableCell>
+                                                    <TableCell colSpan={2} className="text-center text-muted-foreground text-sm italic py-2">No additional bills added.</TableCell>
                                                 </TableRow>
                                             )}
                                         </TableBody>
