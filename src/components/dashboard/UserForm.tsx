@@ -1,6 +1,7 @@
 
 "use client";
 
+import React from 'react';
 import { useForm, SubmitHandler } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,13 +35,17 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface UserFormProps {
   user?: User; // If user is provided, we are in "edit" mode
+  session: User;
 }
 
-export function UserForm({ user }: UserFormProps) {
+export function UserForm({ user, session }: UserFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const isEditMode = !!user;
+
+  // Staff can only create users, not edit them. When creating, lock role to 'guest'.
+  const lockRoleForStaff = !isEditMode && session.role === 'staff';
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -54,6 +59,12 @@ export function UserForm({ user }: UserFormProps) {
       notes: user?.notes || "",
     },
   });
+
+  React.useEffect(() => {
+    if (lockRoleForStaff) {
+        form.setValue('role', 'guest');
+    }
+  }, [lockRoleForStaff, form]);
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
     startTransition(async () => {
@@ -162,18 +173,31 @@ export function UserForm({ user }: UserFormProps) {
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Role</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                        disabled={lockRoleForStaff}
+                    >
                         <FormControl>
                         <SelectTrigger>
                             <SelectValue placeholder="Select a user role" />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                            <SelectItem value="guest">Guest</SelectItem>
-                            <SelectItem value="staff">Staff</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
+                            {session.role === 'admin' ? (
+                                <>
+                                    <SelectItem value="guest">Guest</SelectItem>
+                                    <SelectItem value="staff">Staff</SelectItem>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                </>
+                            ) : (
+                                <SelectItem value="guest">Guest</SelectItem>
+                            )}
                         </SelectContent>
                     </Select>
+                    {lockRoleForStaff && (
+                        <FormDescription>Staff can only create Guest accounts.</FormDescription>
+                    )}
                     <FormMessage />
                     </FormItem>
                 )}

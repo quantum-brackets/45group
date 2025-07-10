@@ -1,6 +1,7 @@
 
 
 
+
 'use server'
 
 import { revalidatePath } from 'next/cache'
@@ -643,7 +644,15 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   const validatedFields = UserFormSchema.safeParse(data);
   if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
 
-  const { name, email, password, role, status, notes, phone } = validatedFields.data;
+  const { name, email, password, role: initialRole, status, notes, phone } = validatedFields.data;
+  
+  let role = initialRole;
+
+  if (session.role === 'staff') {
+    // Enforce that staff can only create guest accounts, regardless of form input.
+    role = 'guest';
+  }
+  
   if (!password) return { success: false, message: "Password is required for new users." };
   
   const { data: existingUser } = await supabase.from('users').select('id').eq('email', email).single();

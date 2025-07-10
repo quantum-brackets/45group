@@ -321,7 +321,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                     className="w-full max-w-sm pl-10"
                   />
                 </div>
-              {isAdmin && (
+              {(isAdmin || isStaff) && (
                 <Button asChild>
                   <Link href="/dashboard/add-user">
                     <PlusCircle className="mr-2 h-4 w-4" />

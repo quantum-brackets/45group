@@ -32,7 +32,7 @@ export default async function EditUserPage({ params }: { params: { id: string } 
   if (session.role === 'admin') {
     return (
       <div className="container mx-auto px-4 py-8">
-        <UserForm user={user} />
+        <UserForm user={user} session={session} />
       </div>
     );
   }

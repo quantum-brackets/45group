@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 
 export default async function AddUserPage() {
   const session = await getSession();
-  if (session?.role !== 'admin') {
+  if (!session || (session.role !== 'admin' && session.role !== 'staff')) {
     const params = new URLSearchParams();
     params.set('error', 'Permission Denied');
     params.set('message', 'You do not have permission to add new users.');
@@ -14,7 +14,7 @@ export default async function AddUserPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <UserForm />
+      <UserForm session={session} />
     </div>
   );
 }
