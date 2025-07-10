@@ -29,7 +29,7 @@ interface BookingFormProps {
 }
 
 const guestBookingSchema = z.object({
-  bookingName: z.string().min(1, "Please enter a booking name."),
+  bookingName: z.string().optional(),
   guestEmail: z.string().email("Please provide a valid email address.").optional(),
 });
 
@@ -164,9 +164,10 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
         toast({ title: "Please select dates", variant: "destructive" });
         return;
     }
+    
     const bookingName = guestForm.getValues('bookingName');
-    if (!bookingName) {
-        guestForm.setError('bookingName', { message: 'Booking name is required.'});
+    if (!session && !bookingName) {
+        guestForm.setError('bookingName', { message: 'Booking name is required for guest bookings.'});
         return;
     }
     

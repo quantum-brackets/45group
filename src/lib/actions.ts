@@ -243,7 +243,7 @@ const CreateBookingSchema = z.object({
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
   numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
   guestEmail: z.string().email("Please enter a valid email address.").optional(),
-  bookingName: z.string().min(1, 'Booking name is required.').optional(),
+  bookingName: z.string().optional(),
 });
 
 async function findAvailableInventory(supabase: any, listingId: string, startDate: string, endDate: string, excludeBookingId?: string): Promise<string[]> {
