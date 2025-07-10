@@ -40,7 +40,7 @@ export async function updatePermissionsAction(permissions: Record<Role, Permissi
     const session = await getSession();
     // Security: Ensure the user has permission to update permissions.
     if (!session || !hasPermission(session, 'permissions:update')) {
-      return { success: false, message: 'Unauthorized' };
+      return { success: false, message: 'Permission Denied: You are not authorized to update roles and permissions.' };
     }
   
     const supabase = createSupabaseAdminClient();
@@ -56,7 +56,7 @@ export async function updatePermissionsAction(permissions: Record<Role, Permissi
   
     if (error) {
       console.error('Error saving permissions:', error);
-      return { success: false, message: `Failed to save permissions: ${error.message}` };
+      return { success: false, message: `Database Error: Failed to save permissions. ${error.message}` };
     }
   
     // Invalidate the cache for the permissions page to show the new data.
@@ -99,12 +99,12 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
     const session = await getSession();
     // Security: Check permissions.
     if (!session || !hasPermission(session, 'listing:create')) {
-        return { success: false, message: 'Unauthorized' };
+        return { success: false, message: 'Permission Denied: You are not authorized to create new listings.' };
     }
 
     const validatedFields = ListingFormSchema.safeParse(data);
     if (!validatedFields.success) {
-        return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
+        return { success: false, message: "Validation Error: Please check the form for invalid data.", errors: validatedFields.error.flatten().fieldErrors };
     }
 
     const { name, type, location, description, price, price_unit, currency, max_guests, features, images, inventory } = validatedFields.data;
@@ -127,7 +127,7 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
 
     if (listingError || !newListing) {
         console.error('[CREATE_LISTING_ACTION] Error creating listing:', listingError);
-        return { success: false, message: `Failed to create listing: ${listingError?.message}` };
+        return { success: false, message: `Database Error: Failed to create listing. ${listingError?.message}` };
     }
 
     // If inventory units were provided, insert them into the inventory table.
@@ -141,7 +141,7 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
             console.error('[CREATE_LISTING_ACTION] Error creating inventory:', inventoryError);
             // Rollback: If inventory fails, delete the listing to prevent partial data.
             await supabase.from('listings').delete().eq('id', newListing.id);
-            return { success: false, message: `Failed to create inventory: ${inventoryError.message}` };
+            return { success: false, message: `Database Error: Failed to create inventory. ${inventoryError.message}` };
         }
     }
     
@@ -161,14 +161,14 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (!session || !hasPermission(session, 'listing:update')) {
-    return { success: false, message: 'Unauthorized' };
+    return { success: false, message: 'Permission Denied: You are not authorized to update listings.' };
   }
   
   const validatedFields = ListingFormSchema.safeParse(data);
   if (!validatedFields.success) {
     return {
       success: false,
-      message: "Invalid data provided.",
+      message: "Validation Error: Please check the form for invalid data.",
       errors: validatedFields.error.flatten().fieldErrors,
     }
   }
@@ -181,7 +181,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
     .single();
 
   if (fetchError || !existingListing) {
-      return { success: false, message: 'Listing not found.' };
+      return { success: false, message: 'Database Error: Could not find the listing to update.' };
   }
   
   const { name, type, location, description, price, price_unit, currency, max_guests, features, images, inventory: formInventory } = validatedFields.data;
@@ -200,7 +200,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
 
   if (updateError) {
     console.error(`[UPDATE_LISTING_ACTION] Error updating listing: ${updateError.message}`);
-    return { success: false, message: `Failed to update listing: ${updateError.message}` };
+    return { success: false, message: `Database Error: Failed to update listing. ${updateError.message}` };
   }
 
   // --- Smart Inventory Reconciliation Logic ---
@@ -218,13 +218,13 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
   if (idsToDelete.length > 0) {
       const { data: bookedInv, error: bookedError } = await supabase
         .from('bookings').select('data').eq('listing_id', id).in('status', ['Pending', 'Confirmed']);
-      if (bookedError) return { success: false, message: `Failed to check bookings: ${bookedError.message}` };
+      if (bookedError) return { success: false, message: `Database Error: Failed to check for active bookings. ${bookedError.message}` };
 
       const bookedIds = new Set(bookedInv.flatMap(b => b.data.inventoryIds || []));
       const isBookedItemDeleted = idsToDelete.some(id => bookedIds.has(id));
 
       if (isBookedItemDeleted) {
-          return { success: false, message: 'Cannot delete inventory units that are part of an active or pending booking.' };
+          return { success: false, message: 'Update Failed: Cannot delete inventory units that are part of an active or pending booking.' };
       }
   }
 
@@ -247,7 +247,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
 
   if (firstError?.error) {
       console.error('[UPDATE_LISTING_ACTION] Inventory update error:', firstError.error);
-      return { success: false, message: `Failed to update inventory: ${firstError.error.message}` };
+      return { success: false, message: `Database Error: Failed to update inventory. ${firstError.error.message}` };
   }
 
   // Revalidate all relevant paths.
@@ -268,7 +268,7 @@ export async function deleteListingAction(id: string) {
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (!session || !hasPermission(session, 'listing:delete')) {
-    return { success: false, message: 'Unauthorized' };
+    return { success: false, message: 'Permission Denied: You are not authorized to delete listings.' };
   }
   
   // Safety check: Prevent deletion if there are active bookings.
@@ -280,10 +280,10 @@ export async function deleteListingAction(id: string) {
     .limit(1);
 
   if (bookingCheckError) {
-    return { success: false, message: `Database error: ${bookingCheckError.message}` };
+    return { success: false, message: `Database Error: Failed to check for active bookings. ${bookingCheckError.message}` };
   }
   if (activeBookings && activeBookings.length > 0) {
-    return { success: false, message: 'Cannot delete listing with active or pending bookings. Please cancel them first.' };
+    return { success: false, message: 'Deletion Failed: Cannot delete a listing with active or pending bookings. Please cancel them first.' };
   }
 
   // The database is set up with cascading deletes, so deleting the listing
@@ -292,7 +292,7 @@ export async function deleteListingAction(id: string) {
 
   if (error) {
     console.error(`[DELETE_LISTING_ACTION] Error: ${error}`);
-    return { success: false, message: `Failed to delete listing: ${error.message}` };
+    return { success: false, message: `Database Error: Failed to delete listing. ${error.message}` };
   }
 
   revalidatePath('/dashboard?tab=listings', 'page');
@@ -349,7 +349,7 @@ async function findAvailableInventory(supabase: any, listingId: string, startDat
         .select('id')
         .eq('listing_id', listingId);
 
-    if (invError) throw new Error('Could not fetch inventory.');
+    if (invError) throw new Error('Database Error: Could not fetch inventory.');
 
     const allInventoryIds = allInventory.map((inv: any) => inv.id);
 
@@ -369,7 +369,7 @@ async function findAvailableInventory(supabase: any, listingId: string, startDat
         
     const { data: overlappingBookings, error: bookingsError } = await bookingsQuery;
     
-    if (bookingsError) throw new Error('Could not check for overlapping bookings.');
+    if (bookingsError) throw new Error('Database Error: Could not check for overlapping bookings.');
     
     // Get a set of all inventory IDs that are booked during the overlapping period.
     const bookedInventoryIds = new Set(overlappingBookings.flatMap((b: any) => b.data.inventoryIds || []));
@@ -391,7 +391,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
   const validatedFields = CreateBookingSchema.safeParse(data);
   if (!validatedFields.success) {
       const errorMessages = Object.values(validatedFields.error.flatten().fieldErrors).map(e => e?.[0]).filter(Boolean).join(', ');
-      return { success: false, message: `Invalid data provided: ${errorMessages || 'Please check your input.'}` };
+      return { success: false, message: `Validation Error: ${errorMessages || 'Please check your input.'}` };
   }
 
   const { listingId, startDate, endDate, guests, numberOfUnits, userId, guestName, guestEmail } = validatedFields.data;
@@ -412,7 +412,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     // Get the name of the user the booking is actually for.
     const { data: targetUser, error: targetUserError } = await supabase.from('users').select('email, data').eq('id', finalUserId).single();
     if (targetUserError || !targetUser) {
-        return { success: false, message: 'Target user for the booking was not found.' };
+        return { success: false, message: 'Booking Failed: The selected guest user could not be found.' };
     }
     finalUserName = targetUser.data.name;
     finalUserEmail = targetUser.email;
@@ -421,17 +421,17 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     const isBookingForOther = session.id !== finalUserId;
     if (isBookingForOther) {
       if (session.role !== 'staff' && !hasPermission(session, 'booking:create')) {
-        return { success: false, message: 'You do not have permission to create bookings for other users.' };
+        return { success: false, message: 'Permission Denied: You are not authorized to create bookings for other users.' };
       }
     } else {
       if (!hasPermission(session, 'booking:create:own', { ownerId: session.id })) {
-        return { success: false, message: 'You do not have permission to create bookings.' };
+        return { success: false, message: 'Permission Denied: You are not authorized to create bookings for yourself.' };
       }
     }
   } else {
     // --- Guest checkout flow ---
     if (!guestName || !guestEmail) {
-        return { success: false, message: "Guest name and email are required." };
+        return { success: false, message: "Validation Error: Guest name and email are required." };
     }
 
     finalUserName = guestName;
@@ -442,7 +442,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     if (existingUser) {
         // If an account exists, handle it based on status.
         if (existingUser.status === 'active') {
-            return { success: false, message: 'An account with this email already exists. Please log in to continue.' };
+            return { success: false, message: 'Booking Failed: An account with this email already exists. Please log in to continue.' };
         }
         finalUserId = existingUser.id; // Use existing provisional user ID.
     } else {
@@ -456,7 +456,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
 
         if (insertError || !newUser) {
             console.error('[GUEST_BOOKING] Error creating provisional user:', insertError);
-            return { success: false, message: 'Could not create a provisional account.' };
+            return { success: false, message: 'Database Error: Could not create a provisional account.' };
         }
         finalUserId = newUser.id;
         isNewProvisionalUser = true;
@@ -470,7 +470,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       // Check for available inventory before creating the booking.
       const availableInventory = await findAvailableInventory(supabase, listingId, startDate, endDate);
       if (availableInventory.length < numberOfUnits) {
-          return { success: false, message: `Not enough units available for the selected dates. Only ${availableInventory.length} left.` };
+          return { success: false, message: `Booking Failed: Not enough units available for the selected dates. Only ${availableInventory.length} left.` };
       }
       const inventoryToBook = availableInventory.slice(0, numberOfUnits);
       
@@ -537,7 +537,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       }
 
   } catch (e: any) {
-      return { success: false, message: e.message };
+      return { success: false, message: `Booking Failed: ${e.message}` };
   }
 }
 
@@ -561,10 +561,10 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session) return { success: false, message: 'Unauthorized' };
+    if (!session) return { success: false, message: 'Authentication Error: You must be logged in to perform this action.' };
   
     const validatedFields = UpdateBookingSchema.safeParse(data);
-    if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
+    if (!validatedFields.success) return { success: false, message: "Validation Error: Please check the form for invalid data." };
 
     const { bookingId, startDate, endDate, guests, numberOfUnits, bookingName, userId } = validatedFields.data;
 
@@ -574,17 +574,17 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
       .eq('id', bookingId)
       .single();
       
-    if (fetchError || !booking) return { success: false, message: 'Booking not found.' };
+    if (fetchError || !booking) return { success: false, message: 'Database Error: Could not find the booking to update.' };
 
     // Security: Check if user has permission to update this specific booking.
     if (!hasPermission(session, 'booking:update:own', { ownerId: booking.user_id }) && !hasPermission(session, 'booking:update')) {
-      return { success: false, message: 'You do not have permission to update this booking.' };
+      return { success: false, message: 'Permission Denied: You are not authorized to update this booking.' };
     }
 
     const ownerChanged = userId && userId !== booking.user_id;
 
     if (ownerChanged && !hasPermission(session, 'booking:update')) {
-        return { success: false, message: 'You do not have permission to change the booking owner.' };
+        return { success: false, message: 'Permission Denied: You are not authorized to change the owner of a booking.' };
     }
 
     // Determine if critical fields have changed, which may require re-confirmation.
@@ -624,7 +624,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     if (ownerChanged) {
         const { data: newUser } = await supabase.from('users').select('name:data->>name').eq('id', userId!).single();
         if (!newUser || !newUser.name) {
-            return { success: false, message: 'The selected new owner does not exist or has no name.' };
+            return { success: false, message: 'Database Error: The selected new owner does not exist or has no name.' };
         }
         actions.push({
             timestamp: new Date().toISOString(),
@@ -639,7 +639,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
         // Re-check inventory availability for the new dates, excluding the current booking.
         const availableInventory = await findAvailableInventory(supabase, booking.listing_id, startDate, endDate, bookingId);
         if (availableInventory.length < numberOfUnits) {
-            return { success: false, message: `Not enough units available for the new dates. Only ${availableInventory.length} left.` };
+            return { success: false, message: `Update Failed: Not enough units available for the new dates. Only ${availableInventory.length} left.` };
         }
         const inventoryToBook = availableInventory.slice(0, numberOfUnits);
         
@@ -674,7 +674,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
         revalidatePath(`/booking/${bookingId}`);
         return { success: true, message: successMessage };
     } catch(e: any) {
-        return { success: false, message: e.message };
+        return { success: false, message: `Update Failed: ${e.message}` };
     }
 }
 
@@ -701,16 +701,16 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (!session) return { error: 'Unauthorized' };
+  if (!session) return { error: 'Authentication Error: You must be logged in to perform this action.' };
 
   const { bookingId } = BookingActionSchema.parse(data);
 
   const { data: booking, error: fetchError } = await supabase.from('bookings').select('user_id, listing_id, data').eq('id', bookingId).single();
-  if (fetchError || !booking) return { error: 'Booking not found.' };
+  if (fetchError || !booking) return { error: 'Database Error: Could not find the booking to cancel.' };
 
   // Security: Check permissions. Staff cannot cancel bookings.
   if (!hasPermission(session, 'booking:cancel:own', { ownerId: booking.user_id }) && !hasPermission(session, 'booking:cancel')) {
-    return { error: 'You do not have permission to cancel this booking.' };
+    return { error: 'Permission Denied: You are not authorized to cancel this booking.' };
   }
   
   const { data: listing } = await supabase.from('listings').select('data').eq('id', booking.listing_id).single();
@@ -732,7 +732,7 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
     }
   }).eq('id', bookingId);
   
-  if (error) return { error: `Failed to cancel booking: ${error.message}` };
+  if (error) return { error: `Database Error: Failed to cancel booking. ${error.message}` };
 
   revalidatePath('/bookings');
   revalidatePath(`/booking/${bookingId}`);
@@ -750,13 +750,13 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session || !hasPermission(session, 'booking:confirm')) {
-      return { error: 'Unauthorized: Only administrators or staff can confirm bookings.' };
+      return { error: 'Permission Denied: You are not authorized to confirm bookings.' };
     }
   
     const { bookingId } = BookingActionSchema.parse(data);
   
     const { data: booking, error: fetchError } = await supabase.from('bookings').select('*').eq('id', bookingId).single();
-    if(fetchError || !booking) return { error: 'Booking not found.' };
+    if(fetchError || !booking) return { error: 'Database Error: Could not find the booking to confirm.' };
 
     try {
         // Final availability check at the moment of confirmation to prevent race conditions.
@@ -784,7 +784,7 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
             }).eq('id', bookingId);
             revalidatePath('/bookings');
             revalidatePath(`/booking/${bookingId}`);
-            return { error: 'Inventory conflict detected. The booking has been cancelled.' };
+            return { error: 'Confirmation Failed: An inventory conflict was detected. The booking has been automatically cancelled.' };
         }
 
         const confirmAction: BookingAction = {
@@ -817,7 +817,7 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
         revalidatePath(`/booking/${bookingId}`);
         return { success: `Booking has been confirmed.` };
     } catch (e: any) {
-        return { error: e.message };
+        return { error: `Confirmation Failed: ${e.message}` };
     }
 }
 
@@ -844,11 +844,11 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
 
   // Updated permission check: Admins can create any user. Staff can also proceed.
   if (!session || (!hasPermission(session, 'user:create') && session.role !== 'staff')) {
-    return { success: false, message: 'Unauthorized' };
+    return { success: false, message: 'Permission Denied: You are not authorized to create new users.' };
   }
 
   const validatedFields = UserFormSchema.safeParse(data);
-  if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
+  if (!validatedFields.success) return { success: false, message: "Validation Error: Please check the form for invalid data." };
 
   const { name, email, password, role: initialRole, status, notes, phone } = validatedFields.data;
   
@@ -859,17 +859,17 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
     role = 'guest';
   }
   
-  if (!password) return { success: false, message: "Password is required for new users." };
+  if (!password) return { success: false, message: "Validation Error: Password is required for new users." };
   
   const { data: existingUser } = await supabase.from('users').select('id').eq('email', email).single();
-  if (existingUser) return { success: false, message: 'A user with this email already exists.' };
+  if (existingUser) return { success: false, message: 'User Creation Failed: A user with this email already exists.' };
 
   const hashedPassword = await hashPassword(password);
   const userJsonData = { name, password: hashedPassword, notes, phone };
 
   const { error } = await supabase.from('users').insert({ email, role, status, data: userJsonData });
 
-  if (error) return { success: false, message: `Failed to create user: ${error.message}` };
+  if (error) return { success: false, message: `Database Error: Failed to create user. ${error.message}` };
 
   await sendWelcomeEmail({ name, email });
 
@@ -888,14 +888,14 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (!session || !hasPermission(session, 'user:update')) {
-    return { success: false, message: 'Unauthorized' };
+    return { success: false, message: 'Permission Denied: You are not authorized to update user details.' };
   }
 
   const validatedFields = UserFormSchema.safeParse(data);
-  if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
+  if (!validatedFields.success) return { success: false, message: "Validation Error: Please check the form for invalid data." };
   
   const { data: existingUser, error: fetchError } = await supabase.from('users').select('data, email, role, status').eq('id', id).single();
-  if(fetchError || !existingUser) return { success: false, message: 'User not found.' };
+  if(fetchError || !existingUser) return { success: false, message: 'Database Error: Could not find the user to update.' };
 
   const { name, email, password, role, status, notes, phone } = validatedFields.data;
 
@@ -922,7 +922,7 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
 
   const { error } = await supabase.from('users').update({ email, role, status, data: userJsonData }).eq('id', id);
 
-  if (error) return { success: false, message: `Failed to update user: ${error.message}` };
+  if (error) return { success: false, message: `Database Error: Failed to update user. ${error.message}` };
 
   revalidatePath('/dashboard?tab=users', 'page');
   revalidatePath(`/dashboard/edit-user/${id}`);
@@ -940,12 +940,12 @@ export async function deleteUserAction(userId: string) {
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (!session || !hasPermission(session, 'user:delete')) {
-    return { success: false, message: 'Unauthorized' };
+    return { success: false, message: 'Permission Denied: You are not authorized to delete users.' };
   }
 
   // Safety check: Prevent users from deleting themselves.
   if (userId === session.id) {
-    return { success: false, message: "You cannot delete your own account." };
+    return { success: false, message: "Deletion Failed: You cannot delete your own account." };
   }
 
   // Safety check: Prevent deleting users with active bookings.
@@ -957,18 +957,18 @@ export async function deleteUserAction(userId: string) {
     .limit(1);
 
   if (bookingCheckError) {
-    return { success: false, message: `Database error when checking bookings: ${bookingCheckError.message}` };
+    return { success: false, message: `Database Error: Failed to check for active bookings. ${bookingCheckError.message}` };
   }
   
   if (activeBookings && activeBookings.length > 0) {
-    return { success: false, message: 'This user has active or pending bookings and cannot be deleted.' };
+    return { success: false, message: 'Deletion Failed: This user has active or pending bookings and cannot be deleted.' };
   }
 
   const { error } = await supabase.from('users').delete().eq('id', userId);
 
   if (error) {
     console.error(`[DELETE_USER_ACTION] Error: ${error}`);
-    return { success: false, message: `Failed to delete user: ${error.message}` };
+    return { success: false, message: `Database Error: Failed to delete user. ${error.message}` };
   }
 
   revalidatePath('/dashboard?tab=users', 'page');
@@ -993,17 +993,17 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (!session) return { success: false, message: 'Unauthorized' };
+  if (!session) return { success: false, message: 'Authentication Error: You must be logged in to perform this action.' };
   
   if (!hasPermission(session, 'user:update:own', { ownerId: session.id })) {
-    return { success: false, message: 'You do not have permission to update your profile.'}
+    return { success: false, message: 'Permission Denied: You are not authorized to update your profile.'}
   }
 
   const validatedFields = UpdateProfileSchema.safeParse(data);
-  if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
+  if (!validatedFields.success) return { success: false, message: "Validation Error: Please check the form for invalid data." };
 
   const { data: existingUser, error: fetchError } = await supabase.from('users').select('data').eq('id', session.id).single();
-  if (fetchError || !existingUser) return { success: false, message: 'Could not find your user profile.' };
+  if (fetchError || !existingUser) return { success: false, message: 'Database Error: Could not find your user profile.' };
   
   const { name, email, password, notes, phone } = validatedFields.data;
   let userJsonData = { ...existingUser.data, name, notes, phone };
@@ -1013,7 +1013,7 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
   }
 
   const { error } = await supabase.from('users').update({ email, data: userJsonData }).eq('id', session.id);
-  if (error) return { success: false, message: `Failed to update profile: ${error.message}` };
+  if (error) return { success: false, message: `Database Error: Failed to update profile. ${error.message}` };
   
   revalidatePath('/profile');
   revalidatePath('/', 'layout'); // Revalidate layout to update header with new user name/email.
@@ -1037,20 +1037,20 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session) return { success: false, message: 'You must be logged in to submit a review.' };
+    if (!session) return { success: false, message: 'Authentication Error: You must be logged in to submit a review.' };
     
     if (!hasPermission(session, 'review:create:own', { ownerId: session.id })) {
-      return { success: false, message: 'Unauthorized action.'};
+      return { success: false, message: 'Permission Denied: You are not authorized to create or update reviews.'};
     }
 
     const validatedFields = ReviewSchema.safeParse(data);
-    if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
+    if (!validatedFields.success) return { success: false, message: "Validation Error: Please check the form for invalid data." };
 
     const { listingId, rating, comment } = validatedFields.data;
     
     // Fetch the listing to update its `reviews` array in the JSONB data.
     const { data: listing, error: fetchError } = await supabase.from('listings').select('data').eq('id', listingId).single();
-    if (fetchError || !listing) return { success: false, message: `Could not find the listing.` };
+    if (fetchError || !listing) return { success: false, message: `Database Error: Could not find the listing.` };
 
     const reviews = (listing.data.reviews || []) as Review[];
     const existingReviewIndex = reviews.findIndex(r => r.user_id === session.id);
@@ -1076,7 +1076,7 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
     // TODO: This could be moved to a database trigger for consistency.
     // When a review is added/updated, we update the entire reviews array in the listing's data.
     const { error: updateError } = await supabase.from('listings').update({ data: { ...listing.data, reviews: reviews } }).eq('id', listingId);
-    if (updateError) return { success: false, message: `Failed to submit review: ${updateError.message}` };
+    if (updateError) return { success: false, message: `Database Error: Failed to submit review. ${updateError.message}` };
 
     revalidatePath(`/listing/${listingId}`);
     return { success: true, message: 'Your review has been submitted and is awaiting approval.' };
@@ -1097,15 +1097,15 @@ export async function approveReviewAction(data: z.infer<typeof ReviewActionSchem
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session || !hasPermission(session, 'review:approve')) return { success: false, message: 'Unauthorized action.' };
+    if (!session || !hasPermission(session, 'review:approve')) return { success: false, message: 'Permission Denied: You are not authorized to approve reviews.' };
 
     const { listingId, reviewId } = data;
     const { data: listing, error: fetchError } = await supabase.from('listings').select('data').eq('id', listingId).single();
-    if (fetchError || !listing) return { success: false, message: 'Listing not found.' };
+    if (fetchError || !listing) return { success: false, message: 'Database Error: Could not find the listing.' };
 
     const reviews = (listing.data.reviews || []) as Review[];
     const reviewIndex = reviews.findIndex(r => r.id === reviewId);
-    if (reviewIndex === -1) return { success: false, message: 'Review not found.' };
+    if (reviewIndex === -1) return { success: false, message: 'Action Failed: The review could not be found.' };
 
     reviews[reviewIndex].status = 'approved';
 
@@ -1119,7 +1119,7 @@ export async function approveReviewAction(data: z.infer<typeof ReviewActionSchem
     const updatedData = { ...listing.data, reviews: reviews, rating: newAverageRating };
 
     const { error: updateError } = await supabase.from('listings').update({ data: updatedData }).eq('id', listingId);
-    if (updateError) return { success: false, message: `Failed to approve review: ${updateError.message}` };
+    if (updateError) return { success: false, message: `Database Error: Failed to approve review. ${updateError.message}` };
 
     revalidatePath(`/listing/${listingId}`);
     return { success: true, message: 'Review approved successfully.' };
@@ -1134,11 +1134,11 @@ export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session || !hasPermission(session, 'review:delete')) return { success: false, message: 'Unauthorized action.' };
+    if (!session || !hasPermission(session, 'review:delete')) return { success: false, message: 'Permission Denied: You are not authorized to delete reviews.' };
     
     const { listingId, reviewId } = data;
     const { data: listing, error: fetchError } = await supabase.from('listings').select('data').eq('id', listingId).single();
-    if (fetchError || !listing) return { success: false, message: 'Listing not found.' };
+    if (fetchError || !listing) return { success: false, message: 'Database Error: Could not find the listing.' };
     
     const reviews = (listing.data.reviews || []) as Review[];
     const updatedReviews = reviews.filter(r => r.id !== reviewId);
@@ -1152,7 +1152,7 @@ export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema
     const updatedData = { ...listing.data, reviews: updatedReviews, rating: newAverageRating };
 
     const { error: updateError } = await supabase.from('listings').update({ data: updatedData }).eq('id', listingId);
-    if (updateError) return { success: false, message: `Failed to delete review: ${updateError.message}` };
+    if (updateError) return { success: false, message: `Database Error: Failed to delete review. ${updateError.message}` };
 
     revalidatePath(`/listing/${listingId}`);
     return { success: true, message: 'Review deleted successfully.' };
@@ -1174,15 +1174,15 @@ export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStat
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (!session || !hasPermission(session, 'user:update')) {
-    return { success: false, message: 'Unauthorized' };
+    return { success: false, message: 'Permission Denied: You are not authorized to change user statuses.' };
   }
 
   const { userId, status } = ToggleUserStatusSchema.parse(data);
   // Safety check: Prevent users from disabling themselves.
-  if (userId === session.id) return { success: false, message: "You cannot change your own status." };
+  if (userId === session.id) return { success: false, message: "Action Failed: You cannot change your own status." };
   
   const { error } = await supabase.from('users').update({ status }).eq('id', userId);
-  if (error) return { success: false, message: `Database error: ${error.message}` };
+  if (error) return { success: false, message: `Database Error: ${error.message}` };
 
   revalidatePath('/dashboard?tab=users', 'page');
   return { success: true, message: `User status has been updated to ${status}.` };
@@ -1203,7 +1203,7 @@ export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteLi
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session || !hasPermission(session, 'listing:delete')) {
-        return { success: false, message: 'Unauthorized' };
+        return { success: false, message: 'Permission Denied: You are not authorized to delete listings.' };
     }
 
     const { listingIds } = BulkDeleteListingsSchema.parse(data);
@@ -1216,11 +1216,11 @@ export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteLi
       .in('status', ['Pending', 'Confirmed'])
       .limit(1);
 
-    if(bookingCheckError) return { success: false, message: `DB Error: ${bookingCheckError.message}` };
-    if(activeBookings && activeBookings.length > 0) return { success: false, message: `One or more selected listings have active bookings. Please cancel them first.` };
+    if(bookingCheckError) return { success: false, message: `Database Error: ${bookingCheckError.message}` };
+    if(activeBookings && activeBookings.length > 0) return { success: false, message: `Deletion Failed: One or more selected listings have active bookings. Please cancel them first.` };
 
     const { error } = await supabase.from('listings').delete().in('id', listingIds);
-    if (error) return { success: false, message: `Failed to delete listings: ${error.message}` };
+    if (error) return { success: false, message: `Database Error: Failed to delete listings. ${error.message}` };
     
     revalidatePath('/dashboard');
     return { success: true, message: `${listingIds.length} listing(s) have been deleted.` };
@@ -1245,19 +1245,19 @@ export async function addBillAction(data: z.infer<typeof AddBillSchema>) {
   
   // Allow admin and staff to add bills.
   if (!session || (session.role !== 'admin' && session.role !== 'staff')) {
-    return { success: false, message: 'Unauthorized' };
+    return { success: false, message: 'Permission Denied: You are not authorized to add bills to a booking.' };
   }
 
   const validatedFields = AddBillSchema.safeParse(data);
   if (!validatedFields.success) {
-    return { success: false, message: "Invalid data provided." };
+    return { success: false, message: "Validation Error: Please check the form for invalid data." };
   }
 
   const { bookingId, description, amount } = validatedFields.data;
 
   const { data: booking, error: fetchError } = await supabase.from('bookings').select('data').eq('id', bookingId).single();
   if (fetchError || !booking) {
-    return { success: false, message: 'Booking not found.' };
+    return { success: false, message: 'Database Error: Could not find the booking.' };
   }
 
   const newBill: Bill = {
@@ -1273,7 +1273,7 @@ export async function addBillAction(data: z.infer<typeof AddBillSchema>) {
 
   const { error } = await supabase.from('bookings').update({ data: updatedData }).eq('id', bookingId);
   if (error) {
-    return { success: false, message: `Failed to add bill: ${error.message}` };
+    return { success: false, message: `Database Error: Failed to add bill. ${error.message}` };
   }
 
   revalidatePath(`/booking/${bookingId}`);
@@ -1300,19 +1300,19 @@ export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
     
     // Allow admin and staff to record payments.
     if (!session || (session.role !== 'admin' && session.role !== 'staff')) {
-        return { success: false, message: 'Unauthorized' };
+        return { success: false, message: 'Permission Denied: You are not authorized to record payments.' };
     }
     
     const validatedFields = AddPaymentSchema.safeParse(data);
     if (!validatedFields.success) {
-        return { success: false, message: "Invalid data provided." };
+        return { success: false, message: "Validation Error: Please check the form for invalid data." };
     }
     
     const { bookingId, amount, method, notes } = validatedFields.data;
     
     const { data: booking, error: fetchError } = await supabase.from('bookings').select('data').eq('id', bookingId).single();
     if (fetchError || !booking) {
-        return { success: false, message: 'Booking not found.' };
+        return { success: false, message: 'Database Error: Could not find the booking.' };
     }
     
     const newPayment: Payment = {
@@ -1329,7 +1329,7 @@ export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
     
     const { error } = await supabase.from('bookings').update({ data: updatedData }).eq('id', bookingId);
     if (error) {
-        return { success: false, message: `Failed to add payment: ${error.message}` };
+        return { success: false, message: `Database Error: Failed to record payment. ${error.message}` };
     }
     
     revalidatePath(`/booking/${bookingId}`);

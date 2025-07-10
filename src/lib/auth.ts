@@ -29,7 +29,7 @@ export async function loginAction(formData: z.infer<typeof LoginSchema>, from: s
   const supabase = createSupabaseAdminClient();
   const validatedFields = LoginSchema.safeParse(formData);
   if (!validatedFields.success) {
-    return { error: 'Invalid fields provided.' };
+    return { error: 'Validation Error: Please enter a valid email and password.' };
   }
 
   const { email, password } = validatedFields.data;
@@ -43,24 +43,24 @@ export async function loginAction(formData: z.infer<typeof LoginSchema>, from: s
     
   if (error || !user || !user.data) {
     // Generic error message to prevent email enumeration attacks.
-    return { error: "Incorrect email or password." };
+    return { error: "Login Failed: Incorrect email or password." };
   }
 
   const userData = user.data as { password?: string, name?: string };
   // Check if the user has a password. If not, they might be a provisional user.
   if (!userData.password) {
-    return { error: "Account not fully set up. Please sign up." };
+    return { error: "Login Failed: This account is not fully set up. Please try signing up." };
   }
 
   // Verify the supplied password against the stored hash.
   const isPasswordValid = await verifyPassword(userData.password, password);
   if (!isPasswordValid) {
-    return { error: "Incorrect email or password." };
+    return { error: "Login Failed: Incorrect email or password." };
   }
   
   // Check if the user account has been disabled by an admin.
   if (user.status === 'disabled') {
-    return { error: "Your account has been disabled. Please contact support." };
+    return { error: "Login Failed: Your account has been disabled. Please contact support." };
   }
   
   // If the user's status is provisional, but they have a password, it means they've completed signup.
@@ -99,7 +99,7 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
     const supabase = createSupabaseAdminClient();
     const validatedFields = SignupSchema.safeParse(formData);
     if (!validatedFields.success) {
-        return { error: "Invalid fields provided." };
+        return { error: "Validation Error: Please check the form for invalid data." };
     }
 
     const { name, email, password } = validatedFields.data;
@@ -125,12 +125,12 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
             }).eq('id', existingUser.id).select('id').single();
 
             if (updateError || !updatedUser) {
-                 return { error: "Could not complete signup. Please try again." };
+                 return { error: "Signup Failed: Could not update your provisional account. Please try again." };
             }
             userId = updatedUser.id;
         } else {
             // If the user is already active, return an error.
-            return { error: "A user with this email already exists." };
+            return { error: "Signup Failed: A user with this email already exists." };
         }
     } else {
         isNewUser = true;
@@ -144,7 +144,7 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
 
         if (insertError || !newUser) {
             console.error('[SIGNUP_ERROR]', insertError);
-            return { error: "Database error saving new user" };
+            return { error: "Database Error: Could not save the new user." };
         }
         userId = newUser.id;
     }
@@ -176,7 +176,7 @@ export async function requestPasswordResetAction(formData: z.infer<typeof Passwo
   const supabase = createSupabaseAdminClient();
   const validatedFields = PasswordResetRequestSchema.safeParse(formData);
   if (!validatedFields.success) {
-    return { error: 'Invalid email provided.' };
+    return { error: 'Validation Error: Please provide a valid email address.' };
   }
   const { email } = validatedFields.data;
   
@@ -221,7 +221,7 @@ export async function resetPasswordAction(formData: z.infer<typeof ResetPassword
   const supabase = createSupabaseAdminClient();
   const validatedFields = ResetPasswordSchema.safeParse(formData);
   if (!validatedFields.success) {
-    return { error: 'Invalid data provided.' };
+    return { error: 'Validation Error: Please check the form for invalid data.' };
   }
 
   const { token, password } = validatedFields.data;
@@ -233,12 +233,12 @@ export async function resetPasswordAction(formData: z.infer<typeof ResetPassword
     .single();
 
   if (fetchError || !user) {
-    return { error: "Invalid or expired password reset token." };
+    return { error: "Reset Failed: This password reset token is invalid." };
   }
   
   const expires = user.data.password_reset_expires as number;
   if (!expires || Date.now() > expires) {
-    return { error: "Invalid or expired password reset token." };
+    return { error: "Reset Failed: This password reset token has expired." };
   }
 
   const hashedPassword = await hashPassword(password);
@@ -254,7 +254,7 @@ export async function resetPasswordAction(formData: z.infer<typeof ResetPassword
   }).eq('id', user.id);
 
   if (updateError) {
-    return { error: "Failed to update password. Please try again." };
+    return { error: "Database Error: Failed to update your password. Please try again." };
   }
   
   return { success: "Your password has been successfully reset." };
