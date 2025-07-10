@@ -395,11 +395,39 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
 
     const { bookingId, startDate, endDate, guests, numberOfUnits, bookingName } = validatedFields.data;
 
-    const { data: booking, error: fetchError } = await supabase.from('bookings').select('user_id, listing_id, data').eq('id', bookingId).single();
+    // Fetch the full booking record to check current state
+    const { data: booking, error: fetchError } = await supabase
+      .from('bookings')
+      .select('user_id, listing_id, data, status, start_date, end_date')
+      .eq('id', bookingId)
+      .single();
+      
     if (fetchError || !booking) return { success: false, message: 'Booking not found.' };
 
     if (!hasPermission(session, 'booking:update:own', { ownerId: booking.user_id }) && !hasPermission(session, 'booking:update')) {
       return { success: false, message: 'You do not have permission to update this booking.' };
+    }
+
+    // Determine if critical fields have changed
+    const existingStartDate = new Date(booking.start_date).toISOString();
+    const existingEndDate = new Date(booking.end_date).toISOString();
+    const existingNumberOfUnits = (booking.data.inventoryIds || []).length;
+
+    const datesChanged = startDate !== existingStartDate || endDate !== existingEndDate;
+    const unitsChanged = numberOfUnits !== existingNumberOfUnits;
+
+    let newStatus = booking.status;
+    let updateMessage: string;
+    let successMessage: string;
+
+    if (datesChanged || unitsChanged) {
+        newStatus = 'Pending';
+        updateMessage = 'Booking updated. Awaiting re-confirmation due to date/unit changes.';
+        successMessage = 'Booking has been updated and is now pending re-confirmation.';
+    } else {
+        newStatus = booking.status; // Keep original status
+        updateMessage = 'Booking details updated.';
+        successMessage = 'Booking has been updated successfully.';
     }
 
     try {
@@ -414,7 +442,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
             actorId: session.id,
             actorName: session.name,
             action: 'Updated',
-            message: 'Booking details updated. Awaiting re-confirmation.'
+            message: updateMessage,
         };
 
         const updatedBookingData = {
@@ -428,7 +456,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
         const { error } = await supabase.from('bookings').update({
             start_date: startDate,
             end_date: endDate,
-            status: 'Pending',
+            status: newStatus,
             data: updatedBookingData,
         }).eq('id', bookingId);
         
@@ -436,7 +464,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
         
         revalidatePath('/bookings');
         revalidatePath(`/booking/${bookingId}`);
-        return { success: true, message: 'Booking has been updated and is now pending re-confirmation.' };
+        return { success: true, message: successMessage };
     } catch(e: any) {
         return { success: false, message: e.message };
     }
