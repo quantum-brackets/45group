@@ -29,17 +29,16 @@ export async function getSession(): Promise<User | null> {
     .single();
 
   if (sessionError || !session || !session.user) {
-    // If the session is invalid, clear the cookie
-    (await cookies()).delete('session');
+    // If the session is invalid, just return null.
+    // The cookie will be overwritten on next login.
     return null;
   }
   
   // Check if session has expired
   const sessionExpires = new Date(session.expires_at).getTime();
   if (sessionExpires < Date.now()) {
-    // Optionally, delete the expired session from DB
+    // Delete the expired session from the DB
     await supabase.from('sessions').delete().eq('id', token);
-    (await cookies()).delete('session');
     return null;
   }
   
