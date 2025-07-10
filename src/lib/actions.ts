@@ -413,6 +413,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
   let finalUserEmail: string;
   let actorId: string;
   let actorName: string;
+  let isNewProvisionalUser = false;
 
   if (session) {
     // --- Logged-in user flow ---
@@ -470,6 +471,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
             return { success: false, message: 'Could not create a provisional account.' };
         }
         finalUserId = newUser.id;
+        isNewProvisionalUser = true;
     }
     
     actorId = finalUserId; // For guests, the actor is themselves.
@@ -521,12 +523,21 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       }).select().single();
 
       if (createBookingError || !newBooking) throw createBookingError;
+      
+      const userForEmail = { name: finalUserName, email: finalUserEmail, id: finalUserId };
+
+      // Send a welcome email if a new provisional account was created.
+      if (isNewProvisionalUser) {
+        await sendWelcomeEmail(userForEmail);
+      }
 
       // Send booking request email
       const { data: listingData } = await supabase.from('listings').select('data').eq('id', listingId).single();
-      const { data: userData } = await supabase.from('users').select('*').eq('id', finalUserId).single();
-      if(listingData && userData) {
-        await sendBookingRequestEmail(unpackUser(userData), unpackBooking(newBooking), unpackListing({ ...listingData, id: listingId }));
+      if(listingData) {
+        // This is a bit awkward, but we need the full User object for the email template.
+        // We construct a temporary one here.
+        const tempFullUser: User = { ...userForEmail, role: 'guest', status: 'provisional' };
+        await sendBookingRequestEmail(tempFullUser, unpackBooking(newBooking), unpackListing({ ...listingData, id: listingId }));
       }
 
       revalidatePath('/bookings');

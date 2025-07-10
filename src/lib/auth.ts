@@ -135,20 +135,18 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
     } else {
         isNewUser = true;
         // If no user exists, create a new one.
-        const newUserId = randomUUID();
-        const { error: insertError } = await supabase.from('users').insert({
-            id: newUserId,
+        const { data: newUser, error: insertError } = await supabase.from('users').insert({
             email,
             status: 'active',
             role: 'guest', // All new signups default to the 'guest' role.
             data: { name, password: hashedPassword }
-        });
+        }).select('id').single();
 
-        if (insertError) {
+        if (insertError || !newUser) {
             console.error('[SIGNUP_ERROR]', insertError);
             return { error: "Database error saving new user" };
         }
-        userId = newUserId;
+        userId = newUser.id;
     }
 
     if (isNewUser) {
