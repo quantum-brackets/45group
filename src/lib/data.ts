@@ -2,7 +2,7 @@
 import type { Listing, Booking, ListingType, User, ListingInventory, Review } from './types';
 import { getSession } from '@/lib/session';
 import { unstable_noStore as noStore } from 'next/cache';
-import { createSupabaseServerClient } from './supabase';
+import { createSupabaseServerClient, createSupabaseAdminClient } from './supabase';
 
 
 // Helper function to unpack the 'data' JSONB field
@@ -53,7 +53,7 @@ export async function getUserById(id: string): Promise<User | null> {
 }
 
 export async function getAllUsers(): Promise<User[]> {
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (session?.role !== 'admin' && session?.role !== 'staff') {
         return [];
@@ -180,7 +180,7 @@ interface BookingsPageFilters {
 
 export async function getAllBookings(filters: BookingsPageFilters): Promise<Booking[]> {
     noStore();
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session) {
         return [];
@@ -239,7 +239,7 @@ export async function getAllBookings(filters: BookingsPageFilters): Promise<Book
 
 export async function getBookingById(id: string): Promise<Booking | null> {
     noStore();
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session) {
         return null;
