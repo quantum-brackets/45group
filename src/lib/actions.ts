@@ -853,7 +853,9 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (!session || !hasPermission(session, 'user:create')) {
+
+  // Updated permission check: Admins can create any user. Staff can also proceed.
+  if (!session || (!hasPermission(session, 'user:create') && session.role !== 'staff')) {
     return { success: false, message: 'Unauthorized' };
   }
 
@@ -864,7 +866,7 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   
   let role = initialRole;
 
-  // Security: Staff can only create guest accounts.
+  // Security: Staff can only create guest accounts. This is a secondary check.
   if (session.role === 'staff') {
     role = 'guest';
   }
