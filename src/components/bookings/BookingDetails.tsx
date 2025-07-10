@@ -32,6 +32,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { Skeleton } from '../ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 
 interface BookingDetailsProps {
@@ -224,7 +225,8 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
   const router = useRouter();
 
   const isAdmin = session.role === 'admin';
-  const isAdminOrStaff = isAdmin || session.role === 'staff';
+  const isStaff = session.role === 'staff';
+  const isAdminOrStaff = isAdmin || isStaff;
 
   const canEdit = isAdminOrStaff && (booking.status === 'Pending' || booking.status === 'Confirmed');
   const isActionable = booking.status !== 'Cancelled' && booking.status !== 'Checked Out';
@@ -282,6 +284,8 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
         currency: listing.currency || 'USD',
     }).format(amount);
   };
+
+  const staffActionIsBlocked = isStaff && balance > 0;
 
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
@@ -616,16 +620,42 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                     </Button>
                 )}
                 {canConfirm && (
-                    <Button size="sm" onClick={handleConfirm} disabled={isAnyActionPending} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                        {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                        Confirm
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                 <div className="inline-block"> {/* Wrapper for Tooltip with disabled button */}
+                                    <Button size="sm" onClick={handleConfirm} disabled={isAnyActionPending || staffActionIsBlocked} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                                        {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                        Confirm
+                                    </Button>
+                                 </div>
+                            </TooltipTrigger>
+                            {staffActionIsBlocked && (
+                                <TooltipContent>
+                                    <p>Cannot confirm with an outstanding balance.</p>
+                                </TooltipContent>
+                            )}
+                        </Tooltip>
+                    </TooltipProvider>
                 )}
                 {canCheckOut && (
-                     <Button size="sm" onClick={handleCheckOut} disabled={isAnyActionPending}>
-                        {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
-                        Check Out
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className="inline-block">
+                                    <Button size="sm" onClick={handleCheckOut} disabled={isAnyActionPending || staffActionIsBlocked}>
+                                        {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+                                        Check Out
+                                    </Button>
+                                </div>
+                            </TooltipTrigger>
+                            {staffActionIsBlocked && (
+                                <TooltipContent>
+                                    <p>Cannot check out with an outstanding balance.</p>
+                                </TooltipContent>
+                            )}
+                        </Tooltip>
+                    </TooltipProvider>
                 )}
                 {canCancel && (
                     <AlertDialog>
@@ -834,5 +864,6 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
     
 
     
+
 
 

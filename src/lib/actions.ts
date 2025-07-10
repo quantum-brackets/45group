@@ -27,6 +27,7 @@ import { hasPermission, preloadPermissions } from './permissions'
 import type { Booking, Listing, ListingInventory, Permission, Role, Review, User, BookingAction, Bill, Payment } from './types'
 import { randomUUID } from 'crypto'
 import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendWelcomeEmail } from './email'
+import { differenceInCalendarDays, parseISO } from 'date-fns'
 
 
 /**
@@ -576,9 +577,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
       
     if (fetchError || !booking) return { success: false, message: 'Database Error: Could not find the booking to update.' };
 
-    const canUpdate = session.role === 'staff' || 
-                      hasPermission(session, 'booking:update:own', { ownerId: booking.user_id }) ||
-                      hasPermission(session, 'booking:update');
+    const canUpdate = session.role === 'staff' || hasPermission(session, 'booking:update:own', { ownerId: booking.user_id }) || hasPermission(session, 'booking:update');
 
     if (!canUpdate) {
       return { success: false, message: 'Permission Denied: You are not authorized to update this booking.' };
@@ -744,6 +743,43 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
 }
 
 /**
+ * Calculates the total bill and payment balance for a booking.
+ * @param booking - The booking object.
+ * @param listing - The associated listing object.
+ * @returns An object with `totalBill`, `totalPayments`, and `balance`.
+ */
+function calculateBookingBalance(booking: Booking, listing: Listing) {
+    const from = parseISO(booking.startDate);
+    const to = parseISO(booking.endDate);
+    const units = (booking.inventoryIds || []).length;
+    const guests = booking.guests;
+
+    const durationDays = differenceInCalendarDays(to, from) + 1;
+    const nights = durationDays > 1 ? durationDays - 1 : 1;
+    
+    let baseBookingCost = 0;
+    switch(listing.price_unit) {
+        case 'night':
+            baseBookingCost = listing.price * nights * units;
+            break;
+        case 'hour':
+            baseBookingCost = listing.price * durationDays * 8 * units;
+            break;
+        case 'person':
+            baseBookingCost = listing.price * guests * units;
+            break;
+    }
+
+    const addedBillsTotal = (booking.bills || []).reduce((sum, bill) => sum + bill.amount, 0);
+    const totalBill = baseBookingCost + addedBillsTotal;
+    const totalPayments = (booking.payments || []).reduce((sum, payment) => sum + payment.amount, 0);
+    const balance = totalBill - totalPayments;
+
+    return { totalBill, totalPayments, balance };
+}
+
+
+/**
  * Confirms a pending booking.
  * @param data - The booking ID.
  * @returns A result object indicating success or failure.
@@ -760,6 +796,21 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
   
     const { data: booking, error: fetchError } = await supabase.from('bookings').select('*').eq('id', bookingId).single();
     if(fetchError || !booking) return { error: 'Database Error: Could not find the booking to confirm.' };
+
+    const unpackedBooking = unpackBooking(booking);
+
+    // Fetch listing to calculate bill
+    const { data: listingData } = await supabase.from('listings').select('id, data').eq('id', unpackedBooking.listingId).single();
+    if(!listingData) return { error: 'Database Error: Could not find the associated listing.' };
+    const unpackedListing = unpackListing(listingData);
+    
+    // Check payment status for staff
+    if (session.role === 'staff') {
+        const { balance } = calculateBookingBalance(unpackedBooking, unpackedListing);
+        if (balance > 0) {
+            return { error: 'Action Blocked: Cannot confirm a booking with an outstanding balance.' };
+        }
+    }
 
     try {
         // Final availability check at the moment of confirmation to prevent race conditions.
@@ -809,11 +860,10 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
         if (error) throw error;
         
         // Send confirmation email
-        const { data: listingData } = await supabase.from('listings').select('data').eq('id', booking.listing_id).single();
         const { data: userData } = await supabase.from('users').select('*').eq('id', booking.user_id).single();
 
         if (listingData && userData) {
-            await sendBookingConfirmationEmail(unpackUser(userData), unpackBooking(booking), unpackListing({ ...listingData, id: booking.listing_id }));
+            await sendBookingConfirmationEmail(unpackUser(userData), unpackedBooking, unpackedListing);
         }
 
         revalidatePath('/bookings');
@@ -839,9 +889,24 @@ export async function checkOutBookingAction(data: z.infer<typeof BookingActionSc
     
     const { bookingId } = BookingActionSchema.parse(data);
     
-    const { data: booking, error: fetchError } = await supabase.from('bookings').select('data').eq('id', bookingId).single();
-    if (fetchError || !booking) {
+    const { data: bookingData, error: fetchError } = await supabase.from('bookings').select('*').eq('id', bookingId).single();
+    if (fetchError || !bookingData) {
         return { error: 'Database Error: Could not find the booking to check out.' };
+    }
+
+    const unpackedBooking = unpackBooking(bookingData);
+
+    // Fetch listing to calculate bill
+    const { data: listingData } = await supabase.from('listings').select('id, data').eq('id', unpackedBooking.listingId).single();
+    if(!listingData) return { error: 'Database Error: Could not find the associated listing.' };
+    const unpackedListing = unpackListing(listingData);
+    
+    // Check payment status for staff
+    if (session.role === 'staff') {
+        const { balance } = calculateBookingBalance(unpackedBooking, unpackedListing);
+        if (balance > 0) {
+            return { error: 'Action Blocked: Cannot check out a booking with an outstanding balance.' };
+        }
     }
     
     const checkOutAction: BookingAction = {
@@ -855,8 +920,8 @@ export async function checkOutBookingAction(data: z.infer<typeof BookingActionSc
     const { error } = await supabase.from('bookings').update({
         status: 'Checked Out',
         data: {
-            ...booking.data,
-            actions: [...(booking.data.actions || []), checkOutAction]
+            ...bookingData.data,
+            actions: [...(bookingData.data.actions || []), checkOutAction]
         }
     }).eq('id', bookingId);
     
