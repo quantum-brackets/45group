@@ -190,9 +190,8 @@ export async function getAllBookings(): Promise<Booking[]> {
     if (session.role === 'guest') {
         query = query.eq('user_id', session.id);
     }
-    // For admin/staff, we fetch all bookings. Filtering is now done on the client.
     
-    const { data: bookingsData, error } = await query.order('start_date', { ascending: false });
+    const { data: bookingsData, error } = await query;
 
     if (error) {
         console.error("Error fetching all bookings:", error);
@@ -223,11 +222,32 @@ export async function getAllBookings(): Promise<Booking[]> {
     
     const unpackedBookings = bookingsData.map(unpackBooking);
 
-    return unpackedBookings.map((b) => ({
+    const mappedBookings = unpackedBookings.map((b) => ({
       ...b,
       userName: usersMap.get(b.userId),
       listingName: listingsMap.get(b.listingId) || 'Unknown Listing',
     }));
+
+    // Apply the requested multi-level sorting logic
+    mappedBookings.sort((a, b) => {
+        // 1. Sort by date (start_date) descending (newest first)
+        const dateComparison = new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+        if (dateComparison !== 0) return dateComparison;
+
+        // 2. Sort by status: Confirmed -> Pending -> Cancelled
+        const statusOrder = { 'Confirmed': 1, 'Pending': 2, 'Cancelled': 3 };
+        const statusComparison = (statusOrder[a.status as keyof typeof statusOrder] || 99) - (statusOrder[b.status as keyof typeof statusOrder] || 99);
+        if (statusComparison !== 0) return statusComparison;
+
+        // 3. Sort by booking name (Booking For) ascending
+        const nameComparison = (a.bookingName || '').localeCompare(b.bookingName || '');
+        if (nameComparison !== 0) return nameComparison;
+
+        // 4. Sort by venue (listingName) ascending
+        return (a.listingName || '').localeCompare(b.listingName || '');
+    });
+    
+    return mappedBookings;
 }
 
 
