@@ -7,6 +7,7 @@
 
 
 
+
 'use server'
 
 import { revalidatePath } from 'next/cache'
@@ -257,8 +258,6 @@ const CreateBookingSchema = z.object({
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
   numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
   userId: z.string().optional(),
-  guestEmail: z.string().email("Please enter a valid email address.").optional(),
-  bookingName: z.string().min(1, 'Booking name is required.').optional(),
 });
 
 async function findAvailableInventory(supabase: any, listingId: string, startDate: string, endDate: string, excludeBookingId?: string): Promise<string[]> {
@@ -294,7 +293,11 @@ async function findAvailableInventory(supabase: any, listingId: string, startDat
 export async function createBookingAction(data: z.infer<typeof CreateBookingSchema>) {
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
-  let session = await getSession();
+  const session = await getSession();
+
+  if (!session) {
+      return { success: false, message: "You must be logged in to create a booking." };
+  }
 
   const validatedFields = CreateBookingSchema.safeParse(data);
   if (!validatedFields.success) {
@@ -302,66 +305,28 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       return { success: false, message: `Invalid data provided: ${errorMessages || 'Please check your input.'}` };
   }
 
-  const { listingId, startDate, endDate, guests, numberOfUnits, userId: targetUserId, guestEmail, bookingName } = validatedFields.data;
+  const { listingId, startDate, endDate, guests, numberOfUnits, userId } = validatedFields.data;
   
-  let finalUserId: string;
+  const finalUserId = userId || session.id;
+  
   let finalBookingName: string;
-  let actorId: string;
-  let actorName: string;
+  const actorId = session.id;
+  const actorName = session.name;
 
-  if (session) {
-    actorId = session.id;
-    actorName = session.name;
+  const { data: targetUser, error: targetUserError } = await supabase.from('users').select('data').eq('id', finalUserId).single();
+  if (targetUserError || !targetUser) {
+      return { success: false, message: 'Target user for the booking was not found.' };
+  }
+  finalBookingName = targetUser.data.name;
 
-    if (targetUserId && (session.role === 'admin' || session.role === 'staff')) {
-        finalUserId = targetUserId;
-        const { data: targetUser, error: targetUserError } = await supabase.from('users').select('data').eq('id', finalUserId).single();
-        if(targetUserError || !targetUser) return { success: false, message: 'Selected guest user not found.' };
-        finalBookingName = targetUser.data.name;
-    } else {
-        finalUserId = session.id;
-        finalBookingName = session.name;
+  const isBookingForOther = session.id !== finalUserId;
+  if (isBookingForOther) {
+    if (!hasPermission(session, 'booking:create')) {
+      return { success: false, message: 'You do not have permission to create bookings for other users.' };
     }
   } else {
-      if (!guestEmail || !bookingName) {
-        return { success: false, message: 'Email and Booking Name are required for guest checkout.' };
-      }
-      const { data: existingUser, error: findError } = await supabase.from('users').select('id, data').eq('email', guestEmail).single();
-      if (findError && findError.code !== 'PGRST116') {
-          return { success: false, message: `Database error: ${findError.message}` };
-      }
-      if (existingUser) {
-          finalUserId = existingUser.id;
-          finalBookingName = existingUser.data.name || bookingName;
-      } else {
-          const newUserId = randomUUID();
-          const { data: newUser, error: createError } = await supabase.from('users').insert({
-              id: newUserId,
-              email: guestEmail,
-              status: 'provisional',
-              role: 'guest',
-              data: { name: bookingName }
-          }).select('id').single();
-          if (createError || !newUser) {
-              return { success: false, message: `Could not create guest account: ${createError.message}` };
-          }
-          finalUserId = newUser.id;
-          finalBookingName = bookingName;
-      }
-      actorId = finalUserId;
-      actorName = finalBookingName;
-  }
-
-  if (session) {
-    const isBookingForOther = session.id !== finalUserId;
-    if (isBookingForOther) {
-      if (!hasPermission(session, 'booking:create')) {
-        return { success: false, message: 'You do not have permission to create bookings for other users.' };
-      }
-    } else {
-      if (!hasPermission(session, 'booking:create:own', { ownerId: session.id })) {
-        return { success: false, message: 'You do not have permission to create bookings.' };
-      }
+    if (!hasPermission(session, 'booking:create:own', { ownerId: session.id })) {
+      return { success: false, message: 'You do not have permission to create bookings.' };
     }
   }
 
@@ -373,7 +338,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       const inventoryToBook = availableInventory.slice(0, numberOfUnits);
       
       const createdAt = new Date().toISOString();
-      const message = session && session.id !== finalUserId 
+      const message = isBookingForOther
         ? `Booking created by staff member ${actorName} on behalf of ${finalBookingName}.`
         : 'Booking request received.';
 

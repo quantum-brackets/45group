@@ -18,10 +18,10 @@ import { format, isWithinInterval, parseISO, differenceInCalendarDays } from 'da
 import { createBookingAction } from '@/lib/actions';
 import { Separator } from '../ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Combobox } from '../ui/combobox';
+import { useRouter } from 'next/navigation';
 
 
 interface BookingFormProps {
@@ -32,8 +32,6 @@ interface BookingFormProps {
 }
 
 const bookingFormSchema = z.object({
-  bookingName: z.string().min(1, 'Booking name is required.').optional(),
-  guestEmail: z.string().email("Please provide a valid email address.").optional(),
   userId: z.string().optional(),
 });
 
@@ -46,7 +44,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
   const [priceBreakdown, setPriceBreakdown] = useState<string | null>(null);
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const [showGuestEmailDialog, setShowGuestEmailDialog] = useState(false);
+  const router = useRouter();
 
   const [bookingFor, setBookingFor] = useState<'self' | 'other'>('self');
   const isAdminOrStaff = session && (session.role === 'admin' || session.role === 'staff');
@@ -61,8 +59,6 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
   const form = useForm<z.infer<typeof bookingFormSchema>>({
     resolver: zodResolver(bookingFormSchema),
     defaultValues: {
-      bookingName: session?.name || "",
-      guestEmail: "",
       userId: session?.id || undefined,
     },
   });
@@ -70,7 +66,6 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
   useEffect(() => {
     if (session) {
       form.setValue('userId', session.id);
-      if (session.name) form.setValue('bookingName', session.name);
       setBookingFor('self');
     } else {
       form.reset();
@@ -191,15 +186,11 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
       }
       submitBooking();
     } else {
-      if (!form.getValues('bookingName')) {
-        form.setError('bookingName', { message: 'Booking name is required for guest bookings.' });
-        return;
-      }
-      setShowGuestEmailDialog(true);
+      router.push('/login');
     }
   };
 
-  const submitBooking = (guestInfo?: { email: string, name: string }) => {
+  const submitBooking = () => {
     startTransition(async () => {
         const result = await createBookingAction({
             listingId: listing.id,
@@ -207,9 +198,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
             endDate: (date!.to || date!.from)!.toISOString(),
             guests: guests,
             numberOfUnits: units,
-            userId: session ? form.getValues('userId') : undefined,
-            guestEmail: guestInfo?.email,
-            bookingName: guestInfo?.name,
+            userId: form.getValues('userId'),
         });
         
         if (result.success) {
@@ -218,10 +207,6 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                 description: result.message,
                 action: <div className="p-2 bg-accent rounded-full"><PartyPopper className="h-5 w-5 text-accent-foreground" /></div>,
             });
-            setShowGuestEmailDialog(false);
-            if (!session) {
-                form.reset({ bookingName: '', guestEmail: ''});
-            }
             setDate(undefined);
             setGuests(1);
             setUnits(1);
@@ -233,18 +218,6 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
             });
         }
     });
-  }
-
-  const handleGuestEmailSubmit = (data: z.infer<typeof bookingFormSchema>) => {
-      if (!data.guestEmail) {
-          form.setError('guestEmail', { message: 'Email is required to continue.' });
-          return;
-      }
-      if (!data.bookingName) {
-        form.setError('bookingName', { message: 'Booking name is required.' });
-        return;
-      }
-      submitBooking({ email: data.guestEmail, name: data.bookingName });
   }
 
 
@@ -328,24 +301,6 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                </div>
             </div>
           </div>
-          
-          {!session && (
-            <div>
-                <Label htmlFor="bookingName" className="font-semibold">Booking Name</Label>
-                <FormField
-                  control={form.control}
-                  name="bookingName"
-                  render={({ field }) => (
-                    <FormItem className="mt-1">
-                      <FormControl>
-                        <Input id="bookingName" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-            </div>
-          )}
 
           <div className="min-h-5 text-center text-sm mb-2 flex items-center justify-center px-2">
               {availability.message && (
@@ -420,40 +375,6 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
               </div>
          </CardFooter>
       </Card>
-      <Dialog open={showGuestEmailDialog} onOpenChange={setShowGuestEmailDialog}>
-          <form onSubmit={form.handleSubmit(handleGuestEmailSubmit)}>
-               <DialogHeader>
-                  <DialogTitle>Continue as Guest</DialogTitle>
-                  <DialogDescription>
-                      To complete your booking, please enter your email address. An account will be created for you if one doesn't exist.
-                  </DialogDescription>
-              </DialogHeader>
-              <DialogContent>
-                  <div className="space-y-4 py-4">
-                      <FormField
-                          control={form.control}
-                          name="guestEmail"
-                          render={({ field }) => (
-                              <FormItem>
-                                  <FormLabel>Email Address</FormLabel>
-                                  <FormControl>
-                                      <Input placeholder="user@example.com" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                              </FormItem>
-                          )}
-                      />
-                  </div>
-              </DialogContent>
-                <DialogFooter>
-                  <Button type="button" variant="ghost" onClick={() => setShowGuestEmailDialog(false)} disabled={isPending}>Cancel</Button>
-                  <Button type="submit" disabled={isPending}>
-                      {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Submit Booking
-                  </Button>
-              </DialogFooter>
-          </form>
-      </Dialog>
     </Form>
   );
 }
