@@ -1,4 +1,3 @@
-'server-only'
 
 import type { User, Role } from './types';
 import { createSupabaseAdminClient } from './supabase';
@@ -15,7 +14,7 @@ export async function preloadPermissions() {
     }
     console.log('Fetching and caching permissions...');
     const supabase = createSupabaseAdminClient();
-    const { data, error } = await supabase.from('role_permissions').select('role, permissions');
+    const { data, error } = await supabase.from('role_permissions').select('role, data');
 
     if (error || !data) {
         console.error("Failed to load permissions from DB, will not use cache.", error);
@@ -25,7 +24,9 @@ export async function preloadPermissions() {
     }
 
     const permissionsByRole = data.reduce((acc, row) => {
-        acc[row.role as Role] = row.permissions;
+        if (row.data && Array.isArray(row.data.permissions)) {
+            acc[row.role as Role] = row.data.permissions;
+        }
         return acc;
     }, {} as Record<Role, string[]>);
     
@@ -58,6 +59,7 @@ export function hasPermission(
       const rolePermissions = cachedPermissions;
   
       if (!user.role || !rolePermissions) {
+          console.error("Permissions not loaded. Call preloadPermissions() on the server.");
           return false;
       }
   

@@ -24,7 +24,7 @@ export async function updatePermissionsAction(permissions: Record<Role, Permissi
     
     const updates = Object.entries(permissions).map(([role, perms]) => ({
       role: role,
-      permissions: perms
+      data: { permissions: perms }
     }));
 
     const { error } = await supabase.from('role_permissions').upsert(updates);
@@ -317,6 +317,10 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       return { success: false, message: 'You must be logged in or provide an email to book.' };
   }
 
+  if (!userId) {
+      return { success: false, message: 'User could not be identified.' };
+  }
+  
   if (!hasPermission(session, 'booking:create:own', { ownerId: userId }) && !hasPermission(session, 'booking:create')) {
       return { success: false, message: 'You do not have permission to create this booking.' };
   }
@@ -627,11 +631,14 @@ const ReviewSchema = z.object({
 });
 
 export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>) {
+    await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session) return { success: false, message: 'You must be logged in to submit a review.' };
     
-    if (!hasPermission(session, 'review:create:own')) return { success: false, message: 'Unauthorized action.'};
+    if (!hasPermission(session, 'review:create:own', { ownerId: session.id })) {
+      return { success: false, message: 'Unauthorized action.'};
+    }
 
     const validatedFields = ReviewSchema.safeParse(data);
     if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
