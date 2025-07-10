@@ -1242,8 +1242,9 @@ export async function addBillAction(data: z.infer<typeof AddBillSchema>) {
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  // Only users with booking update permissions (admin/staff) can add bills.
-  if (!session || !hasPermission(session, 'booking:update')) {
+  
+  // Allow admin and staff to add bills.
+  if (!session || (session.role !== 'admin' && session.role !== 'staff')) {
     return { success: false, message: 'Unauthorized' };
   }
 
@@ -1296,7 +1297,9 @@ export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session || !hasPermission(session, 'booking:update')) {
+    
+    // Allow admin and staff to record payments.
+    if (!session || (session.role !== 'admin' && session.role !== 'staff')) {
         return { success: false, message: 'Unauthorized' };
     }
     
