@@ -10,6 +10,7 @@
 
 
 
+
 'use server'
 
 import { revalidatePath } from 'next/cache'
@@ -261,12 +262,40 @@ const CreateBookingSchema = z.object({
   numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
   userId: z.string().optional(),
   guestName: z.string().optional(),
-  guestEmail: z.string().email().optional(),
-}).refine(data => {
-    return !!data.userId || (!!data.guestName && !!data.guestEmail);
-}, {
-    message: "User information is missing.",
-    path: ["userId"], 
+  guestEmail: z.string().optional(),
+}).superRefine((data, ctx) => {
+    if (data.userId) {
+        // User is logged in or an admin is booking for an existing user.
+        // Guest fields are not required.
+        return;
+    }
+
+    // This is a guest checkout.
+    if (!data.guestName || data.guestName.trim().length === 0) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Guest name is required.",
+            path: ['guestName']
+        });
+    }
+
+    if (!data.guestEmail || data.guestEmail.trim().length === 0) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Guest email is required.",
+            path: ['guestEmail']
+        });
+    } else {
+        const emailCheck = z.string().email().safeParse(data.guestEmail);
+        if (!emailCheck.success) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.invalid_string,
+                validation: 'email',
+                message: 'Invalid email address provided for guest.',
+                path: ['guestEmail']
+            });
+        }
+    }
 });
 
 
