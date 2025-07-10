@@ -4,12 +4,13 @@ import { getUserById } from '@/lib/data';
 import { UserForm } from '@/components/dashboard/UserForm';
 import { getSession } from '@/lib/session';
 import { UserDetails } from '@/components/dashboard/UserDetails';
+import { hasPermission, preloadPermissions } from '@/lib/permissions';
 
 export default async function EditUserPage({ params }: { params: { id: string } }) {
+  await preloadPermissions();
   const session = await getSession();
   
-  // The layout already protects this page for admin/staff.
-  // We just need to handle the case where a user somehow gets here without a session.
+  // The layout already protects this page.
   if (!session) {
       redirect('/login');
   }
@@ -21,15 +22,15 @@ export default async function EditUserPage({ params }: { params: { id: string } 
   }
   
   // A guest cannot view another user's profile.
-  if (session.role === 'guest') {
+  if (!hasPermission(session, 'user:read')) {
     const urlParams = new URLSearchParams();
     urlParams.set('error', 'Permission Denied');
     urlParams.set('message', 'You do not have permission to view other users.');
-    redirect(`/forbidden?${params.toString()}`);
+    redirect(`/forbidden?${urlParams.toString()}`);
   }
 
-  // Admins can edit anyone (including themselves via this form).
-  if (session.role === 'admin') {
+  // Admins or users with general update permission can edit.
+  if (hasPermission(session, 'user:update')) {
     return (
       <div className="container mx-auto px-4 py-8">
         <UserForm user={user} session={session} />
@@ -37,15 +38,6 @@ export default async function EditUserPage({ params }: { params: { id: string } 
     );
   }
 
-  // Staff can only view user details, not edit.
-  if (session.role === 'staff') {
-      return <UserDetails user={user} />;
-  }
-  
-  // Fallback redirect if a role is unhandled.
-  const urlParams = new URLSearchParams();
-  urlParams.set('error', 'Permission Denied');
-  urlParams.set('message', 'You do not have permission to perform this action.');
-  redirect(`/forbidden?${params.toString()}`);
+  // Otherwise, if they can only read, show read-only details.
+  return <UserDetails user={user} />;
 }
-

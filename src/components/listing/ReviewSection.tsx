@@ -19,6 +19,7 @@ import { Star, Loader2, Check, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { hasPermission } from '@/lib/permissions';
 
 const reviewFormSchema = z.object({
   rating: z.coerce.number().min(1, "Rating is required.").max(5),
@@ -75,7 +76,10 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
   const [isAdminActionPending, startAdminActionTransition] = useTransition();
   const [processingReviewId, setProcessingReviewId] = useState<string | null>(null);
 
-  const isAdmin = session?.role === 'admin';
+  const canApproveReview = session && hasPermission(session, 'review:approve');
+  const canDeleteReview = session && hasPermission(session, 'review:delete');
+  const canWriteReview = session && hasPermission(session, 'review:create:own', { ownerId: session.id });
+
   const approvedReviewsCount = reviews.filter(review => review.status === 'approved').length;
   const currentUserReview = reviews.find(review => review.user_id === session?.id);
   
@@ -88,16 +92,16 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
   });
 
   const reviewsToDisplay = useMemo(() => {
-    if (isAdmin) {
+    if (canApproveReview) { // If user can approve, they see all reviews
       return [...reviews].sort((a, b) => {
         const aIsNotApproved = a.status !== 'approved';
         const bIsNotApproved = b.status !== 'approved';
         if (aIsNotApproved === bIsNotApproved) return 0;
-        return aIsNotApproved ? -1 : 1; // Show pending reviews first for admin
+        return aIsNotApproved ? -1 : 1; // Show pending reviews first
       });
     }
 
-    // For regular users and guests, show their own review (if any) plus all other approved reviews.
+    // For other users, show their own review (if any) plus all other approved reviews.
     const otherApprovedReviews = reviews.filter(
       (review) => review.status === 'approved' && review.user_id !== session?.id
     );
@@ -107,7 +111,7 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
     }
     
     return reviews.filter((review) => review.status === 'approved');
-  }, [reviews, session, isAdmin, currentUserReview]);
+  }, [reviews, session, canApproveReview, currentUserReview]);
 
   const onSubmit = (data: ReviewFormValues) => {
     startTransition(async () => {
@@ -132,10 +136,12 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
   };
 
   const handleWriteReviewClick = () => {
-    if (session) {
+    if (canWriteReview) {
       handleToggleForm();
-    } else {
+    } else if (!session) {
       router.push('/login');
+    } else {
+      toast({ title: 'Permission Denied', description: 'You do not have permission to write reviews.', variant: 'destructive' });
     }
   };
 
@@ -237,7 +243,7 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
                         <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-current' : 'fill-muted stroke-muted-foreground'}`} />
                       ))}
                     </div>
-                    {review.status !== 'approved' && (isAdmin || review.user_id === session?.id) && (
+                    {review.status !== 'approved' && (canApproveReview || review.user_id === session?.id) && (
                       <Badge variant={'secondary'}>
                         pending
                       </Badge>
@@ -245,40 +251,42 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
                   </div>
                   <p className="text-sm text-muted-foreground">{review.comment}</p>
                 </div>
-                {isAdmin && (
+                {(canApproveReview || canDeleteReview) && (
                     <div className="flex items-center gap-2 mt-2 sm:mt-0 self-end sm:self-start">
-                        {review.status !== 'approved' && (
+                        {canApproveReview && review.status !== 'approved' && (
                             <Button size="sm" variant="outline" onClick={() => handleApprove(review.id)} disabled={isAdminActionPending}>
                                 {isAdminActionPending && processingReviewId === review.id ? <Loader2 className="mr-0 sm:mr-2 h-4 w-4 animate-spin"/> : <Check className="mr-0 sm:mr-2 h-4 w-4"/>}
                                 <span className="hidden sm:inline">Approve</span>
                             </Button>
                         )}
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                             <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={isAdminActionPending}>
-                                <Trash2 className="h-4 w-4 mr-0 sm:mr-2"/><span className="hidden sm:inline">Delete</span>
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete the review by {review.author}.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel disabled={isAdminActionPending}>Cancel</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleDelete(review.id)}
-                                disabled={isAdminActionPending}
-                                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                              >
-                                {isAdminActionPending && processingReviewId === review.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        {canDeleteReview && (
+                            <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={isAdminActionPending}>
+                                    <Trash2 className="h-4 w-4 mr-0 sm:mr-2"/><span className="hidden sm:inline">Delete</span>
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the review by {review.author}.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isAdminActionPending}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                    onClick={() => handleDelete(review.id)}
+                                    disabled={isAdminActionPending}
+                                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                                >
+                                    {isAdminActionPending && processingReviewId === review.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Delete
+                                </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                            </AlertDialog>
+                        )}
                     </div>
                 )}
               </div>
@@ -286,7 +294,7 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
             </React.Fragment>
           ))
         ) : (
-          !showForm && <p className="text-muted-foreground text-center py-4">{isAdmin && reviews.length > 0 ? 'No approved reviews yet.' : 'Be the first to leave a review!'}</p>
+          !showForm && <p className="text-muted-foreground text-center py-4">{canApproveReview && reviews.length > 0 ? 'No approved reviews yet.' : 'Be the first to leave a review!'}</p>
         )}
       </CardContent>
     </Card>

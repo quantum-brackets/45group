@@ -22,6 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Combobox } from '../ui/combobox';
 import { useRouter } from 'next/navigation';
+import { hasPermission } from '@/lib/permissions';
 
 
 interface BookingFormProps {
@@ -50,7 +51,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
   const router = useRouter();
 
   const [bookingFor, setBookingFor] = useState<'self' | 'other'>('self');
-  const isAdminOrStaff = session && (session.role === 'admin' || session.role === 'staff');
+  const canBookForOthers = session && hasPermission(session, 'booking:create');
   const guestUsers = useMemo(() => allUsers.filter(u => u.role === 'guest'), [allUsers]);
 
   const [availability, setAvailability] = useState({
@@ -341,7 +342,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
               )}
           </div>
           
-          {isAdminOrStaff && (
+          {canBookForOthers && (
             <div className="space-y-2 pt-4 border-t">
               <Label>Book For</Label>
               <RadioGroup value={bookingFor} onValueChange={handleBookingForChange} className="flex gap-4">

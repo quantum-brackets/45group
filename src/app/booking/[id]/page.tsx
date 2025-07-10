@@ -4,8 +4,10 @@ import { getSession } from '@/lib/session';
 import { notFound, redirect } from 'next/navigation';
 import { BookingDetails } from '@/components/bookings/BookingDetails';
 import type { User } from '@/lib/types';
+import { hasPermission, preloadPermissions } from '@/lib/permissions';
 
 export default async function BookingDetailsPage({ params }: { params: { id: string } }) {
+  await preloadPermissions();
   const session = await getSession();
   if (!session) {
     redirect('/login');
@@ -25,7 +27,7 @@ export default async function BookingDetailsPage({ params }: { params: { id: str
   const inventory = await getInventoryByListingId(booking.listingId);
   
   let allUsers: User[] = [];
-  if (session.role === 'admin' || session.role === 'staff') {
+  if (hasPermission(session, 'booking:create')) {
     allUsers = await getAllUsers();
   }
 

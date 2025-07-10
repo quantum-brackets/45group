@@ -33,6 +33,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '../ui/textarea';
 import { Skeleton } from '../ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { hasPermission } from '@/lib/permissions';
 
 
 interface BookingDetailsProps {
@@ -224,15 +225,14 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
   const { toast } = useToast();
   const router = useRouter();
 
-  const isAdmin = session.role === 'admin';
-  const isStaff = session.role === 'staff';
-  const isAdminOrStaff = isAdmin || isStaff;
+  const canEditBooking = hasPermission(session, 'booking:update');
+  const canConfirmBooking = hasPermission(session, 'booking:confirm');
+  const canCancelBooking = hasPermission(session, 'booking:cancel') || hasPermission(session, 'booking:cancel:own', { ownerId: booking.userId });
+  const canCheckOutBooking = hasPermission(session, 'booking:confirm'); // Same permission as confirm
+  const canAddBilling = hasPermission(session, 'booking:update');
+  const canSeeUserDetails = hasPermission(session, 'user:read');
 
-  const canEdit = isAdminOrStaff && (booking.status === 'Pending' || booking.status === 'Confirmed');
   const isActionable = booking.status !== 'Cancelled' && booking.status !== 'Checked Out';
-  const canConfirm = isAdminOrStaff && booking.status === 'Pending';
-  const canCheckOut = isAdminOrStaff && booking.status === 'Confirmed';
-  const canCancel = (isAdmin || (session.role === 'guest' && session.id === booking.userId)) && isActionable;
   const isAnyActionPending = isUpdatePending || isActionPending;
 
   const form = useForm<FormValues>({
@@ -285,8 +285,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
     }).format(amount);
   };
 
-  const staffActionIsBlocked = isStaff && balance > 0;
-
+  const staffActionIsBlocked = session.role === 'staff' && balance > 0;
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
     if (!data.dates.from) return;
@@ -406,7 +405,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                     <p>{getStatusBadge()}</p>
                 </div>
                 </div>
-                {isAdminOrStaff && booking.userName && (
+                {canSeeUserDetails && booking.userName && (
                 <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
                     <UserIcon className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
                     <div>
@@ -425,7 +424,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
             </div>
 
             <div className="space-y-6">
-                {isAdminOrStaff && (
+                {canSeeUserDetails && (
                     <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
                         <FileText className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
                         <div>
@@ -511,7 +510,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                   );
                 })()}
 
-                 {isAdminOrStaff && (
+                 {canAddBilling && (
                     <div className="pt-6 border-t">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-xl font-semibold flex items-center gap-2">
@@ -613,13 +612,13 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
         <CardFooter className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-4 bg-muted/50 p-4 border-t">
             <BackButton />
             <div className="flex flex-wrap justify-end items-center gap-2">
-                {canEdit && (
+                {canEditBooking && isActionable && (
                     <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} disabled={isAnyActionPending}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
                     </Button>
                 )}
-                {canConfirm && (
+                {canConfirmBooking && booking.status === 'Pending' && (
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -638,7 +637,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                         </Tooltip>
                     </TooltipProvider>
                 )}
-                {canCheckOut && (
+                {canCheckOutBooking && booking.status === 'Confirmed' && (
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -657,7 +656,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                         </Tooltip>
                     </TooltipProvider>
                 )}
-                {canCancel && (
+                {canCancelBooking && isActionable && (
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive" size="sm" disabled={isAnyActionPending}>
@@ -803,7 +802,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                         </FormItem>
                     )}
                 />
-                {isAdminOrStaff && (
+                {canEditBooking && (
                     <div className="md:col-span-2">
                         <FormField
                             control={form.control}
@@ -860,10 +859,3 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
     </Card>
   );
 }
-
-    
-
-    
-
-
-

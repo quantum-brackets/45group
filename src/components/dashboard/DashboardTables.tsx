@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useTransition } from 'react';
@@ -19,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { hasPermission } from '@/lib/permissions';
 
 interface DashboardTablesProps {
   listings: Listing[];
@@ -174,8 +174,14 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
     });
   }
 
-  const isAdmin = session?.role === 'admin';
-  const isStaff = session?.role === 'staff';
+  if (!session) return null;
+
+  const canCreateListing = hasPermission(session, 'listing:create');
+  const canDeleteListing = hasPermission(session, 'listing:delete');
+  const canUpdateListing = hasPermission(session, 'listing:update');
+  const canCreateUser = hasPermission(session, 'user:create');
+  const canUpdateUser = hasPermission(session, 'user:update');
+  const canDeleteUser = hasPermission(session, 'user:delete');
 
   const allFilteredSelected = filteredListings.length > 0 && filteredListings.every(l => selectedRowIds[l.id]);
   const someFilteredSelected = filteredListings.some(l => selectedRowIds[l.id]) && !allFilteredSelected;
@@ -205,7 +211,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                     className="w-full max-w-sm pl-10"
                   />
                 </div>
-               {isAdmin && (
+               {canCreateListing && (
                   <Button asChild>
                     <Link href="/dashboard/add-listing">
                       <PlusCircle className="mr-2 h-4 w-4" />
@@ -215,7 +221,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                )}
             </CardHeader>
             <CardContent>
-              {isAdmin && selectedIds.length > 0 && (
+              {canDeleteListing && selectedIds.length > 0 && (
                 <div className="bg-muted p-2 rounded-md mb-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                       <Button variant="ghost" size="icon" onClick={clearSelection}><X className="h-4 w-4" /><span className="sr-only">Clear selection</span></Button>
@@ -232,7 +238,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {isAdmin && (
+                    {canDeleteListing && (
                         <TableHead className="w-[40px]">
                             <Checkbox
                                 onCheckedChange={(checked) => handleSelectAll(!!checked)}
@@ -257,7 +263,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                       onClick={() => router.push(`/listing/${listing.id}`)}
                       className="cursor-pointer"
                     >
-                      {isAdmin && (
+                      {canDeleteListing && (
                         <TableCell onClick={(e) => e.stopPropagation()}>
                             <Checkbox
                                 checked={!!selectedRowIds[listing.id]}
@@ -269,8 +275,8 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                       <TableCell className="font-medium">{listing.name}</TableCell>
                       <TableCell>{listing.type.charAt(0).toUpperCase() + listing.type.slice(1)}</TableCell>
                       <TableCell className="hidden md:table-cell">{listing.location}</TableCell>
-                      <TableCell onClick={(e) => { if (isAdmin) e.stopPropagation(); }}>
-                        {isAdmin ? (
+                      <TableCell onClick={(e) => { if (canUpdateListing) e.stopPropagation(); }}>
+                        {canUpdateListing ? (
                           <Link
                             href={`/dashboard/edit-listing/${listing.id}`}
                             className="flex items-center gap-2 hover:underline text-primary"
@@ -297,16 +303,20 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                               <DropdownMenuContent align="end">
                                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                   <DropdownMenuItem onClick={() => router.push(`/listing/${listing.id}`)}>Details</DropdownMenuItem>
-                                  {isAdmin && (
+                                  {canUpdateListing && (
                                     <>
                                       <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-listing/${listing.id}`)}>Edit</DropdownMenuItem>
                                     </>
                                   )}
                                   <DropdownMenuItem onClick={() => router.push(`/bookings?q=${listing.id}`)}>Bookings</DropdownMenuItem>
-                                  {isAdmin && (
+                                  {canCreateListing && (
                                     <>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem onSelect={() => router.push(`/dashboard/add-listing?duplicate=${listing.id}`)}>Duplicate</DropdownMenuItem>
+                                    </>
+                                  )}
+                                  {canDeleteListing && (
+                                    <>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem className="text-destructive" onSelect={() => setListingToDelete(listing)}>
                                         <Trash2 className="mr-2 h-4 w-4" />
@@ -336,7 +346,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                     className="w-full max-w-sm pl-10"
                   />
                 </div>
-              {(isAdmin || isStaff) && (
+              {canCreateUser && (
                 <Button asChild>
                   <Link href="/dashboard/add-user">
                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -367,13 +377,13 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                                   </Badge>
                               </TableCell>
                               <TableCell>
-                                <UserStatusSwitch user={user} isCurrentUser={user.id === session?.id} disabled={!isAdmin} />
+                                <UserStatusSwitch user={user} isCurrentUser={user.id === session?.id} disabled={!canUpdateUser} />
                               </TableCell>
                               <TableCell className="text-right">
-                                  {(isAdmin || isStaff) && (
+                                  {(canUpdateUser || canDeleteUser) && (
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" className="h-8 w-8 p-0" disabled={isAdmin && user.id === session?.id}>
+                                            <Button variant="ghost" className="h-8 w-8 p-0" disabled={session.role === 'admin' && user.id === session?.id}>
                                                 <span className="sr-only">Open menu</span>
                                                 <MoreHorizontal className="h-4 w-4" />
                                             </Button>
@@ -381,9 +391,9 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                             <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-user/${user.id}`)}>
-                                                {isAdmin ? 'Edit User' : 'View User'}
+                                                {canUpdateUser ? 'Edit User' : 'View User'}
                                             </DropdownMenuItem>
-                                            {isAdmin && (
+                                            {canDeleteUser && (
                                                 <>
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem 

@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This file contains all server-side data fetching functions.
  * These functions interact directly with the Supabase database to retrieve
@@ -8,6 +9,7 @@ import type { Listing, Booking, ListingType, User, ListingInventory, Review, Boo
 import { getSession } from '@/lib/session';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createSupabaseServerClient, createSupabaseAdminClient } from './supabase';
+import { hasPermission, preloadPermissions } from './permissions';
 
 
 /**
@@ -89,11 +91,12 @@ export async function getUserById(id: string): Promise<User | null> {
  * @returns An array of User objects.
  */
 export async function getAllUsers(): Promise<User[]> {
+    await preloadPermissions();
     // Use the admin client to bypass RLS for this internal dashboard function.
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     // Double-check permissions even though this is a server function.
-    if (session?.role !== 'admin' && session?.role !== 'staff') {
+    if (!session || !hasPermission(session, 'user:read')) {
         return [];
     }
     
@@ -257,7 +260,7 @@ export async function getAllBookings(): Promise<Booking[]> {
     let query = supabase.from('bookings').select('id, listing_id, user_id, status, start_date, end_date, data');
 
     // Apply Row-Level Security (RLS) principle at the application layer.
-    if (session.role === 'guest') {
+    if (!hasPermission(session, 'booking:read')) {
         query = query.eq('user_id', session.id);
     }
     
@@ -331,6 +334,7 @@ export async function getAllBookings(): Promise<Booking[]> {
  */
 export async function getBookingById(id: string): Promise<Booking | null> {
     noStore();
+    await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session) {
@@ -349,8 +353,8 @@ export async function getBookingById(id: string): Promise<Booking | null> {
         return null;
     }
     
-    // RLS check: Guests can only see their own bookings.
-    if (session.role === 'guest' && bookingData.user_id !== session.id) {
+    // RLS check at application level
+    if (!hasPermission(session, 'booking:read') && !hasPermission(session, 'booking:read:own', { ownerId: bookingData.user_id })) {
         return null;
     }
     

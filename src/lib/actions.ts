@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This file contains all the "Server Actions" for the application.
  * Server Actions are asynchronous functions that are only executed on the server.
@@ -421,7 +422,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     // Permission checks
     const isBookingForOther = session.id !== finalUserId;
     if (isBookingForOther) {
-      if (session.role !== 'staff' && !hasPermission(session, 'booking:create')) {
+      if (!hasPermission(session, 'booking:create')) {
         return { success: false, message: 'Permission Denied: You do not have permissions to create bookings for other users.' };
       }
     } else {
@@ -479,7 +480,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       const isBookingForOther = session && session.id !== finalUserId;
       
       // Create a descriptive message for the initial booking action log.
-      const message = isBookingForOther
+      const message = hasPermission(session, 'booking:create') && isBookingForOther
         ? `Booking created by staff member ${actorName} on behalf of ${finalUserName}.`
         : 'Booking request received.';
 
@@ -577,7 +578,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
       
     if (fetchError || !booking) return { success: false, message: 'Database Error: Could not find the booking to update.' };
 
-    const canUpdate = session.role === 'staff' || hasPermission(session, 'booking:update:own', { ownerId: booking.user_id }) || hasPermission(session, 'booking:update');
+    const canUpdate = hasPermission(session, 'booking:update:own', { ownerId: booking.user_id }) || hasPermission(session, 'booking:update');
 
     if (!canUpdate) {
       return { success: false, message: 'Permission Denied: You are not authorized to update this booking.' };
@@ -710,7 +711,6 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
   const { data: booking, error: fetchError } = await supabase.from('bookings').select('user_id, listing_id, data').eq('id', bookingId).single();
   if (fetchError || !booking) return { error: 'Database Error: Could not find the booking to cancel.' };
 
-  // Security: Check permissions. Staff cannot cancel bookings.
   if (!hasPermission(session, 'booking:cancel:own', { ownerId: booking.user_id }) && !hasPermission(session, 'booking:cancel')) {
     return { error: 'Permission Denied: You are not authorized to cancel this booking.' };
   }
@@ -788,7 +788,7 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session || (session.role !== 'admin' && session.role !== 'staff')) {
+    if (!session || !hasPermission(session, 'booking:confirm')) {
       return { error: 'Permission Denied: You are not authorized to confirm bookings.' };
     }
   
@@ -883,7 +883,7 @@ export async function checkOutBookingAction(data: z.infer<typeof BookingActionSc
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session || (session.role !== 'admin' && session.role !== 'staff')) {
+    if (!session || !hasPermission(session, 'booking:confirm')) {
         return { error: 'Permission Denied: You are not authorized to check out bookings.' };
     }
     
@@ -955,8 +955,7 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
 
-  // Updated permission check: Admins can create any user. Staff can also proceed.
-  if (!session || (session.role !== 'staff' && !hasPermission(session, 'user:create'))) {
+  if (!session || !hasPermission(session, 'user:create')) {
     return { success: false, message: 'Permission Denied: You are not authorized to create new users.' };
   }
 
@@ -967,7 +966,6 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   
   let role = initialRole;
 
-  // Security: Staff can only create guest accounts. This is a secondary check.
   if (session.role === 'staff') {
     role = 'guest';
   }
@@ -1356,8 +1354,7 @@ export async function addBillAction(data: z.infer<typeof AddBillSchema>) {
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
   
-  // Allow admin and staff to add bills.
-  if (!session || (session.role !== 'admin' && session.role !== 'staff')) {
+  if (!session || !hasPermission(session, 'booking:update')) {
     return { success: false, message: 'Permission Denied: You are not authorized to add bills to a booking.' };
   }
 
@@ -1411,8 +1408,7 @@ export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     
-    // Allow admin and staff to record payments.
-    if (!session || (session.role !== 'admin' && session.role !== 'staff')) {
+    if (!session || !hasPermission(session, 'booking:update')) {
         return { success: false, message: 'Permission Denied: You are not authorized to record payments.' };
     }
     
@@ -1466,4 +1462,3 @@ function unpackBooking(booking: any): Booking {
     const { data, listing_id, user_id, start_date, end_date, ...rest } = booking;
     return { ...rest, ...data, listingId: listing_id, userId: user_id, startDate: start_date, endDate: end_date };
 }
-

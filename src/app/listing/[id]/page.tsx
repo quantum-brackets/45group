@@ -9,6 +9,7 @@ import { getSession } from '@/lib/session';
 import { ReviewSection } from '@/components/listing/ReviewSection';
 import { BackButton } from '@/components/common/BackButton';
 import type { User } from '@/lib/types';
+import { hasPermission, preloadPermissions } from '@/lib/permissions';
 
 const typeIcons = {
   hotel: <BedDouble className="w-5 h-5 mr-2" />,
@@ -23,6 +24,7 @@ const AITypeHints = {
 }
 
 export default async function ListingDetailPage({ params }: { params: { id: string } }) {
+  await preloadPermissions();
   const listing = await getListingById(params.id);
   const session = await getSession();
   const confirmedBookings = await getConfirmedBookingsForListing(params.id);
@@ -32,7 +34,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
   }
   
   let allUsers: User[] = [];
-  if (session && (session.role === 'admin' || session.role === 'staff')) {
+  if (session && hasPermission(session, 'booking:create')) {
     allUsers = await getAllUsers();
   }
 
