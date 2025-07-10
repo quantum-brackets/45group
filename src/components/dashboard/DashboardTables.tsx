@@ -269,11 +269,21 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                       <TableCell className="font-medium">{listing.name}</TableCell>
                       <TableCell>{listing.type.charAt(0).toUpperCase() + listing.type.slice(1)}</TableCell>
                       <TableCell className="hidden md:table-cell">{listing.location}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
+                      <TableCell onClick={(e) => { if (isAdmin) e.stopPropagation(); }}>
+                        {isAdmin ? (
+                          <Link
+                            href={`/dashboard/edit-listing/${listing.id}`}
+                            className="flex items-center gap-2 hover:underline text-primary"
+                          >
                             <Warehouse className="h-4 w-4 text-muted-foreground" />
                             <span>{listing.inventoryCount}</span>
-                        </div>
+                          </Link>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Warehouse className="h-4 w-4 text-muted-foreground" />
+                            <span>{listing.inventoryCount}</span>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">{new Intl.NumberFormat().format(listing.price)} {listing.currency}/{listing.price_unit}</TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
