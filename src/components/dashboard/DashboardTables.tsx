@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useTransition } from 'react';
@@ -13,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { deleteListingAction, toggleUserStatusAction, bulkDeleteListingsAction } from '@/lib/actions';
+import { deleteListingAction, toggleUserStatusAction, bulkDeleteListingsAction, deleteUserAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -68,6 +69,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
   const [isBulkActionPending, startBulkActionTransition] = useTransition();
 
   const [listingToDelete, setListingToDelete] = useState<Listing | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
   
   const [selectedRowIds, setSelectedRowIds] = useState<Record<string, boolean>>({});
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -135,6 +137,27 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
         });
       }
       setListingToDelete(null);
+    });
+  };
+
+  const handleDeleteUser = () => {
+    if (!userToDelete) return;
+
+    startTransition(async () => {
+      const result = await deleteUserAction(userToDelete.id);
+      if (result.success) {
+        toast({
+          title: "User Deleted",
+          description: result.message,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.message || "Could not delete the user.",
+          variant: "destructive",
+        });
+      }
+      setUserToDelete(null);
     });
   };
 
@@ -348,7 +371,13 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                                             {isAdmin && (
                                                 <>
                                                     <DropdownMenuSeparator />
-                                                    <DropdownMenuItem className="text-destructive" disabled={user.id === session?.id}>Delete User</DropdownMenuItem>
+                                                    <DropdownMenuItem 
+                                                      className="text-destructive" 
+                                                      disabled={user.id === session?.id || isPending}
+                                                      onSelect={() => setUserToDelete(user)}
+                                                    >
+                                                      Delete User
+                                                    </DropdownMenuItem>
                                                 </>
                                             )}
                                         </DropdownMenuContent>
@@ -364,7 +393,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
         </TabsContent>
       </Tabs>
 
-      {/* Single Delete Dialog */}
+      {/* Single Listing Delete Dialog */}
       <AlertDialog open={!!listingToDelete} onOpenChange={(open) => !open && setListingToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -389,7 +418,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Bulk Delete Dialog */}
+      {/* Bulk Listing Delete Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -409,6 +438,31 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
               onClick={handleBulkDelete}
             >
               {isBulkActionPending ? 'Deleting...' : 'Yes, delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* User Delete Dialog */}
+      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="text-destructive" />
+              Are you sure you want to delete this user?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the user account for <strong>{userToDelete?.name}</strong> and remove their data. Existing bookings will not be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              disabled={isPending}
+              onClick={handleDeleteUser}
+            >
+              {isPending ? 'Deleting...' : 'Yes, delete user'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

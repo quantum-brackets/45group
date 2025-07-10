@@ -1,4 +1,5 @@
 
+
 'use server'
 
 import { revalidatePath } from 'next/cache'
@@ -324,8 +325,6 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       return { success: false, message: 'User could not be identified.' };
   }
   
-  // Only perform this check if a session exists.
-  // For guest bookings (where session is null), permission is implicit.
   if (session) {
     if (!hasPermission(session, 'booking:create:own', { ownerId: userId }) && !hasPermission(session, 'booking:create')) {
       return { success: false, message: 'You do not have permission to create this booking.' };
@@ -639,6 +638,46 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
   
   return { success: true, message: `User "${name}" was updated successfully.`, changesMade: true };
 }
+
+export async function deleteUserAction(userId: string) {
+  await preloadPermissions();
+  const supabase = createSupabaseAdminClient();
+  const session = await getSession();
+  if (!session || !hasPermission(session, 'user:delete')) {
+    return { success: false, message: 'Unauthorized' };
+  }
+
+  if (userId === session.id) {
+    return { success: false, message: "You cannot delete your own account." };
+  }
+
+  // Check for active bookings
+  const { data: activeBookings, error: bookingCheckError } = await supabase
+    .from('bookings')
+    .select('id')
+    .eq('user_id', userId)
+    .in('status', ['Pending', 'Confirmed'])
+    .limit(1);
+
+  if (bookingCheckError) {
+    return { success: false, message: `Database error when checking bookings: ${bookingCheckError.message}` };
+  }
+  
+  if (activeBookings && activeBookings.length > 0) {
+    return { success: false, message: 'This user has active or pending bookings and cannot be deleted.' };
+  }
+
+  const { error } = await supabase.from('users').delete().eq('id', userId);
+
+  if (error) {
+    console.error(`[DELETE_USER_ACTION] Error: ${error}`);
+    return { success: false, message: `Failed to delete user: ${error.message}` };
+  }
+
+  revalidatePath('/dashboard?tab=users', 'page');
+  return { success: true, message: 'User has been successfully deleted.' };
+}
+
 
 const UpdateProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
