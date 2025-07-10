@@ -2,6 +2,7 @@
 
 
 
+
 'use server'
 
 import { revalidatePath } from 'next/cache'
@@ -430,7 +431,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     const actions: BookingAction[] = [...(booking.data.actions || [])];
 
 
-    if (datesChanged || unitsChanged) {
+    if (booking.status === 'Confirmed' && (datesChanged || unitsChanged)) {
         newStatus = 'Pending';
         successMessage = 'Booking has been updated and is now pending re-confirmation.';
         actions.push({
@@ -452,9 +453,9 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     }
 
     if (ownerChanged) {
-        const { data: newUser } = await supabase.from('users').select('data->>name as name').eq('id', userId!).single();
-        if (!newUser) {
-            return { success: false, message: 'The selected new owner does not exist.' };
+        const { data: newUser } = await supabase.from('users').select('name:data->>name').eq('id', userId!).single();
+        if (!newUser || !newUser.name) {
+            return { success: false, message: 'The selected new owner does not exist or has no name.' };
         }
         actions.push({
             timestamp: new Date().toISOString(),
