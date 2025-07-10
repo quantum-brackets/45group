@@ -88,7 +88,7 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
               <TableRow key={booking.id}>
                 <TableCell className="font-medium">
                   <div className="font-medium">{booking.listingName}</div>
-                  <div className="text-sm text-muted-foreground">{booking.inventoryIds.length} unit(s)</div>
+                  <div className="text-sm text-muted-foreground">{(booking.inventoryIds || []).length} unit(s)</div>
                 </TableCell>
                 {(session?.role === 'admin' || session?.role === 'staff') && (
                   <TableCell className="hidden sm:table-cell">{booking.userName}</TableCell>
