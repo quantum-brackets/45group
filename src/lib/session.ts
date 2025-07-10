@@ -8,7 +8,7 @@
 import 'server-only';
 import type { User } from './types';
 import { unstable_noStore as noStore } from 'next/cache';
-import { createSupabaseAdminClient } from './supabase';
+import { createSupabaseAdminClient } from './supabase-server';
 import { cookies } from 'next/headers';
 import { add } from 'date-fns';
 

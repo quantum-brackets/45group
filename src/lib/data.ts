@@ -8,8 +8,8 @@
 import type { Listing, Booking, ListingType, User, ListingInventory, Review, BookingAction } from './types';
 import { getSession } from '@/lib/session';
 import { unstable_noStore as noStore } from 'next/cache';
-import { createSupabaseServerClient, createSupabaseAdminClient } from './supabase';
-import { hasPermission, preloadPermissions } from './permissions';
+import { createSupabaseServerClient, createSupabaseAdminClient } from './supabase-server';
+import { hasPermission, preloadPermissions } from './permissions/server';
 
 
 /**
@@ -91,12 +91,12 @@ export async function getUserById(id: string): Promise<User | null> {
  * @returns An array of User objects.
  */
 export async function getAllUsers(): Promise<User[]> {
-    await preloadPermissions();
+    const perms = await preloadPermissions();
     // Use the admin client to bypass RLS for this internal dashboard function.
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     // Double-check permissions even though this is a server function.
-    if (!session || !hasPermission(session, 'user:read')) {
+    if (!session || !hasPermission(perms, session, 'user:read')) {
         return [];
     }
     
@@ -256,11 +256,13 @@ export async function getAllBookings(): Promise<Booking[]> {
     if (!session) {
         return [];
     }
+    
+    const perms = await preloadPermissions();
 
     let query = supabase.from('bookings').select('id, listing_id, user_id, status, start_date, end_date, data');
 
     // Apply Row-Level Security (RLS) principle at the application layer.
-    if (!hasPermission(session, 'booking:read')) {
+    if (!hasPermission(perms, session, 'booking:read')) {
         query = query.eq('user_id', session.id);
     }
     
@@ -334,7 +336,7 @@ export async function getAllBookings(): Promise<Booking[]> {
  */
 export async function getBookingById(id: string): Promise<Booking | null> {
     noStore();
-    await preloadPermissions();
+    const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session) {
@@ -354,7 +356,7 @@ export async function getBookingById(id: string): Promise<Booking | null> {
     }
     
     // RLS check at application level
-    if (!hasPermission(session, 'booking:read') && !hasPermission(session, 'booking:read:own', { ownerId: bookingData.user_id })) {
+    if (!hasPermission(perms, session, 'booking:read') && !hasPermission(perms, session, 'booking:read:own', { ownerId: bookingData.user_id })) {
         return null;
     }
     

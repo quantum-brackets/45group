@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { format, parseISO, differenceInCalendarDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 
-import type { Booking, Listing, User, Bill, Payment } from '@/lib/types';
+import type { Booking, Listing, User, Bill, Payment, Role } from '@/lib/types';
 import { updateBookingAction, cancelBookingAction, confirmBookingAction, checkOutBookingAction, addBillAction, addPaymentAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 
@@ -33,7 +33,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '../ui/textarea';
 import { Skeleton } from '../ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, Permission } from '@/lib/permissions';
 
 
 interface BookingDetailsProps {
@@ -42,6 +42,7 @@ interface BookingDetailsProps {
   session: User;
   totalInventoryCount: number;
   allUsers?: User[];
+  permissions: Record<Role, Permission[]>;
 }
 
 const formSchema = z.object({
@@ -212,7 +213,7 @@ const AddPaymentDialog = ({ bookingId, currency, disabled }: { bookingId: string
 };
 
 
-export function BookingDetails({ booking, listing, session, totalInventoryCount, allUsers = [] }: BookingDetailsProps) {
+export function BookingDetails({ booking, listing, session, totalInventoryCount, allUsers = [], permissions }: BookingDetailsProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdatePending, startUpdateTransition] = useTransition();
   const [isActionPending, startActionTransition] = useTransition();
@@ -225,12 +226,12 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
   const { toast } = useToast();
   const router = useRouter();
 
-  const canEditBooking = hasPermission(session, 'booking:update');
-  const canConfirmBooking = hasPermission(session, 'booking:confirm');
-  const canCancelBooking = hasPermission(session, 'booking:cancel') || hasPermission(session, 'booking:cancel:own', { ownerId: booking.userId });
-  const canCheckOutBooking = hasPermission(session, 'booking:confirm'); // Same permission as confirm
-  const canAddBilling = hasPermission(session, 'booking:update');
-  const canSeeUserDetails = hasPermission(session, 'user:read');
+  const canEditBooking = hasPermission(permissions, session, 'booking:update');
+  const canConfirmBooking = hasPermission(permissions, session, 'booking:confirm');
+  const canCancelBooking = hasPermission(permissions, session, 'booking:cancel') || hasPermission(permissions, session, 'booking:cancel:own', { ownerId: booking.userId });
+  const canCheckOutBooking = hasPermission(permissions, session, 'booking:confirm'); // Same permission as confirm
+  const canAddBilling = hasPermission(permissions, session, 'booking:update');
+  const canSeeUserDetails = hasPermission(permissions, session, 'user:read');
 
   const isActionable = booking.status !== 'Cancelled' && booking.status !== 'Checked Out';
   const isAnyActionPending = isUpdatePending || isActionPending;
@@ -285,7 +286,52 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
     }).format(amount);
   };
 
-  const staffActionIsBlocked = session.role === 'staff' && balance > 0;
+  const depositRequired = useMemo(() => {
+    let deposit = 0;
+    const units = (booking.inventoryIds || []).length;
+    switch(listing.price_unit) {
+        case 'night':
+            deposit = listing.price * 1 * units; // 1 night
+            break;
+        case 'hour':
+            deposit = listing.price * 1 * units; // 1 hour
+            break;
+        case 'person':
+            deposit = listing.price * 1 * units; // 1 person
+            break;
+    }
+    return deposit;
+  }, [listing, booking]);
+
+  const staffActionIsBlocked = useMemo(() => {
+    if (session.role !== 'staff') return false;
+    
+    // Check-out always requires full payment
+    if (booking.status === 'Confirmed') {
+        return balance > 0;
+    }
+
+    // Confirm requires deposit
+    if (booking.status === 'Pending') {
+        return totalPayments < depositRequired;
+    }
+
+    return false;
+  }, [session.role, booking.status, balance, totalPayments, depositRequired]);
+
+  const getStaffActionTooltip = () => {
+    if (!staffActionIsBlocked) return null;
+    
+    if (booking.status === 'Confirmed') {
+      return `Cannot check out with an outstanding balance of ${formatCurrency(balance)}.`;
+    }
+    
+    if (booking.status === 'Pending') {
+      return `A deposit of at least ${formatCurrency(depositRequired)} is required to confirm.`;
+    }
+
+    return "This action is currently blocked.";
+  };
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
     if (!data.dates.from) return;
@@ -631,7 +677,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                             </TooltipTrigger>
                             {staffActionIsBlocked && (
                                 <TooltipContent>
-                                    <p>Cannot confirm with an outstanding balance.</p>
+                                    <p>{getStaffActionTooltip()}</p>
                                 </TooltipContent>
                             )}
                         </Tooltip>
@@ -650,7 +696,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                             </TooltipTrigger>
                             {staffActionIsBlocked && (
                                 <TooltipContent>
-                                    <p>Cannot check out with an outstanding balance.</p>
+                                    <p>{getStaffActionTooltip()}</p>
                                 </TooltipContent>
                             )}
                         </Tooltip>
@@ -859,3 +905,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
     </Card>
   );
 }
+
+    
+
+    

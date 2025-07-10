@@ -6,7 +6,7 @@
 'use server'
 
 import { z } from 'zod';
-import { createSupabaseAdminClient } from './supabase';
+import { createSupabaseAdminClient } from './supabase-server';
 import { verifyPassword, hashPassword } from './password';
 import { createSession } from './session';
 import { randomUUID } from 'crypto';

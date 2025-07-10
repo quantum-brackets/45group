@@ -21,15 +21,35 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession } from './session'
 import { redirect } from 'next/navigation'
-import { createSupabaseAdminClient } from './supabase'
+import { createSupabaseAdminClient } from './supabase/server';
 import { hashPassword } from './password'
 import { logout as sessionLogout } from './session'
-import { hasPermission, preloadPermissions } from './permissions'
-import type { Booking, Listing, ListingInventory, Permission, Role, Review, User, BookingAction, Bill, Payment } from './types'
+import type { Booking, Listing, ListingInventory, Role, Review, User, BookingAction, Bill, Payment } from './types'
 import { randomUUID } from 'crypto'
 import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendWelcomeEmail } from './email'
 import { differenceInCalendarDays, parseISO } from 'date-fns'
+import { preloadPermissions } from '@/lib/permissions/server'
+import { hasPermission } from '@/lib/permissions/client'
+import { allPermissions, Permission } from './types';
 
+
+function unpackUser(user: any): User {
+    if (!user) return null as any;
+    const { data, ...rest } = user;
+    return { ...rest, ...data };
+}
+
+function unpackListing(listing: any): Listing {
+    if (!listing) return null as any;
+    const { data, ...rest } = listing;
+    return { ...rest, ...data };
+}
+
+function unpackBooking(booking: any): Booking {
+    if (!booking) return null as any;
+    const { data, listing_id, user_id, start_date, end_date, ...rest } = booking;
+    return { ...rest, ...data, listingId: listing_id, userId: user_id, startDate: start_date, endDate: end_date };
+}
 
 /**
  * Updates the permissions for all roles in the system.
@@ -38,10 +58,10 @@ import { differenceInCalendarDays, parseISO } from 'date-fns'
  * @returns A result object indicating success or failure.
  */
 export async function updatePermissionsAction(permissions: Record<Role, Permission[]>) {
-    await preloadPermissions();
+    const perms = await preloadPermissions();
     const session = await getSession();
     // Security: Ensure the user has permission to update permissions.
-    if (!session || !hasPermission(session, 'permissions:update')) {
+    if (!session || !hasPermission(perms, session, 'permissions:update')) {
       return { success: false, message: 'Permission Denied: You are not authorized to update roles and permissions.' };
     }
   
@@ -96,11 +116,11 @@ const ListingFormSchema = z.object({
  * @returns A result object indicating success or failure.
  */
 export async function createListingAction(data: z.infer<typeof ListingFormSchema>) {
-    await preloadPermissions();
+    const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     // Security: Check permissions.
-    if (!session || !hasPermission(session, 'listing:create')) {
+    if (!session || !hasPermission(perms, session, 'listing:create')) {
         return { success: false, message: 'Permission Denied: You are not authorized to create new listings.' };
     }
 
@@ -159,10 +179,10 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
  * @returns A result object indicating success or failure.
  */
 export async function updateListingAction(id: string, data: z.infer<typeof ListingFormSchema>) {
-  await preloadPermissions();
+  const perms = await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (!session || !hasPermission(session, 'listing:update')) {
+  if (!session || !hasPermission(perms, session, 'listing:update')) {
     return { success: false, message: 'Permission Denied: You are not authorized to update listings.' };
   }
   
@@ -266,10 +286,10 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
  * @returns A result object indicating success or failure.
  */
 export async function deleteListingAction(id: string) {
-  await preloadPermissions();
+  const perms = await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (!session || !hasPermission(session, 'listing:delete')) {
+  if (!session || !hasPermission(perms, session, 'listing:delete')) {
     return { success: false, message: 'Permission Denied: You are not authorized to delete listings.' };
   }
   
@@ -386,7 +406,7 @@ async function findAvailableInventory(supabase: any, listingId: string, startDat
  * @returns A result object indicating success or failure.
  */
 export async function createBookingAction(data: z.infer<typeof CreateBookingSchema>) {
-  await preloadPermissions();
+  const perms = await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
 
@@ -422,11 +442,11 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     // Permission checks
     const isBookingForOther = session.id !== finalUserId;
     if (isBookingForOther) {
-      if (!hasPermission(session, 'booking:create')) {
+      if (!hasPermission(perms, session, 'booking:create')) {
         return { success: false, message: 'Permission Denied: You do not have permissions to create bookings for other users.' };
       }
     } else {
-      if (!hasPermission(session, 'booking:create:own', { ownerId: session.id })) {
+      if (!hasPermission(perms, session, 'booking:create:own', { ownerId: session.id })) {
         return { success: false, message: 'Permission Denied: You are not authorized to create bookings for yourself.' };
       }
     }
@@ -480,7 +500,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       const isBookingForOther = session && session.id !== finalUserId;
       
       // Create a descriptive message for the initial booking action log.
-      const message = hasPermission(session, 'booking:create') && isBookingForOther
+      const message = hasPermission(perms, session, 'booking:create') && isBookingForOther
         ? `Booking created by staff member ${actorName} on behalf of ${finalUserName}.`
         : 'Booking request received.';
 
@@ -560,7 +580,7 @@ const UpdateBookingSchema = z.object({
  * @returns A result object indicating success or failure.
  */
 export async function updateBookingAction(data: z.infer<typeof UpdateBookingSchema>) {
-    await preloadPermissions();
+    const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session) return { success: false, message: 'Authentication Error: You must be logged in to perform this action.' };
@@ -578,7 +598,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
       
     if (fetchError || !booking) return { success: false, message: 'Database Error: Could not find the booking to update.' };
 
-    const canUpdate = hasPermission(session, 'booking:update:own', { ownerId: booking.user_id }) || hasPermission(session, 'booking:update');
+    const canUpdate = hasPermission(perms, session, 'booking:update:own', { ownerId: booking.user_id }) || hasPermission(perms, session, 'booking:update');
 
     if (!canUpdate) {
       return { success: false, message: 'Permission Denied: You are not authorized to update this booking.' };
@@ -586,7 +606,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
 
     const ownerChanged = userId && userId !== booking.user_id;
 
-    if (ownerChanged && !hasPermission(session, 'booking:update')) {
+    if (ownerChanged && !hasPermission(perms, session, 'booking:update')) {
         return { success: false, message: 'Permission Denied: You are not authorized to change the owner of a booking.' };
     }
 
@@ -701,7 +721,7 @@ const BookingActionSchema = z.object({
  * @returns A result object indicating success or failure.
  */
 export async function cancelBookingAction(data: z.infer<typeof BookingActionSchema>) {
-  await preloadPermissions();
+  const perms = await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (!session) return { error: 'Authentication Error: You must be logged in to perform this action.' };
@@ -711,7 +731,7 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
   const { data: booking, error: fetchError } = await supabase.from('bookings').select('user_id, listing_id, data').eq('id', bookingId).single();
   if (fetchError || !booking) return { error: 'Database Error: Could not find the booking to cancel.' };
 
-  if (!hasPermission(session, 'booking:cancel:own', { ownerId: booking.user_id }) && !hasPermission(session, 'booking:cancel')) {
+  if (!hasPermission(perms, session, 'booking:cancel:own', { ownerId: booking.user_id }) && !hasPermission(perms, session, 'booking:cancel')) {
     return { error: 'Permission Denied: You are not authorized to cancel this booking.' };
   }
   
@@ -785,10 +805,10 @@ function calculateBookingBalance(booking: Booking, listing: Listing) {
  * @returns A result object indicating success or failure.
  */
 export async function confirmBookingAction(data: z.infer<typeof BookingActionSchema>) {
-    await preloadPermissions();
+    const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session || !hasPermission(session, 'booking:confirm')) {
+    if (!session || !hasPermission(perms, session, 'booking:confirm')) {
       return { error: 'Permission Denied: You are not authorized to confirm bookings.' };
     }
   
@@ -806,9 +826,25 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     
     // Check payment status for staff
     if (session.role === 'staff') {
-        const { balance } = calculateBookingBalance(unpackedBooking, unpackedListing);
-        if (balance > 0) {
-            return { error: 'Action Blocked: Cannot confirm a booking with an outstanding balance.' };
+        const { totalPayments } = calculateBookingBalance(unpackedBooking, unpackedListing);
+        
+        let depositRequired = 0;
+        const units = (unpackedBooking.inventoryIds || []).length;
+
+        switch(unpackedListing.price_unit) {
+            case 'night':
+                depositRequired = unpackedListing.price * 1 * units; // 1 night
+                break;
+            case 'hour':
+                depositRequired = unpackedListing.price * 1 * units; // 1 hour
+                break;
+            case 'person':
+                depositRequired = unpackedListing.price * 1 * units; // 1 person
+                break;
+        }
+
+        if (totalPayments < depositRequired) {
+            return { error: `Action Blocked: A deposit of at least ${new Intl.NumberFormat('en-US', { style: 'currency', currency: unpackedListing.currency || 'USD' }).format(depositRequired)} is required to confirm.` };
         }
     }
 
@@ -880,10 +916,10 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
  * @returns A result object indicating success or failure.
  */
 export async function checkOutBookingAction(data: z.infer<typeof BookingActionSchema>) {
-    await preloadPermissions();
+    const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session || !hasPermission(session, 'booking:confirm')) {
+    if (!session || !hasPermission(perms, session, 'booking:confirm')) {
         return { error: 'Permission Denied: You are not authorized to check out bookings.' };
     }
     
@@ -951,11 +987,11 @@ const UserFormSchema = z.object({
  * @returns A result object indicating success or failure.
  */
 export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
-  await preloadPermissions();
+  const perms = await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
 
-  if (!session || !hasPermission(session, 'user:create')) {
+  if (!session || !hasPermission(perms, session, 'user:create')) {
     return { success: false, message: 'Permission Denied: You are not authorized to create new users.' };
   }
 
@@ -995,10 +1031,10 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
  * @returns A result object indicating success or failure.
  */
 export async function updateUserAction(id: string, data: z.infer<typeof UserFormSchema>) {
-  await preloadPermissions();
+  const perms = await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (!session || !hasPermission(session, 'user:update')) {
+  if (!session || !hasPermission(perms, session, 'user:update')) {
     return { success: false, message: 'Permission Denied: You are not authorized to update user details.' };
   }
 
@@ -1047,10 +1083,10 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
  * @returns A result object indicating success or failure.
  */
 export async function deleteUserAction(userId: string) {
-  await preloadPermissions();
+  const perms = await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (!session || !hasPermission(session, 'user:delete')) {
+  if (!session || !hasPermission(perms, session, 'user:delete')) {
     return { success: false, message: 'Permission Denied: You are not authorized to delete users.' };
   }
 
@@ -1101,12 +1137,12 @@ const UpdateProfileSchema = z.object({
  * @returns A result object indicating success or failure.
  */
 export async function updateUserProfileAction(data: z.infer<typeof UpdateProfileSchema>) {
-  await preloadPermissions();
+  const perms = await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (!session) return { success: false, message: 'Authentication Error: You must be logged in to perform this action.' };
   
-  if (!hasPermission(session, 'user:update:own', { ownerId: session.id })) {
+  if (!hasPermission(perms, session, 'user:update:own', { ownerId: session.id })) {
     return { success: false, message: 'Permission Denied: You are not authorized to update your profile.'}
   }
 
@@ -1145,12 +1181,12 @@ const ReviewSchema = z.object({
  * @returns A result object indicating success or failure.
  */
 export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>) {
-    await preloadPermissions();
+    const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session) return { success: false, message: 'Authentication Error: You must be logged in to submit a review.' };
     
-    if (!hasPermission(session, 'review:create:own', { ownerId: session.id })) {
+    if (!hasPermission(perms, session, 'review:create:own', { ownerId: session.id })) {
       return { success: false, message: 'Permission Denied: You are not authorized to create or update reviews.'};
     }
 
@@ -1205,10 +1241,10 @@ const ReviewActionSchema = z.object({
  * @returns A result object indicating success or failure.
  */
 export async function approveReviewAction(data: z.infer<typeof ReviewActionSchema>) {
-    await preloadPermissions();
+    const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session || !hasPermission(session, 'review:approve')) return { success: false, message: 'Permission Denied: You are not authorized to approve reviews.' };
+    if (!session || !hasPermission(perms, session, 'review:approve')) return { success: false, message: 'Permission Denied: You are not authorized to approve reviews.' };
 
     const { listingId, reviewId } = data;
     const { data: listing, error: fetchError } = await supabase.from('listings').select('data').eq('id', listingId).single();
@@ -1242,10 +1278,10 @@ export async function approveReviewAction(data: z.infer<typeof ReviewActionSchem
  * @returns A result object indicating success or failure.
  */
 export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema>) {
-    await preloadPermissions();
+    const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session || !hasPermission(session, 'review:delete')) return { success: false, message: 'Permission Denied: You are not authorized to delete reviews.' };
+    if (!session || !hasPermission(perms, session, 'review:delete')) return { success: false, message: 'Permission Denied: You are not authorized to delete reviews.' };
     
     const { listingId, reviewId } = data;
     const { data: listing, error: fetchError } = await supabase.from('listings').select('data').eq('id', listingId).single();
@@ -1281,10 +1317,10 @@ const ToggleUserStatusSchema = z.object({
  * @returns A result object indicating success or failure.
  */
 export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStatusSchema>) {
-  await preloadPermissions();
+  const perms = await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  if (!session || !hasPermission(session, 'user:update')) {
+  if (!session || !hasPermission(perms, session, 'user:update')) {
     return { success: false, message: 'Permission Denied: You are not authorized to change user statuses.' };
   }
 
@@ -1310,10 +1346,10 @@ const BulkDeleteListingsSchema = z.object({
  * @returns A result object indicating success or failure.
  */
 export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteListingsSchema>) {
-    await preloadPermissions();
+    const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session || !hasPermission(session, 'listing:delete')) {
+    if (!session || !hasPermission(perms, session, 'listing:delete')) {
         return { success: false, message: 'Permission Denied: You are not authorized to delete listings.' };
     }
 
@@ -1350,11 +1386,11 @@ const AddBillSchema = z.object({
  * @returns A result object indicating success or failure.
  */
 export async function addBillAction(data: z.infer<typeof AddBillSchema>) {
-  await preloadPermissions();
+  const perms = await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
   
-  if (!session || !hasPermission(session, 'booking:update')) {
+  if (!session || !hasPermission(perms, session, 'booking:update')) {
     return { success: false, message: 'Permission Denied: You are not authorized to add bills to a booking.' };
   }
 
@@ -1404,11 +1440,11 @@ const AddPaymentSchema = z.object({
  * @returns A result object indicating success or failure.
  */
 export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
-    await preloadPermissions();
+    const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     
-    if (!session || !hasPermission(session, 'booking:update')) {
+    if (!session || !hasPermission(perms, session, 'booking:update')) {
         return { success: false, message: 'Permission Denied: You are not authorized to record payments.' };
     }
     
@@ -1445,20 +1481,5 @@ export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
     return { success: true, message: 'Payment recorded successfully.' };
 }
 
-function unpackUser(user: any): User {
-    if (!user) return null as any;
-    const { data, ...rest } = user;
-    return { ...rest, ...data };
-}
+    
 
-function unpackListing(listing: any): Listing {
-    if (!listing) return null as any;
-    const { data, ...rest } = listing;
-    return { ...rest, ...data };
-}
-
-function unpackBooking(booking: any): Booking {
-    if (!booking) return null as any;
-    const { data, listing_id, user_id, start_date, end_date, ...rest } = booking;
-    return { ...rest, ...data, listingId: listing_id, userId: user_id, startDate: start_date, endDate: end_date };
-}
