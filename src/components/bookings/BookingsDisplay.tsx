@@ -5,14 +5,15 @@ import { useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { BookingsTable } from '@/components/bookings/BookingsTable';
 import { BookingsFilters } from '@/components/bookings/BookingsFilters';
-import type { Booking, User } from '@/lib/types';
+import type { Booking, User, Role, Permission } from '@/lib/types';
 
 interface BookingsDisplayProps {
   allBookings: Booking[];
   session: User | null;
+  permissions: Record<Role, Permission[]> | null;
 }
 
-export function BookingsDisplay({ allBookings, session }: BookingsDisplayProps) {
+export function BookingsDisplay({ allBookings, session, permissions }: BookingsDisplayProps) {
   const searchParams = useSearchParams();
   const filterQuery = searchParams.get('q')?.toLowerCase() || '';
 
@@ -38,7 +39,7 @@ export function BookingsDisplay({ allBookings, session }: BookingsDisplayProps) 
       </section>
       
       {filteredBookings.length > 0 ? (
-        <BookingsTable bookings={filteredBookings} session={session} />
+        <BookingsTable bookings={filteredBookings} session={session} permissions={permissions} />
       ) : (
         <div className="text-center py-16 border-2 border-dashed rounded-lg">
           <h2 className="text-2xl font-semibold">No Bookings Found</h2>

@@ -2,10 +2,10 @@
 import { getAllBookings } from '@/lib/data';
 import { getSession } from '@/lib/session';
 import { BookingsDisplay } from '@/components/bookings/BookingsDisplay';
-import { preloadPermissions } from '@/lib/permissions';
+import { preloadPermissions } from '@/lib/permissions/server';
 
 export default async function BookingsPage() {
-  await preloadPermissions();
+  const permissions = await preloadPermissions();
 
   // With client-side filtering, we just get all relevant bookings.
   // The `getAllBookings` function already handles permissions (user sees their own, admin/staff sees all).
@@ -17,6 +17,7 @@ export default async function BookingsPage() {
       <BookingsDisplay 
         allBookings={allBookings}
         session={session}
+        permissions={permissions}
       />
     </div>
   );

@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { format, parseISO, differenceInCalendarDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 
-import type { Booking, Listing, User, Bill, Payment, Role } from '@/lib/types';
+import type { Booking, Listing, User, Bill, Payment, Role, Permission } from '@/lib/types';
 import { updateBookingAction, cancelBookingAction, confirmBookingAction, checkOutBookingAction, addBillAction, addPaymentAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 
@@ -33,7 +33,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '../ui/textarea';
 import { Skeleton } from '../ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { hasPermission, Permission } from '@/lib/permissions';
+import { hasPermission } from '@/lib/permissions/client';
 
 
 interface BookingDetailsProps {
@@ -42,7 +42,7 @@ interface BookingDetailsProps {
   session: User;
   totalInventoryCount: number;
   allUsers?: User[];
-  permissions: Record<Role, Permission[]>;
+  permissions: Record<Role, Permission[]> | null;
 }
 
 const formSchema = z.object({
@@ -905,7 +905,3 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
     </Card>
   );
 }
-
-    
-
-    

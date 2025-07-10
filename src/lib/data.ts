@@ -9,7 +9,8 @@ import type { Listing, Booking, ListingType, User, ListingInventory, Review, Boo
 import { getSession } from '@/lib/session';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createSupabaseServerClient, createSupabaseAdminClient } from './supabase-server';
-import { hasPermission, preloadPermissions } from './permissions/server';
+import { preloadPermissions } from '@/lib/permissions/server';
+import { hasPermission } from '@/lib/permissions/client';
 
 
 /**

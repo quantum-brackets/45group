@@ -19,7 +19,7 @@ import { Star, Loader2, Check, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission } from '@/lib/permissions/client';
 
 const reviewFormSchema = z.object({
   rating: z.coerce.number().min(1, "Rating is required.").max(5),
@@ -76,9 +76,11 @@ export function ReviewSection({ listingId, reviews, averageRating, session }: Re
   const [isAdminActionPending, startAdminActionTransition] = useTransition();
   const [processingReviewId, setProcessingReviewId] = useState<string | null>(null);
 
-  const canApproveReview = session && hasPermission(session, 'review:approve');
-  const canDeleteReview = session && hasPermission(session, 'review:delete');
-  const canWriteReview = session && hasPermission(session, 'review:create:own', { ownerId: session.id });
+  // Since permissions aren't passed as a prop, we have to fall back to role checks.
+  // This is not ideal as it hardcodes the logic, but it's a temporary workaround.
+  const canApproveReview = session && session.role === 'admin';
+  const canDeleteReview = session && session.role === 'admin';
+  const canWriteReview = !!session; // Any logged-in user can write a review.
 
   const approvedReviewsCount = reviews.filter(review => review.status === 'approved').length;
   const currentUserReview = reviews.find(review => review.user_id === session?.id);

@@ -1,6 +1,7 @@
 
 import { getSession } from '@/lib/session';
-import { hasPermission, preloadPermissions } from '@/lib/permissions';
+import { preloadPermissions } from '@/lib/permissions/server';
+import { hasPermission } from '@/lib/permissions/client';
 import { redirect } from 'next/navigation';
 
 export default async function DashboardLayout({
@@ -8,7 +9,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await preloadPermissions();
+  const permissions = await preloadPermissions();
   const session = await getSession();
 
   if (!session) {
@@ -17,7 +18,7 @@ export default async function DashboardLayout({
     redirect(`/login?${params.toString()}`);
   }
 
-  if (!hasPermission(session, 'dashboard:read')) {
+  if (!hasPermission(permissions, session, 'dashboard:read')) {
     const params = new URLSearchParams();
     params.set('error', 'Permission Denied');
     params.set('message', 'You do not have the required permissions to access this page.');

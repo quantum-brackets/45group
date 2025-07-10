@@ -8,20 +8,21 @@ import { MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
-import type { Booking, User } from '@/lib/types';
+import type { Booking, User, Role, Permission } from '@/lib/types';
 import { useTransition } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { cancelBookingAction, confirmBookingAction } from '@/lib/actions';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission } from '@/lib/permissions/client';
 
 interface BookingsTableProps {
   bookings: Booking[];
   session: User | null;
+  permissions: Record<Role, Permission[]> | null;
 }
 
-export function BookingsTable({ bookings, session }: BookingsTableProps) {
+export function BookingsTable({ bookings, session, permissions }: BookingsTableProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isCancelPending, startCancelTransition] = useTransition();
@@ -79,7 +80,7 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
       return <Badge variant={variants[status] || 'secondary'} className={cn(styles[status as keyof typeof styles])}>{status}</Badge>
   }
 
-  const canSeeAllUserDetails = session && hasPermission(session, 'user:read');
+  const canSeeAllUserDetails = session && hasPermission(permissions, session, 'user:read');
 
   return (
     <Card>
@@ -145,16 +146,16 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuItem onClick={() => router.push(`/booking/${booking.id}`)}>View Details</DropdownMenuItem>
-                                {hasPermission(session, 'user:read') && (
+                                {hasPermission(permissions, session, 'user:read') && (
                                     <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-user/${booking.userId}`)}>View Guest</DropdownMenuItem>
                                 )}
-                                {hasPermission(session, 'booking:confirm') && booking.status === 'Pending' && (
+                                {hasPermission(permissions, session, 'booking:confirm') && booking.status === 'Pending' && (
                                     <DropdownMenuItem 
                                         disabled={isConfirmPending}
                                         onClick={() => handleConfirm(booking.id)}
                                     >Confirm Booking</DropdownMenuItem>
                                 )}
-                                {(hasPermission(session, 'booking:cancel') || hasPermission(session, 'booking:cancel:own', { ownerId: booking.userId })) && booking.status !== 'Cancelled' && booking.status !== 'Checked Out' && (
+                                {(hasPermission(permissions, session, 'booking:cancel') || hasPermission(permissions, session, 'booking:cancel:own', { ownerId: booking.userId })) && booking.status !== 'Cancelled' && booking.status !== 'Checked Out' && (
                                     <DropdownMenuItem 
                                         className="text-destructive"
                                         disabled={isCancelPending}
