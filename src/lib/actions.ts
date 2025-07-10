@@ -788,7 +788,7 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    if (!session || !hasPermission(session, 'booking:confirm')) {
+    if (!session || (session.role !== 'admin' && session.role !== 'staff')) {
       return { error: 'Permission Denied: You are not authorized to confirm bookings.' };
     }
   
@@ -980,11 +980,11 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   const hashedPassword = await hashPassword(password);
   const userJsonData = { name, password: hashedPassword, notes, phone };
 
-  const { error } = await supabase.from('users').insert({ email, role, status, data: userJsonData });
+  const { data: newUser, error } = await supabase.from('users').insert({ email, role, status, data: userJsonData }).select('id, name, email').single();
 
-  if (error) return { success: false, message: `Database Error: Failed to create user. ${error.message}` };
+  if (error || !newUser) return { success: false, message: `Database Error: Failed to create user. ${error.message}` };
 
-  await sendWelcomeEmail({ name, email });
+  await sendWelcomeEmail({ name: newUser.name, email: newUser.email });
 
   revalidatePath('/dashboard?tab=users', 'page');
   return { success: true, message: `User "${name}" was created successfully.` };
@@ -1466,3 +1466,4 @@ function unpackBooking(booking: any): Booking {
     const { data, listing_id, user_id, start_date, end_date, ...rest } = booking;
     return { ...rest, ...data, listingId: listing_id, userId: user_id, startDate: start_date, endDate: end_date };
 }
+
