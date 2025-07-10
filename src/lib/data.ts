@@ -199,7 +199,7 @@ export async function getListingsByIds(ids: string[]): Promise<Listing[]> {
       console.error("Error fetching listings by IDs:", error);
       return [];
   }
-  return data.map(unpackListing);
+  return data.map(l => unpackListing({ ...l, inventory_inventory: [] }));
 }
 
 /**
@@ -412,7 +412,7 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
   // Start building the query.
   let query = supabase
     .from('listings')
-    .select('id, type, location, data, listing_inventory(id)') // Select inventory IDs to count them.
+    .select('id, type, location, data, listing_inventory(count)') 
     .order('location')
     .order('type')
     .order('data->>name');
@@ -436,11 +436,7 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
     return [];
   }
   
-  // Manually count inventory items from the nested array.
-  let listingsWithInventoryCount = listingsData.map(l => ({
-    ...unpackListing(l),
-    inventoryCount: l.listing_inventory.length,
-  }));
+  let listingsWithInventoryCount = listingsData.map(l => unpackListing(l));
 
   // If no date filter is applied, return the listings now.
   if (!filters.date?.from) {
@@ -481,7 +477,7 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
   
   // Filter the listings to only include those with available units.
   const availableListings = listingsWithInventoryCount.filter(listing => {
-      const totalInventory = listing.inventoryCount;
+      const totalInventory = listing.inventoryCount ?? 0;
       const bookedCount = bookedUnitsByListing[listing.id]?.size || 0;
       return totalInventory > bookedCount;
   });

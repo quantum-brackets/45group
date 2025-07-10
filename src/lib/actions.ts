@@ -26,6 +26,7 @@ import { logout as sessionLogout } from './session'
 import { hasPermission, preloadPermissions } from './permissions'
 import type { Booking, Listing, ListingInventory, Permission, Role, Review, User, BookingAction, Bill, Payment } from './types'
 import { randomUUID } from 'crypto'
+import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendWelcomeEmail } from './email'
 
 
 /**
@@ -408,7 +409,8 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
   const { listingId, startDate, endDate, guests, numberOfUnits, userId, guestName, guestEmail } = validatedFields.data;
   
   let finalUserId: string;
-  let finalBookingName: string;
+  let finalUserName: string;
+  let finalUserEmail: string;
   let actorId: string;
   let actorName: string;
 
@@ -419,12 +421,13 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     actorName = session.name;
 
     // Get the name of the user the booking is actually for.
-    const { data: targetUser, error: targetUserError } = await supabase.from('users').select('data').eq('id', finalUserId).single();
+    const { data: targetUser, error: targetUserError } = await supabase.from('users').select('email, data').eq('id', finalUserId).single();
     if (targetUserError || !targetUser) {
         return { success: false, message: 'Target user for the booking was not found.' };
     }
-    finalBookingName = targetUser.data.name;
-
+    finalUserName = targetUser.data.name;
+    finalUserEmail = targetUser.email;
+    
     // Permission checks
     const isBookingForOther = session.id !== finalUserId;
     if (isBookingForOther) {
@@ -441,6 +444,9 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     if (!guestName || !guestEmail) {
         return { success: false, message: "Guest name and email are required." };
     }
+
+    finalUserName = guestName;
+    finalUserEmail = guestEmail;
 
     const { data: existingUser } = await supabase.from('users').select('id, status').eq('email', guestEmail).single();
 
@@ -465,7 +471,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
         }
         finalUserId = newUser.id;
     }
-    finalBookingName = guestName;
+    
     actorId = finalUserId; // For guests, the actor is themselves.
     actorName = guestName;
   }
@@ -483,7 +489,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       
       // Create a descriptive message for the initial booking action log.
       const message = isBookingForOther
-        ? `Booking created by staff member ${actorName} on behalf of ${finalBookingName}.`
+        ? `Booking created by staff member ${actorName} on behalf of ${finalUserName}.`
         : 'Booking request received.';
 
       // The first entry in the booking's audit trail.
@@ -497,7 +503,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
 
       const bookingData = {
           guests,
-          bookingName: finalBookingName,
+          bookingName: finalUserName,
           inventoryIds: inventoryToBook,
           actions: [initialAction],
           createdAt: createdAt,
@@ -505,16 +511,23 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
           payments: [], // Initialize payments
       };
 
-      const { error: createBookingError } = await supabase.from('bookings').insert({
+      const { data: newBooking, error: createBookingError } = await supabase.from('bookings').insert({
           listing_id: listingId,
           user_id: finalUserId,
           start_date: startDate,
           end_date: endDate,
           status: 'Pending', // All new bookings start as Pending.
           data: bookingData
-      });
+      }).select().single();
 
-      if (createBookingError) throw createBookingError;
+      if (createBookingError || !newBooking) throw createBookingError;
+
+      // Send booking request email
+      const { data: listingData } = await supabase.from('listings').select('data').eq('id', listingId).single();
+      const { data: userData } = await supabase.from('users').select('*').eq('id', finalUserId).single();
+      if(listingData && userData) {
+        await sendBookingRequestEmail(unpackUser(userData), unpackBooking(newBooking), unpackListing({ ...listingData, id: listingId }));
+      }
 
       revalidatePath('/bookings');
       revalidatePath(`/listing/${listingId}`);
@@ -793,6 +806,14 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
 
         if (error) throw error;
         
+        // Send confirmation email
+        const { data: listingData } = await supabase.from('listings').select('data').eq('id', booking.listing_id).single();
+        const { data: userData } = await supabase.from('users').select('*').eq('id', booking.user_id).single();
+
+        if (listingData && userData) {
+            await sendBookingConfirmationEmail(unpackUser(userData), unpackBooking(booking), unpackListing({ ...listingData, id: booking.listing_id }));
+        }
+
         revalidatePath('/bookings');
         revalidatePath(`/booking/${bookingId}`);
         return { success: `Booking has been confirmed.` };
@@ -848,6 +869,8 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   const { error } = await supabase.from('users').insert({ email, role, status, data: userJsonData });
 
   if (error) return { success: false, message: `Failed to create user: ${error.message}` };
+
+  await sendWelcomeEmail({ name, email });
 
   revalidatePath('/dashboard?tab=users', 'page');
   return { success: true, message: `User "${name}" was created successfully.` };
@@ -1307,4 +1330,22 @@ export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
     
     revalidatePath(`/booking/${bookingId}`);
     return { success: true, message: 'Payment recorded successfully.' };
+}
+
+function unpackUser(user: any): User {
+    if (!user) return null as any;
+    const { data, ...rest } = user;
+    return { ...rest, ...data };
+}
+
+function unpackListing(listing: any): Listing {
+    if (!listing) return null as any;
+    const { data, ...rest } = listing;
+    return { ...rest, ...data };
+}
+
+function unpackBooking(booking: any): Booking {
+    if (!booking) return null as any;
+    const { data, listing_id, user_id, start_date, end_date, ...rest } = booking;
+    return { ...rest, ...data, listingId: listing_id, userId: user_id, startDate: start_date, endDate: end_date };
 }

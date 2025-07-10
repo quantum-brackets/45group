@@ -5,50 +5,59 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransition, useState } from "react";
-import { loginAction } from "@/lib/auth";
-import { useRouter, useSearchParams } from "next/navigation";
+import { resetPasswordAction } from "@/lib/auth";
+import { useRouter } from "next/navigation";
+import Link from 'next/link';
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import Link from "next/link";
 
 
 const formSchema = z.object({
-  email: z.string().email("Please enter a valid email address."),
-  password: z.string().min(1, "Password is required."),
+  password: z.string().min(6, "Password must be at least 6 characters long."),
+  confirmPassword: z.string().min(6, "Please confirm your new password."),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords do not match.",
+  path: ["confirmPassword"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function LoginForm() {
+interface ResetPasswordFormProps {
+    token: string;
+}
+
+export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
   const [isPending, startTransition] = useTransition();
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const router = useRouter();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
       password: "",
+      confirmPassword: "",
     },
   });
 
   const onSubmit = (data: FormValues) => {
     setError(null);
+    setSuccess(null);
     startTransition(async () => {
-      const from = searchParams.get('from');
-      const result = await loginAction(data, from);
+      const result = await resetPasswordAction({ token, password: data.password });
       if (result?.error) {
         setError(result.error);
       }
       if (result?.success) {
-        // Use router for client-side navigation after server action is complete.
-        // This ensures the cookie is set before navigating.
-        router.push(result.redirectTo);
+        setSuccess(result.success);
+        form.reset();
+        setTimeout(() => {
+          router.push('/login');
+        }, 3000);
       }
     });
   };
@@ -59,47 +68,48 @@ export function LoginForm() {
         {error && (
             <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Login Failed</AlertTitle>
+                <AlertTitle>Error</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
             </Alert>
         )}
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input placeholder="user@example.com" {...field} disabled={isPending} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {success && (
+            <Alert className="border-green-500/50 text-green-700 dark:border-green-500 [&>svg]:text-green-700">
+                <CheckCircle className="h-4 w-4" />
+                <AlertTitle>Success!</AlertTitle>
+                <AlertDescription>
+                  {success} You can now <Link href="/login" className="underline font-bold">log in</Link> with your new password.
+                </AlertDescription>
+            </Alert>
+        )}
         <FormField
           control={form.control}
           name="password"
           render={({ field }) => (
             <FormItem>
-                <div className="flex items-center">
-                    <FormLabel>Password</FormLabel>
-                    <Link
-                        href="/forgot-password"
-                        className="ml-auto inline-block text-sm underline"
-                    >
-                        Forgot your password?
-                    </Link>
-                </div>
+              <FormLabel>New Password</FormLabel>
               <FormControl>
-                <Input type="password" {...field} disabled={isPending} />
+                <Input type="password" {...field} disabled={isPending || !!success} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={isPending}>
+        <FormField
+          control={form.control}
+          name="confirmPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Confirm New Password</FormLabel>
+              <FormControl>
+                <Input type="password" {...field} disabled={isPending || !!success} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" className="w-full" disabled={isPending || !!success}>
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Login
+          Reset Password
         </Button>
       </form>
     </Form>

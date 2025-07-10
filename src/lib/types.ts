@@ -135,4 +135,6 @@ export interface User {
     status: 'active' | 'disabled' | 'provisional'; // The user's account status.
     phone?: string; // The user's phone number.
     notes?: string; // Internal notes about the user, visible to admins/staff.
+    password_reset_token?: string; // Token for password reset.
+    password_reset_expires?: number; // Expiry timestamp for the reset token.
 }

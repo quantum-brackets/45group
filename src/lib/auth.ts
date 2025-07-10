@@ -10,6 +10,7 @@ import { createSupabaseAdminClient } from './supabase';
 import { verifyPassword, hashPassword } from './password';
 import { createSession } from './session';
 import { randomUUID } from 'crypto';
+import { sendPasswordResetEmail, sendWelcomeEmail } from './email';
 
 // Zod schema for login form validation.
 const LoginSchema = z.object({
@@ -45,7 +46,7 @@ export async function loginAction(formData: z.infer<typeof LoginSchema>, from: s
     return { error: "Incorrect email or password." };
   }
 
-  const userData = user.data as { password?: string };
+  const userData = user.data as { password?: string, name?: string };
   // Check if the user has a password. If not, they might be a provisional user.
   if (!userData.password) {
     return { error: "Account not fully set up. Please sign up." };
@@ -61,6 +62,17 @@ export async function loginAction(formData: z.infer<typeof LoginSchema>, from: s
   if (user.status === 'disabled') {
     return { error: "Your account has been disabled. Please contact support." };
   }
+  
+  // If the user's status is provisional, but they have a password, it means they've completed signup.
+  // We should activate their account now.
+  if (user.status === 'provisional') {
+    const { error: activateError } = await supabase.from('users').update({ status: 'active' }).eq('id', user.id);
+    if (activateError) {
+      console.error('[LOGIN_ACTION] Failed to activate provisional user:', activateError);
+      // Don't block login, but log the error.
+    }
+  }
+
 
   // If all checks pass, create a new session for the user.
   await createSession(user.id);
@@ -97,6 +109,7 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
     
     const hashedPassword = await hashPassword(password);
     let userId: string;
+    let isNewUser = false;
 
     if (existingUser) {
         // If the existing user is 'provisional' (from a guest booking),
@@ -120,6 +133,7 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
             return { error: "A user with this email already exists." };
         }
     } else {
+        isNewUser = true;
         // If no user exists, create a new one.
         const newUserId = randomUUID();
         const { error: insertError } = await supabase.from('users').insert({
@@ -137,9 +151,113 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
         userId = newUserId;
     }
 
+    if (isNewUser) {
+      // Send a welcome email to brand new users.
+      await sendWelcomeEmail({ name, email });
+    }
+
     // Create a session for the newly signed-up user.
     await createSession(userId);
 
     // Redirect to the main bookings page after signup.
     return { success: true, redirectTo: '/bookings' };
+}
+
+
+const PasswordResetRequestSchema = z.object({
+  email: z.string().email('Invalid email address.'),
+});
+
+/**
+ * Handles the first step of the password reset flow.
+ * Generates a token, saves it to the user record, and sends the reset email.
+ * @param formData - The user's email address.
+ * @returns A success or error message.
+ */
+export async function requestPasswordResetAction(formData: z.infer<typeof PasswordResetRequestSchema>) {
+  const supabase = createSupabaseAdminClient();
+  const validatedFields = PasswordResetRequestSchema.safeParse(formData);
+  if (!validatedFields.success) {
+    return { error: 'Invalid email provided.' };
+  }
+  const { email } = validatedFields.data;
+  
+  const { data: user, error } = await supabase.from('users').select('id, data').eq('email', email).single();
+  
+  // To prevent email enumeration, we always return a success message.
+  // The email is only sent if the user actually exists.
+  if (!error && user) {
+    const token = randomUUID();
+    const expires = Date.now() + 3600000; // Token is valid for 1 hour.
+
+    const { error: updateError } = await supabase.from('users').update({
+        data: {
+            ...user.data,
+            password_reset_token: token,
+            password_reset_expires: expires,
+        }
+    }).eq('id', user.id);
+
+    if (!updateError) {
+        await sendPasswordResetEmail({ name: user.data.name, email }, token);
+    } else {
+        console.error("Failed to save password reset token:", updateError);
+    }
+  }
+  
+  return { success: "If an account with that email exists, we've sent a password reset link." };
+}
+
+const ResetPasswordSchema = z.object({
+  token: z.string().uuid("Invalid token format."),
+  password: z.string().min(6, 'Password must be at least 6 characters.'),
+});
+
+/**
+ * Handles the final step of the password reset flow.
+ * Verifies the token and updates the user's password.
+ * @param formData - The reset token and new password.
+ * @returns A success or error message.
+ */
+export async function resetPasswordAction(formData: z.infer<typeof ResetPasswordSchema>) {
+  const supabase = createSupabaseAdminClient();
+  const validatedFields = ResetPasswordSchema.safeParse(formData);
+  if (!validatedFields.success) {
+    return { error: 'Invalid data provided.' };
+  }
+
+  const { token, password } = validatedFields.data;
+
+  // Find user by the reset token.
+  const { data: user, error: fetchError } = await supabase.from('users')
+    .select('id, data')
+    .eq('data->>password_reset_token', token)
+    .single();
+
+  if (fetchError || !user) {
+    return { error: "Invalid or expired password reset token." };
+  }
+  
+  const expires = user.data.password_reset_expires as number;
+  if (!expires || Date.now() > expires) {
+    return { error: "Invalid or expired password reset token." };
+  }
+
+  const hashedPassword = await hashPassword(password);
+  
+  // Clear the reset token fields after a successful reset.
+  const { password_reset_token, password_reset_expires, ...restOfData } = user.data;
+
+  const { error: updateError } = await supabase.from('users').update({
+      data: {
+        ...restOfData,
+        password: hashedPassword,
+      }
+  }).eq('id', user.id);
+
+  if (updateError) {
+    return { error: "Failed to update password. Please try again." };
+  }
+  
+  return { success: "Your password has been successfully reset." };
 }

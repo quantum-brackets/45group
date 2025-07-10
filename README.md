@@ -7,8 +7,9 @@ Welcome to the 45 Booking project! This document serves as a guide for developer
 **45 Booking** is a comprehensive hospitality management application. It allows users to search for and book hotels, event centers, and restaurants. The platform also includes a full-featured administrative dashboard for staff and administrators to manage listings, users, bookings, and reviews.
 
 Key features include:
-- Secure user authentication and profile management.
+- Secure user authentication, profile management, and password reset via email.
 - Guest checkout with provisional account creation.
+- Automated email notifications for account creation and booking status changes.
 - Advanced search and filtering for listings.
 - A complete booking and reservation workflow with status management.
 - Role-Based Access Control (RBAC) for `guest`, `staff`, and `admin` roles.
@@ -24,6 +25,7 @@ The application is built on a modern, server-centric, and type-safe technology s
 - **Styling**: **Tailwind CSS** for utility-first styling. The theme is configured in `src/app/globals.css`.
 - **Database**: **Supabase** (PostgreSQL). The application uses Supabase for its database and server-side client libraries.
 - **Authentication**: **Custom Session Management**. Authentication is handled via secure, HTTP-only cookies managed by server-side code in `src/lib/session.ts`. This provides a secure and robust session mechanism.
+- **Transactional Emails**: **Resend** is used to send all transactional emails (e.g., welcome, password reset, booking confirmations). Email templates are built with React Email.
 - **Data Validation**: **Zod** is used for schema declaration and validation in forms and server actions, ensuring data integrity.
 - **Forms**: **React Hook Form** for managing form state and validation.
 
@@ -32,16 +34,17 @@ The application is built on a modern, server-centric, and type-safe technology s
 The codebase is organized to separate concerns and improve maintainability.
 
 - `src/app/`: Contains all the pages and routes for the application, following the Next.js App Router conventions.
-- `src/components/`: Contains all reusable React components, organized by feature (e.g., `auth`, `listing`, `dashboard`).
+- `src/components/`: Contains all reusable React components, organized by feature.
   - `src/components/ui/`: Contains the base UI components from ShadCN UI.
+  - `src/components/emails/`: Contains React Email templates.
 - `src/lib/`: Houses the core business logic, data fetching, and utility functions.
   - `actions.ts`: Contains all Server Actions, which handle data mutations (create, update, delete).
-  - `auth.ts`: Contains Server Actions specifically for login and signup.
-  - `data.ts`: Contains all server-side data fetching functions that interact with the database.
+  - `auth.ts`: Contains Server Actions specifically for login, signup, and password reset.
+  - `data.ts`: Contains all server-side data fetching functions.
+  - `email.ts`: The centralized service for sending emails via Resend.
   - `permissions.ts`: Defines the Role-Based Access Control (RBAC) system.
   - `session.ts`: Manages user session creation and retrieval using cookies.
-  - `supabase.ts`: Configures the Supabase client instances (server and admin).
-  - `types.ts`: Defines all core TypeScript types for the application's data models.
+  - `supabase.ts`: Configures the Supabase client instances.
 - `public/`: For static assets like images and icons.
 - `BLUEPRINT.md`: The living specification document outlining all application features and architectural decisions.
 
@@ -75,13 +78,20 @@ To run this project locally, you will need to set up a Supabase project and conf
 4.  **Configure Environment Variables:**
     - Create a new file named `.env.local` in the root of the project.
     - Copy the contents of `.env.example` into `.env.local`.
-    - Fill in the values using the credentials from your Supabase API settings:
+    - Fill in the values using the credentials from your Supabase API settings and your Resend account:
 
     ```env
     # Found in your Supabase project's API settings
     NEXT_PUBLIC_SUPABASE_URL="your-supabase-project-url"
     NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
     SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
+
+    # Get from https://resend.com
+    RESEND_API_KEY="your-resend-api-key"
+    # Must be a domain you have verified in Resend
+    RESEND_FROM_EMAIL="noreply@yourdomain.com"
+    # The public URL of your deployed application
+    NEXT_PUBLIC_BASE_URL="http://localhost:9002"
     ```
 
 5.  **Run the development server:**

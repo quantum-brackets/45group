@@ -7,6 +7,7 @@ This document outlines the features, style guidelines, and architectural decisio
 ### 1. User & Authentication Features
 - **User Authentication**: Secure login/logout functionality. Session management is handled via secure, HTTP-only cookies.
 - **User Signup**: Users can create a 'guest' account.
+- **Password Reset**: Users can request a password reset via email. A secure, time-limited token is generated and sent to their email address.
 - **Guest Checkout**: New users can make a booking by providing a name and email, which automatically creates a 'provisional' account for them to manage their booking. They can later "claim" this account by completing the signup process.
 - **Profile Management**: Logged-in users can view and update their profile information, including name, email, phone number, and password.
 
@@ -63,6 +64,13 @@ This document outlines the features, style guidelines, and architectural decisio
   - For any booking, admins/staff can add additional charges (bills) or record payments made by the guest.
   - A billing summary shows the total bill, total payments, and the outstanding balance.
 - **Review Moderation**: Admins can approve or delete pending user reviews directly from the listing detail page.
+
+### 6. Email Notifications
+- **Transactional Emails**: The application sends emails for key events using the Resend API.
+- **Welcome Email**: Sent to new users upon successful signup.
+- **Password Reset**: Sent when a user requests to reset their password.
+- **Booking Request**: Sent to a user when they submit a new booking request.
+- **Booking Confirmation**: Sent to a user when an admin confirms their booking.
 
 ## Style Guidelines:
 
