@@ -334,9 +334,10 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
           return { success: false, message: `Not enough units available for the selected dates. Only ${availableInventory.length} left.` };
       }
       const inventoryToBook = availableInventory.slice(0, numberOfUnits);
-
+      
+      const createdAt = new Date().toISOString();
       const initialAction: BookingAction = {
-        timestamp: new Date().toISOString(),
+        timestamp: createdAt,
         actorId: userId,
         actorName: finalActorName,
         action: 'Created',
@@ -347,7 +348,8 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
           guests,
           booking_name: finalBookingName,
           inventoryIds: inventoryToBook,
-          actions: [initialAction]
+          actions: [initialAction],
+          createdAt: createdAt
       };
 
       const { error: createBookingError } = await supabase.from('bookings').insert({
@@ -895,8 +897,9 @@ export async function addBookingByAdminAction(data: z.infer<typeof AdminBookingF
         
         const inventoryToBook = availableInventory.slice(0, numberOfUnits);
         
+        const createdAt = new Date().toISOString();
         const createAction: BookingAction = {
-            timestamp: new Date().toISOString(),
+            timestamp: createdAt,
             actorId: session.id,
             actorName: session.name,
             action: 'Created',
@@ -908,6 +911,7 @@ export async function addBookingByAdminAction(data: z.infer<typeof AdminBookingF
             booking_name: bookingUser.data.name,
             inventoryIds: inventoryToBook,
             actions: [createAction],
+            createdAt: createdAt,
         };
 
         const { error: createBookingError } = await supabase.from('bookings').insert({

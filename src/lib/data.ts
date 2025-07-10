@@ -21,15 +21,13 @@ const unpackListing = (dbListing: any): Listing => {
 
 const unpackBooking = (dbBooking: any): Booking => {
     if (!dbBooking) return null as any;
-    // Note: this unpacks the db record (snake_case) and the jsonb 'data' field
-    // into a single object matching the camelCase Booking type.
-    // Joined fields like listingName/userName are added later.
     const { data, listing_id, user_id, start_date, end_date, ...rest } = dbBooking;
 
-    // The 'Created' action's timestamp serves as the creation date.
-    const createdAt = (data?.actions && data.actions.length > 0)
+    // For backwards compatibility, derive from actions if not present.
+    // New bookings will have `data.createdAt` directly.
+    const createdAt = data?.createdAt || (data?.actions && data.actions.length > 0
         ? data.actions.find((a: BookingAction) => a.action === 'Created')?.timestamp
-        : undefined;
+        : new Date(0).toISOString()); // Fallback for very old data with no actions
 
     return {
         ...rest,

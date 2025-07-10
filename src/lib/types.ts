@@ -50,9 +50,9 @@ export interface Booking {
   startDate: string;
   endDate: string;
   status: 'Confirmed' | 'Pending' | 'Cancelled';
-  createdAt?: string;
-
+  
   // From data JSONB
+  createdAt: string;
   guests: number;
   inventoryIds: string[];
   bookingName?: string;
