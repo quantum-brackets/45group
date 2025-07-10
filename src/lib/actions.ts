@@ -421,7 +421,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     const isBookingForOther = session.id !== finalUserId;
     if (isBookingForOther) {
       if (session.role !== 'staff' && !hasPermission(session, 'booking:create')) {
-        return { success: false, message: 'Permission Denied: You are not authorized to create bookings for other users.' };
+        return { success: false, message: 'Permission Denied: You do not have permissions to create bookings for other users.' };
       }
     } else {
       if (!hasPermission(session, 'booking:create:own', { ownerId: session.id })) {
@@ -576,8 +576,11 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
       
     if (fetchError || !booking) return { success: false, message: 'Database Error: Could not find the booking to update.' };
 
-    // Security: Check if user has permission to update this specific booking.
-    if (!hasPermission(session, 'booking:update:own', { ownerId: booking.user_id }) && !hasPermission(session, 'booking:update')) {
+    const canUpdate = session.role === 'staff' || 
+                      hasPermission(session, 'booking:update:own', { ownerId: booking.user_id }) ||
+                      hasPermission(session, 'booking:update');
+
+    if (!canUpdate) {
       return { success: false, message: 'Permission Denied: You are not authorized to update this booking.' };
     }
 
@@ -843,7 +846,7 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   const session = await getSession();
 
   // Updated permission check: Admins can create any user. Staff can also proceed.
-  if (!session || (!hasPermission(session, 'user:create') && session.role !== 'staff')) {
+  if (!session || (session.role !== 'staff' && !hasPermission(session, 'user:create'))) {
     return { success: false, message: 'Permission Denied: You are not authorized to create new users.' };
   }
 
