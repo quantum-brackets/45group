@@ -21,8 +21,19 @@ const unpackListing = (dbListing: any): Listing => {
 
 const unpackBooking = (dbBooking: any): Booking => {
     if (!dbBooking) return null as any;
-    const { data, ...rest } = dbBooking;
-    return { ...rest, ...data };
+    // Note: this unpacks the db record (snake_case) and the jsonb 'data' field
+    // into a single object matching the camelCase Booking type.
+    // Joined fields like listingName/userName are added later.
+    const { data, listing_id, user_id, start_date, end_date, created_at, ...rest } = dbBooking;
+    return {
+        ...rest,
+        ...data,
+        listingId: listing_id,
+        userId: user_id,
+        startDate: start_date,
+        endDate: end_date,
+        createdAt: created_at,
+    };
 };
 
 
@@ -175,7 +186,7 @@ export async function getAllBookings(filters: BookingsPageFilters): Promise<Book
         return [];
     }
 
-    let query = supabase.from('bookings').select('id, listing_id, user_id, status, start_date, end_date, data');
+    let query = supabase.from('bookings').select('id, listing_id, user_id, status, start_date, end_date, created_at, data');
 
     if (session.role === 'guest') {
         query = query.eq('user_id', session.id);
@@ -237,7 +248,7 @@ export async function getBookingById(id: string): Promise<Booking | null> {
     // 1. Fetch the booking by ID
     const { data: bookingData, error } = await supabase
         .from('bookings')
-        .select('id, listing_id, user_id, status, start_date, end_date, data')
+        .select('id, listing_id, user_id, status, start_date, end_date, created_at, data')
         .eq('id', id)
         .single();
 

@@ -60,7 +60,7 @@ export interface Booking {
 
   // Joined fields
   userName?: string;
-  listingName: string;
+  listingName?: string;
   inventoryNames?: string[];
 }
 
