@@ -63,14 +63,19 @@ export function UserForm({ user }: UserFormProps) {
       }
         
       const result = isEditMode
-        ? await updateUserAction(user.id, data)
+        ? await updateUserAction(user!.id, data)
         : await addUserAction(data);
 
       if (result.success) {
-        toast({
-          title: `User ${isEditMode ? 'Updated' : 'Added'} Successfully!`,
-          description: result.message,
-        });
+        // Only show toast if changes were actually made (for edits), or for new users.
+        const wasNotAnUnchangedUpdate = !('changesMade' in result && result.changesMade === false);
+        
+        if (wasNotAnUnchangedUpdate) {
+          toast({
+            title: `User ${isEditMode ? 'Updated' : 'Added'} Successfully!`,
+            description: result.message,
+          });
+        }
         router.push('/dashboard?tab=users');
       } else {
         toast({

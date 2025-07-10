@@ -602,10 +602,24 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
   const validatedFields = UserFormSchema.safeParse(data);
   if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
   
-  const { data: existingUser, error: fetchError } = await supabase.from('users').select('data').eq('id', id).single();
+  const { data: existingUser, error: fetchError } = await supabase.from('users').select('data, email, role, status').eq('id', id).single();
   if(fetchError || !existingUser) return { success: false, message: 'User not found.' };
 
   const { name, email, password, role, status, notes, phone } = validatedFields.data;
+
+  const hasChanged =
+    existingUser.data.name !== name ||
+    existingUser.email !== email ||
+    !!password ||
+    existingUser.role !== role ||
+    existingUser.status !== status ||
+    (existingUser.data.phone || '') !== (phone || '') ||
+    (existingUser.data.notes || '') !== (notes || '');
+    
+  if (!hasChanged) {
+      return { success: true, message: "No changes were detected.", changesMade: false };
+  }
+
   let userJsonData = { ...existingUser.data, name, notes, phone };
   
   if (password) {
@@ -619,7 +633,7 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
   revalidatePath('/dashboard?tab=users', 'page');
   revalidatePath(`/dashboard/edit-user/${id}`);
   
-  return { success: true, message: `User "${name}" was updated successfully.` };
+  return { success: true, message: `User "${name}" was updated successfully.`, changesMade: true };
 }
 
 const UpdateProfileSchema = z.object({
