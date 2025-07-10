@@ -413,36 +413,73 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                     </p>
                 </div>
                 </div>
-                {booking.actions && booking.actions.length > 0 && (
+                {booking.actions && booking.actions.length > 0 && (() => {
+                  const sortedActions = booking.actions.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                  const mostRecentAction = sortedActions[0];
+
+                  return (
                     <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
-                        <History className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-                        <div>
-                            <p className="font-semibold">Booking History</p>
-                            <ul className="mt-2 space-y-4">
-                                {booking.actions.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((action, index) => (
-                                    <li key={index} className="flex gap-3">
-                                      <div className="flex flex-col items-center">
-                                          <CircleUser className="h-5 w-5 text-muted-foreground" />
-                                          {index < booking.actions.length -1 && (
-                                            <div className="w-px h-full bg-border mt-1"></div>
-                                          )}
+                      <History className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+                      <div className="w-full">
+                        <p className="font-semibold">Last Update</p>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <div className="mt-2 cursor-pointer hover:bg-muted/50 p-2 -m-2 rounded-md transition-colors">
+                              <div className="flex gap-3">
+                                <div className="flex flex-col items-center pt-1">
+                                  <CircleUser className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                                <div className="flex-grow">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-foreground capitalize">{mostRecentAction.action}</span>
+                                    <span className="text-muted-foreground">by {mostRecentAction.actorName}</span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {isClient ? format(parseISO(mostRecentAction.timestamp), 'MMM d, yyyy, h:mm a') : <Skeleton className="h-4 w-32" />}
+                                  </div>
+                                  <p className="text-muted-foreground text-sm mt-1">{mostRecentAction.message}</p>
+                                  <p className="text-xs text-primary mt-2 font-semibold">View full history...</p>
+                                </div>
+                              </div>
+                            </div>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>Full Booking History</DialogTitle>
+                              <DialogDescription>
+                                A complete log of all actions taken on this booking, from newest to oldest.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="max-h-[60vh] overflow-y-auto pr-4 -mr-4">
+                              <ul className="mt-2 space-y-4">
+                                {sortedActions.map((action, index) => (
+                                  <li key={index} className="flex gap-3">
+                                    <div className="flex flex-col items-center">
+                                      <CircleUser className="h-5 w-5 text-muted-foreground" />
+                                      {index < sortedActions.length - 1 && (
+                                        <div className="w-px h-full bg-border mt-1"></div>
+                                      )}
+                                    </div>
+                                    <div className="flex-grow pb-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium text-foreground capitalize">{action.action}</span>
+                                        <span className="text-muted-foreground">by {action.actorName}</span>
                                       </div>
-                                      <div className="flex-grow pb-2">
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-medium text-foreground capitalize">{action.action}</span>
-                                          <span className="text-muted-foreground">by {action.actorName}</span>
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                            {isClient ? format(parseISO(action.timestamp), 'MMM d, yyyy, h:mm a') : <Skeleton className="h-4 w-32" />}
-                                        </div>
-                                        <p className="text-muted-foreground text-sm mt-1">{action.message}</p>
+                                      <div className="text-xs text-muted-foreground">
+                                        {isClient ? format(parseISO(action.timestamp), 'MMM d, yyyy, h:mm a') : <Skeleton className="h-4 w-32" />}
                                       </div>
-                                    </li>
+                                      <p className="text-muted-foreground text-sm mt-1">{action.message}</p>
+                                    </div>
+                                  </li>
                                 ))}
-                            </ul>
-                        </div>
+                              </ul>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                     </div>
-                )}
+                  );
+                })()}
 
                  {isAdminOrStaff && (
                     <div className="pt-6 border-t">
@@ -761,5 +798,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
     </Card>
   );
 }
+
+    
 
     
