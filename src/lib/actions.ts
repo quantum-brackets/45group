@@ -536,7 +536,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       if(listingData) {
         // This is a bit awkward, but we need the full User object for the email template.
         // We construct a temporary one here.
-        const tempFullUser: User = { ...userForEmail, role: 'guest', status: 'provisional' };
+        const tempFullUser: User = { ...userForEmail, role: 'guest', status: 'provisional', name: userForEmail.name };
         await sendBookingRequestEmail(tempFullUser, unpackBooking(newBooking), unpackListing({ ...listingData, id: listingId }));
       }
 
