@@ -3,6 +3,7 @@
 
 
 
+
 'use server'
 
 import { revalidatePath } from 'next/cache'
@@ -13,7 +14,7 @@ import { createSupabaseAdminClient } from './supabase'
 import { hashPassword } from './password'
 import { logout as sessionLogout } from './session'
 import { hasPermission, preloadPermissions } from './permissions'
-import type { Booking, Listing, ListingInventory, Permission, Role, Review, User, BookingAction } from './types'
+import type { Booking, Listing, ListingInventory, Permission, Role, Review, User, BookingAction, Bill, Payment } from './types'
 import { randomUUID } from 'crypto'
 
 
@@ -355,7 +356,9 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
           bookingName: finalBookingName,
           inventoryIds: inventoryToBook,
           actions: [initialAction],
-          createdAt: createdAt
+          createdAt: createdAt,
+          bills: [],
+          payments: [],
       };
 
       const { error: createBookingError } = await supabase.from('bookings').insert({
@@ -961,4 +964,98 @@ export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteLi
     
     revalidatePath('/dashboard');
     return { success: true, message: `${listingIds.length} listing(s) have been deleted.` };
+}
+
+
+const AddBillSchema = z.object({
+  bookingId: z.string(),
+  description: z.string().min(1, "Description is required."),
+  amount: z.coerce.number().positive("Amount must be a positive number."),
+});
+
+export async function addBillAction(data: z.infer<typeof AddBillSchema>) {
+  await preloadPermissions();
+  const supabase = createSupabaseAdminClient();
+  const session = await getSession();
+  if (!session || !hasPermission(session, 'booking:update')) {
+    return { success: false, message: 'Unauthorized' };
+  }
+
+  const validatedFields = AddBillSchema.safeParse(data);
+  if (!validatedFields.success) {
+    return { success: false, message: "Invalid data provided." };
+  }
+
+  const { bookingId, description, amount } = validatedFields.data;
+
+  const { data: booking, error: fetchError } = await supabase.from('bookings').select('data').eq('id', bookingId).single();
+  if (fetchError || !booking) {
+    return { success: false, message: 'Booking not found.' };
+  }
+
+  const newBill: Bill = {
+    id: randomUUID(),
+    description,
+    amount,
+    createdAt: new Date().toISOString(),
+    actorName: session.name,
+  };
+
+  const updatedBills = [...(booking.data.bills || []), newBill];
+  const updatedData = { ...booking.data, bills: updatedBills };
+
+  const { error } = await supabase.from('bookings').update({ data: updatedData }).eq('id', bookingId);
+  if (error) {
+    return { success: false, message: `Failed to add bill: ${error.message}` };
+  }
+
+  revalidatePath(`/booking/${bookingId}`);
+  return { success: true, message: 'Bill added successfully.' };
+}
+
+
+const AddPaymentSchema = z.object({
+  bookingId: z.string(),
+  amount: z.coerce.number().positive("Amount must be a positive number."),
+  method: z.string().min(1, "Payment method is required."),
+});
+
+export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
+    await preloadPermissions();
+    const supabase = createSupabaseAdminClient();
+    const session = await getSession();
+    if (!session || !hasPermission(session, 'booking:update')) {
+        return { success: false, message: 'Unauthorized' };
+    }
+    
+    const validatedFields = AddPaymentSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, message: "Invalid data provided." };
+    }
+    
+    const { bookingId, amount, method } = validatedFields.data;
+    
+    const { data: booking, error: fetchError } = await supabase.from('bookings').select('data').eq('id', bookingId).single();
+    if (fetchError || !booking) {
+        return { success: false, message: 'Booking not found.' };
+    }
+    
+    const newPayment: Payment = {
+        id: randomUUID(),
+        amount,
+        method,
+        timestamp: new Date().toISOString(),
+        actorName: session.name,
+    };
+    
+    const updatedPayments = [...(booking.data.payments || []), newPayment];
+    const updatedData = { ...booking.data, payments: updatedPayments };
+    
+    const { error } = await supabase.from('bookings').update({ data: updatedData }).eq('id', bookingId);
+    if (error) {
+        return { success: false, message: `Failed to add payment: ${error.message}` };
+    }
+    
+    revalidatePath(`/booking/${bookingId}`);
+    return { success: true, message: 'Payment recorded successfully.' };
 }

@@ -43,6 +43,22 @@ export interface BookingAction {
   message: string;
 }
 
+export interface Bill {
+  id: string;
+  description: string;
+  amount: number;
+  createdAt: string;
+  actorName: string;
+}
+
+export interface Payment {
+  id: string;
+  amount: number;
+  method: string;
+  timestamp: string;
+  actorName: string;
+}
+
 export interface Booking {
   id: string;
   listingId: string;
@@ -57,6 +73,8 @@ export interface Booking {
   inventoryIds: string[];
   bookingName?: string;
   actions: BookingAction[];
+  bills?: Bill[];
+  payments?: Payment[];
 
   // Joined fields
   userName?: string;

@@ -1,22 +1,22 @@
 
 "use client";
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format, parseISO } from 'date-fns';
 import { useRouter } from 'next/navigation';
 
-import type { Booking, Listing, User } from '@/lib/types';
-import { updateBookingAction, cancelBookingAction, confirmBookingAction } from '@/lib/actions';
+import type { Booking, Listing, User, Bill, Payment } from '@/lib/types';
+import { updateBookingAction, cancelBookingAction, confirmBookingAction, addBillAction, addPaymentAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X, CircleUser, ArrowRight, Pencil, FileText, CircleUserRound } from 'lucide-react';
+import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X, CircleUser, ArrowRight, Pencil, FileText, CircleUserRound, Receipt, CreditCard, DollarSign } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -26,6 +26,10 @@ import type { DateRange } from "react-day-picker";
 import { BackButton } from '../common/BackButton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Combobox } from '../ui/combobox';
+import { Separator } from '../ui/separator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import { Textarea } from '../ui/textarea';
 
 
 interface BookingDetailsProps {
@@ -48,6 +52,133 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+
+const AddBillSchema = z.object({
+  description: z.string().min(1, "Description is required."),
+  amount: z.coerce.number().positive("Amount must be a positive number."),
+});
+type AddBillValues = z.infer<typeof AddBillSchema>;
+
+const AddBillDialog = ({ bookingId, currency, disabled }: { bookingId: string, currency: string, disabled: boolean }) => {
+    const [open, setOpen] = useState(false);
+    const [isPending, startTransition] = useTransition();
+    const { toast } = useToast();
+    const form = useForm<AddBillValues>({ resolver: zodResolver(AddBillSchema), defaultValues: { description: '', amount: 0 } });
+
+    const onSubmit = (data: AddBillValues) => {
+        startTransition(async () => {
+            const result = await addBillAction({ bookingId, ...data });
+            if (result.success) {
+                toast({ title: "Success", description: result.message });
+                form.reset();
+                setOpen(false);
+            } else {
+                toast({ title: "Error", description: result.message, variant: "destructive" });
+            }
+        });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={disabled}><Receipt className="mr-2 h-4 w-4" /> Add Bill</Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Add New Bill</DialogTitle>
+                    <DialogDescription>Add a new charge to this booking's bill.</DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <FormField control={form.control} name="description" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Description</FormLabel>
+                                <FormControl><Textarea placeholder="e.g., Room Service, Damages" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="amount" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Amount ({currency})</FormLabel>
+                                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>Cancel</Button>
+                            <Button type="submit" disabled={isPending}>{isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Add Bill</Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
+const AddPaymentSchema = z.object({
+    amount: z.coerce.number().positive("Amount must be a positive number."),
+    method: z.string().min(1, "Payment method is required."),
+});
+type AddPaymentValues = z.infer<typeof AddPaymentSchema>;
+
+const AddPaymentDialog = ({ bookingId, currency, disabled }: { bookingId: string, currency: string, disabled: boolean }) => {
+    const [open, setOpen] = useState(false);
+    const [isPending, startTransition] = useTransition();
+    const { toast } = useToast();
+    const form = useForm<AddPaymentValues>({ resolver: zodResolver(AddPaymentSchema), defaultValues: { amount: 0, method: 'Cash' } });
+
+    const onSubmit = (data: AddPaymentValues) => {
+        startTransition(async () => {
+            const result = await addPaymentAction({ bookingId, ...data });
+            if (result.success) {
+                toast({ title: "Success", description: result.message });
+                form.reset();
+                setOpen(false);
+            } else {
+                toast({ title: "Error", description: result.message, variant: "destructive" });
+            }
+        });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                 <Button variant="outline" size="sm" disabled={disabled}><CreditCard className="mr-2 h-4 w-4" /> Add Payment</Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Record a Payment</DialogTitle>
+                    <DialogDescription>Record a new payment made for this booking.</DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <FormField control={form.control} name="amount" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Amount ({currency})</FormLabel>
+                                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="method" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Payment Method</FormLabel>
+                                <FormControl><Input placeholder="e.g., Cash, Card, Bank Transfer" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>Cancel</Button>
+                            <Button type="submit" disabled={isPending}>{isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Record Payment</Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 
 export function BookingDetails({ booking, listing, session, totalInventoryCount, allUsers = [] }: BookingDetailsProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -78,6 +209,18 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
       userId: booking.userId,
     }
   });
+  
+  const totalBill = useMemo(() => (booking.bills || []).reduce((sum, bill) => sum + bill.amount, 0), [booking.bills]);
+  const totalPayments = useMemo(() => (booking.payments || []).reduce((sum, payment) => sum + payment.amount, 0), [booking.payments]);
+  const balance = totalBill - totalPayments;
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: listing.currency || 'USD',
+    }).format(amount);
+  };
+
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
     if (!data.dates.from) return;
@@ -138,109 +281,196 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
   const DisplayView = () => (
     <>
         <CardContent className="space-y-6 pt-6 text-base">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border md:col-span-2">
-                <Pencil className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-                <div>
-                    <p className="font-semibold">Booking Name</p>
-                    <p className="text-muted-foreground">{booking.bookingName || 'Not set'}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border md:col-span-2">
+                    <Pencil className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+                    <div>
+                        <p className="font-semibold">Booking Name</p>
+                        <p className="text-muted-foreground">{booking.bookingName || 'Not set'}</p>
+                    </div>
                 </div>
-            </div>
-            <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
-            <CalendarLucide className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-            <div>
-                <p className="font-semibold">Booking Dates</p>
-                <p className="text-muted-foreground">
-                {format(parseISO(booking.startDate), 'PPP')} to {format(parseISO(booking.endDate), 'PPP')}
-                </p>
-            </div>
-            </div>
-            <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
-            <Users className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-            <div>
-                <p className="font-semibold">Number of Guests</p>
-                <p className="text-muted-foreground">{booking.guests}</p>
-            </div>
-            </div>
-            <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
-            <Info className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-            <div>
-                <p className="font-semibold">Status</p>
-                <p>
-                <Badge variant={booking.status === 'Confirmed' ? 'default' : 'secondary'} className={booking.status === 'Confirmed' ? 'bg-accent text-accent-foreground' : ''}>
-                    {booking.status}
-                </Badge>
-                </p>
-            </div>
-            </div>
-            {(session.role === 'admin' || session.role === 'staff') && booking.userName && (
-            <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
-                <UserIcon className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+                <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+                <CalendarLucide className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
                 <div>
-                <p className="font-semibold">Booked By</p>
-                <p className="text-muted-foreground">
-                    <Link href={`/dashboard/edit-user/${booking.userId}`} className="text-primary hover:underline">
-                        {booking.userName}
-                    </Link>
-                    {booking.createdAt && (
-                    <span className="block text-sm">on {format(parseISO(booking.createdAt), 'PPP')}</span>
-                    )}
-                </p>
+                    <p className="font-semibold">Booking Dates</p>
+                    <p className="text-muted-foreground">
+                    {format(parseISO(booking.startDate), 'PPP')} to {format(parseISO(booking.endDate), 'PPP')}
+                    </p>
                 </div>
+                </div>
+                <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+                <Users className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+                <div>
+                    <p className="font-semibold">Number of Guests</p>
+                    <p className="text-muted-foreground">{booking.guests}</p>
+                </div>
+                </div>
+                <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+                <Info className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+                <div>
+                    <p className="font-semibold">Status</p>
+                    <p>
+                    <Badge variant={booking.status === 'Confirmed' ? 'default' : 'secondary'} className={booking.status === 'Confirmed' ? 'bg-accent text-accent-foreground' : ''}>
+                        {booking.status}
+                    </Badge>
+                    </p>
+                </div>
+                </div>
+                {(session.role === 'admin' || session.role === 'staff') && booking.userName && (
+                <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+                    <UserIcon className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+                    <div>
+                    <p className="font-semibold">Booked By</p>
+                    <p className="text-muted-foreground">
+                        <Link href={`/dashboard/edit-user/${booking.userId}`} className="text-primary hover:underline">
+                            {booking.userName}
+                        </Link>
+                        {booking.createdAt && (
+                        <span className="block text-sm">on {format(parseISO(booking.createdAt), 'PPP')}</span>
+                        )}
+                    </p>
+                    </div>
+                </div>
+                )}
             </div>
-            )}
-        </div>
 
-        <div className="space-y-6">
-            {(session.role === 'admin' || session.role === 'staff') && (
-                <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
-                    <FileText className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-                    <div>
-                        <p className="font-semibold">Notes on Guest</p>
-                        <p className="text-muted-foreground whitespace-pre-wrap">{booking.userNotes || 'No notes for this guest.'}</p>
+            <div className="space-y-6">
+                {(session.role === 'admin' || session.role === 'staff') && (
+                    <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+                        <FileText className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+                        <div>
+                            <p className="font-semibold">Notes on Guest</p>
+                            <p className="text-muted-foreground whitespace-pre-wrap">{booking.userNotes || 'No notes for this guest.'}</p>
+                        </div>
                     </div>
-                </div>
-            )}
-            <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
-            <KeySquare className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-            <div>
-                <p className="font-semibold">{(booking.inventoryIds || []).length} Unit(s) Booked</p>
-                <p className="text-muted-foreground text-sm">
-                {booking.inventoryNames?.join(', ') || 'N/A'}
-                </p>
-            </div>
-            </div>
-            {booking.actions && booking.actions.length > 0 && (
+                )}
                 <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
-                    <History className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-                    <div>
-                        <p className="font-semibold">Booking History</p>
-                        <ul className="mt-2 space-y-4">
-                            {booking.actions.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((action, index) => (
-                                <li key={index} className="flex gap-3">
-                                  <div className="flex flex-col items-center">
-                                      <CircleUser className="h-5 w-5 text-muted-foreground" />
-                                      {index < booking.actions.length -1 && (
-                                        <div className="w-px h-full bg-border mt-1"></div>
-                                      )}
-                                  </div>
-                                  <div className="flex-grow pb-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium text-foreground capitalize">{action.action}</span>
-                                      <span className="text-muted-foreground">by {action.actorName}</span>
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                        {format(parseISO(action.timestamp), 'MMM d, yyyy, h:mm a')}
-                                    </div>
-                                    <p className="text-muted-foreground text-sm mt-1">{action.message}</p>
-                                  </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+                <KeySquare className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+                <div>
+                    <p className="font-semibold">{(booking.inventoryIds || []).length} Unit(s) Booked</p>
+                    <p className="text-muted-foreground text-sm">
+                    {booking.inventoryNames?.join(', ') || 'N/A'}
+                    </p>
                 </div>
-            )}
-        </div>
+                </div>
+                {booking.actions && booking.actions.length > 0 && (
+                    <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+                        <History className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+                        <div>
+                            <p className="font-semibold">Booking History</p>
+                            <ul className="mt-2 space-y-4">
+                                {booking.actions.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((action, index) => (
+                                    <li key={index} className="flex gap-3">
+                                      <div className="flex flex-col items-center">
+                                          <CircleUser className="h-5 w-5 text-muted-foreground" />
+                                          {index < booking.actions.length -1 && (
+                                            <div className="w-px h-full bg-border mt-1"></div>
+                                          )}
+                                      </div>
+                                      <div className="flex-grow pb-2">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-medium text-foreground capitalize">{action.action}</span>
+                                          <span className="text-muted-foreground">by {action.actorName}</span>
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                            {format(parseISO(action.timestamp), 'MMM d, yyyy, h:mm a')}
+                                        </div>
+                                        <p className="text-muted-foreground text-sm mt-1">{action.message}</p>
+                                      </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                )}
+
+                 {isAdminOrStaff && (
+                    <div className="pt-6 border-t">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-semibold flex items-center gap-2">
+                                <DollarSign className="h-5 w-5" />
+                                Billing Summary
+                            </h3>
+                            <div className="flex gap-2">
+                                <AddBillDialog bookingId={booking.id} currency={listing.currency} disabled={isAnyActionPending} />
+                                <AddPaymentDialog bookingId={booking.id} currency={listing.currency} disabled={isAnyActionPending} />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                            <Card className="text-center p-4">
+                                <CardTitle className="text-lg">{formatCurrency(totalBill)}</CardTitle>
+                                <CardDescription>Total Bill</CardDescription>
+                            </Card>
+                            <Card className="text-center p-4">
+                                <CardTitle className="text-lg text-green-600">{formatCurrency(totalPayments)}</CardTitle>
+                                <CardDescription>Total Paid</CardDescription>
+                            </Card>
+                             <Card className={cn("text-center p-4", balance > 0 ? "bg-destructive/10" : "bg-green-100")}>
+                                <CardTitle className={cn("text-lg", balance > 0 ? "text-destructive" : "text-green-700")}>{formatCurrency(balance)}</CardTitle>
+                                <CardDescription>{balance > 0 ? 'Balance Due' : 'Credit'}</CardDescription>
+                            </Card>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-6">
+                             <div>
+                                <h4 className="font-semibold mb-2 flex items-center gap-2"><Receipt className="h-4 w-4" /> Bills</h4>
+                                <Card>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Description</TableHead>
+                                                <TableHead className="text-right">Amount</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {(booking.bills || []).length > 0 ? booking.bills?.map(bill => (
+                                                <TableRow key={bill.id}>
+                                                    <TableCell>
+                                                        <p>{bill.description}</p>
+                                                        <p className="text-xs text-muted-foreground">Added by {bill.actorName} on {format(parseISO(bill.createdAt), 'PP')}</p>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium">{formatCurrency(bill.amount)}</TableCell>
+                                                </TableRow>
+                                            )) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={2} className="text-center text-muted-foreground">No bills added yet.</TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </Card>
+                             </div>
+                             <div>
+                                <h4 className="font-semibold mb-2 flex items-center gap-2"><CreditCard className="h-4 w-4" /> Payments</h4>
+                                <Card>
+                                     <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Method</TableHead>
+                                                <TableHead className="text-right">Amount</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                             {(booking.payments || []).length > 0 ? booking.payments?.map(payment => (
+                                                <TableRow key={payment.id}>
+                                                    <TableCell>
+                                                        <p>{payment.method}</p>
+                                                        <p className="text-xs text-muted-foreground">Recorded by {payment.actorName} on {format(parseISO(payment.timestamp), 'PP')}</p>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium">{formatCurrency(payment.amount)}</TableCell>
+                                                </TableRow>
+                                            )) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={2} className="text-center text-muted-foreground">No payments recorded yet.</TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </Card>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
         </CardContent>
         <CardFooter className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-4 bg-muted/50 p-4 border-t">
             <BackButton />
