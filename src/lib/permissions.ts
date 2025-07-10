@@ -102,7 +102,6 @@ export const allPermissions = [
     'listing:create',
     'listing:update',
     'listing:delete',
-    'listing:merge',
     // Bookings
     'booking:read',
     'booking:create',
