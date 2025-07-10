@@ -57,7 +57,7 @@ export async function sendWelcomeEmail(user: { name: string, email: string }) {
 export async function sendPasswordResetEmail(user: { name: string, email: string }, token: string) {
     if (!canSendEmail()) return;
 
-    const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002'}/reset-password?token=${token}`;
+    const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://45group.org'}/reset-password?token=${token}`;
 
     try {
         await resend.emails.send({

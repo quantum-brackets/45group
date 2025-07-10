@@ -22,7 +22,7 @@ import {
     listing: Listing;
   }
   
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://45group.org';
   
   export const BookingConfirmationEmail = ({ user, booking, listing }: BookingConfirmationEmailProps) => (
     <Html>

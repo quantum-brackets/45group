@@ -17,7 +17,7 @@ import {
     name: string;
   }
   
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://45group.org';
   
   export const WelcomeEmail = ({ name }: WelcomeEmailProps) => (
     <Html>
