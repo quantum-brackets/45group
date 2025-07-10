@@ -15,7 +15,7 @@ export default async function HomePage() {
   const services = await getListingTypesWithSampleImages();
 
   return (
-    <div>
+    <div className="flex flex-col gap-12 py-12">
       {/* Hero Section: The main welcome area with a call-to-action. */}
       <section className="bg-card py-20">
         <div className="container mx-auto px-4 text-center">
