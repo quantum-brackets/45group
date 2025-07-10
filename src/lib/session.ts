@@ -4,7 +4,7 @@
 import 'server-only';
 import type { User } from './types';
 import { unstable_noStore as noStore } from 'next/cache';
-import { createSupabaseServerClient } from './supabase';
+import { createSupabaseAdminClient } from './supabase';
 import { cookies } from 'next/headers';
 import { add } from 'date-fns';
 
@@ -17,13 +17,13 @@ export async function getSession(): Promise<User | null> {
     return null;
   }
   
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
 
   const { data: session, error: sessionError } = await supabase
     .from('sessions')
     .select(`
         *,
-        user:users(id, name, email, role, status, notes, phone)
+        user:users(id, email, role, status, data)
     `)
     .eq('id', token)
     .single();
@@ -42,11 +42,12 @@ export async function getSession(): Promise<User | null> {
     return null;
   }
   
-  return session.user as User;
+  const { data: userData, ...restOfUser } = session.user;
+  return { ...restOfUser, ...userData } as User;
 }
 
 export async function createSession(userId: string) {
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     
     const expiresAt = add(new Date(), {
         hours: 24,
@@ -78,7 +79,7 @@ export async function logout() {
     const token = (await cookies()).get('session')?.value;
 
     if (token) {
-        const supabase = createSupabaseServerClient();
+        const supabase = createSupabaseAdminClient();
         await supabase.from('sessions').delete().eq('id', token);
     }
 
