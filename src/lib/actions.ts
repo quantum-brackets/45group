@@ -324,8 +324,12 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       return { success: false, message: 'User could not be identified.' };
   }
   
-  if (!hasPermission(session, 'booking:create:own', { ownerId: userId }) && !hasPermission(session, 'booking:create')) {
+  // Only perform this check if a session exists.
+  // For guest bookings (where session is null), permission is implicit.
+  if (session) {
+    if (!hasPermission(session, 'booking:create:own', { ownerId: userId }) && !hasPermission(session, 'booking:create')) {
       return { success: false, message: 'You do not have permission to create this booking.' };
+    }
   }
 
   try {
