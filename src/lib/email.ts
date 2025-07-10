@@ -15,6 +15,9 @@ import { BookingRequestEmail } from '@/components/emails/BookingRequestEmail';
 const resend = new Resend(process.env.RESEND_API_KEY);
 const fromEmail = process.env.RESEND_FROM_EMAIL;
 
+// TODO: The .env file must be populated for emails to be sent.
+// This check helps prevent runtime errors but can lead to silent failures.
+// Consider throwing an error in a development environment if these are not set.
 if (!process.env.RESEND_API_KEY) {
     console.warn("WARNING: RESEND_API_KEY is not set. Email functionality will be disabled.");
 }
