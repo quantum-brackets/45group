@@ -222,7 +222,6 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
   const isBookable = !isPending && date?.from && availability.availableCount > 0 && !availability.isChecking && units > 0 && units <= availability.availableCount;
 
   return (
-    <>
     <Form {...guestForm}>
       <Card className="shadow-lg">
         <CardHeader>
@@ -352,44 +351,41 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
               </div>
          </CardFooter>
       </Card>
+      <Dialog open={showGuestEmailDialog} onOpenChange={setShowGuestEmailDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+              <form onSubmit={guestForm.handleSubmit(handleGuestEmailSubmit)}>
+                   <DialogHeader>
+                      <DialogTitle>Continue as Guest</DialogTitle>
+                      <DialogDescription>
+                          To complete your booking, please enter your email address. An account will be created for you if one doesn't exist.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                      <FormField
+                          control={guestForm.control}
+                          name="guestEmail"
+                          render={({ field }) => (
+                              <FormItem>
+                                  <FormLabel>Email Address</FormLabel>
+                                  <FormControl>
+                                      <Input placeholder="user@example.com" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                              </FormItem>
+                          )}
+                      />
+                  </div>
+                    <DialogFooter>
+                      <Button type="button" variant="ghost" onClick={() => setShowGuestEmailDialog(false)} disabled={isPending}>Cancel</Button>
+                      <Button type="submit" disabled={isPending}>
+                          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Submit Booking
+                      </Button>
+                  </DialogFooter>
+              </form>
+          </DialogContent>
+      </Dialog>
     </Form>
-
-    <Dialog open={showGuestEmailDialog} onOpenChange={setShowGuestEmailDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-            <Form {...guestForm}>
-                <form onSubmit={guestForm.handleSubmit(handleGuestEmailSubmit)}>
-                     <DialogHeader>
-                        <DialogTitle>Continue as Guest</DialogTitle>
-                        <DialogDescription>
-                            To complete your booking, please enter your email address. An account will be created for you if one doesn't exist.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <FormField
-                            control={guestForm.control}
-                            name="guestEmail"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Email Address</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="user@example.com" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                      <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={() => setShowGuestEmailDialog(false)} disabled={isPending}>Cancel</Button>
-                        <Button type="submit" disabled={isPending}>
-                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Submit Booking
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </Form>
-        </DialogContent>
-    </Dialog>
-    </>
   );
 }
+
