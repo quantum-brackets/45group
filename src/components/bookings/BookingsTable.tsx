@@ -94,15 +94,21 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
                   <TableCell className="hidden sm:table-cell">{booking.userName}</TableCell>
                 )}
                 <TableCell>
-                  <span className="hidden md:inline">
-                    {booking.startDate === booking.endDate
-                      ? format(parseISO(booking.startDate), 'PPP')
-                      : `${format(parseISO(booking.startDate), 'PPP')} to ${format(parseISO(booking.endDate), 'PPP')}`}
-                  </span>
-                  <div className="md:hidden flex flex-col text-xs">
-                      <span>{format(parseISO(booking.startDate), 'MMM d, yyyy')}</span>
-                      {booking.startDate !== booking.endDate && <span>to {format(parseISO(booking.endDate), 'MMM d, yyyy')}</span>}
-                  </div>
+                  {booking.startDate && booking.endDate ? (
+                    <>
+                      <span className="hidden md:inline">
+                        {booking.startDate === booking.endDate
+                          ? format(parseISO(booking.startDate), 'PPP')
+                          : `${format(parseISO(booking.startDate), 'PPP')} to ${format(parseISO(booking.endDate), 'PPP')}`}
+                      </span>
+                      <div className="md:hidden flex flex-col text-xs">
+                          <span>{format(parseISO(booking.startDate), 'MMM d, yyyy')}</span>
+                          {booking.startDate !== booking.endDate && <span>to {format(parseISO(booking.endDate), 'MMM d, yyyy')}</span>}
+                      </div>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">Invalid dates</span>
+                  )}
                 </TableCell>
                 <TableCell>{booking.guests}</TableCell>
                 <TableCell>
