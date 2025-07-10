@@ -1,10 +1,12 @@
 
-import Link from 'next/link';
+"use client";
+
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BedDouble, Building2, Star, Utensils } from 'lucide-react';
 import type { Listing } from '@/lib/types';
+import { useRouter } from 'next/navigation';
 
 interface ListingCardProps {
   listing: Listing;
@@ -29,18 +31,30 @@ const AITypeHints = {
 }
 
 export function ListingCard({ listing }: ListingCardProps) {
+  const router = useRouter();
+
+  const handleCardClick = () => {
+    router.push(`/listing/${listing.id}`);
+  };
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(`/listing/${listing.id}`);
+  };
+
   return (
-    <Card className="flex flex-col overflow-hidden transition-transform duration-300 ease-in-out hover:shadow-lg hover:-translate-y-1">
+    <Card 
+      onClick={handleCardClick}
+      className="flex flex-col overflow-hidden transition-transform duration-300 ease-in-out hover:shadow-lg hover:-translate-y-1 cursor-pointer"
+    >
       <CardHeader className="p-0">
         <div className="relative">
-          <Link href={`/listing/${listing.id}`}>
-            <img
-              src={listing.images[0]}
-              alt={`Image of ${listing.name}, our ${typeLabels[listing.type]} venue for great hospitality in ${listing.location}`}
-              className="w-full h-48 object-cover"
-              data-ai-hint={AITypeHints[listing.type]}
-            />
-          </Link>
+          <img
+            src={listing.images[0]}
+            alt={`Image of ${listing.name}, our ${typeLabels[listing.type]} venue for great hospitality in ${listing.location}`}
+            className="w-full h-48 object-cover"
+            data-ai-hint={AITypeHints[listing.type]}
+          />
           <Badge variant="secondary" className="absolute top-2 right-2 flex items-center gap-1">
             {typeIcons[listing.type]}
             <span>{typeLabels[listing.type]}</span>
@@ -48,9 +62,7 @@ export function ListingCard({ listing }: ListingCardProps) {
         </div>
       </CardHeader>
       <CardContent className="p-4 flex-grow">
-        <Link href={`/listing/${listing.id}`}>
-          <CardTitle className="text-xl font-headline mb-2 truncate">{listing.name}</CardTitle>
-        </Link>
+        <CardTitle className="text-xl font-headline mb-2 truncate">{listing.name}</CardTitle>
         <p className="text-muted-foreground text-sm mb-4">{listing.location}</p>
         <div className="flex items-center">
           <div className="flex items-center gap-0.5 text-primary">
@@ -73,8 +85,8 @@ export function ListingCard({ listing }: ListingCardProps) {
           </span>
           <span className="text-sm text-muted-foreground">/{listing.price_unit}</span>
         </div>
-        <Button asChild>
-          <Link href={`/listing/${listing.id}`}>Book Now</Link>
+        <Button onClick={handleButtonClick}>
+          Book Now
         </Button>
       </CardFooter>
     </Card>

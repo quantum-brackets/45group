@@ -251,9 +251,14 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                 </TableHeader>
                 <TableBody>
                   {filteredListings.map((listing) => (
-                    <TableRow key={listing.id} data-state={selectedRowIds[listing.id] ? 'selected' : undefined}>
+                    <TableRow 
+                      key={listing.id} 
+                      data-state={selectedRowIds[listing.id] ? 'selected' : undefined}
+                      onClick={() => router.push(`/listing/${listing.id}`)}
+                      className="cursor-pointer"
+                    >
                       {isAdmin && (
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                             <Checkbox
                                 checked={!!selectedRowIds[listing.id]}
                                 onCheckedChange={(checked) => handleRowSelect(listing.id, !!checked)}
@@ -271,7 +276,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                         </div>
                       </TableCell>
                       <TableCell className="text-right">{new Intl.NumberFormat().format(listing.price)} {listing.currency}/{listing.price_unit}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" className="h-8 w-8 p-0">
