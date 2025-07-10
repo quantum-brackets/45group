@@ -1,8 +1,9 @@
 
-import { getBookingById, getInventoryByListingId, getListingById } from '@/lib/data';
+import { getAllUsers, getBookingById, getInventoryByListingId, getListingById } from '@/lib/data';
 import { getSession } from '@/lib/session';
 import { notFound, redirect } from 'next/navigation';
 import { BookingDetails } from '@/components/bookings/BookingDetails';
+import type { User } from '@/lib/types';
 
 export default async function BookingDetailsPage({ params }: { params: { id: string } }) {
   const session = await getSession();
@@ -22,10 +23,15 @@ export default async function BookingDetailsPage({ params }: { params: { id: str
   }
 
   const inventory = await getInventoryByListingId(booking.listingId);
+  
+  let allUsers: User[] = [];
+  if (session.role === 'admin' || session.role === 'staff') {
+    allUsers = await getAllUsers();
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <BookingDetails booking={booking} listing={listing} session={session} totalInventoryCount={inventory.length} />
+      <BookingDetails booking={booking} listing={listing} session={session} totalInventoryCount={inventory.length} allUsers={allUsers} />
     </div>
   );
 }

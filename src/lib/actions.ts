@@ -1,5 +1,6 @@
 
 
+
 'use server'
 
 import { revalidatePath } from 'next/cache'
@@ -382,6 +383,7 @@ const UpdateBookingSchema = z.object({
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
   numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
+  userId: z.string().optional(),
 });
 
 export async function updateBookingAction(data: z.infer<typeof UpdateBookingSchema>) {
@@ -393,7 +395,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     const validatedFields = UpdateBookingSchema.safeParse(data);
     if (!validatedFields.success) return { success: false, message: "Invalid data provided." };
 
-    const { bookingId, startDate, endDate, guests, numberOfUnits, bookingName } = validatedFields.data;
+    const { bookingId, startDate, endDate, guests, numberOfUnits, bookingName, userId } = validatedFields.data;
 
     // Fetch the full booking record to check current state
     const { data: booking, error: fetchError } = await supabase
@@ -408,6 +410,12 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
       return { success: false, message: 'You do not have permission to update this booking.' };
     }
 
+    const ownerChanged = userId && userId !== booking.user_id;
+
+    if (ownerChanged && !hasPermission(session, 'booking:update')) {
+        return { success: false, message: 'You do not have permission to change the booking owner.' };
+    }
+
     // Determine if critical fields have changed
     const existingStartDate = new Date(booking.start_date).toISOString();
     const existingEndDate = new Date(booking.end_date).toISOString();
@@ -417,17 +425,43 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     const unitsChanged = numberOfUnits !== existingNumberOfUnits;
 
     let newStatus = booking.status;
-    let updateMessage: string;
     let successMessage: string;
+    const actions: BookingAction[] = [...(booking.data.actions || [])];
+
 
     if (datesChanged || unitsChanged) {
         newStatus = 'Pending';
-        updateMessage = 'Booking updated. Awaiting re-confirmation due to date/unit changes.';
         successMessage = 'Booking has been updated and is now pending re-confirmation.';
+        actions.push({
+            timestamp: new Date().toISOString(),
+            actorId: session.id,
+            actorName: session.name,
+            action: 'Updated',
+            message: 'Booking updated. Awaiting re-confirmation due to date/unit changes.',
+        });
     } else {
-        newStatus = booking.status; // Keep original status
-        updateMessage = 'Booking details updated.';
         successMessage = 'Booking has been updated successfully.';
+         actions.push({
+            timestamp: new Date().toISOString(),
+            actorId: session.id,
+            actorName: session.name,
+            action: 'Updated',
+            message: 'Booking details updated.',
+        });
+    }
+
+    if (ownerChanged) {
+        const { data: newUser } = await supabase.from('users').select('data->>name as name').eq('id', userId!).single();
+        if (!newUser) {
+            return { success: false, message: 'The selected new owner does not exist.' };
+        }
+        actions.push({
+            timestamp: new Date().toISOString(),
+            actorId: session.id,
+            actorName: session.name,
+            action: 'Updated',
+            message: `Booking owner changed to ${newUser.name}.`,
+        });
     }
 
     try {
@@ -437,28 +471,30 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
         }
         const inventoryToBook = availableInventory.slice(0, numberOfUnits);
         
-        const updateAction: BookingAction = {
-            timestamp: new Date().toISOString(),
-            actorId: session.id,
-            actorName: session.name,
-            action: 'Updated',
-            message: updateMessage,
-        };
-
-        const updatedBookingData = {
-            ...booking.data,
-            guests,
-            inventoryIds: inventoryToBook,
-            bookingName: bookingName,
-            actions: [...(booking.data.actions || []), updateAction]
-        };
-
-        const { error } = await supabase.from('bookings').update({
+        const updatePayload: {
+            start_date: string;
+            end_date: string;
+            status: string;
+            data: any;
+            user_id?: string;
+        } = {
             start_date: startDate,
             end_date: endDate,
             status: newStatus,
-            data: updatedBookingData,
-        }).eq('id', bookingId);
+            data: {
+                ...booking.data,
+                guests,
+                inventoryIds: inventoryToBook,
+                bookingName: bookingName,
+                actions: actions,
+            },
+        };
+        
+        if (ownerChanged) {
+            updatePayload.user_id = userId;
+        }
+
+        const { error } = await supabase.from('bookings').update(updatePayload).eq('id', bookingId);
         
         if (error) throw error;
         

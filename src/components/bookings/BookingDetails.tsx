@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X, CircleUser, ArrowRight, Pencil, FileText } from 'lucide-react';
+import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X, CircleUser, ArrowRight, Pencil, FileText, CircleUserRound } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { BackButton } from '../common/BackButton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Combobox } from '../ui/combobox';
 
 
 interface BookingDetailsProps {
@@ -32,6 +33,7 @@ interface BookingDetailsProps {
   listing: Listing;
   session: User;
   totalInventoryCount: number;
+  allUsers?: User[];
 }
 
 const formSchema = z.object({
@@ -42,11 +44,12 @@ const formSchema = z.object({
   }).refine(data => !!data.from, { message: "Start date is required" }),
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
   numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
+  userId: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function BookingDetails({ booking, listing, session, totalInventoryCount }: BookingDetailsProps) {
+export function BookingDetails({ booking, listing, session, totalInventoryCount, allUsers = [] }: BookingDetailsProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdatePending, startUpdateTransition] = useTransition();
   const [isConfirmPending, startConfirmTransition] = useTransition();
@@ -60,6 +63,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
   const canConfirm = session.role === 'admin' && booking.status === 'Pending';
   const canCancel = (session.role === 'admin' || (session.role === 'guest' && session.id === booking.userId)) && isActionable;
   const isAnyActionPending = isUpdatePending || isConfirmPending || isCancelPending;
+  const isAdminOrStaff = session.role === 'admin' || session.role === 'staff';
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -71,6 +75,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
       },
       guests: booking.guests,
       numberOfUnits: booking.inventoryIds?.length || 1,
+      userId: booking.userId,
     }
   });
 
@@ -85,6 +90,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
         endDate: (data.dates.to || data.dates.from).toISOString(),
         guests: data.guests,
         numberOfUnits: data.numberOfUnits,
+        userId: data.userId,
       });
 
       if (result.success) {
@@ -397,6 +403,34 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
                         </FormItem>
                     )}
                 />
+                {isAdminOrStaff && (
+                    <div className="md:col-span-2">
+                        <FormField
+                            control={form.control}
+                            name="userId"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>Booking Owner</FormLabel>
+                                    <FormControl>
+                                        <Combobox
+                                            options={allUsers.map(u => ({ label: `${u.name} (${u.email})`, value: u.id }))}
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            placeholder="Select a new owner..."
+                                            searchPlaceholder="Search users..."
+                                            emptyPlaceholder="No users found."
+                                            className="w-full"
+                                        />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Reassign this booking to another user.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                )}
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
                 <Button variant="ghost" type="button" onClick={() => { setIsEditing(false); form.reset(); }} disabled={isUpdatePending}>
