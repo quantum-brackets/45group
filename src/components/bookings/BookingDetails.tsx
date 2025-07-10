@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition, useMemo } from 'react';
+import { useState, useTransition, useMemo, useEffect } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,6 +30,7 @@ import { Separator } from '../ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
+import { Skeleton } from '../ui/skeleton';
 
 
 interface BookingDetailsProps {
@@ -185,6 +186,11 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
   const [isUpdatePending, startUpdateTransition] = useTransition();
   const [isConfirmPending, startConfirmTransition] = useTransition();
   const [isCancelPending, startCancelTransition] = useTransition();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -373,7 +379,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                                           <span className="text-muted-foreground">by {action.actorName}</span>
                                         </div>
                                         <div className="text-xs text-muted-foreground">
-                                            {format(parseISO(action.timestamp), 'MMM d, yyyy, h:mm a')}
+                                            {isClient ? format(parseISO(action.timestamp), 'MMM d, yyyy, h:mm a') : <Skeleton className="h-4 w-32" />}
                                         </div>
                                         <p className="text-muted-foreground text-sm mt-1">{action.message}</p>
                                       </div>
@@ -690,3 +696,5 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
     </Card>
   );
 }
+
+    
