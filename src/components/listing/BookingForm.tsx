@@ -223,134 +223,136 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
 
   return (
     <>
-    <Card className="shadow-lg">
-      <CardHeader>
-        <CardTitle>
-          <span className="text-xl font-bold text-primary">
-            {new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency || 'NGN', minimumFractionDigits: 0 }).format(listing.price)}
-          </span>
-          <span className="text-base font-normal text-muted-foreground">/{listing.price_unit}</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              className="w-full rounded-lg border text-left font-normal hover:border-primary/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
-              aria-label="Select booking dates"
-            >
-              <div className="flex">
-                <div className="flex-1 p-3">
-                  <Label className="text-xs font-bold uppercase text-muted-foreground">Check-in</Label>
-                  <div className="text-sm mt-1">{date?.from ? format(date.from, 'MM/dd/yyyy') : 'Add date'}</div>
+    <Form {...guestForm}>
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle>
+            <span className="text-xl font-bold text-primary">
+              {new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency || 'NGN', minimumFractionDigits: 0 }).format(listing.price)}
+            </span>
+            <span className="text-base font-normal text-muted-foreground">/{listing.price_unit}</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className="w-full rounded-lg border text-left font-normal hover:border-primary/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
+                aria-label="Select booking dates"
+              >
+                <div className="flex">
+                  <div className="flex-1 p-3">
+                    <Label className="text-xs font-bold uppercase text-muted-foreground">Check-in</Label>
+                    <div className="text-sm mt-1">{date?.from ? format(date.from, 'MM/dd/yyyy') : 'Add date'}</div>
+                  </div>
+                  <Separator orientation="vertical" className="h-auto" />
+                   <div className="flex-1 p-3">
+                    <Label className="text-xs font-bold uppercase text-muted-foreground">Check-out</Label>
+                    <div className="text-sm mt-1">{date?.to ? format(date.to, 'MM/dd/yyyy') : 'Add date'}</div>
+                  </div>
                 </div>
-                <Separator orientation="vertical" className="h-auto" />
-                 <div className="flex-1 p-3">
-                  <Label className="text-xs font-bold uppercase text-muted-foreground">Check-out</Label>
-                  <div className="text-sm mt-1">{date?.to ? format(date.to, 'MM/dd/yyyy') : 'Add date'}</div>
-                </div>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={setDate}
+                numberOfMonths={1}
+                className="rounded-md"
+                disabled={(day) => day < new Date(new Date().setHours(0, 0, 0, 0))}
+              />
+            </PopoverContent>
+          </Popover>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="guests" className="font-semibold">Guests</Label>
+              <div className="relative mt-1">
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="guests"
+                  type="number"
+                  min="1"
+                  max={listing.max_guests * units}
+                  value={guests}
+                  onChange={(e) => setGuests(parseInt(e.target.value, 10) || 1)}
+                  className="pl-9"
+                />
               </div>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={date?.from}
-              selected={date}
-              onSelect={setDate}
-              numberOfMonths={1}
-              className="rounded-md"
-              disabled={(day) => day < new Date(new Date().setHours(0, 0, 0, 0))}
-            />
-          </PopoverContent>
-        </Popover>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="guests" className="font-semibold">Guests</Label>
-            <div className="relative mt-1">
-              <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="guests"
-                type="number"
-                min="1"
-                max={listing.max_guests * units}
-                value={guests}
-                onChange={(e) => setGuests(parseInt(e.target.value, 10) || 1)}
-                className="pl-9"
-              />
+            </div>
+            <div>
+              <Label htmlFor="units" className="font-semibold">Units</Label>
+               <div className="relative mt-1">
+                <Warehouse className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="units"
+                  type="number"
+                  min="1"
+                  max={availability.availableCount > 0 ? availability.availableCount : 1}
+                  value={units}
+                  onChange={(e) => setUnits(parseInt(e.target.value, 10) || 1)}
+                  className="pl-9"
+                  disabled={!date?.from || availability.availableCount <= 0}
+                />
+               </div>
             </div>
           </div>
+          
           <div>
-            <Label htmlFor="units" className="font-semibold">Units</Label>
-             <div className="relative mt-1">
-              <Warehouse className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="units"
-                type="number"
-                min="1"
-                max={availability.availableCount > 0 ? availability.availableCount : 1}
-                value={units}
-                onChange={(e) => setUnits(parseInt(e.target.value, 10) || 1)}
-                className="pl-9"
-                disabled={!date?.from || availability.availableCount <= 0}
+              <Label htmlFor="bookingName" className="font-semibold">Booking Name</Label>
+              <FormField
+                control={guestForm.control}
+                name="bookingName"
+                render={({ field }) => (
+                  <FormItem className="mt-1">
+                    <FormControl>
+                      <Input id="bookingName" {...field} readOnly={!!session} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-             </div>
           </div>
-        </div>
-        
-        <div>
-            <Label htmlFor="bookingName" className="font-semibold">Booking Name</Label>
-            <FormField
-              control={guestForm.control}
-              name="bookingName"
-              render={({ field }) => (
-                <FormItem className="mt-1">
-                  <FormControl>
-                    <Input id="bookingName" {...field} readOnly={!!session} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+
+          <div className="min-h-5 text-center text-sm mb-2 flex items-center justify-center px-2">
+              {availability.message && (
+                  <span className={availability.availableCount <= 0 ? 'text-destructive' : 'text-accent'}>
+                      {availability.message}
+                  </span>
               )}
-            />
-        </div>
+          </div>
+          
+          {totalPrice !== null && priceBreakdown && (
+              <div className="space-y-2 text-sm pt-4 border-t">
+                  <div className="flex justify-between">
+                      <p className="text-muted-foreground underline decoration-dashed cursor-help" title={priceBreakdown}>Price breakdown</p>
+                      <span className="font-medium">{new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency }).format(totalPrice)}</span>
+                  </div>
+                   <div className="flex justify-between font-bold text-base">
+                      <span>Total</span>
+                      <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency }).format(totalPrice)}</span>
+                  </div>
+              </div>
+          )}
+        </CardContent>
 
-        <div className="min-h-5 text-center text-sm mb-2 flex items-center justify-center px-2">
-            {availability.message && (
-                <span className={availability.availableCount <= 0 ? 'text-destructive' : 'text-accent'}>
-                    {availability.message}
-                </span>
-            )}
-        </div>
-        
-        {totalPrice !== null && priceBreakdown && (
-            <div className="space-y-2 text-sm pt-4 border-t">
-                <div className="flex justify-between">
-                    <p className="text-muted-foreground underline decoration-dashed cursor-help" title={priceBreakdown}>Price breakdown</p>
-                    <span className="font-medium">{new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency }).format(totalPrice)}</span>
-                </div>
-                 <div className="flex justify-between font-bold text-base">
-                    <span>Total</span>
-                    <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency }).format(totalPrice)}</span>
-                </div>
-            </div>
-        )}
-      </CardContent>
-
-       <CardFooter className="flex-col items-stretch space-y-2">
-            <Button 
-                onClick={handleBooking} 
-                disabled={!isBookable}
-                className="w-full text-lg" 
-                size="lg">
-                {isPending || availability.isChecking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Request to Book"}
-            </Button>
-            <div className="text-center text-sm text-muted-foreground">
-                You won't be charged yet
-            </div>
-       </CardFooter>
-    </Card>
+         <CardFooter className="flex-col items-stretch space-y-2">
+              <Button 
+                  onClick={handleBooking} 
+                  disabled={!isBookable}
+                  className="w-full text-lg" 
+                  size="lg">
+                  {isPending || availability.isChecking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Request to Book"}
+              </Button>
+              <div className="text-center text-sm text-muted-foreground">
+                  You won't be charged yet
+              </div>
+         </CardFooter>
+      </Card>
+    </Form>
 
     <Dialog open={showGuestEmailDialog} onOpenChange={setShowGuestEmailDialog}>
         <DialogContent className="sm:max-w-[425px]">
