@@ -308,8 +308,8 @@ export async function getAllBookings(): Promise<Booking[]> {
         const dateComparison = new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
         if (dateComparison !== 0) return dateComparison;
 
-        // 2. Sort by status: Confirmed -> Pending -> Cancelled.
-        const statusOrder = { 'Confirmed': 1, 'Pending': 2, 'Cancelled': 3 };
+        // 2. Sort by status: Confirmed -> Pending -> Cancelled -> Checked Out.
+        const statusOrder = { 'Confirmed': 1, 'Pending': 2, 'Cancelled': 3, 'Checked Out': 4 };
         const statusComparison = (statusOrder[a.status as keyof typeof statusOrder] || 99) - (statusOrder[b.status as keyof typeof statusOrder] || 99);
         if (statusComparison !== 0) return statusComparison;
 

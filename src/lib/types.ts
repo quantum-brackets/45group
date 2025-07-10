@@ -63,7 +63,7 @@ export interface BookingAction {
   timestamp: string; // ISO 8601 timestamp of when the action occurred.
   actorId: string; // The ID of the user who performed the action.
   actorName: string; // The name of the user who performed the action.
-  action: 'Created' | 'Updated' | 'Confirmed' | 'Cancelled' | 'System'; // The type of action.
+  action: 'Created' | 'Updated' | 'Confirmed' | 'Cancelled' | 'Checked Out' | 'System'; // The type of action.
   message: string; // A descriptive message about the action.
 }
 
@@ -103,14 +103,14 @@ export interface Booking {
   userId: string; // Foreign key to the `users` table.
   startDate: string; // ISO 8601 start date of the booking.
   endDate: string; // ISO 8601 end date of the booking.
-  status: 'Confirmed' | 'Pending' | 'Cancelled'; // The current status of the booking.
+  status: 'Confirmed' | 'Pending' | 'Cancelled' | 'Checked Out'; // The current status of the booking.
   
   // Fields from the 'data' JSONB column
   createdAt: string; // When the booking was first created.
   guests: number; // The number of guests for the booking.
   inventoryIds: string[]; // An array of `listing_inventory` IDs booked.
   bookingName?: string; // The name the booking was made under.
-  actions: BookingAction[]; // The audit trail of actions on this booking.
+  actions: BookingAction[]; // The audit trail of all actions on this booking.
   bills?: Bill[]; // An array of additional charges.
   payments?: Payment[]; // An array of payments made.
 

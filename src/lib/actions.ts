@@ -824,6 +824,51 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     }
 }
 
+/**
+ * Checks out a guest from a confirmed booking.
+ * @param data - The booking ID.
+ * @returns A result object indicating success or failure.
+ */
+export async function checkOutBookingAction(data: z.infer<typeof BookingActionSchema>) {
+    await preloadPermissions();
+    const supabase = createSupabaseAdminClient();
+    const session = await getSession();
+    if (!session || (session.role !== 'admin' && session.role !== 'staff')) {
+        return { error: 'Permission Denied: You are not authorized to check out bookings.' };
+    }
+    
+    const { bookingId } = BookingActionSchema.parse(data);
+    
+    const { data: booking, error: fetchError } = await supabase.from('bookings').select('data').eq('id', bookingId).single();
+    if (fetchError || !booking) {
+        return { error: 'Database Error: Could not find the booking to check out.' };
+    }
+    
+    const checkOutAction: BookingAction = {
+        timestamp: new Date().toISOString(),
+        actorId: session.id,
+        actorName: session.name,
+        action: 'Checked Out',
+        message: `Guest checked out by ${session.name}.`
+    };
+    
+    const { error } = await supabase.from('bookings').update({
+        status: 'Checked Out',
+        data: {
+            ...booking.data,
+            actions: [...(booking.data.actions || []), checkOutAction]
+        }
+    }).eq('id', bookingId);
+    
+    if (error) {
+        return { error: `Database Error: Failed to check out booking. ${error.message}` };
+    }
+    
+    revalidatePath('/bookings');
+    revalidatePath(`/booking/${bookingId}`);
+    return { success: 'Guest has been checked out successfully.' };
+}
+
 // Zod schema for adding/updating users.
 const UserFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),

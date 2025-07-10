@@ -13,6 +13,7 @@ import { useTransition } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { cancelBookingAction, confirmBookingAction } from '@/lib/actions';
 import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface BookingsTableProps {
   bookings: Booking[];
@@ -60,6 +61,22 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
         }
     });
   };
+
+  const getStatusBadge = (status: Booking['status']) => {
+      const variants = {
+          Confirmed: 'default',
+          Pending: 'secondary',
+          Cancelled: 'destructive',
+          'Checked Out': 'outline'
+      } as const;
+      
+      const styles = {
+          Confirmed: 'bg-accent text-accent-foreground',
+          'Checked Out': 'bg-blue-500 text-white border-blue-500'
+      }
+
+      return <Badge variant={variants[status] || 'secondary'} className={cn(styles[status as keyof typeof styles])}>{status}</Badge>
+  }
 
   return (
     <Card>
@@ -111,9 +128,7 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
                   )}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={booking.status === 'Confirmed' ? 'default' : 'secondary'} className={booking.status === 'Confirmed' ? 'bg-accent text-accent-foreground' : ''}>
-                    {booking.status}
-                  </Badge>
+                  {getStatusBadge(booking.status)}
                 </TableCell>
                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
@@ -142,14 +157,14 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
                              {session?.role === 'admin' && (
                                  <DropdownMenuItem 
                                     className="text-destructive"
-                                    disabled={isCancelPending || booking.status === 'Cancelled'}
+                                    disabled={isCancelPending || booking.status === 'Cancelled' || booking.status === 'Checked Out'}
                                     onClick={() => handleCancel(booking.id)}
                                  >Cancel Booking</DropdownMenuItem>
                              )}
                              {session?.role === 'guest' && booking.userId === session.id && (
                                  <DropdownMenuItem 
                                     className="text-destructive"
-                                    disabled={isCancelPending || booking.status === 'Cancelled'}
+                                    disabled={isCancelPending || booking.status === 'Cancelled' || booking.status === 'Checked Out'}
                                     onClick={() => handleCancel(booking.id)}
                                  >Cancel Booking</DropdownMenuItem>
                             )}

@@ -9,14 +9,14 @@ import { format, parseISO, differenceInCalendarDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 
 import type { Booking, Listing, User, Bill, Payment } from '@/lib/types';
-import { updateBookingAction, cancelBookingAction, confirmBookingAction, addBillAction, addPaymentAction } from '@/lib/actions';
+import { updateBookingAction, cancelBookingAction, confirmBookingAction, checkOutBookingAction, addBillAction, addPaymentAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X, CircleUser, ArrowRight, Pencil, FileText, CircleUserRound, Receipt, CreditCard, DollarSign } from 'lucide-react';
+import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X, CircleUser, ArrowRight, Pencil, FileText, CircleUserRound, Receipt, CreditCard, DollarSign, LogOut } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -213,8 +213,7 @@ const AddPaymentDialog = ({ bookingId, currency, disabled }: { bookingId: string
 export function BookingDetails({ booking, listing, session, totalInventoryCount, allUsers = [] }: BookingDetailsProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdatePending, startUpdateTransition] = useTransition();
-  const [isConfirmPending, startConfirmTransition] = useTransition();
-  const [isCancelPending, startCancelTransition] = useTransition();
+  const [isActionPending, startActionTransition] = useTransition();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -227,11 +226,12 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
   const isAdmin = session.role === 'admin';
   const isAdminOrStaff = isAdmin || session.role === 'staff';
 
-  const canEdit = isAdminOrStaff || session.id === booking.userId;
-  const isActionable = booking.status !== 'Cancelled';
+  const canEdit = isAdminOrStaff && (booking.status === 'Pending' || booking.status === 'Confirmed');
+  const isActionable = booking.status !== 'Cancelled' && booking.status !== 'Checked Out';
   const canConfirm = isAdminOrStaff && booking.status === 'Pending';
+  const canCheckOut = isAdminOrStaff && booking.status === 'Confirmed';
   const canCancel = (isAdmin || (session.role === 'guest' && session.id === booking.userId)) && isActionable;
-  const isAnyActionPending = isUpdatePending || isConfirmPending || isCancelPending;
+  const isAnyActionPending = isUpdatePending || isActionPending;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -316,7 +316,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
   };
 
   const handleConfirm = () => {
-    startConfirmTransition(async () => {
+    startActionTransition(async () => {
         const result = await confirmBookingAction({ bookingId: booking.id });
         if (result.success) {
             toast({ title: "Booking Confirmed", description: result.success });
@@ -327,8 +327,20 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
     });
   };
 
+  const handleCheckOut = () => {
+    startActionTransition(async () => {
+        const result = await checkOutBookingAction({ bookingId: booking.id });
+        if (result.success) {
+            toast({ title: "Guest Checked Out", description: result.success });
+            router.refresh();
+        } else {
+            toast({ title: "Error", description: result.error, variant: "destructive" });
+        }
+    });
+  };
+
   const handleCancel = () => {
-      startCancelTransition(async () => {
+      startActionTransition(async () => {
           const result = await cancelBookingAction({ bookingId: booking.id });
           if (result.success) {
               toast({ title: "Booking Cancelled", description: result.message });
@@ -338,6 +350,22 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
           }
       });
   };
+
+  const getStatusBadge = () => {
+      const variants = {
+          Confirmed: 'default',
+          Pending: 'secondary',
+          Cancelled: 'destructive',
+          'Checked Out': 'outline'
+      } as const;
+      
+      const styles = {
+          Confirmed: 'bg-accent text-accent-foreground',
+          'Checked Out': 'bg-blue-500 text-white border-blue-500'
+      }
+
+      return <Badge variant={variants[booking.status] || 'secondary'} className={cn(styles[booking.status as keyof typeof styles])}>{booking.status}</Badge>
+  }
 
 
   const DisplayView = () => (
@@ -371,11 +399,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                 <Info className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
                 <div>
                     <p className="font-semibold">Status</p>
-                    <p>
-                    <Badge variant={booking.status === 'Confirmed' ? 'default' : 'secondary'} className={booking.status === 'Confirmed' ? 'bg-accent text-accent-foreground' : ''}>
-                        {booking.status}
-                    </Badge>
-                    </p>
+                    <p>{getStatusBadge()}</p>
                 </div>
                 </div>
                 {isAdminOrStaff && booking.userName && (
@@ -585,7 +609,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
         <CardFooter className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-4 bg-muted/50 p-4 border-t">
             <BackButton />
             <div className="flex flex-wrap justify-end items-center gap-2">
-                {canEdit && isActionable && (
+                {canEdit && (
                     <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} disabled={isAnyActionPending}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
@@ -593,8 +617,14 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                 )}
                 {canConfirm && (
                     <Button size="sm" onClick={handleConfirm} disabled={isAnyActionPending} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                        {isConfirmPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                        {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                         Confirm
+                    </Button>
+                )}
+                {canCheckOut && (
+                     <Button size="sm" onClick={handleCheckOut} disabled={isAnyActionPending}>
+                        {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+                        Check Out
                     </Button>
                 )}
                 {canCancel && (
@@ -617,8 +647,8 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                                 <AlertDialogAction 
                                     className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                                     onClick={handleCancel} 
-                                    disabled={isCancelPending}>
-                                    {isCancelPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    disabled={isActionPending}>
+                                    {isActionPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Yes, Cancel Booking
                                 </AlertDialogAction>
                             </AlertDialogFooter>
@@ -804,4 +834,5 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
     
 
     
+
 
