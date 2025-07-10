@@ -8,6 +8,30 @@ const supabaseHostname = process.env.NEXT_PUBLIC_SUPABASE_URL
 
 const nextConfig: NextConfig = {
   /* config options here */
+  async redirects() {
+    return [
+      {
+        source: '/about',
+        destination: '/#services',
+        permanent: true,
+      },
+      {
+        source: '/cuisine',
+        destination: '/search?type=restaurant',
+        permanent: true,
+      },
+      {
+        source: '/events',
+        destination: '/search?type=events',
+        permanent: true,
+      },
+      {
+        source: '/lodges',
+        destination: '/search?type=hotel',
+        permanent: true,
+      },
+    ]
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
