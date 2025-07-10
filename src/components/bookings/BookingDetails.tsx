@@ -20,6 +20,7 @@ import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User 
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
@@ -120,7 +121,8 @@ const AddBillDialog = ({ bookingId, currency, disabled }: { bookingId: string, c
 
 const AddPaymentSchema = z.object({
     amount: z.coerce.number().positive("Amount must be a positive number."),
-    method: z.string().min(1, "Payment method is required."),
+    method: z.enum(['Cash', 'Transfer', 'Debit', 'Credit'], { required_error: "Payment method is required." }),
+    notes: z.string().optional(),
 });
 type AddPaymentValues = z.infer<typeof AddPaymentSchema>;
 
@@ -128,7 +130,7 @@ const AddPaymentDialog = ({ bookingId, currency, disabled }: { bookingId: string
     const [open, setOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
-    const form = useForm<AddPaymentValues>({ resolver: zodResolver(AddPaymentSchema), defaultValues: { amount: 0, method: 'Cash' } });
+    const form = useForm<AddPaymentValues>({ resolver: zodResolver(AddPaymentSchema), defaultValues: { amount: 0, method: 'Cash', notes: '' } });
 
     const onSubmit = (data: AddPaymentValues) => {
         startTransition(async () => {
@@ -162,13 +164,40 @@ const AddPaymentDialog = ({ bookingId, currency, disabled }: { bookingId: string
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        <FormField control={form.control} name="method" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Payment Method</FormLabel>
-                                <FormControl><Input placeholder="e.g., Cash, Card, Bank Transfer" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
+                        <FormField
+                            control={form.control}
+                            name="method"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Payment Method</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a payment method" />
+                                        </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="Cash">Cash</SelectItem>
+                                            <SelectItem value="Transfer">Transfer</SelectItem>
+                                            <SelectItem value="Debit">Debit</SelectItem>
+                                            <SelectItem value="Credit">Credit</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="notes"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Notes (Optional)</FormLabel>
+                                    <FormControl><Textarea placeholder="e.g., Paid at front desk." {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>Cancel</Button>
                             <Button type="submit" disabled={isPending}>{isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Record Payment</Button>
@@ -484,7 +513,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                                      <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead>Method</TableHead>
+                                                <TableHead>Details</TableHead>
                                                 <TableHead className="text-right">Amount</TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -492,8 +521,11 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                                              {(booking.payments || []).length > 0 ? booking.payments?.map(payment => (
                                                 <TableRow key={payment.id}>
                                                     <TableCell>
-                                                        <p>{payment.method}</p>
-                                                        <p className="text-xs text-muted-foreground">Recorded by {payment.actorName} on {format(parseISO(payment.timestamp), 'PP')}</p>
+                                                        <p className="font-medium">{payment.method}</p>
+                                                        {payment.notes && (
+                                                            <p className="text-sm text-muted-foreground italic mt-1">"{payment.notes}"</p>
+                                                        )}
+                                                        <p className="text-xs text-muted-foreground mt-1">Recorded by {payment.actorName} on {format(parseISO(payment.timestamp), 'PP')}</p>
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">{formatCurrency(payment.amount)}</TableCell>
                                                 </TableRow>

@@ -54,7 +54,8 @@ export interface Bill {
 export interface Payment {
   id: string;
   amount: number;
-  method: string;
+  method: 'Cash' | 'Transfer' | 'Debit' | 'Credit';
+  notes?: string;
   timestamp: string;
   actorName: string;
 }

@@ -4,6 +4,7 @@
 
 
 
+
 'use server'
 
 import { revalidatePath } from 'next/cache'
@@ -1017,7 +1018,8 @@ export async function addBillAction(data: z.infer<typeof AddBillSchema>) {
 const AddPaymentSchema = z.object({
   bookingId: z.string(),
   amount: z.coerce.number().positive("Amount must be a positive number."),
-  method: z.string().min(1, "Payment method is required."),
+  method: z.enum(['Cash', 'Transfer', 'Debit', 'Credit']),
+  notes: z.string().optional(),
 });
 
 export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
@@ -1033,7 +1035,7 @@ export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
         return { success: false, message: "Invalid data provided." };
     }
     
-    const { bookingId, amount, method } = validatedFields.data;
+    const { bookingId, amount, method, notes } = validatedFields.data;
     
     const { data: booking, error: fetchError } = await supabase.from('bookings').select('data').eq('id', bookingId).single();
     if (fetchError || !booking) {
@@ -1044,6 +1046,7 @@ export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
         id: randomUUID(),
         amount,
         method,
+        notes,
         timestamp: new Date().toISOString(),
         actorName: session.name,
     };
