@@ -62,6 +62,7 @@ export interface Booking {
   userName?: string;
   listingName?: string;
   inventoryNames?: string[];
+  userNotes?: string;
 }
 
 

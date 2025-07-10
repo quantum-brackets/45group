@@ -310,6 +310,7 @@ export async function getBookingById(id: string): Promise<Booking | null> {
       listingName: listingData?.data.name || 'Unknown Listing',
       userName: userData?.data.name || 'Unknown User',
       inventoryNames: inventoryNames,
+      userNotes: userData?.data.notes,
     };
 }
 

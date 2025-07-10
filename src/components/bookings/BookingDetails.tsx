@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X, CircleUser, ArrowRight, Pencil } from 'lucide-react';
+import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X, CircleUser, ArrowRight, Pencil, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -186,6 +186,15 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
         </div>
 
         <div className="space-y-6">
+            {(session.role === 'admin' || session.role === 'staff') && (
+                <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+                    <FileText className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+                    <div>
+                        <p className="font-semibold">Notes on Guest</p>
+                        <p className="text-muted-foreground whitespace-pre-wrap">{booking.userNotes || 'No notes for this guest.'}</p>
+                    </div>
+                </div>
+            )}
             <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
             <KeySquare className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
             <div>
