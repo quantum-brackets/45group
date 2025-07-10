@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useTransition, useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -33,7 +33,10 @@ interface BookingFormProps {
 
 const bookingFormSchema = z.object({
   userId: z.string().optional(),
+  guestName: z.string().optional(),
+  guestEmail: z.string().optional(),
 });
+type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
 
 export function BookingForm({ listing, confirmedBookings, session, allUsers = [] }: BookingFormProps) {
@@ -56,10 +59,12 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
     isChecking: false,
   });
 
-  const form = useForm<z.infer<typeof bookingFormSchema>>({
+  const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingFormSchema),
     defaultValues: {
       userId: session?.id || undefined,
+      guestName: '',
+      guestEmail: '',
     },
   });
   
@@ -174,6 +179,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
 
 
   const handleBooking = () => {
+    form.clearErrors();
     if (!date?.from) {
         toast({ title: "Please select dates", variant: "destructive" });
         return;
@@ -184,21 +190,41 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
         form.setError('userId', { message: 'Please select a guest to book for.' });
         return;
       }
-      submitBooking();
     } else {
-      router.push('/login');
+      const guestName = form.getValues('guestName');
+      const guestEmail = form.getValues('guestEmail');
+      let hasError = false;
+      if (!guestName) {
+        form.setError('guestName', { message: 'Name is required.' });
+        hasError = true;
+      }
+      if (!guestEmail) {
+        form.setError('guestEmail', { message: 'Email is required.' });
+        hasError = true;
+      } else {
+        const emailValidation = z.string().email().safeParse(guestEmail);
+        if (!emailValidation.success) {
+          form.setError('guestEmail', { message: 'Please enter a valid email.' });
+          hasError = true;
+        }
+      }
+      if (hasError) return;
     }
+    submitBooking();
   };
 
   const submitBooking = () => {
     startTransition(async () => {
+        const formData = form.getValues();
         const result = await createBookingAction({
             listingId: listing.id,
             startDate: date!.from!.toISOString(),
             endDate: (date!.to || date!.from)!.toISOString(),
             guests: guests,
             numberOfUnits: units,
-            userId: form.getValues('userId'),
+            userId: formData.userId,
+            guestName: formData.guestName,
+            guestEmail: formData.guestEmail,
         });
         
         if (result.success) {
@@ -210,6 +236,11 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
             setDate(undefined);
             setGuests(1);
             setUnits(1);
+            form.reset({
+              userId: session?.id || undefined,
+              guestName: '',
+              guestEmail: '',
+            });
         } else {
             toast({
                 title: "Booking Failed",
@@ -348,6 +379,40 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
             </div>
           )}
 
+          {!session && (
+            <div className="w-full space-y-4 pt-4 border-t">
+              <h3 className="font-semibold text-center">Continue as Guest</h3>
+              <p className="text-sm text-center text-muted-foreground -mt-2">An account will be created for you to manage this booking.</p>
+              <FormField
+                control={form.control}
+                name="guestName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="guestEmail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="you@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
+
+
           {totalPrice !== null && priceBreakdown && (
               <div className="space-y-2 text-sm pt-4 border-t">
                   <div className="flex justify-between">
@@ -371,9 +436,10 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                   {isPending || availability.isChecking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Request to Book"}
               </Button>
               <div className="text-center text-sm text-muted-foreground px-4">
+                  <br/>
                   <p>You won&apos;t be charged yet.</p>
                   <br/>
-                  <p>After approval, payment for the first day is required to confirm.</p>
+                  <p>Payment is required to confirm your booking.</p>
                   <br/>
                   <p>You can also pay in person upon check-in.</p>
               </div>
