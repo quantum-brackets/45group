@@ -1,16 +1,19 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * @fileoverview This file contains all the "Server Actions" for the application.
+ * Server Actions are asynchronous functions that are only executed on the server.
+ * They can be called directly from client components (forms, button clicks, etc.),
+ * which eliminates the need to create separate API endpoints for data mutations.
+ *
+ * Each action typically performs the following steps:
+ * 1. Checks user session and permissions.
+ * 2. Validates incoming data using Zod schemas.
+ * 3. Interacts with the database (Supabase) to perform CRUD operations.
+ * 4. Uses `revalidatePath` or `revalidateTag` to update the Next.js cache and refresh the UI.
+ * 5. Returns a structured response, usually `{ success: boolean, message: string }`.
+ *
+ * Using server actions centralizes business logic, improves security by keeping sensitive
+ * operations on the server, and simplifies the overall architecture.
+ */
 'use server'
 
 import { revalidatePath } from 'next/cache'
@@ -25,20 +28,29 @@ import type { Booking, Listing, ListingInventory, Permission, Role, Review, User
 import { randomUUID } from 'crypto'
 
 
+/**
+ * Updates the permissions for all roles in the system.
+ * This is an admin-only action.
+ * @param permissions - An object where keys are roles and values are arrays of permission strings.
+ * @returns A result object indicating success or failure.
+ */
 export async function updatePermissionsAction(permissions: Record<Role, Permission[]>) {
     await preloadPermissions();
     const session = await getSession();
+    // Security: Ensure the user has permission to update permissions.
     if (!session || !hasPermission(session, 'permissions:update')) {
       return { success: false, message: 'Unauthorized' };
     }
   
     const supabase = createSupabaseAdminClient();
     
+    // Prepare the data for a bulk `upsert` operation.
     const updates = Object.entries(permissions).map(([role, perms]) => ({
       role: role,
       data: { permissions: perms }
     }));
 
+    // Upsert atomically updates existing roles or inserts new ones.
     const { error } = await supabase.from('role_permissions').upsert(updates, { onConflict: 'role' });
   
     if (error) {
@@ -46,11 +58,14 @@ export async function updatePermissionsAction(permissions: Record<Role, Permissi
       return { success: false, message: `Failed to save permissions: ${error.message}` };
     }
   
+    // Invalidate the cache for the permissions page to show the new data.
     revalidatePath('/dashboard/permissions');
     return { success: true, message: 'Permissions updated successfully.' };
   }
 
 
+// Zod schema for validating data from the listing creation/update form.
+// This ensures data integrity before it reaches the database.
 const ListingFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
   type: z.enum(['hotel', 'events', 'restaurant'], { required_error: "Type is required."}),
@@ -62,19 +77,26 @@ const ListingFormSchema = z.object({
   max_guests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
   features: z.string().min(1, "Please list at least one feature."),
   images: z.array(z.string().url({ message: "Please enter a valid image URL." })).min(1, "At least one image is required."),
+  // Inventory is an array of objects, allowing for dynamic addition/removal of units.
   inventory: z.array(
     z.object({
-      id: z.string().optional(),
+      id: z.string().optional(), // `id` is present when updating an existing unit.
       name: z.string().min(1, "Unit name cannot be empty."),
     })
   ).min(0, "There must be at least 0 units."),
 });
 
 
+/**
+ * Creates a new listing and its associated inventory units.
+ * @param data - The listing data, validated against ListingFormSchema.
+ * @returns A result object indicating success or failure.
+ */
 export async function createListingAction(data: z.infer<typeof ListingFormSchema>) {
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
+    // Security: Check permissions.
     if (!session || !hasPermission(session, 'listing:create')) {
         return { success: false, message: 'Unauthorized' };
     }
@@ -86,14 +108,16 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
 
     const { name, type, location, description, price, price_unit, currency, max_guests, features, images, inventory } = validatedFields.data;
     
+    // Data is stored in a JSONB column for flexibility.
     const listingJsonData = {
         name, description, price, price_unit, currency, max_guests, 
-        features: features.split(',').map(f => f.trim()),
+        features: features.split(',').map(f => f.trim()), // Convert comma-separated string to array
         images,
-        rating: 0,
-        reviews: [],
+        rating: 0, // Initialize rating
+        reviews: [], // Initialize reviews
     };
 
+    // Insert the main listing record.
     const { data: newListing, error: listingError } = await supabase.from('listings').insert({
         type,
         location,
@@ -105,6 +129,7 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
         return { success: false, message: `Failed to create listing: ${listingError?.message}` };
     }
 
+    // If inventory units were provided, insert them into the inventory table.
     if (inventory.length > 0) {
         const inventoryItems = inventory.map(item => ({
             listing_id: newListing.id,
@@ -113,16 +138,23 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
         const { error: inventoryError } = await supabase.from('listing_inventory').insert(inventoryItems);
         if (inventoryError) {
             console.error('[CREATE_LISTING_ACTION] Error creating inventory:', inventoryError);
-            // Optionally delete the created listing for consistency
+            // Rollback: If inventory fails, delete the listing to prevent partial data.
             await supabase.from('listings').delete().eq('id', newListing.id);
             return { success: false, message: `Failed to create inventory: ${inventoryError.message}` };
         }
     }
-        
+    
+    // Revalidate the dashboard path to show the new listing.
     revalidatePath('/dashboard?tab=listings', 'page');
     return { success: true, message: `Listing "${name}" has been created with ${inventory.length} units.` };
 }
 
+/**
+ * Updates an existing listing and reconciles its inventory.
+ * @param id - The ID of the listing to update.
+ * @param data - The updated listing data.
+ * @returns A result object indicating success or failure.
+ */
 export async function updateListingAction(id: string, data: z.infer<typeof ListingFormSchema>) {
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
@@ -140,7 +172,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
     }
   }
 
-  // Fetch existing listing to preserve reviews and rating
+  // Fetch the existing listing to preserve fields not in the form (like reviews and rating).
   const { data: existingListing, error: fetchError } = await supabase
     .from('listings')
     .select('data')
@@ -153,8 +185,9 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
   
   const { name, type, location, description, price, price_unit, currency, max_guests, features, images, inventory: formInventory } = validatedFields.data;
 
+  // Merge new form data with existing data to prevent overwriting reviews/ratings.
   const listingJsonData = {
-      ...existingListing.data, // Preserve existing data like reviews, rating
+      ...existingListing.data,
       name, description, price, price_unit, currency, max_guests,
       features: features.split(',').map(f => f.trim()),
       images,
@@ -169,15 +202,18 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
     return { success: false, message: `Failed to update listing: ${updateError.message}` };
   }
 
-  // Smart inventory reconciliation
+  // --- Smart Inventory Reconciliation Logic ---
+  // This logic determines which inventory items need to be created, updated, or deleted.
   const { data: dbInventory } = await supabase.from('listing_inventory').select('id, name').eq('listing_id', id);
   const dbInventoryMap = new Map((dbInventory || []).map(i => [i.id, i.name]));
   const formInventoryMap = new Map(formInventory.filter(i => i.id).map(i => [i.id!, i.name]));
 
+  // Find what to create, update, or delete by comparing the form state to the DB state.
   const itemsToCreate = formInventory.filter(i => !i.id);
   const itemsToUpdate = formInventory.filter(i => i.id && dbInventoryMap.has(i.id) && dbInventoryMap.get(i.id) !== i.name);
   const idsToDelete = (dbInventory || []).filter(i => !formInventoryMap.has(i.id)).map(i => i.id);
 
+  // Safety check: Prevent deletion of inventory units tied to active bookings.
   if (idsToDelete.length > 0) {
       const { data: bookedInv, error: bookedError } = await supabase
         .from('bookings').select('data').eq('listing_id', id).in('status', ['Pending', 'Confirmed']);
@@ -191,6 +227,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
       }
   }
 
+  // Batch all database operations to run in parallel.
   const operations = [];
   if (itemsToCreate.length > 0) {
     operations.push(supabase.from('listing_inventory').insert(itemsToCreate.map(i => ({ listing_id: id, name: i.name }))));
@@ -212,6 +249,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
       return { success: false, message: `Failed to update inventory: ${firstError.error.message}` };
   }
 
+  // Revalidate all relevant paths.
   revalidatePath('/dashboard?tab=listings', 'page');
   revalidatePath(`/listing/${id}`);
   revalidatePath('/bookings');
@@ -219,6 +257,11 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
   return { success: true, message: `The details for "${name}" have been saved.` };
 }
 
+/**
+ * Deletes a listing and its associated inventory.
+ * @param id - The ID of the listing to delete.
+ * @returns A result object indicating success or failure.
+ */
 export async function deleteListingAction(id: string) {
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
@@ -227,7 +270,7 @@ export async function deleteListingAction(id: string) {
     return { success: false, message: 'Unauthorized' };
   }
   
-  // Check for active bookings before deleting
+  // Safety check: Prevent deletion if there are active bookings.
   const { data: activeBookings, error: bookingCheckError } = await supabase
     .from('bookings')
     .select('id')
@@ -242,7 +285,8 @@ export async function deleteListingAction(id: string) {
     return { success: false, message: 'Cannot delete listing with active or pending bookings. Please cancel them first.' };
   }
 
-  // Deleting the listing will cascade to inventory due to foreign key constraints
+  // The database is set up with cascading deletes, so deleting the listing
+  // will also delete its inventory units.
   const { error } = await supabase.from('listings').delete().eq('id', id);
 
   if (error) {
@@ -254,6 +298,8 @@ export async function deleteListingAction(id: string) {
   return { success: true, message: 'Listing and all its inventory have been deleted.' };
 }
 
+// Zod schema for validating booking creation data.
+// Includes a `superRefine` for conditional validation based on whether it's a guest checkout.
 const CreateBookingSchema = z.object({
   listingId: z.string(),
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
@@ -264,13 +310,12 @@ const CreateBookingSchema = z.object({
   guestName: z.string().optional(),
   guestEmail: z.string().optional(),
 }).superRefine((data, ctx) => {
+    // If a user is logged in (or an admin is booking for a user), guest fields are not needed.
     if (data.userId) {
-        // User is logged in or an admin is booking for an existing user.
-        // Guest fields are not required.
         return;
     }
 
-    // This is a guest checkout.
+    // This is a guest checkout, so guest name and email are required.
     if (!data.guestName || data.guestName.trim().length === 0) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -299,7 +344,17 @@ const CreateBookingSchema = z.object({
 });
 
 
+/**
+ * Helper function to find available inventory units for a given listing and date range.
+ * @param supabase - The Supabase client instance.
+ * @param listingId - The ID of the listing.
+ * @param startDate - The start date of the desired booking.
+ * @param endDate - The end date of the desired booking.
+ * @param excludeBookingId - An optional booking ID to exclude from the check (used when updating a booking).
+ * @returns An array of available inventory IDs.
+ */
 async function findAvailableInventory(supabase: any, listingId: string, startDate: string, endDate: string, excludeBookingId?: string): Promise<string[]> {
+    // Get all inventory units for the listing.
     const { data: allInventory, error: invError } = await supabase
         .from('listing_inventory')
         .select('id')
@@ -309,14 +364,16 @@ async function findAvailableInventory(supabase: any, listingId: string, startDat
 
     const allInventoryIds = allInventory.map((inv: any) => inv.id);
 
+    // Find all confirmed bookings that overlap with the requested date range.
     let bookingsQuery = supabase
         .from('bookings')
         .select('data')
         .eq('listing_id', listingId)
         .eq('status', 'Confirmed')
-        .lte('start_date', endDate)
-        .gte('end_date', startDate);
+        .lte('start_date', endDate) // A booking that starts before or on the day the new one ends.
+        .gte('end_date', startDate); // A booking that ends after or on the day the new one starts.
     
+    // If we are updating a booking, we need to exclude it from the check.
     if (excludeBookingId) {
         bookingsQuery = bookingsQuery.neq('id', excludeBookingId);
     }
@@ -325,10 +382,18 @@ async function findAvailableInventory(supabase: any, listingId: string, startDat
     
     if (bookingsError) throw new Error('Could not check for overlapping bookings.');
     
+    // Get a set of all inventory IDs that are booked during the overlapping period.
     const bookedInventoryIds = new Set(overlappingBookings.flatMap((b: any) => b.data.inventoryIds || []));
+    
+    // Return the list of inventory IDs that are not booked.
     return allInventoryIds.filter((id: string) => !bookedInventoryIds.has(id));
 }
 
+/**
+ * Creates a new booking. Handles logged-in users, admins booking for guests, and new guest checkouts.
+ * @param data - The booking data.
+ * @returns A result object indicating success or failure.
+ */
 export async function createBookingAction(data: z.infer<typeof CreateBookingSchema>) {
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
@@ -348,16 +413,19 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
   let actorName: string;
 
   if (session) {
-    finalUserId = userId || session.id;
+    // --- Logged-in user flow ---
+    finalUserId = userId || session.id; // `userId` is from the form if an admin booked for another user.
     actorId = session.id;
     actorName = session.name;
 
+    // Get the name of the user the booking is actually for.
     const { data: targetUser, error: targetUserError } = await supabase.from('users').select('data').eq('id', finalUserId).single();
     if (targetUserError || !targetUser) {
         return { success: false, message: 'Target user for the booking was not found.' };
     }
     finalBookingName = targetUser.data.name;
 
+    // Permission checks
     const isBookingForOther = session.id !== finalUserId;
     if (isBookingForOther) {
       if (!hasPermission(session, 'booking:create')) {
@@ -369,7 +437,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       }
     }
   } else {
-    // Guest checkout flow
+    // --- Guest checkout flow ---
     if (!guestName || !guestEmail) {
         return { success: false, message: "Guest name and email are required." };
     }
@@ -377,11 +445,13 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     const { data: existingUser } = await supabase.from('users').select('id, status').eq('email', guestEmail).single();
 
     if (existingUser) {
+        // If an account exists, handle it based on status.
         if (existingUser.status === 'active') {
             return { success: false, message: 'An account with this email already exists. Please log in to continue.' };
         }
-        finalUserId = existingUser.id;
+        finalUserId = existingUser.id; // Use existing provisional user ID.
     } else {
+        // If no account exists, create a new 'provisional' user.
         const { data: newUser, error: insertError } = await supabase.from('users').insert({
             email: guestEmail,
             role: 'guest',
@@ -396,11 +466,12 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
         finalUserId = newUser.id;
     }
     finalBookingName = guestName;
-    actorId = finalUserId;
+    actorId = finalUserId; // For guests, the actor is themselves.
     actorName = guestName;
   }
   
   try {
+      // Check for available inventory before creating the booking.
       const availableInventory = await findAvailableInventory(supabase, listingId, startDate, endDate);
       if (availableInventory.length < numberOfUnits) {
           return { success: false, message: `Not enough units available for the selected dates. Only ${availableInventory.length} left.` };
@@ -409,10 +480,13 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       
       const createdAt = new Date().toISOString();
       const isBookingForOther = session && session.id !== finalUserId;
+      
+      // Create a descriptive message for the initial booking action log.
       const message = isBookingForOther
         ? `Booking created by staff member ${actorName} on behalf of ${finalBookingName}.`
         : 'Booking request received.';
 
+      // The first entry in the booking's audit trail.
       const initialAction: BookingAction = {
         timestamp: createdAt,
         actorId: actorId,
@@ -427,8 +501,8 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
           inventoryIds: inventoryToBook,
           actions: [initialAction],
           createdAt: createdAt,
-          bills: [],
-          payments: [],
+          bills: [], // Initialize bills
+          payments: [], // Initialize payments
       };
 
       const { error: createBookingError } = await supabase.from('bookings').insert({
@@ -436,7 +510,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
           user_id: finalUserId,
           start_date: startDate,
           end_date: endDate,
-          status: 'Pending',
+          status: 'Pending', // All new bookings start as Pending.
           data: bookingData
       });
 
@@ -455,6 +529,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
   }
 }
 
+// Zod schema for validating booking update data.
 const UpdateBookingSchema = z.object({
   bookingId: z.string(),
   bookingName: z.string().min(1, "Booking name is required."),
@@ -465,6 +540,11 @@ const UpdateBookingSchema = z.object({
   userId: z.string().optional(),
 });
 
+/**
+ * Updates an existing booking.
+ * @param data - The updated booking data.
+ * @returns A result object indicating success or failure.
+ */
 export async function updateBookingAction(data: z.infer<typeof UpdateBookingSchema>) {
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
@@ -476,7 +556,6 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
 
     const { bookingId, startDate, endDate, guests, numberOfUnits, bookingName, userId } = validatedFields.data;
 
-    // Fetch the full booking record to check current state
     const { data: booking, error: fetchError } = await supabase
       .from('bookings')
       .select('user_id, listing_id, data, status, start_date, end_date')
@@ -485,6 +564,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
       
     if (fetchError || !booking) return { success: false, message: 'Booking not found.' };
 
+    // Security: Check if user has permission to update this specific booking.
     if (!hasPermission(session, 'booking:update:own', { ownerId: booking.user_id }) && !hasPermission(session, 'booking:update')) {
       return { success: false, message: 'You do not have permission to update this booking.' };
     }
@@ -495,7 +575,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
         return { success: false, message: 'You do not have permission to change the booking owner.' };
     }
 
-    // Determine if critical fields have changed
+    // Determine if critical fields have changed, which may require re-confirmation.
     const existingStartDate = new Date(booking.start_date).toISOString();
     const existingEndDate = new Date(booking.end_date).toISOString();
     const existingNumberOfUnits = (booking.data.inventoryIds || []).length;
@@ -507,7 +587,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     let successMessage: string;
     const actions: BookingAction[] = [...(booking.data.actions || [])];
 
-
+    // If a confirmed booking is changed, it must be re-confirmed.
     if (booking.status === 'Confirmed' && (datesChanged || unitsChanged)) {
         newStatus = 'Pending';
         successMessage = 'Booking has been updated and is now pending re-confirmation.';
@@ -544,6 +624,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     }
 
     try {
+        // Re-check inventory availability for the new dates, excluding the current booking.
         const availableInventory = await findAvailableInventory(supabase, booking.listing_id, startDate, endDate, bookingId);
         if (availableInventory.length < numberOfUnits) {
             return { success: false, message: `Not enough units available for the new dates. Only ${availableInventory.length} left.` };
@@ -585,15 +666,25 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     }
 }
 
+/**
+ * Logs the user out by destroying their session cookie.
+ * @param from - The path to redirect to after logout.
+ */
 export async function logoutAction(from: string) {
     await sessionLogout();
     redirect(from);
 }
 
+// Simple schema for actions that only need a booking ID.
 const BookingActionSchema = z.object({
   bookingId: z.string(),
 });
 
+/**
+ * Cancels a booking.
+ * @param data - The booking ID.
+ * @returns A result object indicating success or failure.
+ */
 export async function cancelBookingAction(data: z.infer<typeof BookingActionSchema>) {
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
@@ -605,12 +696,14 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
   const { data: booking, error: fetchError } = await supabase.from('bookings').select('user_id, listing_id, data').eq('id', bookingId).single();
   if (fetchError || !booking) return { error: 'Booking not found.' };
 
+  // Security: Check permissions.
   if (!hasPermission(session, 'booking:cancel:own', { ownerId: booking.user_id }) && !hasPermission(session, 'booking:cancel')) {
     return { error: 'You do not have permission to cancel this booking.' };
   }
   
   const { data: listing } = await supabase.from('listings').select('data').eq('id', booking.listing_id).single();
   
+  // Add a "Cancelled" action to the booking's history.
   const cancelAction: BookingAction = {
     timestamp: new Date().toISOString(),
     actorId: session.id,
@@ -635,6 +728,11 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
   return { success: `Booking for ${listing?.data.name || 'listing'} has been cancelled.` };
 }
 
+/**
+ * Confirms a pending booking.
+ * @param data - The booking ID.
+ * @returns A result object indicating success or failure.
+ */
 export async function confirmBookingAction(data: z.infer<typeof BookingActionSchema>) {
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
@@ -649,11 +747,13 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     if(fetchError || !booking) return { error: 'Booking not found.' };
 
     try {
+        // Final availability check at the moment of confirmation to prevent race conditions.
         const availableInventory = await findAvailableInventory(supabase, booking.listing_id, booking.start_date, booking.end_date, bookingId);
         
         const currentlyHeldIds = new Set(booking.data.inventoryIds || []);
         const stillAvailable = availableInventory.filter(id => currentlyHeldIds.has(id));
 
+        // If the units assigned to this pending booking are no longer available, cancel it.
         if (stillAvailable.length < (booking.data.inventoryIds || []).length) {
             const systemCancelAction: BookingAction = {
                 timestamp: new Date().toISOString(),
@@ -701,6 +801,7 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     }
 }
 
+// Zod schema for adding/updating users.
 const UserFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   email: z.string().email("Please enter a valid email address."),
@@ -711,6 +812,11 @@ const UserFormSchema = z.object({
   notes: z.string().optional(),
 });
 
+/**
+ * Adds a new user to the system.
+ * @param data - The user data.
+ * @returns A result object indicating success or failure.
+ */
 export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
@@ -726,8 +832,8 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   
   let role = initialRole;
 
+  // Security: Staff can only create guest accounts.
   if (session.role === 'staff') {
-    // Enforce that staff can only create guest accounts, regardless of form input.
     role = 'guest';
   }
   
@@ -747,6 +853,12 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   return { success: true, message: `User "${name}" was created successfully.` };
 }
 
+/**
+ * Updates an existing user's details.
+ * @param id - The ID of the user to update.
+ * @param data - The updated user data.
+ * @returns A result object indicating success or failure.
+ */
 export async function updateUserAction(id: string, data: z.infer<typeof UserFormSchema>) {
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
@@ -763,6 +875,7 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
 
   const { name, email, password, role, status, notes, phone } = validatedFields.data;
 
+  // Check if any data has actually changed to avoid unnecessary database writes.
   const hasChanged =
     existingUser.data.name !== name ||
     existingUser.email !== email ||
@@ -778,6 +891,7 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
 
   let userJsonData = { ...existingUser.data, name, notes, phone };
   
+  // Only hash and update the password if a new one was provided.
   if (password) {
     userJsonData.password = await hashPassword(password);
   }
@@ -792,6 +906,11 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
   return { success: true, message: `User "${name}" was updated successfully.`, changesMade: true };
 }
 
+/**
+ * Deletes a user from the system.
+ * @param userId - The ID of the user to delete.
+ * @returns A result object indicating success or failure.
+ */
 export async function deleteUserAction(userId: string) {
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
@@ -800,11 +919,12 @@ export async function deleteUserAction(userId: string) {
     return { success: false, message: 'Unauthorized' };
   }
 
+  // Safety check: Prevent users from deleting themselves.
   if (userId === session.id) {
     return { success: false, message: "You cannot delete your own account." };
   }
 
-  // Check for active bookings
+  // Safety check: Prevent deleting users with active bookings.
   const { data: activeBookings, error: bookingCheckError } = await supabase
     .from('bookings')
     .select('id')
@@ -831,7 +951,7 @@ export async function deleteUserAction(userId: string) {
   return { success: true, message: 'User has been successfully deleted.' };
 }
 
-
+// Zod schema for the user's own profile update form.
 const UpdateProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   email: z.string().email("Please enter a valid email address."),
@@ -840,6 +960,11 @@ const UpdateProfileSchema = z.object({
   notes: z.string().optional(),
 });
 
+/**
+ * Updates the profile of the currently logged-in user.
+ * @param data - The updated profile data.
+ * @returns A result object indicating success or failure.
+ */
 export async function updateUserProfileAction(data: z.infer<typeof UpdateProfileSchema>) {
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
@@ -867,17 +992,23 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
   if (error) return { success: false, message: `Failed to update profile: ${error.message}` };
   
   revalidatePath('/profile');
-  revalidatePath('/', 'layout');
+  revalidatePath('/', 'layout'); // Revalidate layout to update header with new user name/email.
   
   return { success: true, message: `Your profile has been updated successfully.` };
 }
 
+// Zod schema for review submissions.
 const ReviewSchema = z.object({
     listingId: z.string(),
     rating: z.coerce.number().min(1).max(5),
     comment: z.string().min(10, "Comment must be at least 10 characters long.")
 });
 
+/**
+ * Adds a new review or updates an existing one for a listing.
+ * @param data - The review data.
+ * @returns A result object indicating success or failure.
+ */
 export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>) {
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
@@ -893,12 +1024,14 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
 
     const { listingId, rating, comment } = validatedFields.data;
     
+    // Fetch the listing to update its `reviews` array in the JSONB data.
     const { data: listing, error: fetchError } = await supabase.from('listings').select('data').eq('id', listingId).single();
     if (fetchError || !listing) return { success: false, message: `Could not find the listing.` };
 
     const reviews = (listing.data.reviews || []) as Review[];
     const existingReviewIndex = reviews.findIndex(r => r.user_id === session.id);
 
+    // All new reviews are 'pending' until approved by an admin.
     const newReviewData: Review = {
         id: existingReviewIndex > -1 ? reviews[existingReviewIndex].id : randomUUID(),
         user_id: session.id,
@@ -909,12 +1042,15 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
         status: 'pending',
     };
 
+    // If the user already has a review, replace it. Otherwise, add the new one.
     if (existingReviewIndex > -1) {
         reviews[existingReviewIndex] = newReviewData;
     } else {
         reviews.push(newReviewData);
     }
     
+    // TODO: This could be moved to a database trigger for consistency.
+    // When a review is added/updated, we update the entire reviews array in the listing's data.
     const { error: updateError } = await supabase.from('listings').update({ data: { ...listing.data, reviews: reviews } }).eq('id', listingId);
     if (updateError) return { success: false, message: `Failed to submit review: ${updateError.message}` };
 
@@ -922,12 +1058,17 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
     return { success: true, message: 'Your review has been submitted and is awaiting approval.' };
 }
 
-
+// Schema for actions that operate on a specific review.
 const ReviewActionSchema = z.object({
   listingId: z.string(),
   reviewId: z.string(),
 });
 
+/**
+ * Approves a pending review.
+ * @param data - The listing and review IDs.
+ * @returns A result object indicating success or failure.
+ */
 export async function approveReviewAction(data: z.infer<typeof ReviewActionSchema>) {
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
@@ -944,6 +1085,8 @@ export async function approveReviewAction(data: z.infer<typeof ReviewActionSchem
 
     reviews[reviewIndex].status = 'approved';
 
+    // Recalculate the listing's average rating based on all approved reviews.
+    // TODO: This is another candidate for a database trigger to ensure it's always in sync.
     const approvedReviews = reviews.filter(r => r.status === 'approved');
     const newAverageRating = approvedReviews.length > 0
         ? approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length
@@ -958,7 +1101,11 @@ export async function approveReviewAction(data: z.infer<typeof ReviewActionSchem
     return { success: true, message: 'Review approved successfully.' };
 }
 
-
+/**
+ * Deletes a review.
+ * @param data - The listing and review IDs.
+ * @returns A result object indicating success or failure.
+ */
 export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema>) {
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
@@ -972,6 +1119,7 @@ export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema
     const reviews = (listing.data.reviews || []) as Review[];
     const updatedReviews = reviews.filter(r => r.id !== reviewId);
     
+    // Recalculate average rating after deletion.
     const approvedReviews = updatedReviews.filter(r => r.status === 'approved');
     const newAverageRating = approvedReviews.length > 0
         ? approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length
@@ -986,11 +1134,17 @@ export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema
     return { success: true, message: 'Review deleted successfully.' };
 }
 
+// Zod schema for toggling a user's status.
 const ToggleUserStatusSchema = z.object({
   userId: z.string(),
   status: z.enum(['active', 'disabled']),
 });
 
+/**
+ * Toggles a user's status between 'active' and 'disabled'.
+ * @param data - The user ID and new status.
+ * @returns A result object indicating success or failure.
+ */
 export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStatusSchema>) {
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
@@ -1000,6 +1154,7 @@ export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStat
   }
 
   const { userId, status } = ToggleUserStatusSchema.parse(data);
+  // Safety check: Prevent users from disabling themselves.
   if (userId === session.id) return { success: false, message: "You cannot change your own status." };
   
   const { error } = await supabase.from('users').update({ status }).eq('id', userId);
@@ -1009,10 +1164,16 @@ export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStat
   return { success: true, message: `User status has been updated to ${status}.` };
 }
 
+// Zod schema for bulk deleting listings.
 const BulkDeleteListingsSchema = z.object({
   listingIds: z.array(z.string()).min(1, "At least one listing must be selected for deletion."),
 });
 
+/**
+ * Deletes multiple listings at once.
+ * @param data - An object containing an array of listing IDs.
+ * @returns A result object indicating success or failure.
+ */
 export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteListingsSchema>) {
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
@@ -1023,6 +1184,7 @@ export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteLi
 
     const { listingIds } = BulkDeleteListingsSchema.parse(data);
 
+    // Safety check: Ensure none of the selected listings have active bookings.
     const { data: activeBookings, error: bookingCheckError } = await supabase
       .from('bookings')
       .select('listing_id')
@@ -1040,17 +1202,23 @@ export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteLi
     return { success: true, message: `${listingIds.length} listing(s) have been deleted.` };
 }
 
-
+// Zod schema for adding a new bill to a booking.
 const AddBillSchema = z.object({
   bookingId: z.string(),
   description: z.string().min(1, "Description is required."),
   amount: z.coerce.number().positive("Amount must be a positive number."),
 });
 
+/**
+ * Adds a new bill item to a booking's financial record.
+ * @param data - The bill details.
+ * @returns A result object indicating success or failure.
+ */
 export async function addBillAction(data: z.infer<typeof AddBillSchema>) {
   await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
+  // Only users with booking update permissions (admin/staff) can add bills.
   if (!session || !hasPermission(session, 'booking:update')) {
     return { success: false, message: 'Unauthorized' };
   }
@@ -1072,7 +1240,7 @@ export async function addBillAction(data: z.infer<typeof AddBillSchema>) {
     description,
     amount,
     createdAt: new Date().toISOString(),
-    actorName: session.name,
+    actorName: session.name, // Record who added the bill.
   };
 
   const updatedBills = [...(booking.data.bills || []), newBill];
@@ -1087,7 +1255,7 @@ export async function addBillAction(data: z.infer<typeof AddBillSchema>) {
   return { success: true, message: 'Bill added successfully.' };
 }
 
-
+// Zod schema for recording a payment.
 const AddPaymentSchema = z.object({
   bookingId: z.string(),
   amount: z.coerce.number().positive("Amount must be a positive number."),
@@ -1095,6 +1263,11 @@ const AddPaymentSchema = z.object({
   notes: z.string().optional(),
 });
 
+/**
+ * Records a new payment made for a booking.
+ * @param data - The payment details.
+ * @returns A result object indicating success or failure.
+ */
 export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
     await preloadPermissions();
     const supabase = createSupabaseAdminClient();
@@ -1121,7 +1294,7 @@ export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
         method,
         notes,
         timestamp: new Date().toISOString(),
-        actorName: session.name,
+        actorName: session.name, // Record who recorded the payment.
     };
     
     const updatedPayments = [...(booking.data.payments || []), newPayment];

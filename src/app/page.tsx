@@ -1,4 +1,8 @@
-
+/**
+ * @fileoverview The homepage of the application.
+ * This server component fetches a sample of listings for each service type
+ * and displays the main hero section, services, and contact information.
+ */
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
@@ -6,11 +10,13 @@ import StaticCard from '@/components/common/StaticCard';
 import { getListingTypesWithSampleImages } from '@/lib/data';
 
 export default async function HomePage() {
+  // Fetch a list of service types (e.g., "Hotel", "Events") along with sample images for each.
+  // This is done on the server at build time or request time.
   const services = await getListingTypesWithSampleImages();
 
   return (
     <div>
-      {/* Hero Section */}
+      {/* Hero Section: The main welcome area with a call-to-action. */}
       <section className="bg-card py-20">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl font-headline font-bold tracking-tight md:text-5xl lg:text-6xl">
@@ -29,7 +35,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Services Section */}
+      {/* Services Section: Displays the different types of services offered. */}
       <section className="">
         <div className="container mx-auto px-4 flex flex-col gap-4">
           <h2 id="services" className="text-3xl font-headline font-bold">Services</h2>
@@ -38,6 +44,7 @@ export default async function HomePage() {
             Immerse yourself in unique moments that linger in your mind,
             creating memories that will last a lifetime.
           </p>
+          {/* Grid of service cards. Each card links to the search page filtered by that service type. */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {services.map((srvc) => (
               <StaticCard
@@ -51,7 +58,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Contacts Section */}
+      {/* Contacts Section: Provides contact information. */}
       <section className="py-20">
         <div className="container mx-auto px-4 flex flex-col gap-4">
           <h2 id="contact" className="text-3xl font-headline font-bold">Contact</h2>

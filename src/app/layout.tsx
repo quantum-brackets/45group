@@ -1,3 +1,8 @@
+/**
+ * @fileoverview This is the root layout for the entire application.
+ * It sets up the basic HTML structure, including the <head> and <body> tags,
+ * loads global CSS, fonts, and sets up the main layout structure with a header and footer.
+ */
 import type {Metadata} from 'next';
 import Script from 'next/script';
 import './globals.css';
@@ -7,6 +12,8 @@ import { getSession } from '@/lib/session';
 import { Twitter, Instagram, Facebook } from 'lucide-react';
 import Link from 'next/link';
 
+// Default metadata for the application, used for SEO.
+// It can be overridden by individual pages.
 export const metadata: Metadata = {
   title: {
     default: '45 Booking | Premier Hotel, Event & Restaurant Hospitality',
@@ -21,21 +28,33 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Fetch the user's session on the server.
+  // This is available to all child components and pages.
   const session = await getSession();
 
   return (
     <html lang="en" className="h-full">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        {/* Preconnect to Google Fonts for performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&display=swap" rel="stylesheet" />
       </head>
+      {/* 
+        The main body of the application.
+        - `font-body` and `antialiased` are for typography styling.
+        - `bg-background` sets the default background color from the theme.
+        - `min-h-screen flex flex-col` ensures the footer stays at the bottom.
+      */}
       <body className="font-body antialiased bg-background min-h-screen flex flex-col">
+        {/* The site-wide header, which receives the session to display user-specific controls. */}
         <Header session={session} />
+        {/* The main content area where pages will be rendered. `flex-grow` allows it to fill available space. */}
         <main className="flex-grow">
           {children}
         </main>
+        {/* The site-wide footer. */}
         <footer className="bg-card border-t">
           <div className="container mx-auto px-4 py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
             <Link href={"/#contact"}>
@@ -54,7 +73,13 @@ export default async function RootLayout({
             </div>
           </div>
         </footer>
+        {/* The Toaster component is used for displaying pop-up notifications (toasts). */}
         <Toaster />
+        {/* 
+          This script loads an external web component for the image carousel.
+          `strategy="beforeInteractive"` ensures it loads before Next.js hydrates the page,
+          which is necessary for custom elements to be defined in time.
+        */}
         <Script
           src="https://cdn.jsdelivr.net/gh/iamogbz/oh-my-wcs@6b7a7b0/components/carousel-stack.js"
           strategy="beforeInteractive"
