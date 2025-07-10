@@ -309,13 +309,12 @@ const CreateBookingSchema = z.object({
   numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
   userId: z.string().optional(),
   guestName: z.string().optional(),
-  guestEmail: z.string().optional(),
+  guestEmail: z.string().email().optional().or(z.literal('')),
 }).superRefine((data, ctx) => {
     // If a user is logged in (or an admin is booking for a user), guest fields are not needed.
     if (data.userId) {
         return;
     }
-
     // This is a guest checkout, so guest name and email are required.
     if (!data.guestName || data.guestName.trim().length === 0) {
         ctx.addIssue({
@@ -324,23 +323,12 @@ const CreateBookingSchema = z.object({
             path: ['guestName']
         });
     }
-
     if (!data.guestEmail || data.guestEmail.trim().length === 0) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Guest email is required.",
             path: ['guestEmail']
         });
-    } else {
-        const emailCheck = z.string().email().safeParse(data.guestEmail);
-        if (!emailCheck.success) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.invalid_string,
-                validation: 'email',
-                message: 'Invalid email address provided for guest.',
-                path: ['guestEmail']
-            });
-        }
     }
 });
 
@@ -432,7 +420,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     // Permission checks
     const isBookingForOther = session.id !== finalUserId;
     if (isBookingForOther) {
-      if (!hasPermission(session, 'booking:create')) {
+      if (session.role !== 'staff' && !hasPermission(session, 'booking:create')) {
         return { success: false, message: 'You do not have permission to create bookings for other users.' };
       }
     } else {
