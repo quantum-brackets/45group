@@ -177,12 +177,7 @@ export async function getListingById(id: string): Promise<Listing | null> {
   return unpackListing(listingData);
 }
 
-interface BookingsPageFilters {
-  listingId?: string;
-  userId?: string;
-}
-
-export async function getAllBookings(filters: BookingsPageFilters): Promise<Booking[]> {
+export async function getAllBookings(): Promise<Booking[]> {
     noStore();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
@@ -194,13 +189,8 @@ export async function getAllBookings(filters: BookingsPageFilters): Promise<Book
 
     if (session.role === 'guest') {
         query = query.eq('user_id', session.id);
-    } else if ((session.role === 'admin' || session.role === 'staff') && filters.userId) {
-        query = query.eq('user_id', filters.userId);
     }
-
-    if (filters.listingId) {
-        query = query.eq('listing_id', filters.listingId);
-    }
+    // For admin/staff, we fetch all bookings. Filtering is now done on the client.
     
     const { data: bookingsData, error } = await query.order('start_date', { ascending: false });
 

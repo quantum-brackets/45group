@@ -5,34 +5,34 @@ import { useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { BookingsTable } from '@/components/bookings/BookingsTable';
 import { BookingsFilters } from '@/components/bookings/BookingsFilters';
-import type { Booking, Listing, User } from '@/lib/types';
+import type { Booking, User } from '@/lib/types';
 
 interface BookingsDisplayProps {
   allBookings: Booking[];
-  listings: Listing[];
-  users: User[];
   session: User | null;
 }
 
-export function BookingsDisplay({ allBookings, listings, users, session }: BookingsDisplayProps) {
+export function BookingsDisplay({ allBookings, session }: BookingsDisplayProps) {
   const searchParams = useSearchParams();
-  const statusFilter = searchParams.get('status');
+  const filterQuery = searchParams.get('q')?.toLowerCase() || '';
 
   const filteredBookings = useMemo(() => {
-    if (!statusFilter || statusFilter === 'all') {
+    if (!filterQuery) {
       return allBookings;
     }
-    return allBookings.filter(booking => booking.status === statusFilter);
-  }, [allBookings, statusFilter]);
+    return allBookings.filter(booking => 
+        JSON.stringify(booking).toLowerCase().includes(filterQuery)
+    );
+  }, [allBookings, filterQuery]);
 
-  const isFiltered = !!(searchParams.get('listingId') || searchParams.get('userId') || (statusFilter && statusFilter !== 'all'));
+  const isFiltered = !!filterQuery;
 
   return (
     <div className="grid gap-8">
       <section className="bg-card p-4 rounded-lg shadow-md border">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div className="flex-grow">
-                <BookingsFilters listings={listings} users={users} session={session} />
+                <BookingsFilters />
             </div>
         </div>
       </section>
@@ -44,7 +44,7 @@ export function BookingsDisplay({ allBookings, listings, users, session }: Booki
           <h2 className="text-2xl font-semibold">No Bookings Found</h2>
           <p className="text-muted-foreground mt-2">
             {isFiltered
-              ? "Try adjusting your search filters."
+              ? "Your search returned no results. Try a different query."
               : "You haven't made any bookings yet."}
           </p>
         </div>
