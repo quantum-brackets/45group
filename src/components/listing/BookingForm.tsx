@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,21 +20,25 @@ import { Separator } from '../ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Combobox } from '../ui/combobox';
 
 
 interface BookingFormProps {
   listing: Listing;
   confirmedBookings: { startDate: string, endDate: string, inventoryIds: string[] }[];
   session: User | null;
+  allUsers?: User[];
 }
 
-const guestBookingSchema = z.object({
-  bookingName: z.string().optional(),
+const bookingFormSchema = z.object({
+  bookingName: z.string().min(1, 'Booking name is required.').optional(),
   guestEmail: z.string().email("Please provide a valid email address.").optional(),
+  userId: z.string().optional(),
 });
 
 
-export function BookingForm({ listing, confirmedBookings, session }: BookingFormProps) {
+export function BookingForm({ listing, confirmedBookings, session, allUsers = [] }: BookingFormProps) {
   const [date, setDate] = useState<DateRange | undefined>();
   const [guests, setGuests] = useState(1);
   const [units, setUnits] = useState(1);
@@ -42,8 +46,11 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
   const [priceBreakdown, setPriceBreakdown] = useState<string | null>(null);
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-
   const [showGuestEmailDialog, setShowGuestEmailDialog] = useState(false);
+
+  const [bookingFor, setBookingFor] = useState<'self' | 'other'>('self');
+  const isAdminOrStaff = session && (session.role === 'admin' || session.role === 'staff');
+  const guestUsers = useMemo(() => allUsers.filter(u => u.role === 'guest'), [allUsers]);
 
   const [availability, setAvailability] = useState({
     availableCount: listing.inventoryCount || 0,
@@ -51,20 +58,33 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
     isChecking: false,
   });
 
-  const guestForm = useForm<z.infer<typeof guestBookingSchema>>({
-    resolver: zodResolver(guestBookingSchema),
+  const form = useForm<z.infer<typeof bookingFormSchema>>({
+    resolver: zodResolver(bookingFormSchema),
     defaultValues: {
       bookingName: session?.name || "",
       guestEmail: "",
+      userId: session?.id || undefined,
     },
   });
   
   useEffect(() => {
     if (session) {
-        guestForm.setValue('bookingName', session.name);
+      form.setValue('userId', session.id);
+      if (session.name) form.setValue('bookingName', session.name);
+      setBookingFor('self');
+    } else {
+      form.reset();
     }
-  }, [session, guestForm]);
+  }, [session, form]);
 
+  const handleBookingForChange = (value: 'self' | 'other') => {
+    setBookingFor(value);
+    if (value === 'self' && session) {
+      form.setValue('userId', session.id);
+    } else {
+      form.setValue('userId', undefined);
+    }
+  };
 
   useEffect(() => {
     if (!date?.from) {
@@ -135,7 +155,6 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
     let calculatedPrice = 0;
     let breakdown = "";
     
-    // For 'night' based pricing, duration is nights, not days.
     const nights = duration > 1 ? duration - 1 : 1;
 
     switch (listing.price_unit) {
@@ -165,20 +184,22 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
         return;
     }
     
-    const bookingName = guestForm.getValues('bookingName');
-    if (!session && !bookingName) {
-        guestForm.setError('bookingName', { message: 'Booking name is required for guest bookings.'});
-        return;
-    }
-    
     if (session) {
+      if (bookingFor === 'other' && !form.getValues('userId')) {
+        form.setError('userId', { message: 'Please select a guest to book for.' });
+        return;
+      }
       submitBooking();
     } else {
+      if (!form.getValues('bookingName')) {
+        form.setError('bookingName', { message: 'Booking name is required for guest bookings.' });
+        return;
+      }
       setShowGuestEmailDialog(true);
     }
   };
 
-  const submitBooking = (email?: string) => {
+  const submitBooking = (guestInfo?: { email: string, name: string }) => {
     startTransition(async () => {
         const result = await createBookingAction({
             listingId: listing.id,
@@ -186,8 +207,9 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
             endDate: (date!.to || date!.from)!.toISOString(),
             guests: guests,
             numberOfUnits: units,
-            guestEmail: email,
-            bookingName: guestForm.getValues('bookingName'),
+            userId: session ? form.getValues('userId') : undefined,
+            guestEmail: guestInfo?.email,
+            bookingName: guestInfo?.name,
         });
         
         if (result.success) {
@@ -197,7 +219,9 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
                 action: <div className="p-2 bg-accent rounded-full"><PartyPopper className="h-5 w-5 text-accent-foreground" /></div>,
             });
             setShowGuestEmailDialog(false);
-            guestForm.reset({ bookingName: session?.name || '', guestEmail: ''});
+            if (!session) {
+                form.reset({ bookingName: '', guestEmail: ''});
+            }
             setDate(undefined);
             setGuests(1);
             setUnits(1);
@@ -211,19 +235,23 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
     });
   }
 
-  const handleGuestEmailSubmit = (data: { guestEmail?: string }) => {
+  const handleGuestEmailSubmit = (data: z.infer<typeof bookingFormSchema>) => {
       if (!data.guestEmail) {
-          guestForm.setError('guestEmail', { message: 'Email is required to continue.' });
+          form.setError('guestEmail', { message: 'Email is required to continue.' });
           return;
       }
-      submitBooking(data.guestEmail);
+      if (!data.bookingName) {
+        form.setError('bookingName', { message: 'Booking name is required.' });
+        return;
+      }
+      submitBooking({ email: data.guestEmail, name: data.bookingName });
   }
 
 
   const isBookable = !isPending && date?.from && availability.availableCount > 0 && !availability.isChecking && units > 0 && units <= availability.availableCount;
 
   return (
-    <Form {...guestForm}>
+    <Form {...form}>
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>
@@ -301,21 +329,23 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
             </div>
           </div>
           
-          <div>
-              <Label htmlFor="bookingName" className="font-semibold">Booking Name</Label>
-              <FormField
-                control={guestForm.control}
-                name="bookingName"
-                render={({ field }) => (
-                  <FormItem className="mt-1">
-                    <FormControl>
-                      <Input id="bookingName" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-          </div>
+          {!session && (
+            <div>
+                <Label htmlFor="bookingName" className="font-semibold">Booking Name</Label>
+                <FormField
+                  control={form.control}
+                  name="bookingName"
+                  render={({ field }) => (
+                    <FormItem className="mt-1">
+                      <FormControl>
+                        <Input id="bookingName" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            </div>
+          )}
 
           <div className="min-h-5 text-center text-sm mb-2 flex items-center justify-center px-2">
               {availability.message && (
@@ -325,6 +355,44 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
               )}
           </div>
           
+          {isAdminOrStaff && (
+            <div className="space-y-2 pt-4 border-t">
+              <Label>Book For</Label>
+              <RadioGroup value={bookingFor} onValueChange={handleBookingForChange} className="flex gap-4">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="self" id="self" />
+                  <Label htmlFor="self" className="font-normal">Myself</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="other" id="other" />
+                  <Label htmlFor="other" className="font-normal">Another Guest</Label>
+                </div>
+              </RadioGroup>
+              {bookingFor === 'other' && (
+                <FormField
+                  control={form.control}
+                  name="userId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Combobox
+                          options={guestUsers.map(u => ({ label: `${u.name} (${u.email})`, value: u.id }))}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select a guest..."
+                          searchPlaceholder="Search guests..."
+                          emptyPlaceholder="No guests found."
+                          className="w-full mt-2"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+          )}
+
           {totalPrice !== null && priceBreakdown && (
               <div className="space-y-2 text-sm pt-4 border-t">
                   <div className="flex justify-between">
@@ -353,17 +421,17 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
          </CardFooter>
       </Card>
       <Dialog open={showGuestEmailDialog} onOpenChange={setShowGuestEmailDialog}>
-          <DialogContent className="sm:max-w-[425px]">
-              <form onSubmit={guestForm.handleSubmit(handleGuestEmailSubmit)}>
-                   <DialogHeader>
-                      <DialogTitle>Continue as Guest</DialogTitle>
-                      <DialogDescription>
-                          To complete your booking, please enter your email address. An account will be created for you if one doesn't exist.
-                      </DialogDescription>
-                  </DialogHeader>
+          <form onSubmit={form.handleSubmit(handleGuestEmailSubmit)}>
+               <DialogHeader>
+                  <DialogTitle>Continue as Guest</DialogTitle>
+                  <DialogDescription>
+                      To complete your booking, please enter your email address. An account will be created for you if one doesn't exist.
+                  </DialogDescription>
+              </DialogHeader>
+              <DialogContent>
                   <div className="space-y-4 py-4">
                       <FormField
-                          control={guestForm.control}
+                          control={form.control}
                           name="guestEmail"
                           render={({ field }) => (
                               <FormItem>
@@ -376,15 +444,15 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
                           )}
                       />
                   </div>
-                    <DialogFooter>
-                      <Button type="button" variant="ghost" onClick={() => setShowGuestEmailDialog(false)} disabled={isPending}>Cancel</Button>
-                      <Button type="submit" disabled={isPending}>
-                          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          Submit Booking
-                      </Button>
-                  </DialogFooter>
-              </form>
-          </DialogContent>
+              </DialogContent>
+                <DialogFooter>
+                  <Button type="button" variant="ghost" onClick={() => setShowGuestEmailDialog(false)} disabled={isPending}>Cancel</Button>
+                  <Button type="submit" disabled={isPending}>
+                      {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Submit Booking
+                  </Button>
+              </DialogFooter>
+          </form>
       </Dialog>
     </Form>
   );

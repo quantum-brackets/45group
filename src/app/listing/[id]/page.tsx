@@ -1,6 +1,6 @@
 
 import { notFound } from 'next/navigation';
-import { getListingById, getConfirmedBookingsForListing } from '@/lib/data';
+import { getListingById, getConfirmedBookingsForListing, getAllUsers } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { BookingForm } from '@/components/listing/BookingForm';
@@ -8,6 +8,7 @@ import { BedDouble, Building2, CheckCircle, MapPin, Star, Utensils } from 'lucid
 import { getSession } from '@/lib/session';
 import { ReviewSection } from '@/components/listing/ReviewSection';
 import { BackButton } from '@/components/common/BackButton';
+import type { User } from '@/lib/types';
 
 const typeIcons = {
   hotel: <BedDouble className="w-5 h-5 mr-2" />,
@@ -28,6 +29,11 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
 
   if (!listing) {
     notFound();
+  }
+  
+  let allUsers: User[] = [];
+  if (session && (session.role === 'admin' || session.role === 'staff')) {
+    allUsers = await getAllUsers();
   }
 
   return (
@@ -109,7 +115,12 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
         {/* Booking Form */}
         <div className="lg:col-span-1">
           <div className="sticky top-24">
-            <BookingForm listing={listing} confirmedBookings={confirmedBookings} session={session} />
+            <BookingForm 
+              listing={listing} 
+              confirmedBookings={confirmedBookings} 
+              session={session} 
+              allUsers={allUsers}
+            />
           </div>
         </div>
       </div>
