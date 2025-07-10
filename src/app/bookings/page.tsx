@@ -3,7 +3,7 @@ import { getAllBookings, getAllListings, getAllUsers } from '@/lib/data';
 import { getSession } from '@/lib/session';
 import { BookingsDisplay } from '@/components/bookings/BookingsDisplay';
 import type { User } from '@/lib/types';
-import { hasPermission, preloadPermissions } from '@/lib/permissions';
+import { preloadPermissions } from '@/lib/permissions';
 
 interface BookingsPageProps {
   searchParams: {
@@ -24,7 +24,6 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
 
   const allBookings = await getAllBookings(filters);
   const session = await getSession();
-  const canCreate = hasPermission(session, 'booking:create');
   
   // Fetch data needed for filter dropdowns.
   const listings = await getAllListings();
@@ -40,7 +39,6 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
         listings={listings}
         users={users}
         session={session}
-        canCreate={canCreate}
       />
     </div>
   );
