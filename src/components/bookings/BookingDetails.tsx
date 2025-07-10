@@ -33,7 +33,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '../ui/textarea';
 import { Skeleton } from '../ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { hasPermission } from '@/lib/permissions/client';
+import { hasPermission } from '@/lib/permissions';
 
 
 interface BookingDetailsProps {

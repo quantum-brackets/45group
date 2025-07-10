@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cancelBookingAction, confirmBookingAction } from '@/lib/actions';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { hasPermission } from '@/lib/permissions/client';
+import { hasPermission } from '@/lib/permissions';
 
 interface BookingsTableProps {
   bookings: Booking[];

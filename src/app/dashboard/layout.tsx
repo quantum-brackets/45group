@@ -1,7 +1,8 @@
 
+
 import { getSession } from '@/lib/session';
 import { preloadPermissions } from '@/lib/permissions/server';
-import { hasPermission } from '@/lib/permissions/client';
+import { hasPermission } from '@/lib/permissions';
 import { redirect } from 'next/navigation';
 
 export default async function DashboardLayout({

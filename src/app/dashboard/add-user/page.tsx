@@ -1,9 +1,10 @@
 
+
 import { UserForm } from '@/components/dashboard/UserForm';
 import { getSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { preloadPermissions } from '@/lib/permissions/server';
-import { hasPermission } from '@/lib/permissions/client';
+import { hasPermission } from '@/lib/permissions';
 
 export default async function AddUserPage() {
   const permissions = await preloadPermissions();

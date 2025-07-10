@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useTransition } from 'react';
@@ -18,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { hasPermission } from '@/lib/permissions/client';
+import { hasPermission } from '@/lib/permissions';
 
 interface DashboardTablesProps {
   listings: Listing[];

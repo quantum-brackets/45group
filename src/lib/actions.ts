@@ -29,7 +29,7 @@ import { randomUUID } from 'crypto'
 import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendWelcomeEmail } from '@/lib/email'
 import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { preloadPermissions } from '@/lib/permissions/server'
-import { hasPermission } from '@/lib/permissions/client'
+import { hasPermission } from '@/lib/permissions'
 
 
 function unpackUser(user: any): User {

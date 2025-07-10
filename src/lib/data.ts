@@ -1,4 +1,5 @@
 
+
 /**
  * @fileoverview This file contains all server-side data fetching functions.
  * These functions interact directly with the Supabase database to retrieve
@@ -10,7 +11,7 @@ import { getSession } from '@/lib/session';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createSupabaseServerClient, createSupabaseAdminClient } from './supabase-server';
 import { preloadPermissions } from '@/lib/permissions/server';
-import { hasPermission } from '@/lib/permissions/client';
+import { hasPermission } from '@/lib/permissions';
 
 
 /**

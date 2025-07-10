@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useTransition, useMemo } from 'react';
@@ -19,7 +20,7 @@ import { Star, Loader2, Check, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { hasPermission } from '@/lib/permissions/client';
+import { hasPermission } from '@/lib/permissions';
 
 const reviewFormSchema = z.object({
   rating: z.coerce.number().min(1, "Rating is required.").max(5),

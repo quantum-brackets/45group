@@ -1,11 +1,12 @@
 
+
 import { notFound, redirect } from 'next/navigation';
 import { getUserById } from '@/lib/data';
 import { UserForm } from '@/components/dashboard/UserForm';
 import { getSession } from '@/lib/session';
 import { UserDetails } from '@/components/dashboard/UserDetails';
 import { preloadPermissions } from '@/lib/permissions/server';
-import { hasPermission } from '@/lib/permissions/client';
+import { hasPermission } from '@/lib/permissions';
 
 export default async function EditUserPage({ params }: { params: { id: string } }) {
   const permissions = await preloadPermissions();

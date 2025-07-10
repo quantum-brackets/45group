@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useTransition, useEffect, useMemo } from 'react';
@@ -51,7 +52,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
   const router = useRouter();
 
   const [bookingFor, setBookingFor] = useState<'self' | 'other'>('self');
-  const canBookForOthers = session && hasPermission(session, 'booking:create');
+  const canBookForOthers = session && hasPermission(null, session, 'booking:create');
   const guestUsers = useMemo(() => allUsers.filter(u => u.role === 'guest'), [allUsers]);
 
   const [availability, setAvailability] = useState({
