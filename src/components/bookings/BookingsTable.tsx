@@ -74,11 +74,8 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Venue / Units</TableHead>
-              {(session?.role === 'admin' || session?.role === 'staff') && (
-                <TableHead className="hidden sm:table-cell">User</TableHead>
-              )}
+              <TableHead className="hidden sm:table-cell">Booking For</TableHead>
               <TableHead>Dates</TableHead>
-              <TableHead>Guests</TableHead>
               <TableHead>Status</TableHead>
                 <TableHead><span className="sr-only">Actions</span></TableHead>
             </TableRow>
@@ -90,9 +87,12 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
                   <div className="font-medium">{booking.listingName}</div>
                   <div className="text-sm text-muted-foreground">{(booking.inventoryIds || []).length} unit(s)</div>
                 </TableCell>
-                {(session?.role === 'admin' || session?.role === 'staff') && (
-                  <TableCell className="hidden sm:table-cell">{booking.userName}</TableCell>
-                )}
+                <TableCell className="hidden sm:table-cell">
+                    <div className="font-medium">{booking.bookingName || 'N/A'}</div>
+                    {(session?.role === 'admin' || session?.role === 'staff') && (
+                        <div className="text-sm text-muted-foreground">{booking.userName}</div>
+                    )}
+                </TableCell>
                 <TableCell>
                   {booking.startDate && booking.endDate ? (
                     <>
@@ -110,7 +110,6 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
                     <span className="text-muted-foreground">Invalid dates</span>
                   )}
                 </TableCell>
-                <TableCell>{booking.guests}</TableCell>
                 <TableCell>
                   <Badge variant={booking.status === 'Confirmed' ? 'default' : 'secondary'} className={booking.status === 'Confirmed' ? 'bg-accent text-accent-foreground' : ''}>
                     {booking.status}
