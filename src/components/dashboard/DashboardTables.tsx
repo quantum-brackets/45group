@@ -287,7 +287,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                                       <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-listing/${listing.id}`)}>Edit</DropdownMenuItem>
                                     </>
                                   )}
-                                  <DropdownMenuItem onClick={() => router.push(`/bookings?listingId=${listing.id}`)}>Bookings</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => router.push(`/bookings?q=${listing.id}`)}>Bookings</DropdownMenuItem>
                                   {isAdmin && (
                                     <>
                                       <DropdownMenuSeparator />
