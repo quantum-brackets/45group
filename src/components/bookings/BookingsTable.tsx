@@ -82,7 +82,7 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
           </TableHeader>
           <TableBody>
             {bookings.map((booking) => (
-              <TableRow key={booking.id}>
+              <TableRow key={booking.id} onClick={() => router.push(`/booking/${booking.id}`)} className="cursor-pointer">
                 <TableCell className="font-medium">
                   <div className="font-medium">{booking.listingName}</div>
                   <div className="text-sm text-muted-foreground">{(booking.inventoryIds || []).length} unit(s)</div>
@@ -115,7 +115,7 @@ export function BookingsTable({ bookings, session }: BookingsTableProps) {
                     {booking.status}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
