@@ -327,7 +327,10 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
   
   let query = supabase
     .from('listings')
-    .select('id, type, location, data, listing_inventory(id)');
+    .select('id, type, location, data, listing_inventory(id)')
+    .order('location')
+    .order('type')
+    .order('data->>name');
 
   if (filters.location) {
     query = query.ilike('location', `%${filters.location}%`);
