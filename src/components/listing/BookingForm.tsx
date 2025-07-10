@@ -308,7 +308,7 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
                 render={({ field }) => (
                   <FormItem className="mt-1">
                     <FormControl>
-                      <Input id="bookingName" {...field} readOnly={!!session} />
+                      <Input id="bookingName" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -388,4 +388,3 @@ export function BookingForm({ listing, confirmedBookings, session }: BookingForm
     </Form>
   );
 }
-
