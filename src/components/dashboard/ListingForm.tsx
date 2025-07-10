@@ -4,7 +4,7 @@
 import { useForm, SubmitHandler, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { Listing } from "@/lib/types";
+import type { Listing, ListingInventory } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowDown, ArrowUp, Loader2, PlusCircle, Trash2, Warehouse } from "lucide-react";
 import { BackButton } from "../common/BackButton";
+import { Separator } from "../ui/separator";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -30,19 +31,24 @@ const formSchema = z.object({
   max_guests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
   features: z.string().min(1, "Please list at least one feature."),
   images: z.array(z.string().url({ message: "Please enter a valid image URL." })).min(1, "At least one image is required."),
-  inventory_count: z.coerce.number().int().min(0, "Inventory count must be 0 or more."),
+  inventory: z.array(
+    z.object({
+      id: z.string().optional(),
+      name: z.string().min(1, "Unit name cannot be empty."),
+    })
+  ).min(0, "There must be at least 0 units."),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 interface ListingFormProps {
   listing?: Listing | null;
-  initialInventoryCount?: number;
+  inventory?: ListingInventory[];
   isDuplicate?: boolean;
 }
 
 
-export function ListingForm({ listing, initialInventoryCount = 1, isDuplicate = false }: ListingFormProps) {
+export function ListingForm({ listing, inventory = [], isDuplicate = false }: ListingFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -62,13 +68,20 @@ export function ListingForm({ listing, initialInventoryCount = 1, isDuplicate = 
       max_guests: listing?.max_guests || 1,
       features: (Array.isArray(listing?.features) ? listing.features.join(', ') : listing?.features) || "",
       images: (listing?.images && listing.images.length > 0) ? listing.images : ["https://placehold.co/800x600.png"],
-      inventory_count: isEditMode ? initialInventoryCount : 1,
+      inventory: inventory && inventory.length > 0
+          ? (isDuplicate ? inventory.map(i => ({ name: i.name })) : inventory)
+          : [{ name: 'Unit 1' }]
     },
   });
 
-  const { fields, append, remove, move } = useFieldArray({
+  const { fields: imageFields, append: appendImage, remove: removeImage, move: moveImage } = useFieldArray({
     control: form.control,
     name: "images",
+  });
+
+  const { fields: inventoryFields, append: appendInventory, remove: removeInventory } = useFieldArray({
+    control: form.control,
+    name: "inventory",
   });
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
@@ -239,28 +252,6 @@ export function ListingForm({ listing, initialInventoryCount = 1, isDuplicate = 
                       )}
                   />
               </div>
-
-               <div className="md:col-span-2">
-                <FormField
-                    control={form.control}
-                    name="inventory_count"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Inventory Count</FormLabel>
-                            <FormControl>
-                                <div className="relative">
-                                    <Warehouse className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                    <Input type="number" min="0" className="pl-10" {...field} />
-                                </div>
-                            </FormControl>
-                            <FormDescription>
-                                The number of bookable units (e.g., rooms) for this listing. Setting to 0 will make it unbookable.
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-              </div>
               
               <div className="md:col-span-2">
                 <FormField
@@ -305,7 +296,7 @@ export function ListingForm({ listing, initialInventoryCount = 1, isDuplicate = 
               <div className="md:col-span-2 space-y-4">
                 <FormLabel>Images</FormLabel>
                 <div className="space-y-4">
-                  {fields.map((field, index) => (
+                  {imageFields.map((field, index) => (
                     <div key={field.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-2 border rounded-md bg-muted/20">
                       <img
                           src={form.watch(`images.${index}`) || 'https://placehold.co/100x100.png'}
@@ -331,28 +322,67 @@ export function ListingForm({ listing, initialInventoryCount = 1, isDuplicate = 
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                          <Button type="button" size="icon" variant="ghost" onClick={() => move(index, index - 1)} disabled={index === 0}>
+                          <Button type="button" size="icon" variant="ghost" onClick={() => moveImage(index, index - 1)} disabled={index === 0}>
                               <span className="sr-only">Move Up</span>
                               <ArrowUp className="h-4 w-4" />
                           </Button>
-                          <Button type="button" size="icon" variant="ghost" onClick={() => move(index, index + 1)} disabled={index === fields.length - 1}>
+                          <Button type="button" size="icon" variant="ghost" onClick={() => moveImage(index, index + 1)} disabled={index === imageFields.length - 1}>
                               <span className="sr-only">Move Down</span>
                               <ArrowDown className="h-4 w-4" />
                           </Button>
                       </div>
-                      <Button type="button" size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => fields.length > 1 ? remove(index) : form.setValue(`images.0`, '')} >
+                      <Button type="button" size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => imageFields.length > 1 ? removeImage(index) : form.setValue(`images.0`, '')} >
                           <span className="sr-only">Remove</span>
                           <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
                 </div>
-                <Button type="button" variant="outline" onClick={() => append("https://placehold.co/800x600.png")}>
+                <Button type="button" variant="outline" onClick={() => appendImage("https://placehold.co/800x600.png")}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Add Image
                 </Button>
                  <FormMessage>{form.formState.errors.images?.root?.message}</FormMessage>
               </div>
+
+              <div className="md:col-span-2 space-y-4 pt-4 border-t">
+                  <div className="space-y-2">
+                    <FormLabel>Inventory Units</FormLabel>
+                    <FormDescription>Manage the individual bookable units for this listing.</FormDescription>
+                  </div>
+                  <div className="space-y-3">
+                      {inventoryFields.map((field, index) => (
+                        <div key={field.id} className="flex items-center gap-2">
+                           <FormField
+                              control={form.control}
+                              name={`inventory.${index}.name`}
+                              render={({ field }) => (
+                                <FormItem className="flex-grow">
+                                  <FormControl>
+                                      <div className="relative">
+                                          <Warehouse className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                          <Input placeholder={`Unit ${index + 1} Name`} {...field} className="pl-9" />
+                                      </div>
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <Button type="button" size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => removeInventory(index)}>
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Remove Unit</span>
+                            </Button>
+                        </div>
+                      ))}
+                  </div>
+                   <Button type="button" variant="outline" size="sm" onClick={() => appendInventory({ name: `Unit ${inventoryFields.length + 1}` })}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Add Unit
+                    </Button>
+                    <FormMessage>{form.formState.errors.inventory?.root?.message}</FormMessage>
+              </div>
+
+
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
               <BackButton disabled={isPending} />

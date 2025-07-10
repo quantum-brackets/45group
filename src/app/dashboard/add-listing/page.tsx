@@ -1,6 +1,6 @@
 
 import { notFound, redirect } from 'next/navigation';
-import { getListingById } from '@/lib/data';
+import { getListingById, getInventoryByListingId } from '@/lib/data';
 import { ListingForm } from '@/components/dashboard/ListingForm';
 import { getSession } from '@/lib/session';
 
@@ -14,6 +14,7 @@ export default async function AddListingPage({ searchParams }: { searchParams: {
   }
 
   let listingToDuplicate = null;
+  let inventoryToDuplicate = [];
   const isDuplicateMode = !!searchParams.duplicate;
 
   if (isDuplicateMode) {
@@ -21,11 +22,12 @@ export default async function AddListingPage({ searchParams }: { searchParams: {
     if (!listingToDuplicate) {
       notFound();
     }
+    inventoryToDuplicate = await getInventoryByListingId(searchParams.duplicate!);
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <ListingForm listing={listingToDuplicate} isDuplicate={isDuplicateMode} />
+      <ListingForm listing={listingToDuplicate} inventory={inventoryToDuplicate} isDuplicate={isDuplicateMode} />
     </div>
   );
 }

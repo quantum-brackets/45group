@@ -22,7 +22,7 @@ export default async function EditListingPage({ params }: { params: { id: string
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <ListingForm listing={listing} initialInventoryCount={inventory.length} />
+      <ListingForm listing={listing} inventory={inventory} />
     </div>
   );
 }

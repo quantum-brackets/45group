@@ -5,6 +5,7 @@
 
 
 
+
 'use server'
 
 import { revalidatePath } from 'next/cache'
@@ -56,7 +57,12 @@ const ListingFormSchema = z.object({
   max_guests: z.coerce.number().int().min(1, "Must accommodate at least 1 guest."),
   features: z.string().min(1, "Please list at least one feature."),
   images: z.array(z.string().url({ message: "Please enter a valid image URL." })).min(1, "At least one image is required."),
-  inventory_count: z.coerce.number().int().min(0, "Inventory count must be 0 or more."),
+  inventory: z.array(
+    z.object({
+      id: z.string().optional(),
+      name: z.string().min(1, "Unit name cannot be empty."),
+    })
+  ).min(0, "There must be at least 0 units."),
 });
 
 
@@ -73,7 +79,7 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
         return { success: false, message: "Invalid data provided.", errors: validatedFields.error.flatten().fieldErrors };
     }
 
-    const { name, type, location, description, price, price_unit, currency, max_guests, features, images, inventory_count } = validatedFields.data;
+    const { name, type, location, description, price, price_unit, currency, max_guests, features, images, inventory } = validatedFields.data;
     
     const listingJsonData = {
         name, description, price, price_unit, currency, max_guests, 
@@ -94,10 +100,10 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
         return { success: false, message: `Failed to create listing: ${listingError?.message}` };
     }
 
-    if (inventory_count > 0) {
-        const inventoryItems = Array.from({ length: inventory_count }, (_, i) => ({
+    if (inventory.length > 0) {
+        const inventoryItems = inventory.map(item => ({
             listing_id: newListing.id,
-            name: `${name} Unit ${i + 1}`,
+            name: item.name,
         }));
         const { error: inventoryError } = await supabase.from('listing_inventory').insert(inventoryItems);
         if (inventoryError) {
@@ -109,7 +115,7 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
     }
         
     revalidatePath('/dashboard?tab=listings', 'page');
-    return { success: true, message: `Listing "${name}" has been created with ${inventory_count} units.` };
+    return { success: true, message: `Listing "${name}" has been created with ${inventory.length} units.` };
 }
 
 export async function updateListingAction(id: string, data: z.infer<typeof ListingFormSchema>) {
@@ -140,7 +146,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
       return { success: false, message: 'Listing not found.' };
   }
   
-  const { name, type, location, description, price, price_unit, currency, max_guests, features, images, inventory_count } = validatedFields.data;
+  const { name, type, location, description, price, price_unit, currency, max_guests, features, images, inventory: formInventory } = validatedFields.data;
 
   const listingJsonData = {
       ...existingListing.data, // Preserve existing data like reviews, rating
@@ -158,45 +164,47 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
     return { success: false, message: `Failed to update listing: ${updateError.message}` };
   }
 
-  // Adjust inventory
-  const { data: currentInventory, error: invFetchError } = await supabase
-    .from('listing_inventory')
-    .select('id')
-    .eq('listing_id', id);
+  // Smart inventory reconciliation
+  const { data: dbInventory } = await supabase.from('listing_inventory').select('id, name').eq('listing_id', id);
+  const dbInventoryMap = new Map((dbInventory || []).map(i => [i.id, i.name]));
+  const formInventoryMap = new Map(formInventory.filter(i => i.id).map(i => [i.id!, i.name]));
 
-  if (invFetchError) {
-    return { success: false, message: `Could not fetch current inventory: ${invFetchError.message}` };
+  const itemsToCreate = formInventory.filter(i => !i.id);
+  const itemsToUpdate = formInventory.filter(i => i.id && dbInventoryMap.has(i.id) && dbInventoryMap.get(i.id) !== i.name);
+  const idsToDelete = (dbInventory || []).filter(i => !formInventoryMap.has(i.id)).map(i => i.id);
+
+  if (idsToDelete.length > 0) {
+      const { data: bookedInv, error: bookedError } = await supabase
+        .from('bookings').select('data').eq('listing_id', id).in('status', ['Pending', 'Confirmed']);
+      if (bookedError) return { success: false, message: `Failed to check bookings: ${bookedError.message}` };
+
+      const bookedIds = new Set(bookedInv.flatMap(b => b.data.inventoryIds || []));
+      const isBookedItemDeleted = idsToDelete.some(id => bookedIds.has(id));
+
+      if (isBookedItemDeleted) {
+          return { success: false, message: 'Cannot delete inventory units that are part of an active or pending booking.' };
+      }
   }
 
-  const currentCount = currentInventory.length;
-  const diff = inventory_count - currentCount;
+  const operations = [];
+  if (itemsToCreate.length > 0) {
+    operations.push(supabase.from('listing_inventory').insert(itemsToCreate.map(i => ({ listing_id: id, name: i.name }))));
+  }
+  if (itemsToUpdate.length > 0) {
+    itemsToUpdate.forEach(item => {
+      operations.push(supabase.from('listing_inventory').update({ name: item.name }).eq('id', item.id!));
+    });
+  }
+  if (idsToDelete.length > 0) {
+    operations.push(supabase.from('listing_inventory').delete().in('id', idsToDelete));
+  }
+  
+  const results = await Promise.all(operations);
+  const firstError = results.find(r => r.error);
 
-  if (diff > 0) {
-      // Add new inventory
-      const newItems = Array.from({ length: diff }, (_, i) => ({
-          listing_id: id,
-          name: `${name} Unit ${currentCount + i + 1}`
-      }));
-      const { error: addError } = await supabase.from('listing_inventory').insert(newItems);
-      if (addError) return { success: false, message: `Failed to add inventory: ${addError.message}` };
-  } else if (diff < 0) {
-      // Remove inventory (safely)
-      const { data: bookedInv, error: bookedError } = await supabase
-        .from('bookings')
-        .select('data')
-        .eq('listing_id', id)
-        .in('status', ['Pending', 'Confirmed']);
-      
-      if (bookedError) return { success: false, message: `Failed to check bookings: ${bookedError.message}` };
-      
-      const bookedIds = new Set(bookedInv.flatMap(b => b.data.inventoryIds || []));
-      const removableInventory = currentInventory.filter(inv => !bookedIds.has(inv.id));
-      
-      const idsToRemove = removableInventory.slice(0, Math.abs(diff)).map(inv => inv.id);
-      if (idsToRemove.length > 0) {
-        const { error: deleteError } = await supabase.from('listing_inventory').delete().in('id', idsToRemove);
-        if (deleteError) return { success: false, message: `Failed to remove inventory: ${deleteError.message}` };
-      }
+  if (firstError?.error) {
+      console.error('[UPDATE_LISTING_ACTION] Inventory update error:', firstError.error);
+      return { success: false, message: `Failed to update inventory: ${firstError.error.message}` };
   }
 
   revalidatePath('/dashboard?tab=listings', 'page');
