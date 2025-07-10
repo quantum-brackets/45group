@@ -9,7 +9,7 @@ import { createSupabaseAdminClient } from './supabase'
 import { hashPassword } from './password'
 import { logout as sessionLogout } from './session'
 import { hasPermission, preloadPermissions } from './permissions'
-import type { Booking, Listing, ListingInventory, Permission, Role, Review, User } from './types'
+import type { Booking, Listing, ListingInventory, Permission, Role, Review, User, BookingAction } from './types'
 import { randomUUID } from 'crypto'
 
 
@@ -289,6 +289,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
   const { listingId, startDate, endDate, guests, numberOfUnits, guestEmail, bookingName } = validatedFields.data;
   let userId = session?.id;
   let finalBookingName = bookingName || session?.name;
+  let finalActorName = session?.name || 'Guest';
 
   if (!session && guestEmail) {
       const { data: existingUser, error: findError } = await supabase.from('users').select('id, data').eq('email', guestEmail).single();
@@ -298,6 +299,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       if (existingUser) {
           userId = existingUser.id;
           finalBookingName = bookingName || existingUser.data.name;
+          finalActorName = existingUser.data.name || 'Guest';
       } else {
           const newUserId = randomUUID();
           const { data: newUser, error: createError } = await supabase.from('users').insert({
@@ -312,6 +314,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
           }
           userId = newUser.id;
           finalBookingName = bookingName;
+          finalActorName = bookingName || 'Guest';
       }
   } else if (!session && !guestEmail) {
       return { success: false, message: 'You must be logged in or provide an email to book.' };
@@ -332,12 +335,19 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       }
       const inventoryToBook = availableInventory.slice(0, numberOfUnits);
 
+      const initialAction: BookingAction = {
+        timestamp: new Date().toISOString(),
+        actorId: userId,
+        actorName: finalActorName,
+        action: 'Created',
+        message: 'Booking request received.'
+      };
+
       const bookingData = {
           guests,
-          created_at: new Date().toISOString(),
-          status_message: 'Booking request received.',
           booking_name: finalBookingName,
           inventoryIds: inventoryToBook,
+          actions: [initialAction]
       };
 
       const { error: createBookingError } = await supabase.from('bookings').insert({
@@ -392,12 +402,20 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
             return { success: false, message: `Not enough units available for the new dates. Only ${availableInventory.length} left.` };
         }
         const inventoryToBook = availableInventory.slice(0, numberOfUnits);
+        
+        const updateAction: BookingAction = {
+            timestamp: new Date().toISOString(),
+            actorId: session.id,
+            actorName: session.name,
+            action: 'Updated',
+            message: 'Booking details updated. Awaiting re-confirmation.'
+        };
 
         const updatedBookingData = {
             ...booking.data,
             guests,
-            status_message: `Booking updated by ${session.name} on ${new Date().toLocaleDateString()}. Awaiting re-confirmation.`,
             inventoryIds: inventoryToBook,
+            actions: [...(booking.data.actions || []), updateAction]
         };
 
         const { error } = await supabase.from('bookings').update({
@@ -442,14 +460,20 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
   }
   
   const { data: listing } = await supabase.from('listings').select('data').eq('id', booking.listing_id).single();
+  
+  const cancelAction: BookingAction = {
+    timestamp: new Date().toISOString(),
+    actorId: session.id,
+    actorName: session.name,
+    action: 'Cancelled',
+    message: `Booking cancelled by ${session.name}.`
+  };
 
   const { error } = await supabase.from('bookings').update({
     status: 'Cancelled',
     data: {
       ...booking.data,
-      action_by_user_id: session.id,
-      action_at: new Date().toISOString(),
-      status_message: `Cancelled by ${session.name} on ${new Date().toLocaleDateString()}`
+      actions: [...(booking.data.actions || []), cancelAction]
     }
   }).eq('id', bookingId);
   
@@ -481,13 +505,19 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
         const stillAvailable = availableInventory.filter(id => currentlyHeldIds.has(id));
 
         if (stillAvailable.length < (booking.data.inventoryIds || []).length) {
+            const systemCancelAction: BookingAction = {
+                timestamp: new Date().toISOString(),
+                actorId: 'system',
+                actorName: 'System',
+                action: 'System',
+                message: 'Booking automatically cancelled due to inventory conflict during confirmation.'
+            };
+
             await supabase.from('bookings').update({
                 status: 'Cancelled',
                 data: {
                     ...booking.data,
-                    status_message: `Booking automatically cancelled on ${new Date().toLocaleDateString()} due to inventory conflict during confirmation.`,
-                    action_by_user_id: session.id,
-                    action_at: new Date().toISOString(),
+                    actions: [...(booking.data.actions || []), systemCancelAction]
                 }
             }).eq('id', bookingId);
             revalidatePath('/bookings');
@@ -495,13 +525,19 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
             return { error: 'Inventory conflict detected. The booking has been cancelled.' };
         }
 
+        const confirmAction: BookingAction = {
+            timestamp: new Date().toISOString(),
+            actorId: session.id,
+            actorName: session.name,
+            action: 'Confirmed',
+            message: `Booking confirmed by ${session.name}.`
+        };
+
         const { error } = await supabase.from('bookings').update({
             status: 'Confirmed',
             data: {
                 ...booking.data,
-                status_message: `Confirmed by ${session.name} on ${new Date().toLocaleDateString()}`,
-                action_by_user_id: session.id,
-                action_at: new Date().toISOString(),
+                actions: [...(booking.data.actions || []), confirmAction]
             }
         }).eq('id', bookingId);
 
@@ -859,12 +895,19 @@ export async function addBookingByAdminAction(data: z.infer<typeof AdminBookingF
         
         const inventoryToBook = availableInventory.slice(0, numberOfUnits);
         
+        const createAction: BookingAction = {
+            timestamp: new Date().toISOString(),
+            actorId: session.id,
+            actorName: session.name,
+            action: 'Created',
+            message: `Booking created on behalf of ${bookingUser.data.name}.`
+        };
+
         const bookingData = {
-          guests,
-          created_at: new Date().toISOString(),
-          status_message: `Booking created by staff member ${session.name}.`,
-          booking_name: bookingUser.data.name,
-          inventoryIds: inventoryToBook,
+            guests,
+            booking_name: bookingUser.data.name,
+            inventoryIds: inventoryToBook,
+            actions: [createAction],
         };
 
         const { error: createBookingError } = await supabase.from('bookings').insert({

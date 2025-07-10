@@ -35,23 +35,35 @@ export interface ListingInventory {
   name: string;
 }
 
+export interface BookingAction {
+  timestamp: string;
+  actorId: string;
+  actorName: string;
+  action: 'Created' | 'Updated' | 'Confirmed' | 'Cancelled' | 'System';
+  message: string;
+}
+
 export interface Booking {
   id: string;
   listingId: string;
-  inventoryIds: string[];
-  inventoryNames?: string[];
   userId: string;
-  userName?: string;
-  listingName: string;
   startDate: string;
   endDate: string;
-  guests: number;
   status: 'Confirmed' | 'Pending' | 'Cancelled';
   createdAt?: string;
-  actionByUserId?: string;
-  actionAt?: string;
-  statusMessage?: string;
+
+  // From data JSONB
+  guests: number;
+  inventoryIds: string[];
+  bookingName?: string;
+  actions: BookingAction[];
+
+  // Joined fields
+  userName?: string;
+  listingName: string;
+  inventoryNames?: string[];
 }
+
 
 export interface User {
     id: string;

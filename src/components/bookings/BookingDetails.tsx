@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X } from 'lucide-react';
+import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X, CircleUser, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -185,14 +185,35 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount 
                 </p>
             </div>
             </div>
-            {booking.statusMessage && (
-            <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
-                <History className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-                <div>
-                <p className="font-semibold">Booking History</p>
-                <p className="text-muted-foreground">{booking.statusMessage}</p>
+            {booking.actions && booking.actions.length > 0 && (
+                <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg border">
+                    <History className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
+                    <div>
+                        <p className="font-semibold">Booking History</p>
+                        <ul className="mt-2 space-y-4">
+                            {booking.actions.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((action, index) => (
+                                <li key={index} className="flex gap-3">
+                                  <div className="flex flex-col items-center">
+                                      <CircleUser className="h-5 w-5 text-muted-foreground" />
+                                      {index < booking.actions.length -1 && (
+                                        <div className="w-px h-full bg-border mt-1"></div>
+                                      )}
+                                  </div>
+                                  <div className="flex-grow pb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium text-foreground capitalize">{action.action}</span>
+                                      <span className="text-muted-foreground">by {action.actorName}</span>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        {format(parseISO(action.timestamp), 'MMM d, yyyy, h:mm a')}
+                                    </div>
+                                    <p className="text-muted-foreground text-sm mt-1">{action.message}</p>
+                                  </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 </div>
-            </div>
             )}
         </div>
         </CardContent>
