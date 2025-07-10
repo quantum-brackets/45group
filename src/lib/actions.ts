@@ -8,6 +8,7 @@
 
 
 
+
 'use server'
 
 import { revalidatePath } from 'next/cache'
@@ -510,9 +511,9 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     }
 }
 
-export async function logoutAction() {
+export async function logoutAction(from: string) {
     await sessionLogout();
-    redirect('/login');
+    redirect(from);
 }
 
 const BookingActionSchema = z.object({

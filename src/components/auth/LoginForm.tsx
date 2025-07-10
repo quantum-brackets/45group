@@ -6,7 +6,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransition, useState } from "react";
 import { loginAction } from "@/lib/auth";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ type FormValues = z.infer<typeof formSchema>;
 export function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
@@ -38,7 +39,8 @@ export function LoginForm() {
   const onSubmit = (data: FormValues) => {
     setError(null);
     startTransition(async () => {
-      const result = await loginAction(data);
+      const from = searchParams.get('from');
+      const result = await loginAction(data, from);
       if (result?.error) {
         setError(result.error);
       }

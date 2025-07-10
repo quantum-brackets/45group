@@ -17,13 +17,17 @@ import type { User } from "@/lib/types"
 import { LogOut, User as UserIcon, BookMarked } from 'lucide-react'
 import { useTransition } from "react"
 import Link from 'next/link'
+import { usePathname, useSearchParams } from "next/navigation"
 
 export function UserNav({ user }: { user: User }) {
   const [isPending, startTransition] = useTransition();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const handleLogout = () => {
     startTransition(() => {
-        logoutAction();
+        const from = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+        logoutAction(from);
     })
   }
 

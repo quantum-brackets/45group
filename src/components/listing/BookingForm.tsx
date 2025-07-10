@@ -371,7 +371,11 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                   {isPending || availability.isChecking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Request to Book"}
               </Button>
               <div className="text-center text-sm text-muted-foreground px-4">
-                  You won&apos;t be charged yet. After approval, payment for the first day is required to confirm. You can also pay in person upon check-in.
+                  <p>You won&apos;t be charged yet.</p>
+                  <br/>
+                  <p>After approval, payment for the first day is required to confirm.</p>
+                  <br/>
+                  <p>You can also pay in person upon check-in.</p>
               </div>
          </CardFooter>
       </Card>

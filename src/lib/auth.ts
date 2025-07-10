@@ -12,7 +12,7 @@ const LoginSchema = z.object({
   password: z.string().min(1, 'Password is required.'),
 });
 
-export async function loginAction(formData: z.infer<typeof LoginSchema>) {
+export async function loginAction(formData: z.infer<typeof LoginSchema>, from: string | null) {
   const supabase = createSupabaseAdminClient();
   const validatedFields = LoginSchema.safeParse(formData);
   if (!validatedFields.success) {
@@ -47,7 +47,7 @@ export async function loginAction(formData: z.infer<typeof LoginSchema>) {
 
   await createSession(user.id);
 
-  const redirectTo = user.role === 'admin' ? '/dashboard' : '/bookings';
+  const redirectTo = from || (user.role === 'admin' ? '/dashboard' : '/bookings');
   return { success: true, redirectTo };
 }
 
