@@ -124,6 +124,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
               confirmedBookings={confirmedBookings} 
               session={session} 
               allUsers={allUsers}
+              permissions={permissions}
             />
           </div>
         </div>

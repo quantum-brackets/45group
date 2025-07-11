@@ -12,7 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast"
-import type { Listing, User } from '@/lib/types';
+import type { Listing, Permission, Role, User } from '@/lib/types';
 import { Loader2, PartyPopper, Users, Warehouse } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { format, isWithinInterval, parseISO, differenceInCalendarDays } from 'date-fns';
@@ -31,6 +31,7 @@ interface BookingFormProps {
   confirmedBookings: { startDate: string, endDate: string, inventoryIds: string[] }[];
   session: User | null;
   allUsers?: User[];
+  permissions: Record<Role, Permission[]> | null;
 }
 
 const bookingFormSchema = z.object({
@@ -41,7 +42,7 @@ const bookingFormSchema = z.object({
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
 
-export function BookingForm({ listing, confirmedBookings, session, allUsers = [] }: BookingFormProps) {
+export function BookingForm({ listing, confirmedBookings, session, allUsers = [], permissions }: BookingFormProps) {
   const [date, setDate] = useState<DateRange | undefined>();
   const [guests, setGuests] = useState(1);
   const [units, setUnits] = useState(1);
@@ -52,7 +53,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
   const router = useRouter();
 
   const [bookingFor, setBookingFor] = useState<'self' | 'other'>('self');
-  const canBookForOthers = session && hasPermission(null, session, 'booking:create');
+  const canBookForOthers = session && hasPermission(permissions, session, 'booking:create');
   const guestUsers = useMemo(() => allUsers.filter(u => u.role === 'guest'), [allUsers]);
 
   const [availability, setAvailability] = useState({
@@ -81,10 +82,12 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
 
   const handleBookingForChange = (value: 'self' | 'other') => {
     setBookingFor(value);
+    form.setValue('userId', undefined);
+    form.setValue('guestName', undefined);
+    form.setValue('guestEmail', undefined);
+
     if (value === 'self' && session) {
       form.setValue('userId', session.id);
-    } else {
-      form.setValue('userId', undefined);
     }
   };
 
@@ -187,12 +190,23 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
         return;
     }
     
-    if (session) {
-      if (bookingFor === 'other' && !form.getValues('userId')) {
-        form.setError('userId', { message: 'Please select a guest to book for.' });
+    // Logged-in user booking for someone else (new or existing)
+    if (session && bookingFor === 'other') {
+      const selectedUserId = form.getValues('userId');
+      const guestName = form.getValues('guestName');
+      
+      if (!selectedUserId && !guestName) {
+        form.setError('guestName', { message: 'Please select an existing guest or enter a new guest name.' });
         return;
       }
-    } else {
+      if (!selectedUserId && guestName) {
+        const emailValidation = z.string().email().safeParse(form.getValues('guestEmail'));
+        if (!emailValidation.success) {
+          form.setError('guestEmail', { message: 'A valid email is required for a new guest.' });
+          return;
+        }
+      }
+    } else if (!session) { // Not logged in, guest checkout
       const guestName = form.getValues('guestName');
       const guestEmail = form.getValues('guestEmail');
       let hasError = false;
@@ -212,6 +226,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
       }
       if (hasError) return;
     }
+
     submitBooking();
   };
 
@@ -343,7 +358,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
               )}
           </div>
           
-          {canBookForOthers && (
+          {canBookForOthers ? (
             <div className="space-y-2 pt-4 border-t">
               <Label>Book For</Label>
               <RadioGroup value={bookingFor} onValueChange={handleBookingForChange} className="flex gap-4">
@@ -357,31 +372,71 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                 </div>
               </RadioGroup>
               {bookingFor === 'other' && (
-                <FormField
-                  control={form.control}
-                  name="userId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Combobox
-                          options={guestUsers.map(u => ({ label: `${u.name} (${u.email})`, value: u.id }))}
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select a guest..."
-                          searchPlaceholder="Search guests..."
-                          emptyPlaceholder="No guests found."
-                          className="w-full mt-2"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="space-y-4 pt-2">
+                  <FormField
+                    control={form.control}
+                    name="userId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Existing Guest</FormLabel>
+                        <FormControl>
+                          <Combobox
+                            options={guestUsers.map(u => ({ label: `${u.name} (${u.email})`, value: u.id }))}
+                            value={field.value}
+                            onChange={(value) => {
+                                field.onChange(value);
+                                if (value) {
+                                  form.setValue('guestName', undefined);
+                                  form.setValue('guestEmail', undefined);
+                                }
+                            }}
+                            placeholder="Select an existing guest..."
+                            searchPlaceholder="Search guests..."
+                            emptyPlaceholder="No guests found."
+                            className="w-full"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex items-center gap-4">
+                      <Separator className="flex-1" />
+                      <span className="text-xs text-muted-foreground">OR</span>
+                      <Separator className="flex-1" />
+                  </div>
+                   <div className="space-y-2">
+                      <FormField
+                          control={form.control}
+                          name="guestName"
+                          render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>New Guest Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="John Doe" {...field} disabled={!!form.watch('userId')} />
+                              </FormControl>
+                              <FormMessage />
+                          </FormItem>
+                          )}
+                      />
+                      <FormField
+                          control={form.control}
+                          name="guestEmail"
+                          render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>New Guest Email</FormLabel>
+                              <FormControl>
+                                <Input placeholder="guest@example.com" {...field} disabled={!!form.watch('userId')} />
+                              </FormControl>
+                              <FormMessage />
+                          </FormItem>
+                          )}
+                      />
+                   </div>
+                </div>
               )}
             </div>
-          )}
-
-          {!session && (
+          ) : !session && (
             <div className="w-full space-y-4 pt-4 border-t">
               <h3 className="font-semibold text-center">Continue as Guest</h3>
               <p className="text-sm text-center text-muted-foreground -mt-2">An account will be created for you to manage this booking.</p>

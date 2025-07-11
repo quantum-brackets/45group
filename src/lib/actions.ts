@@ -1,4 +1,5 @@
 
+
 /**
  * @fileoverview This file contains all the "Server Actions" for the application.
  * Server Actions are asynchronous functions that are only executed on the server.
@@ -19,11 +20,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getSession } from '@/lib/session'
+import { getSession, logout as sessionLogout } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import { hashPassword } from '@/lib/password'
-import { logout as sessionLogout } from '@/lib/session'
 import type { Booking, Listing, ListingInventory, Role, Review, User, BookingAction, Bill, Payment, Permission } from '@/lib/types'
 import { randomUUID } from 'crypto'
 import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendWelcomeEmail } from '@/lib/email'
@@ -332,11 +332,11 @@ const CreateBookingSchema = z.object({
   guestName: z.string().optional(),
   guestEmail: z.string().email().optional().or(z.literal('')),
 }).superRefine((data, ctx) => {
-    // If a user is logged in (or an admin is booking for a user), guest fields are not needed.
+    // If a user is logged in (or an admin is booking for an existing user), guest fields are not needed.
     if (data.userId) {
         return;
     }
-    // This is a guest checkout, so guest name and email are required.
+    // This is a guest checkout (or new user booking by staff), so guest name and email are required.
     if (!data.guestName || data.guestName.trim().length === 0) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -424,67 +424,63 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
   let actorName: string;
   let isNewProvisionalUser = false;
 
+  // This block handles all logged-in user scenarios
   if (session) {
-    // --- Logged-in user flow ---
-    finalUserId = userId || session.id; // `userId` is from the form if an admin booked for another user.
-    actorId = session.id;
-    actorName = session.name;
+      actorId = session.id;
+      actorName = session.name;
+      // If a userId is provided, an admin/staff is booking for an existing guest.
+      if (userId) {
+          finalUserId = userId;
+          const { data: targetUser, error: targetUserError } = await supabase.from('users').select('email, data').eq('id', finalUserId).single();
+          if (targetUserError || !targetUser) return { success: false, message: 'Booking Failed: The selected guest user could not be found.' };
+          finalUserName = targetUser.data.name;
+          finalUserEmail = targetUser.email;
+      // If a guest name/email is provided, an admin/staff is booking for a NEW guest.
+      } else if (guestName && guestEmail) {
+          finalUserName = guestName;
+          finalUserEmail = guestEmail;
+          const { data: existingUser } = await supabase.from('users').select('id, status').eq('email', guestEmail).single();
+          if (existingUser) {
+              if (existingUser.status === 'active') return { success: false, message: 'An account with this email already exists. Please select them from the "Existing Guest" dropdown.' };
+              finalUserId = existingUser.id;
+          } else {
+              const { data: newUser, error: insertError } = await supabase.from('users').insert({ email: guestEmail, role: 'guest', status: 'provisional', data: { name: guestName } }).select('id').single();
+              if (insertError || !newUser) return { success: false, message: 'Database Error: Could not create a provisional account.' };
+              finalUserId = newUser.id;
+              isNewProvisionalUser = true;
+          }
+      // Otherwise, the logged-in user is booking for themselves.
+      } else {
+          finalUserId = session.id;
+          finalUserName = session.name;
+          finalUserEmail = session.email;
+      }
 
-    // Get the name of the user the booking is actually for.
-    const { data: targetUser, error: targetUserError } = await supabase.from('users').select('email, data').eq('id', finalUserId).single();
-    if (targetUserError || !targetUser) {
-        return { success: false, message: 'Booking Failed: The selected guest user could not be found.' };
-    }
-    finalUserName = targetUser.data.name;
-    finalUserEmail = targetUser.email;
-    
-    // Permission checks
-    const isBookingForOther = session.id !== finalUserId;
-    if (isBookingForOther) {
-      if (!hasPermission(perms, session, 'booking:create')) {
-        return { success: false, message: 'Permission Denied: You do not have permissions to create bookings for other users.' };
+      // Permission checks
+      const isBookingForOther = session.id !== finalUserId;
+      if (isBookingForOther) {
+          if (!hasPermission(perms, session, 'booking:create')) return { success: false, message: 'Permission Denied: You do not have permissions to create bookings for other users.' };
+      } else {
+          if (!hasPermission(perms, session, 'booking:create:own', { ownerId: session.id })) return { success: false, message: 'Permission Denied: You are not authorized to create bookings for yourself.' };
       }
-    } else {
-      if (!hasPermission(perms, session, 'booking:create:own', { ownerId: session.id })) {
-        return { success: false, message: 'Permission Denied: You are not authorized to create bookings for yourself.' };
-      }
-    }
+  // This block handles unauthenticated guest checkouts
   } else {
-    // --- Guest checkout flow ---
-    if (!guestName || !guestEmail) {
-        return { success: false, message: "Validation Error: Guest name and email are required." };
-    }
+      if (!guestName || !guestEmail) return { success: false, message: "Validation Error: Guest name and email are required." };
+      finalUserName = guestName;
+      finalUserEmail = guestEmail;
+      actorName = guestName; // The actor is the guest themselves
 
-    finalUserName = guestName;
-    finalUserEmail = guestEmail;
-
-    const { data: existingUser } = await supabase.from('users').select('id, status').eq('email', guestEmail).single();
-
-    if (existingUser) {
-        // If an account exists, handle it based on status.
-        if (existingUser.status === 'active') {
-            return { success: false, message: 'Booking Failed: An account with this email already exists. Please log in to continue.' };
-        }
-        finalUserId = existingUser.id; // Use existing provisional user ID.
-    } else {
-        // If no account exists, create a new 'provisional' user.
-        const { data: newUser, error: insertError } = await supabase.from('users').insert({
-            email: guestEmail,
-            role: 'guest',
-            status: 'provisional',
-            data: { name: guestName }
-        }).select('id').single();
-
-        if (insertError || !newUser) {
-            console.error('[GUEST_BOOKING] Error creating provisional user:', insertError);
-            return { success: false, message: 'Database Error: Could not create a provisional account.' };
-        }
-        finalUserId = newUser.id;
-        isNewProvisionalUser = true;
-    }
-    
-    actorId = finalUserId; // For guests, the actor is themselves.
-    actorName = guestName;
+      const { data: existingUser } = await supabase.from('users').select('id, status').eq('email', guestEmail).single();
+      if (existingUser) {
+          if (existingUser.status === 'active') return { success: false, message: 'Booking Failed: An account with this email already exists. Please log in to continue.' };
+          finalUserId = existingUser.id;
+      } else {
+          const { data: newUser, error: insertError } = await supabase.from('users').insert({ email: guestEmail, role: 'guest', status: 'provisional', data: { name: guestName } }).select('id').single();
+          if (insertError || !newUser) return { success: false, message: 'Database Error: Could not create a provisional account.' };
+          finalUserId = newUser.id;
+          isNewProvisionalUser = true;
+      }
+      actorId = finalUserId;
   }
   
   try {
