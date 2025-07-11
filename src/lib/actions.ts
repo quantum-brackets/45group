@@ -644,7 +644,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     }
 
     if (ownerChanged) {
-        const { data: newUser } = await supabase.from('users').select('name:data->>name').eq('id', userId!).single();
+        const { data: newUser } = await supabase.from('users').select('data->name').eq('id', userId!).single();
         if (!newUser || !newUser.name) {
             return { success: false, message: 'Database Error: The selected new owner does not exist or has no name.' };
         }
@@ -1013,11 +1013,11 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   const hashedPassword = await hashPassword(password);
   const userJsonData = { name, password: hashedPassword, notes, phone };
 
-  const { data: newUser, error } = await supabase.from('users').insert({ email, role, status, data: userJsonData }).select('id, name, email').single();
+  const { data: newUser, error } = await supabase.from('users').insert({ email, role, status, data: userJsonData }).select('id, data').single();
 
   if (error || !newUser) return { success: false, message: `Database Error: Failed to create user. ${error.message}` };
 
-  await sendWelcomeEmail({ name: newUser.name, email: newUser.email });
+  await sendWelcomeEmail({ name: newUser.data.name, email });
 
   revalidatePath('/dashboard?tab=users', 'page');
   return { success: true, message: `User "${name}" was created successfully.` };

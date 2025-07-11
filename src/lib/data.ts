@@ -10,8 +10,8 @@ import type { Listing, Booking, ListingType, User, ListingInventory, Review, Boo
 import { getSession } from '@/lib/session';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createSupabaseServerClient, createSupabaseAdminClient } from './supabase-server';
-import { preloadPermissions } from '@/lib/permissions/server';
-import { hasPermission } from '@/lib/permissions';
+import { preloadPermissions } from './permissions/server';
+import { hasPermission } from './permissions';
 
 
 /**
@@ -297,8 +297,8 @@ export async function getAllBookings(): Promise<Booking[]> {
     if (listingsError) console.error("Error fetching listing names for bookings:", listingsError);
 
     // Create maps for efficient lookup.
-    const usersMap = new Map(usersData?.map(u => [u.id, u.data.name]));
-    const listingsMap = new Map(listingsData?.map(l => [l.id, l.data.name]));
+    const usersMap = new Map(usersData?.map(u => [u.id, u.data?.name]));
+    const listingsMap = new Map(listingsData?.map(l => [l.id, l.data?.name]));
     
     const unpackedBookings = bookingsData.map(unpackBooking);
 
