@@ -199,10 +199,13 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
         form.setError('guestName', { message: 'Please select an existing guest or enter a new guest name.' });
         return;
       }
-      if (!selectedUserId && guestName) {
-        const emailValidation = z.string().email().safeParse(form.getValues('guestEmail'));
+      
+      const guestEmail = form.getValues('guestEmail');
+      // If an email is provided for a new guest, validate it.
+      if (!selectedUserId && guestName && guestEmail) {
+        const emailValidation = z.string().email().safeParse(guestEmail);
         if (!emailValidation.success) {
-          form.setError('guestEmail', { message: 'A valid email is required for a new guest.' });
+          form.setError('guestEmail', { message: 'Please enter a valid email.' });
           return;
         }
       }
@@ -424,7 +427,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                           name="guestEmail"
                           render={({ field }) => (
                           <FormItem>
-                              <FormLabel>New Guest Email</FormLabel>
+                              <FormLabel>New Guest Email (Optional)</FormLabel>
                               <FormControl>
                                 <Input placeholder="guest@example.com" {...field} disabled={!!form.watch('userId')} />
                               </FormControl>

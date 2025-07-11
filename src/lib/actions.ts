@@ -419,7 +419,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
   
   let finalUserId: string;
   let finalUserName: string;
-  let finalUserEmail: string;
+  let finalUserEmail: string | undefined = guestEmail || undefined;
   let actorId: string;
   let actorName: string;
   let isNewProvisionalUser = false;
@@ -435,19 +435,28 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
           if (targetUserError || !targetUser) return { success: false, message: 'Booking Failed: The selected guest user could not be found.' };
           finalUserName = targetUser.data.name;
           finalUserEmail = targetUser.email;
-      // If a guest name/email is provided, an admin/staff is booking for a NEW guest.
-      } else if (guestName && guestEmail) {
+      // If a guest name is provided, an admin/staff is booking for a NEW guest.
+      } else if (guestName) {
           finalUserName = guestName;
-          finalUserEmail = guestEmail;
-          const { data: existingUser } = await supabase.from('users').select('id, status').eq('email', guestEmail).single();
-          if (existingUser) {
-              if (existingUser.status === 'active') return { success: false, message: 'An account with this email already exists. Please select them from the "Existing Guest" dropdown.' };
-              finalUserId = existingUser.id;
+          
+          if (guestEmail) {
+            const { data: existingUser } = await supabase.from('users').select('id, status').eq('email', guestEmail).single();
+            if (existingUser) {
+                if (existingUser.status === 'active') return { success: false, message: 'An account with this email already exists. Please select them from the "Existing Guest" dropdown.' };
+                finalUserId = existingUser.id;
+            } else {
+                const { data: newUser, error: insertError } = await supabase.from('users').insert({ email: guestEmail, role: 'guest', status: 'provisional', data: { name: guestName } }).select('id').single();
+                if (insertError || !newUser) return { success: false, message: 'Database Error: Could not create a provisional account.' };
+                finalUserId = newUser.id;
+                isNewProvisionalUser = true;
+            }
           } else {
-              const { data: newUser, error: insertError } = await supabase.from('users').insert({ email: guestEmail, role: 'guest', status: 'provisional', data: { name: guestName } }).select('id').single();
-              if (insertError || !newUser) return { success: false, message: 'Database Error: Could not create a provisional account.' };
-              finalUserId = newUser.id;
-              isNewProvisionalUser = true;
+            // No email provided, create a provisional user with a placeholder email
+            const placeholderEmail = `provisional-guest-${randomUUID()}@45booking.guest`;
+            const { data: newUser, error: insertError } = await supabase.from('users').insert({ email: placeholderEmail, role: 'guest', status: 'provisional', data: { name: guestName } }).select('id').single();
+            if (insertError || !newUser) return { success: false, message: 'Database Error: Could not create a provisional guest account.' };
+            finalUserId = newUser.id;
+            finalUserEmail = undefined; // No real email to send to
           }
       // Otherwise, the logged-in user is booking for themselves.
       } else {
@@ -531,18 +540,20 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       
       const userForEmail = { name: finalUserName, email: finalUserEmail, id: finalUserId };
 
-      // Send a welcome email if a new provisional account was created.
-      if (isNewProvisionalUser) {
-        await sendWelcomeEmail(userForEmail);
-      }
+      if (finalUserEmail) {
+        // Send a welcome email if a new provisional account was created with an email.
+        if (isNewProvisionalUser) {
+            await sendWelcomeEmail({ name: userForEmail.name, email: userForEmail.email! });
+        }
 
-      // Send booking request email
-      const { data: listingData } = await supabase.from('listings').select('data').eq('id', listingId).single();
-      if(listingData) {
-        // This is a bit awkward, but we need the full User object for the email template.
-        // We construct a temporary one here.
-        const tempFullUser: User = { ...userForEmail, role: 'guest', status: 'provisional', name: userForEmail.name };
-        await sendBookingRequestEmail(tempFullUser, unpackBooking(newBooking), unpackListing({ ...listingData, id: listingId }));
+        // Send booking request email
+        const { data: listingData } = await supabase.from('listings').select('data').eq('id', listingId).single();
+        if(listingData) {
+            // This is a bit awkward, but we need the full User object for the email template.
+            // We construct a temporary one here.
+            const tempFullUser: User = { ...userForEmail, role: 'guest', status: 'provisional', name: userForEmail.name, email: userForEmail.email! };
+            await sendBookingRequestEmail(tempFullUser, unpackBooking(newBooking), unpackListing({ ...listingData, id: listingId }));
+        }
       }
 
       revalidatePath('/bookings');
@@ -997,6 +1008,7 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   
   let role = initialRole;
   let finalEmail = email;
+  let finalStatus = status;
 
   if (session.role === 'staff') {
     role = 'guest';
@@ -1004,18 +1016,22 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   
   if (email && !password) return { success: false, message: "Validation Error: Password is required if an email is provided." };
   
+  if (!email && !password) {
+      finalStatus = 'provisional';
+  }
+
   if (email) {
     const { data: existingUser } = await supabase.from('users').select('id').eq('email', email).single();
     if (existingUser) return { success: false, message: 'User Creation Failed: A user with this email already exists.' };
   } else {
     // If no email, create a placeholder to satisfy the UNIQUE constraint.
-    finalEmail = `walk-in-booking-${randomUUID()}@45group.org`;
+    finalEmail = `provisional-guest-${randomUUID()}@45booking.guest`;
   }
   
   const hashedPassword = password ? await hashPassword(password) : undefined;
   const userJsonData = { name, password: hashedPassword, notes, phone };
 
-  const { data: newUser, error } = await supabase.from('users').insert({ email: finalEmail, role, status, data: userJsonData }).select('id, data, email').single();
+  const { data: newUser, error } = await supabase.from('users').insert({ email: finalEmail, role, status: finalStatus, data: userJsonData }).select('id, data, email').single();
 
   if (error || !newUser) return { success: false, message: `Database Error: Failed to create user. ${error.message}` };
 
