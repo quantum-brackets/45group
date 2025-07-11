@@ -371,7 +371,11 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                   </TableHeader>
                   <TableBody>
                       {filteredUsers.map((user) => (
-                          <TableRow key={user.id}>
+                          <TableRow 
+                            key={user.id} 
+                            onClick={() => router.push(`/dashboard/edit-user/${user.id}`)}
+                            className="cursor-pointer"
+                          >
                               <TableCell className="font-medium">{user.name}</TableCell>
                               <TableCell className="hidden sm:table-cell">{user.email}</TableCell>
                               <TableCell>
@@ -379,10 +383,10 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                                       {user.role}
                                   </Badge>
                               </TableCell>
-                              <TableCell>
+                              <TableCell onClick={(e) => e.stopPropagation()}>
                                 <UserStatusSwitch user={user} isCurrentUser={user.id === session?.id} disabled={!canUpdateUser} />
                               </TableCell>
-                              <TableCell className="text-right">
+                              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                   {(canUpdateUser || canDeleteUser) && (
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
