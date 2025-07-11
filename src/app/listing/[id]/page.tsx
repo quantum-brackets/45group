@@ -10,7 +10,8 @@ import { getSession } from '@/lib/session';
 import { ReviewSection } from '@/components/listing/ReviewSection';
 import { BackButton } from '@/components/common/BackButton';
 import type { User } from '@/lib/types';
-import { hasPermission, preloadPermissions } from '@/lib/permissions/server';
+import { preloadPermissions } from '@/lib/permissions/server';
+import { hasPermission } from '@/lib/permissions';
 
 const typeIcons = {
   hotel: <BedDouble className="w-5 h-5 mr-2" />,
