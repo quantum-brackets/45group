@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This file contains all the TypeScript type definitions for the
  * application's data models. Centralizing these types ensures consistency and
@@ -63,7 +64,7 @@ export interface BookingAction {
   timestamp: string; // ISO 8601 timestamp of when the action occurred.
   actorId: string; // The ID of the user who performed the action.
   actorName: string; // The name of the user who performed the action.
-  action: 'Created' | 'Updated' | 'Confirmed' | 'Cancelled' | 'Checked Out' | 'System'; // The type of action.
+  action: 'Created' | 'Updated' | 'Confirmed' | 'Cancelled' | 'Completed' | 'System'; // The type of action.
   message: string; // A descriptive message about the action.
 }
 
@@ -103,7 +104,7 @@ export interface Booking {
   userId: string; // Foreign key to the `users` table.
   startDate: string; // ISO 8601 start date of the booking.
   endDate: string; // ISO 8601 end date of the booking.
-  status: 'Confirmed' | 'Pending' | 'Cancelled' | 'Checked Out'; // The current status of the booking.
+  status: 'Confirmed' | 'Pending' | 'Cancelled' | 'Completed'; // The current status of the booking.
   
   // Fields from the 'data' JSONB column
   createdAt: string; // When the booking was first created.
@@ -138,3 +139,50 @@ export interface User {
     password_reset_token?: string; // Token for password reset.
     password_reset_expires?: number; // Expiry timestamp for the reset token.
 }
+
+/**
+ * Defines all possible permissions in the system.
+ * This list serves as the single source of truth for what actions are controllable.
+ * It uses a "resource:action:scope" pattern where scope is optional.
+ * `own` is a special scope that implies ownership-based access.
+ */
+export const allPermissions = [
+    // Listing Permissions
+    'listing:create',
+    'listing:read',
+    'listing:update',
+    'listing:delete',
+
+    // Booking Permissions
+    'booking:create',         // Admin/staff can book for any guest
+    'booking:create:own',     // Guests can book for themselves
+    'booking:read',           // Admins/staff can see all bookings
+    'booking:read:own',       // Guests can see their own bookings
+    'booking:update',         // Admins can update any aspect of a booking
+    'booking:update:own',     // Guests can update limited fields of their own booking
+    'booking:cancel',         // Admins can cancel any booking
+    'booking:cancel:own',     // Guests can cancel their own bookings
+    'booking:confirm',        // Admin/staff can confirm, check-in, or check-out bookings
+
+    // User Permissions
+    'user:create',
+    'user:read',
+    'user:update',
+    'user:update:own',
+    'user:delete',
+
+    // Review Permissions
+    'review:create:own',
+    'review:approve',
+    'review:delete',
+
+    // Permission Management
+    'permissions:update',
+
+    // Dashboard Access
+    'dashboard:read',
+] as const;
+
+// The `Permission` type is derived from the `allPermissions` array.
+// This ensures that any string used as a permission must be one of the defined values.
+export type Permission = typeof allPermissions[number];

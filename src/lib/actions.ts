@@ -910,23 +910,23 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
 }
 
 /**
- * Checks out a guest from a confirmed booking.
+ * Marks a booking as completed.
  * @param data - The booking ID.
  * @returns A result object indicating success or failure.
  */
-export async function checkOutBookingAction(data: z.infer<typeof BookingActionSchema>) {
+export async function completeBookingAction(data: z.infer<typeof BookingActionSchema>) {
     const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session || !hasPermission(perms, session, 'booking:confirm')) {
-        return { error: 'Permission Denied: You are not authorized to check out bookings.' };
+        return { error: 'Permission Denied: You are not authorized to complete bookings.' };
     }
     
     const { bookingId } = BookingActionSchema.parse(data);
     
     const { data: bookingData, error: fetchError } = await supabase.from('bookings').select('*').eq('id', bookingId).single();
     if (fetchError || !bookingData) {
-        return { error: 'Database Error: Could not find the booking to check out.' };
+        return { error: 'Database Error: Could not find the booking to complete.' };
     }
 
     const unpackedBooking = unpackBooking(bookingData);
@@ -940,33 +940,33 @@ export async function checkOutBookingAction(data: z.infer<typeof BookingActionSc
     if (session.role === 'staff') {
         const { balance } = calculateBookingBalance(unpackedBooking, unpackedListing);
         if (balance > 0) {
-            return { error: 'Action Blocked: Cannot check out a booking with an outstanding balance.' };
+            return { error: 'Action Blocked: Cannot complete a booking with an outstanding balance.' };
         }
     }
     
-    const checkOutAction: BookingAction = {
+    const completeAction: BookingAction = {
         timestamp: new Date().toISOString(),
         actorId: session.id,
         actorName: session.name,
-        action: 'Checked Out',
-        message: `Guest checked out by ${session.name}.`
+        action: 'Completed',
+        message: `Booking marked as completed by ${session.name}.`
     };
     
     const { error } = await supabase.from('bookings').update({
-        status: 'Checked Out',
+        status: 'Completed',
         data: {
             ...bookingData.data,
-            actions: [...(bookingData.data.actions || []), checkOutAction]
+            actions: [...(bookingData.data.actions || []), completeAction]
         }
     }).eq('id', bookingId);
     
     if (error) {
-        return { error: `Database Error: Failed to check out booking. ${error.message}` };
+        return { error: `Database Error: Failed to complete booking. ${error.message}` };
     }
     
     revalidatePath('/bookings');
     revalidatePath(`/booking/${bookingId}`);
-    return { success: 'Guest has been checked out successfully.' };
+    return { success: 'Booking has been marked as completed.' };
 }
 
 // Zod schema for adding/updating users.

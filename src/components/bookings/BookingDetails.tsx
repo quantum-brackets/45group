@@ -9,14 +9,14 @@ import { format, parseISO, differenceInCalendarDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 
 import type { Booking, Listing, User, Bill, Payment, Role, Permission } from '@/lib/types';
-import { updateBookingAction, cancelBookingAction, confirmBookingAction, checkOutBookingAction, addBillAction, addPaymentAction } from '@/lib/actions';
+import { updateBookingAction, cancelBookingAction, confirmBookingAction, completeBookingAction, addBillAction, addPaymentAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X, CircleUser, ArrowRight, Pencil, FileText, CircleUserRound, Receipt, CreditCard, DollarSign, LogOut } from 'lucide-react';
+import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X, CircleUser, ArrowRight, Pencil, FileText, CircleUserRound, Receipt, CreditCard, DollarSign, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -229,11 +229,11 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
   const canEditBooking = hasPermission(permissions, session, 'booking:update');
   const canConfirmBooking = hasPermission(permissions, session, 'booking:confirm');
   const canCancelBooking = hasPermission(permissions, session, 'booking:cancel') || hasPermission(permissions, session, 'booking:cancel:own', { ownerId: booking.userId });
-  const canCheckOutBooking = hasPermission(permissions, session, 'booking:confirm'); // Same permission as confirm
+  const canCompleteBooking = hasPermission(permissions, session, 'booking:confirm'); // Same permission as confirm
   const canAddBilling = hasPermission(permissions, session, 'booking:update');
   const canSeeUserDetails = hasPermission(permissions, session, 'user:read');
 
-  const isActionable = booking.status !== 'Cancelled' && booking.status !== 'Checked Out';
+  const isActionable = booking.status !== 'Cancelled' && booking.status !== 'Completed';
   const isAnyActionPending = isUpdatePending || isActionPending;
 
   const form = useForm<FormValues>({
@@ -306,7 +306,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
   const staffActionIsBlocked = useMemo(() => {
     if (session.role !== 'staff') return false;
     
-    // Check-out always requires full payment
+    // Complete always requires full payment
     if (booking.status === 'Confirmed') {
         return balance > 0;
     }
@@ -323,7 +323,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
     if (!staffActionIsBlocked) return null;
     
     if (booking.status === 'Confirmed') {
-      return `Cannot check out with an outstanding balance of ${formatCurrency(balance)}.`;
+      return `Cannot mark as completed with an outstanding balance of ${formatCurrency(balance)}.`;
     }
     
     if (booking.status === 'Pending') {
@@ -376,11 +376,11 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
     });
   };
 
-  const handleCheckOut = () => {
+  const handleComplete = () => {
     startActionTransition(async () => {
-        const result = await checkOutBookingAction({ bookingId: booking.id });
+        const result = await completeBookingAction({ bookingId: booking.id });
         if (result.success) {
-            toast({ title: "Guest Checked Out", description: result.success });
+            toast({ title: "Booking Completed", description: result.success });
             router.refresh();
         } else {
             toast({ title: "Error", description: result.error, variant: "destructive" });
@@ -405,12 +405,12 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
           Confirmed: 'default',
           Pending: 'secondary',
           Cancelled: 'destructive',
-          'Checked Out': 'outline'
+          'Completed': 'outline'
       } as const;
       
       const styles = {
           Confirmed: 'bg-accent text-accent-foreground',
-          'Checked Out': 'bg-blue-500 text-white border-blue-500'
+          'Completed': 'bg-blue-500 text-white border-blue-500'
       }
 
       return <Badge variant={variants[booking.status] || 'secondary'} className={cn(styles[booking.status as keyof typeof styles])}>{booking.status}</Badge>
@@ -683,14 +683,14 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                         </Tooltip>
                     </TooltipProvider>
                 )}
-                {canCheckOutBooking && booking.status === 'Confirmed' && (
+                {canCompleteBooking && booking.status === 'Confirmed' && (
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <div className="inline-block">
-                                    <Button size="sm" onClick={handleCheckOut} disabled={isAnyActionPending || staffActionIsBlocked}>
-                                        {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
-                                        Check Out
+                                    <Button size="sm" onClick={handleComplete} disabled={isAnyActionPending || staffActionIsBlocked}>
+                                        {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                                        Complete
                                     </Button>
                                 </div>
                             </TooltipTrigger>

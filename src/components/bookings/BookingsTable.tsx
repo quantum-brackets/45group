@@ -70,12 +70,12 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
           Confirmed: 'default',
           Pending: 'secondary',
           Cancelled: 'destructive',
-          'Checked Out': 'outline'
+          'Completed': 'outline'
       } as const;
       
       const styles = {
           Confirmed: 'bg-accent text-accent-foreground',
-          'Checked Out': 'bg-blue-500 text-white border-blue-500'
+          'Completed': 'bg-blue-500 text-white border-blue-500'
       }
 
       return <Badge variant={variants[status] || 'secondary'} className={cn(styles[status as keyof typeof styles])}>{status}</Badge>
@@ -156,7 +156,7 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
                                         onClick={() => handleConfirm(booking.id)}
                                     >Confirm Booking</DropdownMenuItem>
                                 )}
-                                {(hasPermission(permissions, session, 'booking:cancel') || hasPermission(permissions, session, 'booking:cancel:own', { ownerId: booking.userId })) && booking.status !== 'Cancelled' && booking.status !== 'Checked Out' && (
+                                {(hasPermission(permissions, session, 'booking:cancel') || hasPermission(permissions, session, 'booking:cancel:own', { ownerId: booking.userId })) && booking.status !== 'Cancelled' && booking.status !== 'Completed' && (
                                     <DropdownMenuItem 
                                         className="text-destructive"
                                         disabled={isCancelPending}
