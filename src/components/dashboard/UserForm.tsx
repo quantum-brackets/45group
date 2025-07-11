@@ -54,7 +54,7 @@ export function UserForm({ user, session }: UserFormProps) {
       email: user?.email || "",
       password: "",
       role: user?.role || 'guest',
-      status: user?.status || 'active',
+      status: user?.status || 'provisional',
       phone: user?.phone || "",
       notes: user?.notes || "",
     },

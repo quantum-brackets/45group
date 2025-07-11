@@ -6,11 +6,11 @@
 'use server'
 
 import { z } from 'zod';
-import { createSupabaseAdminClient } from './supabase-server';
-import { verifyPassword, hashPassword } from './password';
-import { createSession } from './session';
+import { createSupabaseAdminClient } from '@/lib/supabase-server';
+import { verifyPassword, hashPassword } from '@/lib/password';
+import { createSession } from '@/lib/session';
 import { randomUUID } from 'crypto';
-import { sendPasswordResetEmail, sendWelcomeEmail } from './email';
+import { sendPasswordResetEmail, sendWelcomeEmail } from '@/lib/email';
 
 // Zod schema for login form validation.
 const LoginSchema = z.object({
