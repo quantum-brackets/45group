@@ -23,7 +23,7 @@ import { BackButton } from "../common/BackButton";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
-  email: z.string().email("Please enter a valid email address."),
+  email: z.string().email("Please enter a valid email address.").optional().or(z.literal('')),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
   role: z.enum(['admin', 'guest', 'staff'], { required_error: "Role is required."}),
   status: z.enum(['active', 'disabled', 'provisional'], { required_error: "Status is required."}),
@@ -54,22 +54,32 @@ export function UserForm({ user, session }: UserFormProps) {
       email: user?.email || "",
       password: "",
       role: user?.role || 'guest',
-      status: user?.status || 'provisional',
+      status: user ? user.status : 'provisional',
       phone: user?.phone || "",
       notes: user?.notes || "",
     },
   });
+
+  const watchEmail = form.watch('email');
+  const watchPassword = form.watch('password');
+  const isProvisionalLocked = !isEditMode && (!watchEmail || !watchPassword);
 
   React.useEffect(() => {
     if (lockRoleForStaff) {
         form.setValue('role', 'guest');
     }
   }, [lockRoleForStaff, form]);
+  
+  React.useEffect(() => {
+    if (isProvisionalLocked) {
+      form.setValue('status', 'provisional');
+    }
+  }, [isProvisionalLocked, form]);
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
     startTransition(async () => {
-      if (!isEditMode && !data.password) {
-          form.setError("password", { type: "manual", message: "Password is required for new users." });
+      if (!isEditMode && !data.password && data.email) {
+          form.setError("password", { type: "manual", message: "Password is required if an email is provided." });
           return;
       }
         
@@ -90,7 +100,7 @@ export function UserForm({ user, session }: UserFormProps) {
         router.push('/dashboard?tab=users');
       } else {
         toast({
-          title: `Error ${isEditMode ? 'updating' : 'adding'} user`,
+          title: `Error ${isEditMode ? 'adding' : 'updating'} user`,
           description: result.message || "An unexpected error occurred.",
           variant: "destructive",
         });
@@ -131,6 +141,9 @@ export function UserForm({ user, session }: UserFormProps) {
                   <FormControl>
                     <Input type="email" placeholder="user@example.com" {...field} />
                   </FormControl>
+                   <FormDescription>
+                    {isEditMode ? "The user's email address." : "Optional. If provided, a password is also required."}
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -161,7 +174,7 @@ export function UserForm({ user, session }: UserFormProps) {
                     <Input type="password" {...field} />
                   </FormControl>
                    <FormDescription>
-                    {isEditMode ? "Leave blank to keep the current password." : "Minimum 6 characters."}
+                    {isEditMode ? "Leave blank to keep the current password." : "Optional, but required if email is provided. Minimum 6 characters."}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -210,9 +223,10 @@ export function UserForm({ user, session }: UserFormProps) {
                     <FormLabel>Account Status</FormLabel>
                     <FormControl>
                         <RadioGroup
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        className="flex items-center space-x-4"
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="flex items-center space-x-4"
+                          disabled={isProvisionalLocked}
                         >
                         <FormItem className="flex items-center space-x-2 space-y-0">
                             <FormControl>
@@ -234,6 +248,9 @@ export function UserForm({ user, session }: UserFormProps) {
                         </FormItem>
                         </RadioGroup>
                     </FormControl>
+                     {isProvisionalLocked && (
+                        <FormDescription>Status is locked to 'Provisional' unless an email and password are provided.</FormDescription>
+                    )}
                     <FormMessage />
                     </FormItem>
                 )}

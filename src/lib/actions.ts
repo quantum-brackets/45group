@@ -972,7 +972,7 @@ export async function completeBookingAction(data: z.infer<typeof BookingActionSc
 // Zod schema for adding/updating users.
 const UserFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
-  email: z.string().email("Please enter a valid email address."),
+  email: z.string().email("Please enter a valid email address.").optional().or(z.literal('')),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
   role: z.enum(['admin', 'guest', 'staff']),
   status: z.enum(['active', 'disabled', 'provisional']),
@@ -1000,24 +1000,32 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
   const { name, email, password, role: initialRole, status, notes, phone } = validatedFields.data;
   
   let role = initialRole;
+  let finalEmail = email;
 
   if (session.role === 'staff') {
     role = 'guest';
   }
   
-  if (!password) return { success: false, message: "Validation Error: Password is required for new users." };
+  if (email && !password) return { success: false, message: "Validation Error: Password is required if an email is provided." };
   
-  const { data: existingUser } = await supabase.from('users').select('id').eq('email', email).single();
-  if (existingUser) return { success: false, message: 'User Creation Failed: A user with this email already exists.' };
-
-  const hashedPassword = await hashPassword(password);
+  if (email) {
+    const { data: existingUser } = await supabase.from('users').select('id').eq('email', email).single();
+    if (existingUser) return { success: false, message: 'User Creation Failed: A user with this email already exists.' };
+  } else {
+    // If no email, create a placeholder to satisfy the UNIQUE constraint.
+    finalEmail = `walk-in-booking-${randomUUID()}@45group.org`;
+  }
+  
+  const hashedPassword = password ? await hashPassword(password) : undefined;
   const userJsonData = { name, password: hashedPassword, notes, phone };
 
-  const { data: newUser, error } = await supabase.from('users').insert({ email, role, status, data: userJsonData }).select('id, data').single();
+  const { data: newUser, error } = await supabase.from('users').insert({ email: finalEmail, role, status, data: userJsonData }).select('id, data, email').single();
 
   if (error || !newUser) return { success: false, message: `Database Error: Failed to create user. ${error.message}` };
 
-  await sendWelcomeEmail({ name: newUser.data.name, email });
+  if (email) { // Only send welcome email if a real email was provided.
+    await sendWelcomeEmail({ name: newUser.data.name, email: newUser.email });
+  }
 
   revalidatePath('/dashboard?tab=users', 'page');
   return { success: true, message: `User "${name}" was created successfully.` };

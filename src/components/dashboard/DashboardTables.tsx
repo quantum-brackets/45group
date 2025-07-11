@@ -365,7 +365,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                           <TableHead>Name</TableHead>
                           <TableHead className="hidden sm:table-cell">Email</TableHead>
                           <TableHead>Role</TableHead>
-                          <TableHead>Status</TableHead>
+                          <TableHead>Active</TableHead>
                           <TableHead><span className="sr-only">Actions</span></TableHead>
                       </TableRow>
                   </TableHeader>
