@@ -558,7 +558,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
 
                  {canAddBilling && (
                     <div className="pt-6 border-t">
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
                             <h3 className="text-xl font-semibold flex items-center gap-2">
                                 <DollarSign className="h-5 w-5" />
                                 Billing Summary
