@@ -417,7 +417,7 @@ async function findOrCreateGuestUser(
 
         if (existingUser) {
             if (existingUser.status === 'active') {
-                return { error: 'An active account with this email already exists. Please select them from the "Existing Guest" dropdown or ask them to log in.', isNewUser: false, userId: '', userName: '' };
+                return { error: 'An active account with this email already exists. Please select them from the "Existing Customer" dropdown or ask them to log in.', isNewUser: false, userId: '', userName: '' };
             }
             // If provisional, we can proceed with this user.
             return { userId: existingUser.id, userName: existingUser.data.name || name, userEmail: email, isNewUser: false };

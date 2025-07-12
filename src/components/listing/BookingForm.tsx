@@ -196,7 +196,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
       const guestName = form.getValues('guestName');
       
       if (!selectedUserId && !guestName) {
-        form.setError('guestName', { message: 'Please select an existing guest or enter a new guest name.' });
+        form.setError('guestName', { message: 'Please select an existing customer or enter a new one by name.' });
         return;
       }
       
@@ -363,7 +363,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
           
           {canBookForOthers ? (
             <div className="space-y-2 pt-4 border-t">
-              <Label>Book For</Label>
+              <Label>Reserve For</Label>
               <RadioGroup value={bookingFor} onValueChange={handleBookingForChange} className="flex gap-4">
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="self" id="self" />
@@ -371,7 +371,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="other" id="other" />
-                  <Label htmlFor="other" className="font-normal">Another Guest</Label>
+                  <Label htmlFor="other" className="font-normal">Someone else</Label>
                 </div>
               </RadioGroup>
               {bookingFor === 'other' && (
@@ -381,7 +381,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                     name="userId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Existing Guest</FormLabel>
+                        <FormLabel>Existing Customer</FormLabel>
                         <FormControl>
                           <Combobox
                             options={guestUsers.map(u => ({ label: `${u.name} (${u.email})`, value: u.id }))}
@@ -393,9 +393,9 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                                   form.setValue('guestEmail', undefined);
                                 }
                             }}
-                            placeholder="Select an existing guest..."
-                            searchPlaceholder="Search guests..."
-                            emptyPlaceholder="No guests found."
+                            placeholder="Select an existing customers..."
+                            searchPlaceholder="Search customers..."
+                            emptyPlaceholder="No customers found."
                             className="w-full"
                           />
                         </FormControl>
@@ -414,9 +414,9 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                           name="guestName"
                           render={({ field }) => (
                           <FormItem>
-                              <FormLabel>New Guest Name</FormLabel>
+                              <FormLabel>New Customer</FormLabel>
                               <FormControl>
-                                <Input placeholder="John Doe" {...field} disabled={!!form.watch('userId')} />
+                                <Input placeholder="Name e.g. John Doe" {...field} disabled={!!form.watch('userId')} />
                               </FormControl>
                               <FormMessage />
                           </FormItem>
@@ -427,7 +427,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                           name="guestEmail"
                           render={({ field }) => (
                           <FormItem>
-                              <FormLabel>New Guest Email (Optional)</FormLabel>
+                              <FormLabel>Customer Email (Optional)</FormLabel>
                               <FormControl>
                                 <Input placeholder="guest@example.com" {...field} disabled={!!form.watch('userId')} />
                               </FormControl>

@@ -59,7 +59,7 @@ This document outlines the features, style guidelines, and architectural decisio
 - **Booking Management (for Staff/Admins)**:
   - Staff and admins can view all bookings across the system.
   - They can confirm pending bookings or cancel any booking.
-  - They can book on behalf of existing guest users.
+  - They can book on behalf of existing customers.
 - **Financial Management**:
   - For any booking, admins/staff can add additional charges (bills) or record payments made by the guest.
   - A billing summary shows the total bill, total payments, and the outstanding balance.

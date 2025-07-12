@@ -87,7 +87,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
               <CardHeader>
                 <CardTitle className="flex items-center">
                   {typeIcons[listing.type]}
-                  About this {listing.type === 'events' ? 'event' : listing.type}
+                  About this space
                 </CardTitle>
               </CardHeader>
               <CardContent>
