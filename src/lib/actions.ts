@@ -561,7 +561,8 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       
       const userForEmail = { name: finalUserName, email: finalUserEmail, id: finalUserId };
 
-      if (finalUserEmail && !finalUserEmail.includes('@45booking.guest')) {
+      if (finalUserEmail) {
+        // removed check for walk in bookings && !finalUserEmail.includes('@45group.org')
         if (isNewUser) {
             await sendWelcomeEmail({ name: userForEmail.name, email: userForEmail.email! });
         }
@@ -978,6 +979,7 @@ export async function completeBookingAction(data: z.infer<typeof BookingActionSc
     
     const { error } = await supabase.from('bookings').update({
         status: 'Completed',
+        end_date: new Date().toISOString(),
         data: {
             ...bookingData.data,
             actions: [...(bookingData.data.actions || []), completeAction]
