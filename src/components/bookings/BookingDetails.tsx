@@ -5,7 +5,7 @@ import { useState, useTransition, useMemo, useEffect } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format, parseISO, differenceInCalendarDays } from 'date-fns';
+import { format, parseISO, differenceInCalendarDays, isBefore } from 'date-fns';
 import { useRouter } from 'next/navigation';
 
 import type { Booking, Listing, User, Bill, Payment, Role, Permission } from '@/lib/types';
@@ -252,9 +252,18 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
   
   const baseBookingCost = useMemo(() => {
     if (!booking.startDate || !booking.endDate || !listing.price || !listing.price_unit) return 0;
-
+    
     const from = parseISO(booking.startDate);
-    const to = parseISO(booking.endDate);
+    const originalEndDate = parseISO(booking.endDate);
+    
+    // For ongoing bookings, calculate the bill up to today.
+    // For completed/cancelled bookings, use the actual end date.
+    let to = (booking.status === 'Completed' || booking.status === 'Cancelled') ? originalEndDate : new Date();
+    // Also, don't show a negative duration if the booking hasn't started yet.
+    if (isBefore(to, from)) {
+        to = from;
+    }
+    
     const units = (booking.inventoryIds || []).length;
     const guests = booking.guests;
 
