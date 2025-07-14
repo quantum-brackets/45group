@@ -1,5 +1,5 @@
 import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
-import { createSupabaseAdminClient } from "@/lib/supabase";
+import { createSupabaseAdminClient } from "@/lib/supabase-server";
 import Link from 'next/link';
 import { notFound } from "next/navigation";
 
@@ -17,7 +17,7 @@ async function validateToken(token: string) {
   if (error || !data || !data.data.password_reset_token) {
     return false;
   }
-  
+
   const expires = data.data.password_reset_expires as number;
   if (!expires || Date.now() > expires) {
     return false;
