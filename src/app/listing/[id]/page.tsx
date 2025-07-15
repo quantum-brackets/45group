@@ -45,7 +45,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
       <div className="mb-8">
         <BackButton />
       </div>
-      <div className="grid lg:grid-cols-3 gap-8 lg:gap-12">
+      <div className="grid lg:grid-cols-3 gap-8 lg:gap-4">
         <div className="grid lg:col-span-2">
           {/* Title and meta */}
           <div className="mb-4">
@@ -117,7 +117,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
         </div>
 
         {/* Booking Form */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 min-w-[327px]">
           <div className="sticky top-24">
             <BookingForm 
               listing={listing} 
