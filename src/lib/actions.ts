@@ -368,7 +368,7 @@ async function findAvailableInventory(supabase: any, listingId: string, startDat
         .from('bookings')
         .select('data')
         .eq('listing_id', listingId)
-        .eq('status', 'Confirmed')
+        .eq('status', 'Confirmed') // Only `Confirmed` bookings block availability.
         .lte('start_date', endDate) // A booking that starts before or on the day the new one ends.
         .gte('end_date', startDate); // A booking that ends after or on the day the new one starts.
     
