@@ -2,28 +2,29 @@
 
 "use client";
 
-import { useState, useTransition, useEffect, useMemo } from 'react';
-import { useForm, SubmitHandler } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from "@/hooks/use-toast"
-import type { Listing, Permission, Role, User } from '@/lib/types';
-import { Loader2, PartyPopper, Users, Warehouse } from 'lucide-react';
-import { DateRange } from 'react-day-picker';
-import { format, isWithinInterval, parseISO, differenceInCalendarDays } from 'date-fns';
+import { useToast } from "@/hooks/use-toast";
 import { createBookingAction } from '@/lib/actions';
-import { Separator } from '../ui/separator';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
-import { Combobox } from '../ui/combobox';
-import { useRouter } from 'next/navigation';
+import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
 import { hasPermission } from '@/lib/permissions';
+import type { Listing, Permission, Role, User } from '@/lib/types';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { differenceInCalendarDays, format, isWithinInterval, parseISO } from 'date-fns';
+import { Loader2, PartyPopper, Users, Warehouse } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import { DateRange } from 'react-day-picker';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Combobox } from '../ui/combobox';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Separator } from '../ui/separator';
 import { Textarea } from '../ui/textarea';
 
 
@@ -73,7 +74,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
       guestNotes: '',
     },
   });
-  
+
   useEffect(() => {
     if (session) {
       form.setValue('userId', session.id);
@@ -132,7 +133,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
         booking.inventoryIds.forEach(id => bookedUnits.add(id));
       }
     }
-    
+
     const totalInventory = listing.inventoryCount || 0;
     const availableCount = totalInventory - bookedUnits.size;
 
@@ -160,11 +161,12 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
     if (date.to) {
       duration = differenceInCalendarDays(date.to, date.from) + 1;
     }
-    
+
     let calculatedPrice = 0;
     let breakdown = "";
-    
+
     const nights = duration > 1 ? duration - 1 : 1;
+    const eventDayHours = EVENT_BOOKING_DAILY_HRS;;
 
     switch (listing.price_unit) {
       case 'night':
@@ -172,15 +174,15 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
         breakdown = `${new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency, minimumFractionDigits: 0 }).format(listing.price)} x ${nights} night(s) x ${units} unit(s)`;
         break;
       case 'hour':
-        calculatedPrice = listing.price * duration * 8 * units;
-        breakdown = `${new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency, minimumFractionDigits: 0 }).format(listing.price)} x ${duration * 8} hours x ${units} unit(s)`;
+        calculatedPrice = listing.price * duration * eventDayHours * units;
+        breakdown = `${new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency, minimumFractionDigits: 0 }).format(listing.price)} x ${duration * eventDayHours} hours x ${units} unit(s)`;
         break;
       case 'person':
         calculatedPrice = listing.price * guests * units;
         breakdown = `${new Intl.NumberFormat('en-US', { style: 'currency', currency: listing.currency, minimumFractionDigits: 0 }).format(listing.price)} x ${guests} guest(s) x ${units} unit(s)`;
         break;
     }
-    
+
     setTotalPrice(calculatedPrice);
     setPriceBreakdown(breakdown);
 
@@ -193,17 +195,17 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
         toast({ title: "Please select dates", variant: "destructive" });
         return;
     }
-    
+
     // Logged-in user booking for someone else (new or existing)
     if (session && bookingFor === 'other') {
       const selectedUserId = form.getValues('userId');
       const guestName = form.getValues('guestName');
-      
+
       if (!selectedUserId && !guestName) {
         form.setError('guestName', { message: 'Please select an existing customer or enter a new one by name.' });
         return;
       }
-      
+
       const guestEmail = form.getValues('guestEmail');
       // If an email is provided for a new guest, validate it.
       if (!selectedUserId && guestName && guestEmail) {
@@ -251,7 +253,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
             guestEmail: formData.guestEmail,
             guestNotes: formData.guestNotes,
         });
-        
+
         if (result.success) {
             toast({
                 title: "Booking Request Sent!",
@@ -324,7 +326,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
               />
             </PopoverContent>
           </Popover>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="guests" className="font-semibold">Guests</Label>
@@ -366,7 +368,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                   </span>
               )}
           </div>
-          
+
           {canBookForOthers ? (
             <div className="space-y-2 pt-4 border-t">
               <Label>Reserve For</Label>
@@ -517,10 +519,10 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
         </CardContent>
 
          <CardFooter className="flex-col items-stretch space-y-2">
-              <Button 
-                  onClick={handleBooking} 
+              <Button
+                  onClick={handleBooking}
                   disabled={!isBookable}
-                  className="w-full text-lg" 
+                  className="w-full text-lg"
                   size="lg">
                   {isPending || availability.isChecking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Request to Book"}
               </Button>

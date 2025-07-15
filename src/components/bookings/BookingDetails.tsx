@@ -1,40 +1,40 @@
 
 "use client";
 
-import { useState, useTransition, useMemo, useEffect } from 'react';
-import { useForm, SubmitHandler, Controller } from 'react-hook-form';
-import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format, parseISO, differenceInCalendarDays, isBefore } from 'date-fns';
+import { differenceInCalendarDays, format, isBefore, parseISO } from 'date-fns';
 import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import { SubmitHandler, useForm } from 'react-hook-form';
+import { z } from 'zod';
 
-import type { Booking, Listing, User, Bill, Payment, Role, Permission, ListingInventory } from '@/lib/types';
-import { updateBookingAction, cancelBookingAction, confirmBookingAction, completeBookingAction, addBillAction, addPaymentAction, getAvailableInventoryForBookingAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
+import { addBillAction, addPaymentAction, cancelBookingAction, completeBookingAction, confirmBookingAction, getAvailableInventoryForBookingAction, updateBookingAction } from '@/lib/actions';
+import type { Booking, Listing, ListingInventory, Permission, Role, User } from '@/lib/types';
 
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { Calendar as CalendarLucide, Users, Info, Building, Edit, Loader2, User as UserIcon, History, KeySquare, Check, X, CircleUser, ArrowRight, Pencil, FileText, CircleUserRound, Receipt, CreditCard, DollarSign, CheckCircle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
+import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
+import { hasPermission } from '@/lib/permissions';
 import { cn } from "@/lib/utils";
+import { Calendar as CalendarLucide, Check, CheckCircle, CircleUser, CreditCard, DollarSign, Edit, FileText, History, Info, KeySquare, Loader2, Pencil, Receipt, User as UserIcon, Users, X } from 'lucide-react';
+import Link from 'next/link';
 import type { DateRange } from "react-day-picker";
 import { BackButton } from '../common/BackButton';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Combobox } from '../ui/combobox';
-import { Separator } from '../ui/separator';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
-import { Textarea } from '../ui/textarea';
-import { Skeleton } from '../ui/skeleton';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { hasPermission } from '@/lib/permissions';
 import { Checkbox } from '../ui/checkbox';
+import { Combobox } from '../ui/combobox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import { Skeleton } from '../ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Textarea } from '../ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 
 interface BookingDetailsProps {
@@ -282,14 +282,14 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
 
     fetchAvailableUnits();
   }, [watchedDates, booking.listingId, booking.id, canReassignUnits, toast]);
-  
-  
+
+
   const baseBookingCost = useMemo(() => {
     if (!booking.startDate || !booking.endDate || !listing.price || !listing.price_unit) return 0;
-    
+
     const from = parseISO(booking.startDate);
     const originalEndDate = parseISO(booking.endDate);
-    
+
     // For ongoing bookings, calculate the bill up to today.
     // For completed/cancelled bookings, use the actual end date.
     let to = (booking.status === 'Completed' || booking.status === 'Cancelled') ? originalEndDate : new Date();
@@ -297,7 +297,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
     if (isBefore(to, from)) {
         to = from;
     }
-    
+
     const units = (booking.inventoryIds || []).length;
     const guests = booking.guests;
 
@@ -308,8 +308,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
         case 'night':
             return listing.price * nights * units;
         case 'hour':
-            // This assumes a standard 8-hour day for daily-booked hourly rentals.
-            return listing.price * durationDays * 8 * units;
+            return listing.price * durationDays * EVENT_BOOKING_DAILY_HRS * units;
         case 'person':
             return listing.price * guests * units;
         default:
@@ -321,7 +320,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
   const totalBill = baseBookingCost + addedBillsTotal;
   const totalPayments = useMemo(() => (booking.payments || []).reduce((sum, payment) => sum + payment.amount, 0), [booking.payments]);
   const balance = totalBill - totalPayments;
-  
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -348,7 +347,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
 
   const staffActionIsBlocked = useMemo(() => {
     if (session.role === 'guest') return false; // This check doesn't apply to guests
-    
+
     // Complete always requires full payment
     if (booking.status === 'Confirmed') {
         return balance > 0;
@@ -364,11 +363,11 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
 
   const getStaffActionTooltip = () => {
     if (!staffActionIsBlocked) return null;
-    
+
     if (booking.status === 'Confirmed') {
       return `Cannot mark as completed with an outstanding balance of ${formatCurrency(balance)}.`;
     }
-    
+
     if (booking.status === 'Pending') {
       return `A deposit of at least ${formatCurrency(depositRequired)} is required to confirm.`;
     }
@@ -404,7 +403,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
           description: result.message,
         });
         setIsEditing(false);
-        router.refresh(); 
+        router.refresh();
       } else {
         toast({
           title: "Update Failed",
@@ -458,7 +457,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
           Cancelled: 'destructive',
           'Completed': 'outline'
       } as const;
-      
+
       const styles = {
           Confirmed: 'bg-accent text-accent-foreground',
           'Completed': 'bg-blue-500 text-white border-blue-500'
@@ -770,9 +769,9 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                                 <AlertDialogCancel>Back</AlertDialogCancel>
-                                <AlertDialogAction 
+                                <AlertDialogAction
                                     className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                                    onClick={handleCancel} 
+                                    onClick={handleCancel}
                                     disabled={isActionPending}>
                                     {isActionPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Yes, Cancel Booking
@@ -855,7 +854,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                     )}
                 />
                 </div>
-                
+
                 <FormField
                     control={form.control}
                     name="guests"
@@ -863,7 +862,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                         <FormItem>
                             <FormLabel>Number of Guests</FormLabel>
                             <FormControl>
-                                <Input 
+                                <Input
                                     type="number"
                                     min="1"
                                     max={listing.max_guests}
@@ -885,7 +884,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                         <FormItem>
                             <FormLabel>Number of Units</FormLabel>
                             <FormControl>
-                                <Input 
+                                <Input
                                     type="number"
                                     min="1"
                                     max={allInventory.length}
@@ -965,7 +964,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                         />
                     </div>
                 )}
-                
+
                 {canEditBooking && (
                     <div className="md:col-span-2">
                         <FormField
@@ -1018,7 +1017,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
             <span className="font-mono text-muted-foreground break-all">{booking.id}</span>
         </CardDescription>
       </CardHeader>
-      
+
       {isEditing ? <EditView /> : <DisplayView />}
     </Card>
   );
