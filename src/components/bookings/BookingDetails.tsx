@@ -918,7 +918,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 p-4 border rounded-md max-h-48 overflow-y-auto">
-                                            {allInventory.map((item) => {
+                                            {allInventory.sort((a, b) => a.name.localeCompare(b.name)).map((item) => {
                                                 const isUnavailable = !availableUnits.includes(item.id) && !field.value?.includes(item.id);
                                                 const isChecked = field.value?.includes(item.id);
                                                 const limitReached = (field.value?.length || 0) >= watchedNumberOfUnits && !isChecked;
