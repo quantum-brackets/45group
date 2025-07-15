@@ -14,7 +14,7 @@ import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
 import { hasPermission } from '@/lib/permissions';
 import type { Listing, Permission, Role, User } from '@/lib/types';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { differenceInCalendarDays, format, isWithinInterval, parseISO } from 'date-fns';
+import { add, differenceInCalendarDays, format, isWithinInterval, parseISO } from 'date-fns';
 import { Loader2, PartyPopper, Users, Warehouse } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
@@ -242,10 +242,28 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
   const submitBooking = () => {
     startTransition(async () => {
         const formData = form.getValues();
+        const startDate = date!.from!;
+        let endDate = date!.to;
+
+        // If no end date is selected, apply default duration based on listing type
+        if (!endDate) {
+          switch (listing.type) {
+            case 'hotel':
+              endDate = add(startDate, { days: 7 });
+              break;
+            case 'events':
+            case 'restaurant':
+              endDate = startDate;
+              break;
+            default:
+              endDate = startDate;
+          }
+        }
+
         const result = await createBookingAction({
             listingId: listing.id,
-            startDate: date!.from!.toISOString(),
-            endDate: (date!.to || date!.from)!.toISOString(),
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
             guests: guests,
             numberOfUnits: units,
             userId: formData.userId,
