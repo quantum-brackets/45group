@@ -3,7 +3,7 @@ import { getAllUsers, getBookingById, getInventoryByListingId, getListingById } 
 import { getSession } from '@/lib/session';
 import { notFound, redirect } from 'next/navigation';
 import { BookingDetails } from '@/components/bookings/BookingDetails';
-import type { User } from '@/lib/types';
+import type { User, ListingInventory } from '@/lib/types';
 import { preloadPermissions } from '@/lib/permissions/server';
 
 export default async function BookingDetailsPage({ params }: { params: { id: string } }) {
@@ -24,7 +24,10 @@ export default async function BookingDetailsPage({ params }: { params: { id: str
       notFound();
   }
 
-  const inventory = await getInventoryByListingId(booking.listingId);
+  let allInventory: ListingInventory[] = [];
+  if (session.role !== 'guest') {
+    allInventory = await getInventoryByListingId(booking.listingId);
+  }
   
   let allUsers: User[] = [];
   if (permissions && session.role !== 'guest') {
@@ -33,7 +36,7 @@ export default async function BookingDetailsPage({ params }: { params: { id: str
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <BookingDetails booking={booking} listing={listing} session={session} totalInventoryCount={inventory.length} allUsers={allUsers} permissions={permissions} />
+      <BookingDetails booking={booking} listing={listing} session={session} allInventory={allInventory} allUsers={allUsers} permissions={permissions} />
     </div>
   );
 }

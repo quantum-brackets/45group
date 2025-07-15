@@ -2,14 +2,14 @@
 "use client";
 
 import { useState, useTransition, useMemo, useEffect } from 'react';
-import { useForm, SubmitHandler } from 'react-hook-form';
+import { useForm, SubmitHandler, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format, parseISO, differenceInCalendarDays, isBefore } from 'date-fns';
 import { useRouter } from 'next/navigation';
 
-import type { Booking, Listing, User, Bill, Payment, Role, Permission } from '@/lib/types';
-import { updateBookingAction, cancelBookingAction, confirmBookingAction, completeBookingAction, addBillAction, addPaymentAction } from '@/lib/actions';
+import type { Booking, Listing, User, Bill, Payment, Role, Permission, ListingInventory } from '@/lib/types';
+import { updateBookingAction, cancelBookingAction, confirmBookingAction, completeBookingAction, addBillAction, addPaymentAction, getAvailableInventoryForBookingAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,13 +34,14 @@ import { Textarea } from '../ui/textarea';
 import { Skeleton } from '../ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { hasPermission } from '@/lib/permissions';
+import { Checkbox } from '../ui/checkbox';
 
 
 interface BookingDetailsProps {
   booking: Booking;
   listing: Listing;
   session: User;
-  totalInventoryCount: number;
+  allInventory?: ListingInventory[];
   allUsers?: User[];
   permissions: Record<Role, Permission[]> | null;
 }
@@ -54,6 +55,7 @@ const formSchema = z.object({
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
   numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
   userId: z.string().optional(),
+  inventoryIds: z.array(z.string()).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -213,11 +215,13 @@ const AddPaymentDialog = ({ bookingId, currency, disabled }: { bookingId: string
 };
 
 
-export function BookingDetails({ booking, listing, session, totalInventoryCount, allUsers = [], permissions }: BookingDetailsProps) {
+export function BookingDetails({ booking, listing, session, allInventory = [], allUsers = [], permissions }: BookingDetailsProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdatePending, startUpdateTransition] = useTransition();
   const [isActionPending, startActionTransition] = useTransition();
   const [isClient, setIsClient] = useState(false);
+  const [availableUnits, setAvailableUnits] = useState<string[]>([]);
+  const [isCheckingUnits, setIsCheckingUnits] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -232,6 +236,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
   const canCompleteBooking = hasPermission(permissions, session, 'booking:confirm'); // Same permission as confirm
   const canAddBilling = hasPermission(permissions, session, 'booking:update');
   const canSeeUserDetails = hasPermission(permissions, session, 'user:read');
+  const canReassignUnits = session.role === 'admin' || session.role === 'staff';
 
   const isActionable = booking.status !== 'Cancelled' && booking.status !== 'Completed';
   const isAnyActionPending = isUpdatePending || isActionPending;
@@ -247,8 +252,37 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
       guests: booking.guests,
       numberOfUnits: booking.inventoryIds?.length || 1,
       userId: booking.userId,
+      inventoryIds: booking.inventoryIds || [],
     }
   });
+
+  const watchedDates = form.watch('dates');
+  const watchedNumberOfUnits = form.watch('numberOfUnits');
+
+  useEffect(() => {
+    if (!watchedDates?.from || !canReassignUnits) return;
+
+    const fetchAvailableUnits = async () => {
+        setIsCheckingUnits(true);
+        const result = await getAvailableInventoryForBookingAction({
+            listingId: booking.listingId,
+            startDate: watchedDates.from!.toISOString(),
+            endDate: (watchedDates.to || watchedDates.from)!.toISOString(),
+            excludeBookingId: booking.id,
+        });
+
+        if (result.success) {
+            setAvailableUnits(result.inventoryIds || []);
+        } else {
+            setAvailableUnits([]);
+            toast({ title: "Error", description: result.message, variant: "destructive" });
+        }
+        setIsCheckingUnits(false);
+    };
+
+    fetchAvailableUnits();
+  }, [watchedDates, booking.listingId, booking.id, canReassignUnits, toast]);
+  
   
   const baseBookingCost = useMemo(() => {
     if (!booking.startDate || !booking.endDate || !listing.price || !listing.price_unit) return 0;
@@ -313,7 +347,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
   }, [listing, booking]);
 
   const staffActionIsBlocked = useMemo(() => {
-    if (session.role !== 'staff') return false;
+    if (session.role === 'guest') return false; // This check doesn't apply to guests
     
     // Complete always requires full payment
     if (booking.status === 'Confirmed') {
@@ -345,6 +379,13 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
   const onSubmit: SubmitHandler<FormValues> = (data) => {
     if (!data.dates.from) return;
 
+    if (canReassignUnits) {
+        if (!data.inventoryIds || data.inventoryIds.length !== data.numberOfUnits) {
+            form.setError('inventoryIds', { message: `Please select exactly ${data.numberOfUnits} unit(s).` });
+            return;
+        }
+    }
+
     startUpdateTransition(async () => {
       const result = await updateBookingAction({
         bookingId: booking.id,
@@ -354,6 +395,7 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
         guests: data.guests,
         numberOfUnits: data.numberOfUnits,
         userId: data.userId,
+        inventoryIds: data.inventoryIds,
       });
 
       if (result.success) {
@@ -824,12 +866,12 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                                 <Input 
                                     type="number"
                                     min="1"
-                                    max={listing.maxGuests}
+                                    max={listing.max_guests}
                                     {...field}
                                 />
                             </FormControl>
                             <FormDescription>
-                                Max {listing.maxGuests} guests per unit.
+                                Max {listing.max_guests} guests per unit.
                             </FormDescription>
                             <FormMessage />
                         </FormItem>
@@ -846,17 +888,84 @@ export function BookingDetails({ booking, listing, session, totalInventoryCount,
                                 <Input 
                                     type="number"
                                     min="1"
-                                    max={totalInventoryCount}
+                                    max={allInventory.length}
                                     {...field}
                                 />
                             </FormControl>
                             <FormDescription>
-                                Max {totalInventoryCount} units available.
+                                Max {allInventory.length} units available.
                             </FormDescription>
                             <FormMessage />
                         </FormItem>
                     )}
                 />
+
+                {canReassignUnits && (
+                     <div className="md:col-span-2 space-y-2">
+                        <FormField
+                            control={form.control}
+                            name="inventoryIds"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Assigned Units</FormLabel>
+                                    <FormDescription>
+                                        Select {watchedNumberOfUnits} unit(s). Unavailable units are disabled.
+                                    </FormDescription>
+                                    {isCheckingUnits ? (
+                                        <div className="space-y-2">
+                                            <Skeleton className="h-8 w-full" />
+                                            <Skeleton className="h-8 w-full" />
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 p-4 border rounded-md max-h-48 overflow-y-auto">
+                                            {allInventory.map((item) => {
+                                                const isUnavailable = !availableUnits.includes(item.id) && !field.value?.includes(item.id);
+                                                const isChecked = field.value?.includes(item.id);
+                                                const limitReached = (field.value?.length || 0) >= watchedNumberOfUnits && !isChecked;
+
+                                                return (
+                                                    <FormField
+                                                        key={item.id}
+                                                        control={form.control}
+                                                        name="inventoryIds"
+                                                        render={({ field }) => (
+                                                            <FormItem
+                                                                key={item.id}
+                                                                className={cn(
+                                                                    "flex items-center space-x-2 space-y-0 p-2 rounded-md transition-colors",
+                                                                    (isUnavailable || limitReached) && "opacity-50 cursor-not-allowed",
+                                                                    isChecked && "bg-accent/50"
+                                                                )}
+                                                            >
+                                                                <FormControl>
+                                                                    <Checkbox
+                                                                        checked={isChecked}
+                                                                        disabled={isUnavailable || limitReached}
+                                                                        onCheckedChange={(checked) => {
+                                                                            const currentSelection = field.value || [];
+                                                                            return checked
+                                                                                ? field.onChange([...currentSelection, item.id])
+                                                                                : field.onChange(currentSelection.filter((value) => value !== item.id));
+                                                                        }}
+                                                                    />
+                                                                </FormControl>
+                                                                <FormLabel className={cn("font-normal", (isUnavailable || limitReached) ? "cursor-not-allowed" : "cursor-pointer")}>
+                                                                    {item.name}
+                                                                </FormLabel>
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                )}
+                
                 {canEditBooking && (
                     <div className="md:col-span-2">
                         <FormField

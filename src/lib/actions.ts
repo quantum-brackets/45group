@@ -593,6 +593,7 @@ const UpdateBookingSchema = z.object({
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
   numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
   userId: z.string().optional(),
+  inventoryIds: z.array(z.string()).optional(),
 });
 
 /**
@@ -609,7 +610,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     const validatedFields = UpdateBookingSchema.safeParse(data);
     if (!validatedFields.success) return { success: false, message: "Validation Error: Please check the form for invalid data." };
 
-    const { bookingId, startDate, endDate, guests, numberOfUnits, bookingName, userId } = validatedFields.data;
+    const { bookingId, startDate, endDate, guests, numberOfUnits, bookingName, userId, inventoryIds } = validatedFields.data;
 
     const { data: booking, error: fetchError } = await supabase
       .from('bookings')
@@ -620,6 +621,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     if (fetchError || !booking) return { success: false, message: 'Database Error: Could not find the booking to update.' };
 
     const canUpdate = hasPermission(perms, session, 'booking:update:own', { ownerId: booking.user_id }) || hasPermission(perms, session, 'booking:update');
+    const canReassignUnits = session.role === 'admin' || session.role === 'staff';
 
     if (!canUpdate) {
       return { success: false, message: 'Permission Denied: You are not authorized to update this booking.' };
@@ -635,9 +637,12 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     const existingStartDate = new Date(booking.start_date).toISOString();
     const existingEndDate = new Date(booking.end_date).toISOString();
     const existingNumberOfUnits = (booking.data.inventoryIds || []).length;
+    const existingInventoryIds = new Set(booking.data.inventoryIds || []);
+    const newInventoryIds = new Set(inventoryIds || []);
+    const unitsChanged = inventoryIds ? !(existingInventoryIds.size === newInventoryIds.size && [...existingInventoryIds].every(id => newInventoryIds.has(id))) : (numberOfUnits !== existingNumberOfUnits);
 
     const datesChanged = startDate !== existingStartDate || endDate !== existingEndDate;
-    const unitsChanged = numberOfUnits !== existingNumberOfUnits;
+    
 
     let newStatus = booking.status;
     let successMessage: string;
@@ -680,12 +685,27 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     }
 
     try {
-        // Re-check inventory availability for the new dates, excluding the current booking.
-        const availableInventory = await findAvailableInventory(supabase, booking.listing_id, startDate, endDate, bookingId);
-        if (availableInventory.length < numberOfUnits) {
-            return { success: false, message: `Update Failed: Not enough units available for the new dates. Only ${availableInventory.length} left.` };
+        let inventoryToBook = booking.data.inventoryIds;
+        // If units were changed (either by number or by selection), we need to validate them.
+        if (datesChanged || unitsChanged) {
+             // Re-check inventory availability for the new dates, excluding the current booking.
+            const availableInventory = await findAvailableInventory(supabase, booking.listing_id, startDate, endDate, bookingId);
+            const availableInventorySet = new Set(availableInventory);
+            
+            if (canReassignUnits && inventoryIds) {
+                if (inventoryIds.length !== numberOfUnits) return { success: false, message: `Update Failed: You must select exactly ${numberOfUnits} unit(s).` };
+                const allSelectedAreAvailable = inventoryIds.every(id => availableInventorySet.has(id) || existingInventoryIds.has(id));
+                if (!allSelectedAreAvailable) {
+                    return { success: false, message: `Update Failed: One or more selected units are not available for the new dates.` };
+                }
+                inventoryToBook = inventoryIds;
+            } else {
+                 if (availableInventory.length < numberOfUnits) {
+                    return { success: false, message: `Update Failed: Not enough units available for the new dates. Only ${availableInventory.length} left.` };
+                }
+                inventoryToBook = availableInventory.slice(0, numberOfUnits);
+            }
         }
-        const inventoryToBook = availableInventory.slice(0, numberOfUnits);
         
         const updatePayload: {
             start_date: string;
@@ -845,8 +865,8 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     if(!listingData) return { error: 'Database Error: Could not find the associated listing.' };
     const unpackedListing = unpackListing(listingData);
     
-    // Check payment status for staff
-    if (session.role === 'staff') {
+    // Check payment status for staff AND ADMINS
+    if (session.role === 'staff' || session.role === 'admin') {
         const { totalPayments } = calculateBookingBalance(unpackedBooking, unpackedListing);
         
         let depositRequired = 0;
@@ -958,8 +978,8 @@ export async function completeBookingAction(data: z.infer<typeof BookingActionSc
     if(!listingData) return { error: 'Database Error: Could not find the associated listing.' };
     const unpackedListing = unpackListing(listingData);
     
-    // Check payment status for staff
-    if (session.role === 'staff') {
+    // Check payment status for staff AND ADMINS
+    if (session.role === 'staff' || session.role === 'admin') {
         const { balance } = calculateBookingBalance(unpackedBooking, unpackedListing);
         if (balance > 0) {
             return { error: 'Action Blocked: Cannot complete a booking with an outstanding balance.' };
@@ -1509,4 +1529,34 @@ export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
     
     revalidatePath(`/booking/${bookingId}`);
     return { success: true, message: 'Payment recorded successfully.' };
+}
+
+const AvailableInventorySchema = z.object({
+    listingId: z.string(),
+    startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
+    endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
+    excludeBookingId: z.string().optional(),
+});
+
+/**
+ * Fetches available inventory units for a given date range, excluding a specific booking.
+ * This is used in the booking edit form to show which units can be assigned.
+ * @param data - The criteria for checking availability.
+ * @returns An object with an array of available inventory IDs, or an error message.
+ */
+export async function getAvailableInventoryForBookingAction(data: z.infer<typeof AvailableInventorySchema>) {
+    const perms = await preloadPermissions();
+    const supabase = createSupabaseAdminClient();
+    const session = await getSession();
+    if (!session || !hasPermission(perms, session, 'booking:update')) {
+        return { success: false, message: 'Permission Denied' };
+    }
+
+    const { listingId, startDate, endDate, excludeBookingId } = data;
+    try {
+        const inventoryIds = await findAvailableInventory(supabase, listingId, startDate, endDate, excludeBookingId);
+        return { success: true, inventoryIds };
+    } catch(e: any) {
+        return { success: false, message: e.message };
+    }
 }
