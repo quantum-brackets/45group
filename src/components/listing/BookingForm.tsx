@@ -24,6 +24,7 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Combobox } from '../ui/combobox';
 import { useRouter } from 'next/navigation';
 import { hasPermission } from '@/lib/permissions';
+import { Textarea } from '../ui/textarea';
 
 
 interface BookingFormProps {
@@ -38,6 +39,7 @@ const bookingFormSchema = z.object({
   userId: z.string().optional(),
   guestName: z.string().optional(),
   guestEmail: z.string().optional(),
+  guestNotes: z.string().optional(),
 });
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
@@ -68,6 +70,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
       userId: session?.id || undefined,
       guestName: '',
       guestEmail: '',
+      guestNotes: '',
     },
   });
   
@@ -85,6 +88,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
     form.setValue('userId', undefined);
     form.setValue('guestName', undefined);
     form.setValue('guestEmail', undefined);
+    form.setValue('guestNotes', undefined);
 
     if (value === 'self' && session) {
       form.setValue('userId', session.id);
@@ -245,6 +249,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
             userId: formData.userId,
             guestName: formData.guestName,
             guestEmail: formData.guestEmail,
+            guestNotes: formData.guestNotes,
         });
         
         if (result.success) {
@@ -260,6 +265,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
               userId: session?.id || undefined,
               guestName: '',
               guestEmail: '',
+              guestNotes: '',
             });
         } else {
             toast({
@@ -391,6 +397,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                                 if (value) {
                                   form.setValue('guestName', undefined);
                                   form.setValue('guestEmail', undefined);
+                                  form.setValue('guestNotes', undefined);
                                 }
                             }}
                             placeholder="Select an existing customers..."
@@ -414,9 +421,12 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                           name="guestName"
                           render={({ field }) => (
                           <FormItem>
-                              <FormLabel>New Customer</FormLabel>
+                              <FormLabel>New Customer <strong className="text-red-500">*</strong></FormLabel>
                               <FormControl>
-                                <Input placeholder="Name e.g. John Doe" {...field} disabled={!!form.watch('userId')} />
+                                <Input placeholder="Name e.g. John Doe" {...field} onChange={(e) => {
+                                    field.onChange(e);
+                                    if(e.target.value) { form.setValue('userId', undefined); }
+                                }}/>
                               </FormControl>
                               <FormMessage />
                           </FormItem>
@@ -427,13 +437,32 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                           name="guestEmail"
                           render={({ field }) => (
                           <FormItem>
-                              <FormLabel>Customer Email (Optional)</FormLabel>
+                              <FormLabel>Customer Email</FormLabel>
                               <FormControl>
-                                <Input placeholder="guest@example.com" {...field} disabled={!!form.watch('userId')} />
+                                <Input placeholder="guest@example.com" {...field} onChange={(e) => {
+                                    field.onChange(e);
+                                    if(e.target.value) { form.setValue('userId', undefined); }
+                                }}/>
                               </FormControl>
                               <FormMessage />
                           </FormItem>
                           )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="guestNotes"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Booking Notes</FormLabel>
+                                <FormControl>
+                                    <Textarea placeholder="Internal notes about the new customer..." {...field} onChange={(e) => {
+                                        field.onChange(e);
+                                        if(e.target.value) { form.setValue('userId', undefined); }
+                                    }}/>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
                       />
                    </div>
                 </div>
