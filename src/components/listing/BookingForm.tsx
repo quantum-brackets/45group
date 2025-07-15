@@ -311,7 +311,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                 </div>
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="end">
               <Calendar
                 initialFocus
                 mode="range"
@@ -325,7 +325,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
             </PopoverContent>
           </Popover>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="guests" className="font-semibold">Guests</Label>
               <div className="relative mt-1">

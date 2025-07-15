@@ -1,7 +1,7 @@
 /**
  * @fileoverview This file defines the server-side logic for the Role-Based Access Control (RBAC) system.
  */
-import type { Role } from '../types';
+import type { Permission, Role } from '../types';
 import { createSupabaseAdminClient } from '../supabase-server';
 import 'server-only';
 import { unstable_noStore as noStore } from 'next/cache';
@@ -12,7 +12,7 @@ import { unstable_noStore as noStore } from 'next/cache';
  * before its results are used, ensuring fresh data for each request.
  * @returns A promise that resolves to the permissions object or null if fetching fails.
  */
-export async function preloadPermissions(): Promise<Record<Role, string[]> | null> {
+export async function preloadPermissions(): Promise<Record<Role, Permission[]> | null> {
     noStore(); // Opt-out of caching to ensure permissions are fresh for each request.
     
     const supabase = createSupabaseAdminClient();
@@ -29,7 +29,7 @@ export async function preloadPermissions(): Promise<Record<Role, string[]> | nul
             acc[row.role as Role] = row.data.permissions;
         }
         return acc;
-    }, {} as Record<Role, string[]>);
+    }, {} as Record<Role, Permission[]>);
     
     return permissionsByRole;
 }

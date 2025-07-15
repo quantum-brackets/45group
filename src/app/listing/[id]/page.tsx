@@ -45,8 +45,8 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
       <div className="mb-8">
         <BackButton />
       </div>
-      <div className="grid lg:grid-cols-3 gap-12">
-        <div className="lg:col-span-2">
+      <div className="grid lg:grid-cols-3 gap-8 lg:gap-12">
+        <div className="grid lg:col-span-2">
           {/* Title and meta */}
           <div className="mb-4">
             <h1 className="text-4xl font-headline font-bold tracking-tight">{listing.name}</h1>

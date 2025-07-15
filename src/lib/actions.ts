@@ -637,8 +637,8 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     const existingStartDate = new Date(booking.start_date).toISOString();
     const existingEndDate = new Date(booking.end_date).toISOString();
     const existingNumberOfUnits = (booking.data.inventoryIds || []).length;
-    const existingInventoryIds = new Set(booking.data.inventoryIds || []);
-    const newInventoryIds = new Set(inventoryIds || []);
+    const existingInventoryIds = new Set<string>(booking.data.inventoryIds || []);
+    const newInventoryIds = new Set<string>(inventoryIds || []);
     const unitsChanged = inventoryIds ? !(existingInventoryIds.size === newInventoryIds.size && [...existingInventoryIds].every(id => newInventoryIds.has(id))) : (numberOfUnits !== existingNumberOfUnits);
 
     const datesChanged = startDate !== existingStartDate || endDate !== existingEndDate;
@@ -671,7 +671,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     }
 
     if (ownerChanged) {
-        const { data: newUser } = await supabase.from('users').select('data->>name as name').eq('id', userId!).single();
+        const { data: newUser } = await supabase.from('users').select('data->>name as name').eq('id', userId!).single() as { data: User };
         if (!newUser || !newUser.name) {
             return { success: false, message: 'Database Error: The selected new owner does not exist or has no name.' };
         }

@@ -186,3 +186,5 @@ export const allPermissions = [
 // The `Permission` type is derived from the `allPermissions` array.
 // This ensures that any string used as a permission must be one of the defined values.
 export type Permission = typeof allPermissions[number];
+
+export type Role = 'admin' | 'staff' | 'guest';
