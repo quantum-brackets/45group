@@ -647,7 +647,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                              <TableRow>
                                                 <TableCell>
                                                     <p className="font-medium">Base Booking Cost</p>
-                                                    <p className="text-xs text-muted-foreground">Initial reservation cost</p>
+                                                    <p className="text-xs text-muted-foreground">Initial reservation cost ({formatCurrency(listing.price)})</p>
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium">{formatCurrency(baseBookingCost)}</TableCell>
                                             </TableRow>
