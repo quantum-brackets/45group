@@ -59,7 +59,7 @@ export function UserNav({ user }: { user: User }) {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href={`/bookings?userId=${user.id}`}>
+            <Link href={`/bookings?q=${user.id}`}>
               <BookMarked className="mr-2 h-4 w-4" />
               <span>Bookings</span>
             </Link>
