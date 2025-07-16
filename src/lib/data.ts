@@ -278,35 +278,35 @@ export async function getAllBookings(): Promise<Booking[]> {
         return [];
     }
 
-    // Get all unique user and listing IDs to fetch their names in batch.
-    const userIds = [...new Set(bookingsData.map(b => b.user_id))];
-    const listingIds = [...new Set(bookingsData.map(b => b.listing_id))];
-
-    // Fetch user and listing data in parallel.
-    const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select('id, data')
-        .in('id', userIds);
-
-    const { data: listingsData, error: listingsError } = await supabase
-        .from('listings')
-        .select('id, data')
-        .in('id', listingIds);
-        
-    if (usersError) console.error("Error fetching user names for bookings:", usersError);
-    if (listingsError) console.error("Error fetching listing names for bookings:", listingsError);
-
-    // Create maps for efficient lookup.
-    const usersMap = new Map(usersData?.map(u => [u.id, u.data?.name]));
-    const listingsMap = new Map(listingsData?.map(l => [l.id, l.data?.name]));
-    
     const unpackedBookings = bookingsData.map(unpackBooking);
 
+    // Get all unique user, listing, and inventory IDs to fetch their names in batch.
+    const userIds = [...new Set(unpackedBookings.map(b => b.userId))];
+    const listingIds = [...new Set(unpackedBookings.map(b => b.listingId))];
+    const allInventoryIds = [...new Set(unpackedBookings.flatMap(b => b.inventoryIds || []))];
+
+    // Fetch user, listing, and inventory data in parallel.
+    const [usersResult, listingsResult, inventoryResult] = await Promise.all([
+        supabase.from('users').select('id, data').in('id', userIds),
+        supabase.from('listings').select('id, data').in('id', listingIds),
+        allInventoryIds.length > 0 ? supabase.from('listing_inventory').select('id, name').in('id', allInventoryIds) : Promise.resolve({ data: [], error: null })
+    ]);
+        
+    if (usersResult.error) console.error("Error fetching user names for bookings:", usersResult.error);
+    if (listingsResult.error) console.error("Error fetching listing names for bookings:", listingsResult.error);
+    if (inventoryResult.error) console.error("Error fetching inventory names for bookings:", inventoryResult.error);
+
+    // Create maps for efficient lookup.
+    const usersMap = new Map(usersResult.data?.map(u => [u.id, u.data?.name]));
+    const listingsMap = new Map(listingsResult.data?.map(l => [l.id, l.data?.name]));
+    const inventoryMap = new Map(inventoryResult.data?.map(i => [i.id, i.name]));
+    
     // Enrich the booking objects with the fetched names.
     const mappedBookings = unpackedBookings.map((b) => ({
       ...b,
       userName: usersMap.get(b.userId),
       listingName: listingsMap.get(b.listingId) || 'Unknown Listing',
+      inventoryNames: (b.inventoryIds || []).map(id => inventoryMap.get(id)).filter(Boolean) as string[],
     }));
 
     // Apply a multi-level sort to the bookings.
@@ -316,7 +316,7 @@ export async function getAllBookings(): Promise<Booking[]> {
         if (dateComparison !== 0) return dateComparison;
 
         // 2. Sort by status: Confirmed -> Pending -> Cancelled -> Checked Out.
-        const statusOrder = { 'Confirmed': 1, 'Pending': 2, 'Cancelled': 3, 'Checked Out': 4 };
+        const statusOrder = { 'Confirmed': 1, 'Pending': 2, 'Cancelled': 3, 'Completed': 4 };
         const statusComparison = (statusOrder[a.status as keyof typeof statusOrder] || 99) - (statusOrder[b.status as keyof typeof statusOrder] || 99);
         if (statusComparison !== 0) return statusComparison;
 
