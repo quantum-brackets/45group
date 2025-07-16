@@ -11,6 +11,7 @@ import { PasswordResetEmail } from '@/components/emails/PasswordResetEmail';
 import { BookingConfirmationEmail } from '@/components/emails/BookingConfirmationEmail';
 import type { Booking, Listing, User } from './types';
 import { BookingRequestEmail } from '@/components/emails/BookingRequestEmail';
+import { BookingSummaryEmail } from '@/components/emails/BookingSummaryEmail';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const fromEmail = process.env.RESEND_FROM_EMAIL;
@@ -112,5 +113,27 @@ export async function sendBookingConfirmationEmail(user: User, booking: Booking,
         });
     } catch (error) {
         console.error("Failed to send booking confirmation email:", error);
+    }
+}
+
+/**
+ * Sends a summary email to a user after their booking is completed.
+ * @param user - The user who owns the booking.
+ * @param booking - The booking details.
+ * @param listing - The listing details.
+ */
+export async function sendBookingSummaryEmail(user: User, booking: Booking, listing: Listing) {
+    if (!canSendEmail()) return;
+    if (!user.email || user.email.includes('@45group.org')) return; // Don't send to provisional or placeholder emails.
+    
+    try {
+        await resend.emails.send({
+            from: fromEmail!,
+            to: user.email,
+            subject: `Your Stay at ${listing.name}: Booking Summary`,
+            react: BookingSummaryEmail({ user, booking, listing }),
+        });
+    } catch (error) {
+        console.error("Failed to send booking summary email:", error);
     }
 }

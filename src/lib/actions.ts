@@ -1,5 +1,3 @@
-
-
 /**
  * @fileoverview This file contains all the "Server Actions" for the application.
  * Server Actions are asynchronous functions that are only executed on the server.
@@ -26,7 +24,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import { hashPassword } from '@/lib/password'
 import type { Booking, Listing, ListingInventory, Role, Review, User, BookingAction, Bill, Payment, Permission } from '@/lib/types'
 import { randomUUID } from 'crypto'
-import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendWelcomeEmail } from '@/lib/email'
+import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendBookingSummaryEmail, sendWelcomeEmail } from '@/lib/email'
 import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { preloadPermissions } from '@/lib/permissions/server'
 import { hasPermission } from '@/lib/permissions'
@@ -974,12 +972,10 @@ export async function completeBookingAction(data: z.infer<typeof BookingActionSc
 
     const unpackedBooking = unpackBooking(bookingData);
 
-    // Fetch listing to calculate bill
     const { data: listingData } = await supabase.from('listings').select('id, data').eq('id', unpackedBooking.listingId).single();
     if(!listingData) return { error: 'Database Error: Could not find the associated listing.' };
     const unpackedListing = unpackListing(listingData);
     
-    // Check payment status for staff AND ADMINS
     if (session.role === 'staff' || session.role === 'admin') {
         const { balance } = calculateBookingBalance(unpackedBooking, unpackedListing);
         if (balance > 0) {
@@ -994,18 +990,26 @@ export async function completeBookingAction(data: z.infer<typeof BookingActionSc
         action: 'Completed',
         message: `Booking marked as completed by ${session.name}.`
     };
+
+    const updatedBookingData = {
+        ...bookingData.data,
+        actions: [...(bookingData.data.actions || []), completeAction]
+    };
     
     const { error } = await supabase.from('bookings').update({
         status: 'Completed',
-        end_date: new Date().toISOString(),
-        data: {
-            ...bookingData.data,
-            actions: [...(bookingData.data.actions || []), completeAction]
-        }
+        data: updatedBookingData
     }).eq('id', bookingId);
     
     if (error) {
         return { error: `Database Error: Failed to complete booking. ${error.message}` };
+    }
+
+    // Send summary email
+    const { data: userData } = await supabase.from('users').select('*').eq('id', unpackedBooking.userId).single();
+    if (userData) {
+        // We need to pass the *final* booking state to the email, including the 'Completed' action.
+        await sendBookingSummaryEmail(unpackUser(userData), { ...unpackedBooking, ...{ data: updatedBookingData } }, unpackedListing);
     }
     
     revalidatePath('/bookings');

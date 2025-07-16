@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
 import { hasPermission } from '@/lib/permissions';
 import { cn } from "@/lib/utils";
-import { Calendar as CalendarLucide, Check, CheckCircle, CircleUser, CreditCard, DollarSign, Edit, FileText, History, Info, KeySquare, Loader2, Pencil, Percent, Receipt, User as UserIcon, Users, X } from 'lucide-react';
+import { Calendar as CalendarLucide, Check, CheckCircle, CircleUser, CreditCard, DollarSign, Edit, FileText, History, Info, KeySquare, Loader2, Pencil, Percent, Printer, Receipt, User as UserIcon, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import type { DateRange } from "react-day-picker";
 import { BackButton } from '../common/BackButton';
@@ -35,6 +35,7 @@ import { Skeleton } from '../ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Textarea } from '../ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { BookingSummary } from './BookingSummary';
 
 
 interface BookingDetailsProps {
@@ -536,6 +537,20 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
 
       return <Badge variant={variants[booking.status] || 'secondary'} className={cn(styles[booking.status as keyof typeof styles])}>{booking.status}</Badge>
   }
+  
+  const handlePrint = () => {
+    const printContent = document.getElementById(`booking-summary-${booking.id}`);
+    if (!printContent) return;
+
+    const originalContents = document.body.innerHTML;
+    const printSection = printContent.innerHTML;
+    
+    document.body.innerHTML = printSection;
+    window.print();
+    document.body.innerHTML = originalContents;
+    // We need to re-attach event listeners or simply reload the page
+    window.location.reload();
+  };
 
 
   const DisplayView = () => (
@@ -791,6 +806,28 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
         <CardFooter className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-4 bg-muted/50 p-4 border-t">
             <BackButton />
             <div className="flex flex-wrap justify-end items-center gap-2">
+                {booking.status === 'Completed' && (
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button size="sm" variant="outline">
+                                <Printer className="mr-2 h-4 w-4" />
+                                Print Summary
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl p-0">
+                            <div id={`booking-summary-${booking.id}`} className="printable-area">
+                                <BookingSummary booking={booking} listing={listing} />
+                            </div>
+                            <DialogFooter className="p-4 border-t bg-background sm:justify-end">
+                                <Button variant="ghost" onClick={() => (document.querySelector('[data-radix-dialog-default-open="true"] [aria-label="Close"]') as HTMLElement)?.click()}>Close</Button>
+                                <Button onClick={handlePrint}>
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    Print
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                )}
                 {canEditBooking && isActionable && (
                     <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} disabled={isAnyActionPending}>
                         <Edit className="mr-2 h-4 w-4" />
@@ -1091,17 +1128,36 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
   );
 
   return (
-    <Card className="max-w-4xl mx-auto shadow-lg">
-      <CardHeader>
-        <CardTitle className="text-2xl font-headline text-primary">
-          <Link href={`/listing/${listing.id}`} className="hover:underline">{listing.name}</Link>
-        </CardTitle>
-        <CardDescription className="pt-1">
-            <span className="font-mono text-muted-foreground break-all">{booking.id}</span>
-        </CardDescription>
-      </CardHeader>
+    <>
+      <style>{`
+        @media print {
+          body > *:not(.printable-area) {
+            display: none !important;
+          }
+          .printable-area {
+            display: block !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+          }
+          html, body {
+            background-color: #fff !important;
+          }
+        }
+      `}</style>
+      <Card className="max-w-4xl mx-auto shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-2xl font-headline text-primary">
+            <Link href={`/listing/${listing.id}`} className="hover:underline">{listing.name}</Link>
+          </CardTitle>
+          <CardDescription className="pt-1">
+              <span className="font-mono text-muted-foreground break-all">{booking.id}</span>
+          </CardDescription>
+        </CardHeader>
 
-      {isEditing ? <EditView /> : <DisplayView />}
-    </Card>
+        {isEditing ? <EditView /> : <DisplayView />}
+      </Card>
+    </>
   );
 }
