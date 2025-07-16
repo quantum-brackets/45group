@@ -1028,6 +1028,7 @@ const UserFormSchema = z.object({
   status: z.enum(['active', 'disabled', 'provisional']),
   phone: z.string().optional(),
   notes: z.string().optional(),
+  listingIds: z.array(z.string()).optional(),
 });
 
 /**
@@ -1047,7 +1048,7 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
     const validatedFields = UserFormSchema.safeParse(data);
     if (!validatedFields.success) return { success: false, message: "Validation Error: Please check the form for invalid data." };
   
-    const { name, password, role: initialRole, status, notes, phone } = validatedFields.data;
+    const { name, password, role: initialRole, status, notes, phone, listingIds } = validatedFields.data;
     const email = validatedFields.data.email ? validatedFields.data.email.toLowerCase() : undefined;
     
     let role = initialRole;
@@ -1061,7 +1062,7 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
     const result = await findOrCreateGuestUser(supabase, name, email, notes);
     if (result.error) return { success: false, message: result.error };
 
-    const userJsonData: {name: string, notes?: string, phone?: string, password?: string} = { name, notes, phone };
+    const userJsonData: {name: string, notes?: string, phone?: string, password?: string, listingIds?: string[]} = { name, notes, phone, listingIds };
     if (password) {
         userJsonData.password = await hashPassword(password);
     }
@@ -1102,7 +1103,7 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
   const { data: existingUser, error: fetchError } = await supabase.from('users').select('data, email, role, status').eq('id', id).single();
   if(fetchError || !existingUser) return { success: false, message: 'Database Error: Could not find the user to update.' };
 
-  const { name, password, role, status, notes, phone } = validatedFields.data;
+  const { name, password, role, status, notes, phone, listingIds } = validatedFields.data;
   const email = validatedFields.data.email ? validatedFields.data.email.toLowerCase() : '';
 
   // Check if any data has actually changed to avoid unnecessary database writes.
@@ -1113,13 +1114,14 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
     existingUser.role !== role ||
     existingUser.status !== status ||
     (existingUser.data.phone || '') !== (phone || '') ||
-    (existingUser.data.notes || '') !== (notes || '');
+    (existingUser.data.notes || '') !== (notes || '') ||
+    JSON.stringify(existingUser.data.listingIds || []) !== JSON.stringify(listingIds || []);
     
   if (!hasChanged) {
       return { success: true, message: "No changes were detected.", changesMade: false };
   }
 
-  let userJsonData = { ...existingUser.data, name, notes, phone };
+  let userJsonData = { ...existingUser.data, name, notes, phone, listingIds };
   
   // Only hash and update the password if a new one was provided.
   if (password) {
@@ -1574,7 +1576,7 @@ export async function getAvailableInventoryForBookingAction(data: z.infer<typeof
 
 const SetDiscountSchema = z.object({
     bookingId: z.string(),
-    discountPercentage: z.coerce.number().min(0, "Discount cannot be negative.").max(15, "Discount cannot exceed 15%."),
+    discountPercentage: z.coerce.number().min(0, "Discount cannot be negative.").max(10, "Discount cannot exceed 10%."),
 });
 
 /**

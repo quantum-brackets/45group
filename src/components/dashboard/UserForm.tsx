@@ -1,11 +1,12 @@
 
+
 "use client";
 
 import React from 'react';
 import { useForm, SubmitHandler } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { User } from "@/lib/types";
+import type { Listing, User } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -20,6 +21,9 @@ import { Loader2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "../ui/textarea";
 import { BackButton } from "../common/BackButton";
+import { Checkbox } from '../ui/checkbox';
+import { cn } from '@/lib/utils';
+import { ScrollArea } from '../ui/scroll-area';
 
 const baseSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -28,6 +32,7 @@ const baseSchema = z.object({
   status: z.enum(['active', 'disabled', 'provisional'], { required_error: "Status is required."}),
   phone: z.string().optional(),
   notes: z.string().optional(),
+  listingIds: z.array(z.string()).optional(),
 });
 
 // Create different schemas for add vs edit, especially for the email field.
@@ -43,9 +48,10 @@ const editUserSchema = baseSchema.extend({
 interface UserFormProps {
   user?: User; // If user is provided, we are in "edit" mode
   session: User;
+  allListings?: Listing[];
 }
 
-export function UserForm({ user, session }: UserFormProps) {
+export function UserForm({ user, session, allListings = [] }: UserFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -68,12 +74,16 @@ export function UserForm({ user, session }: UserFormProps) {
       status: user ? user.status : 'provisional',
       phone: user?.phone || "",
       notes: user?.notes || "",
+      listingIds: user?.listingIds || [],
     },
   });
 
   const watchEmail = form.watch('email');
   const watchPassword = form.watch('password');
+  const watchRole = form.watch('role');
   const isProvisionalLocked = !isEditMode && (!watchEmail || !watchPassword);
+  
+  const showListingAssignment = isEditMode && (watchRole === 'staff' || watchRole === 'admin');
 
   React.useEffect(() => {
     if (lockRoleForStaff) {
@@ -153,7 +163,7 @@ export function UserForm({ user, session }: UserFormProps) {
                     <Input type="email" placeholder="user@example.com" {...field} />
                   </FormControl>
                    <FormDescription>
-                    {isEditMode ? "" : "Optional. If provided, a password is also required."}
+                    {isEditMode ? "Email is required and cannot be removed." : "Optional. If provided, a password is also required."}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -266,6 +276,62 @@ export function UserForm({ user, session }: UserFormProps) {
                     </FormItem>
                 )}
                 />
+            
+            {showListingAssignment && (
+              <FormField
+                control={form.control}
+                name="listingIds"
+                render={() => (
+                  <FormItem>
+                    <div className="mb-4">
+                      <FormLabel className="text-base">Listing Assignments</FormLabel>
+                      <FormDescription>
+                        Assign this user to manage specific listings.
+                      </FormDescription>
+                    </div>
+                    <ScrollArea className="h-48 rounded-md border p-4">
+                      {allListings.map((item) => (
+                        <FormField
+                          key={item.id}
+                          control={form.control}
+                          name="listingIds"
+                          render={({ field }) => {
+                            return (
+                              <FormItem
+                                key={item.id}
+                                className="flex flex-row items-start space-x-3 space-y-0 mb-2"
+                              >
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(item.id)}
+                                    onCheckedChange={(checked) => {
+                                      const currentSelection = field.value || [];
+                                      return checked
+                                        ? field.onChange([...currentSelection, item.id])
+                                        : field.onChange(
+                                            currentSelection.filter(
+                                              (value) => value !== item.id
+                                            )
+                                          );
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormLabel className="font-normal">
+                                  {item.name} <span className="text-xs text-muted-foreground">({item.location})</span>
+                                </FormLabel>
+                              </FormItem>
+                            );
+                          }}
+                        />
+                      ))}
+                    </ScrollArea>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+
             <FormField
               control={form.control}
               name="notes"

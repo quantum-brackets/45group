@@ -1,4 +1,5 @@
 
+
 /**
  * @fileoverview This file contains all the TypeScript type definitions for the
  * application's data models. Centralizing these types ensures consistency and
@@ -139,6 +140,7 @@ export interface User {
     notes?: string; // Internal notes about the user, visible to admins/staff.
     password_reset_token?: string; // Token for password reset.
     password_reset_expires?: number; // Expiry timestamp for the reset token.
+    listingIds?: string[]; // IDs of listings this user is assigned to.
 }
 
 /**

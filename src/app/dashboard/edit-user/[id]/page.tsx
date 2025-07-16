@@ -1,7 +1,7 @@
 
 
 import { notFound, redirect } from 'next/navigation';
-import { getUserById } from '@/lib/data';
+import { getAllListings, getUserById } from '@/lib/data';
 import { UserForm } from '@/components/dashboard/UserForm';
 import { getSession } from '@/lib/session';
 import { UserDetails } from '@/components/dashboard/UserDetails';
@@ -33,9 +33,10 @@ export default async function EditUserPage({ params }: { params: { id: string } 
 
   // Admins or users with general update permission can edit.
   if (hasPermission(permissions, session, 'user:update')) {
+    const allListings = await getAllListings();
     return (
       <div className="container mx-auto px-4 py-8">
-        <UserForm user={user} session={session} />
+        <UserForm user={user} session={session} allListings={allListings} />
       </div>
     );
   }
