@@ -410,10 +410,11 @@ async function findOrCreateGuestUser(
     notes?: string | null
 ): Promise<FindOrCreateResult> {
     if (email) {
+        const lowerCaseEmail = email.toLowerCase();
         const { data: existingUser } = await supabase
             .from('users')
             .select('id, status, data')
-            .eq('email', email)
+            .eq('email', lowerCaseEmail)
             .single();
 
         if (existingUser) {
@@ -421,12 +422,12 @@ async function findOrCreateGuestUser(
                 return { error: 'An active account with this email already exists. Please select them from the "Existing Customer" dropdown or ask them to log in.', isNewUser: false, userId: '', userName: '' };
             }
             // If provisional, we can proceed with this user.
-            return { userId: existingUser.id, userName: existingUser.data.name || name, userEmail: email, isNewUser: false };
+            return { userId: existingUser.id, userName: existingUser.data.name || name, userEmail: lowerCaseEmail, isNewUser: false };
         }
     }
     
     // If no existing user was found (or if no email was provided), create a new one.
-    const placeholderEmail = email || `walk-in-booking-${randomUUID()}@45group.org`;
+    const placeholderEmail = email ? email.toLowerCase() : `walk-in-booking-${randomUUID()}@45group.org`;
     const dataPayload: { name: string; notes?: string } = { name };
     if (notes) {
         dataPayload.notes = notes;
@@ -443,7 +444,7 @@ async function findOrCreateGuestUser(
         return { error: 'Database Error: Could not create a provisional guest account.', isNewUser: false, userId: '', userName: '' };
     }
     
-    return { userId: newUser.id, userName: name, userEmail: email || undefined, isNewUser: true };
+    return { userId: newUser.id, userName: name, userEmail: email ? email.toLowerCase() : undefined, isNewUser: true };
 }
 
 /**
@@ -462,7 +463,8 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       return { success: false, message: `Validation Error: ${errorMessages || 'Please check your input.'}` };
   }
 
-  const { listingId, startDate, endDate, guests, numberOfUnits, userId, guestName, guestEmail, guestNotes } = validatedFields.data;
+  const { listingId, startDate, endDate, guests, numberOfUnits, userId, guestName, guestNotes } = validatedFields.data;
+  const guestEmail = validatedFields.data.guestEmail ? validatedFields.data.guestEmail.toLowerCase() : undefined;
   
   let finalUserId: string;
   let finalUserName: string;
@@ -1045,7 +1047,8 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
     const validatedFields = UserFormSchema.safeParse(data);
     if (!validatedFields.success) return { success: false, message: "Validation Error: Please check the form for invalid data." };
   
-    const { name, email, password, role: initialRole, status, notes, phone } = validatedFields.data;
+    const { name, password, role: initialRole, status, notes, phone } = validatedFields.data;
+    const email = validatedFields.data.email ? validatedFields.data.email.toLowerCase() : undefined;
     
     let role = initialRole;
     if (session.role === 'staff') {
@@ -1099,7 +1102,8 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
   const { data: existingUser, error: fetchError } = await supabase.from('users').select('data, email, role, status').eq('id', id).single();
   if(fetchError || !existingUser) return { success: false, message: 'Database Error: Could not find the user to update.' };
 
-  const { name, email, password, role, status, notes, phone } = validatedFields.data;
+  const { name, password, role, status, notes, phone } = validatedFields.data;
+  const email = validatedFields.data.email ? validatedFields.data.email.toLowerCase() : '';
 
   // Check if any data has actually changed to avoid unnecessary database writes.
   const hasChanged =
@@ -1207,7 +1211,8 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
   const { data: existingUser, error: fetchError } = await supabase.from('users').select('data').eq('id', session.id).single();
   if (fetchError || !existingUser) return { success: false, message: 'Database Error: Could not find your user profile.' };
   
-  const { name, email, password, notes, phone } = validatedFields.data;
+  const { name, password, notes, phone } = validatedFields.data;
+  const email = validatedFields.data.email.toLowerCase();
   let userJsonData = { ...existingUser.data, name, notes, phone };
 
   if (password) {

@@ -32,7 +32,8 @@ export async function loginAction(formData: z.infer<typeof LoginSchema>, from: s
     return { error: 'Validation Error: Please enter a valid email and password.' };
   }
 
-  const { email, password } = validatedFields.data;
+  const { password } = validatedFields.data;
+  const email = validatedFields.data.email.toLowerCase();
 
   // Fetch the user from the database.
   const { data: user, error } = await supabase
@@ -102,7 +103,8 @@ export async function signup(formData: z.infer<typeof SignupSchema>) {
         return { error: "Validation Error: Please check the form for invalid data." };
     }
 
-    const { name, email, password } = validatedFields.data;
+    const { name, password } = validatedFields.data;
+    const email = validatedFields.data.email.toLowerCase();
 
     // Check if a user with this email already exists.
     const { data: existingUser } = await supabase.from('users').select('id, status, data').eq('email', email).single();
@@ -178,7 +180,7 @@ export async function requestPasswordResetAction(formData: z.infer<typeof Passwo
   if (!validatedFields.success) {
     return { error: 'Validation Error: Please provide a valid email address.' };
   }
-  const { email } = validatedFields.data;
+  const email = validatedFields.data.email.toLowerCase();
   
   const { data: user, error } = await supabase.from('users').select('id, data').eq('email', email).single();
   
