@@ -32,6 +32,7 @@ export function BackButton({ children = "Back", variant = "outline", className, 
   
   return (
     <Button 
+      type="button"
       variant={variant} 
       onClick={() => router.back()} 
       className={className}
