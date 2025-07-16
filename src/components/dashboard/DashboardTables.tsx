@@ -195,11 +195,11 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="listings">
               <List className="mr-2" />
-              Listings
+              Listings ({listings.length})
           </TabsTrigger>
           <TabsTrigger value="users">
               <Users className="mr-2" />
-              Users
+              Users ({users.length})
           </TabsTrigger>
         </TabsList>
         <TabsContent value="listings">

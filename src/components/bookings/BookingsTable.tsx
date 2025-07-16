@@ -86,9 +86,11 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Bookings</CardTitle>
+        <CardTitle>Bookings ({bookings.length})</CardTitle>
         <CardDescription>
-          {canSeeAllUserDetails ? 'An overview of all bookings across all venues.' : 'An overview of your past and upcoming bookings.'}
+          {session?.role === 'admin' ? 'An overview of all bookings across all venues.' 
+          : session?.role === 'staff' ? 'An overview of all bookings for your assigned venues.'
+          : 'An overview of your past and upcoming bookings.'}
         </CardDescription>
       </CardHeader>
       <CardContent>

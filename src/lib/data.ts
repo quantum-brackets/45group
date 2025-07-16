@@ -88,24 +88,50 @@ export async function getUserById(id: string): Promise<User | null> {
 }
 
 /**
- * Fetches all users in the system.
- * This is an admin/staff-only function.
+ * Fetches all users in the system, scoped by the current user's role.
+ * Admins see all users.
+ * Staff see only users who have booked at their assigned listings.
+ * Guests cannot use this function.
  * @returns An array of User objects.
  */
 export async function getAllUsers(): Promise<User[]> {
     const perms = await preloadPermissions();
-    // Use the admin client to bypass RLS for this internal dashboard function.
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    // Double-check permissions even though this is a server function.
+
     if (!session || !hasPermission(perms, session, 'user:read')) {
         return [];
     }
-    
-    const { data: users, error } = await supabase
+
+    let query = supabase
         .from('users')
         .select('id, email, role, status, data')
         .order('data->>name', { ascending: true });
+
+    // If the user is staff, we need to scope the users they can see.
+    if (session.role === 'staff' && session.listingIds && session.listingIds.length > 0) {
+        // 1. Find all bookings related to the staff member's assigned listings.
+        const { data: bookingData, error: bookingError } = await supabase
+            .from('bookings')
+            .select('user_id')
+            .in('listing_id', session.listingIds);
+
+        if (bookingError) {
+            console.error("Error fetching bookings for staff user scoping:", bookingError);
+            return [];
+        }
+
+        // 2. Get a unique set of user IDs from those bookings.
+        const userIds = [...new Set(bookingData.map(b => b.user_id))];
+        if (userIds.length === 0) {
+            return []; // No users to show if there are no bookings for their listings.
+        }
+
+        // 3. Filter the main user query by these IDs.
+        query = query.in('id', userIds);
+    }
+    
+    const { data: users, error } = await query;
 
     if (error) {
         console.error("Error fetching all users:", error);
@@ -113,6 +139,7 @@ export async function getAllUsers(): Promise<User[]> {
     }
     return users.map(unpackUser);
 }
+
 
 /**
  * Fetches all unique listing types and a sample of images for each.
@@ -170,18 +197,29 @@ export async function getListingTypesWithSampleImages(): Promise<{ name: string,
 }
 
 /**
- * Fetches all listings, including their inventory count.
+ * Fetches all listings, scoped by the current user's role.
+ * Admins see all listings.
+ * Staff see only the listings they are assigned to.
  * @returns An array of Listing objects.
  */
 export async function getAllListings(): Promise<Listing[]> {
   const supabase = createSupabaseServerClient();
-  // Fetch listings and a count of their related inventory in one query.
-  const { data: listingsData, error: listingsError } = await supabase
+  const session = await getSession();
+  
+  // Start building the query.
+  let query = supabase
     .from('listings')
     .select('id, type, location, data, listing_inventory(count)')
     .order('location')
     .order('type')
     .order('data->>name');
+
+  // If the user is 'staff' and has assigned listings, filter by those listing IDs.
+  if (session?.role === 'staff' && session.listingIds && session.listingIds.length > 0) {
+      query = query.in('id', session.listingIds);
+  }
+  
+  const { data: listingsData, error: listingsError } = await query;
   
   if (listingsError) {
       console.error("Error fetching all listings:", listingsError);
@@ -190,6 +228,7 @@ export async function getAllListings(): Promise<Listing[]> {
 
   return listingsData.map(unpackListing);
 }
+
 
 /**
  * Fetches a specific set of listings by their IDs.
@@ -247,8 +286,10 @@ export async function getListingById(id: string): Promise<Listing | null> {
 }
 
 /**
- * Fetches all bookings. The scope of bookings returned depends on the user's role.
- * Guests see their own bookings. Admins/staff see all bookings.
+ * Fetches all bookings, scoped by the current user's role.
+ * Guests see their own bookings.
+ * Staff see bookings for their assigned listings.
+ * Admins see all bookings.
  * @returns An array of Booking objects, enriched with user and listing names.
  */
 export async function getAllBookings(): Promise<Booking[]> {
@@ -263,10 +304,15 @@ export async function getAllBookings(): Promise<Booking[]> {
 
     let query = supabase.from('bookings').select('id, listing_id, user_id, status, start_date, end_date, data');
 
-    // Apply Row-Level Security (RLS) principle at the application layer.
-    if (!hasPermission(perms, session, 'booking:read')) {
+    // Apply scoping based on role.
+    if (session.role === 'staff' && session.listingIds && session.listingIds.length > 0) {
+        // Staff see bookings for their assigned listings.
+        query = query.in('listing_id', session.listingIds);
+    } else if (session.role === 'guest') {
+        // Guests see their own bookings.
         query = query.eq('user_id', session.id);
     }
+    // Admins have no filter applied and see all bookings.
     
     const { data: bookingsData, error } = await query;
 
@@ -358,8 +404,19 @@ export async function getBookingById(id: string): Promise<Booking | null> {
     }
     
     // RLS check at application level
-    if (!hasPermission(perms, session, 'booking:read') && !hasPermission(perms, session, 'booking:read:own', { ownerId: bookingData.user_id })) {
+    const canReadAny = hasPermission(perms, session, 'booking:read');
+    const isOwner = session.id === bookingData.user_id;
+
+    if (!canReadAny && !isOwner) {
         return null;
+    }
+
+    // Additional check for staff: can they see this specific booking?
+    if (session.role === 'staff' && !canReadAny) {
+        const canReadThisBooking = session.listingIds?.includes(bookingData.listing_id);
+        if (!canReadThisBooking) {
+            return null;
+        }
     }
     
     const unpackedBooking = unpackBooking(bookingData);
