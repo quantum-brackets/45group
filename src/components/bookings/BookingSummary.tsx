@@ -1,3 +1,4 @@
+
 import {
   Table,
   TableBody,
@@ -16,7 +17,9 @@ import {
   CreditCard,
   Hash,
   Home,
+  KeySquare,
   MapPin,
+  Pencil,
   Percent,
   Receipt,
   User as UserIcon,
@@ -86,9 +89,9 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
   }, [booking, listing]);
   
   const typeIcon = {
-    hotel: <Home className="h-4 w-4" />,
-    events: <Building2 className="h-4 w-4" />,
-    restaurant: <Banknote className="h-4 w-4" />,
+    hotel: <Home className="h-4 w-4 text-gray-500" />,
+    events: <Building2 className="h-4 w-4 text-gray-500" />,
+    restaurant: <Banknote className="h-4 w-4 text-gray-500" />,
   };
 
   return (
@@ -96,7 +99,10 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
       {/* Header */}
       <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">{listing.name}</h1>
+          <div className="flex items-center gap-2">
+            {typeIcon[listing.type]}
+            <h1 className="text-3xl font-bold text-gray-800">{listing.name}</h1>
+          </div>
           <p className="text-gray-500">Booking Summary</p>
         </div>
         <div className="text-right">
@@ -106,23 +112,30 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
       </div>
 
       {/* Booking Details */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-8 text-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8 mb-8 text-sm border-t border-b py-6">
         <div className="flex items-start gap-3">
-          <UserIcon className="h-5 w-5 text-gray-500 mt-1" />
+          <UserIcon className="h-5 w-5 text-gray-500 mt-1 flex-shrink-0" />
           <div>
             <p className="font-bold text-gray-600">Guest</p>
             <p className="text-gray-800">{booking.userName}</p>
           </div>
         </div>
         <div className="flex items-start gap-3">
-          <MapPin className="h-5 w-5 text-gray-500 mt-1" />
+          <Pencil className="h-5 w-5 text-gray-500 mt-1 flex-shrink-0" />
+          <div>
+            <p className="font-bold text-gray-600">Booking Name</p>
+            <p className="text-gray-800">{booking.bookingName || 'N/A'}</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <MapPin className="h-5 w-5 text-gray-500 mt-1 flex-shrink-0" />
           <div>
             <p className="font-bold text-gray-600">Location</p>
             <p className="text-gray-800">{listing.location}</p>
           </div>
         </div>
         <div className="flex items-start gap-3">
-          <Calendar className="h-5 w-5 text-gray-500 mt-1" />
+          <Calendar className="h-5 w-5 text-gray-500 mt-1 flex-shrink-0" />
           <div>
             <p className="font-bold text-gray-600">Dates</p>
             <p className="text-gray-800">
@@ -132,11 +145,20 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
           </div>
         </div>
         <div className="flex items-start gap-3">
-          <Users className="h-5 w-5 text-gray-500 mt-1" />
+          <Users className="h-5 w-5 text-gray-500 mt-1 flex-shrink-0" />
           <div>
-            <p className="font-bold text-gray-600">Details</p>
+            <p className="font-bold text-gray-600">Number of Guests</p>
             <p className="text-gray-800">
-              {booking.guests} Guest(s), {booking.inventoryIds.length} Unit(s)
+              {booking.guests} Guest(s)
+            </p>
+          </div>
+        </div>
+         <div className="flex items-start gap-3">
+          <KeySquare className="h-5 w-5 text-gray-500 mt-1 flex-shrink-0" />
+          <div>
+            <p className="font-bold text-gray-600">Units Booked</p>
+            <p className="text-gray-800">
+              {booking.inventoryNames?.join(', ') || `${booking.inventoryIds.length} Unit(s)`}
             </p>
           </div>
         </div>
@@ -247,3 +269,4 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
     </div>
   );
 };
+
