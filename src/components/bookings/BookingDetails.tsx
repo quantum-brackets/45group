@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -819,7 +820,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                 <DialogTitle>Booking Summary</DialogTitle>
                                 <DialogDescription>A printable summary of the completed booking.</DialogDescription>
                             </DialogHeader>
-                            <div id={`booking-summary-${booking.id}`} className="printable-area p-6">
+                            <div id={`booking-summary-${booking.id}`} className="printable-area p-6 max-h-[80vh] overflow-y-auto">
                                 <BookingSummary booking={booking} listing={listing} />
                             </div>
                             <DialogFooter className="p-4 border-t bg-background sm:justify-end">
@@ -1144,6 +1145,9 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
             top: 0;
             left: 0;
             width: 100%;
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
           }
           html, body {
             background-color: #fff !important;
