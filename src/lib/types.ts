@@ -114,6 +114,7 @@ export interface Booking {
   actions: BookingAction[]; // The audit trail of all actions on this booking.
   bills?: Bill[]; // An array of additional charges.
   payments?: Payment[]; // An array of payments made.
+  discount?: number; // A percentage discount applied to the booking (e.g., 5 for 5%).
 
   // Fields joined from other tables for display purposes
   userName?: string; // The name of the user who owns the booking.

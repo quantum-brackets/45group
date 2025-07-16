@@ -544,6 +544,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
           createdAt: createdAt,
           bills: [],
           payments: [],
+          discount: 0,
       };
 
       const { data: newBooking, error: createBookingError } = await supabase.from('bookings').insert({
@@ -1559,4 +1560,47 @@ export async function getAvailableInventoryForBookingAction(data: z.infer<typeof
     } catch(e: any) {
         return { success: false, message: e.message };
     }
+}
+
+
+const SetDiscountSchema = z.object({
+    bookingId: z.string(),
+    discountPercentage: z.coerce.number().min(0, "Discount cannot be negative.").max(10, "Discount cannot exceed 10%."),
+});
+
+/**
+ * Sets a discount percentage on a booking.
+ * @param data - The booking ID and discount percentage.
+ * @returns A result object indicating success or failure.
+ */
+export async function setDiscountAction(data: z.infer<typeof SetDiscountSchema>) {
+    const perms = await preloadPermissions();
+    const supabase = createSupabaseAdminClient();
+    const session = await getSession();
+
+    if (!session || !hasPermission(perms, session, 'booking:update')) {
+        return { success: false, message: 'Permission Denied: You are not authorized to set a discount.' };
+    }
+
+    const validatedFields = SetDiscountSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, message: "Validation Error: Please check the form for invalid data." };
+    }
+
+    const { bookingId, discountPercentage } = validatedFields.data;
+
+    const { data: booking, error: fetchError } = await supabase.from('bookings').select('data').eq('id', bookingId).single();
+    if (fetchError || !booking) {
+        return { success: false, message: 'Database Error: Could not find the booking.' };
+    }
+
+    const updatedData = { ...booking.data, discount: discountPercentage };
+
+    const { error } = await supabase.from('bookings').update({ data: updatedData }).eq('id', bookingId);
+    if (error) {
+        return { success: false, message: `Database Error: Failed to set discount. ${error.message}` };
+    }
+
+    revalidatePath(`/booking/${bookingId}`);
+    return { success: true, message: 'Discount applied successfully.' };
 }

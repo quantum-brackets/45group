@@ -9,7 +9,7 @@ import { SubmitHandler, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { useToast } from '@/hooks/use-toast';
-import { addBillAction, addPaymentAction, cancelBookingAction, completeBookingAction, confirmBookingAction, getAvailableInventoryForBookingAction, updateBookingAction } from '@/lib/actions';
+import { addBillAction, addPaymentAction, cancelBookingAction, completeBookingAction, confirmBookingAction, getAvailableInventoryForBookingAction, setDiscountAction, updateBookingAction } from '@/lib/actions';
 import type { Booking, Listing, ListingInventory, Permission, Role, User } from '@/lib/types';
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
 import { hasPermission } from '@/lib/permissions';
 import { cn } from "@/lib/utils";
-import { Calendar as CalendarLucide, Check, CheckCircle, CircleUser, CreditCard, DollarSign, Edit, FileText, History, Info, KeySquare, Loader2, Pencil, Receipt, User as UserIcon, Users, X } from 'lucide-react';
+import { Calendar as CalendarLucide, Check, CheckCircle, CircleUser, CreditCard, DollarSign, Edit, FileText, History, Info, KeySquare, Loader2, Pencil, Percent, Receipt, User as UserIcon, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import type { DateRange } from "react-day-picker";
 import { BackButton } from '../common/BackButton';
@@ -215,6 +215,72 @@ const AddPaymentDialog = ({ bookingId, currency, disabled }: { bookingId: string
 };
 
 
+const SetDiscountSchema = z.object({
+    discount: z.coerce.number().min(0, "Discount cannot be negative.").max(10, "Discount cannot exceed 10%."),
+});
+type SetDiscountValues = z.infer<typeof SetDiscountSchema>;
+
+const SetDiscountDialog = ({ bookingId, currentDiscount, disabled }: { bookingId: string, currentDiscount: number, disabled: boolean }) => {
+    const [open, setOpen] = useState(false);
+    const [isPending, startTransition] = useTransition();
+    const { toast } = useToast();
+    const form = useForm<SetDiscountValues>({ resolver: zodResolver(SetDiscountSchema), defaultValues: { discount: currentDiscount } });
+
+    useEffect(() => {
+        form.reset({ discount: currentDiscount });
+    }, [currentDiscount, form]);
+
+    const onSubmit = (data: SetDiscountValues) => {
+        startTransition(async () => {
+            const result = await setDiscountAction({ bookingId, discountPercentage: data.discount });
+            if (result.success) {
+                toast({ title: "Success", description: result.message });
+                setOpen(false);
+            } else {
+                toast({ title: "Error", description: result.message, variant: "destructive" });
+            }
+        });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={disabled}><Percent className="mr-2 h-4 w-4" /> Set Discount</Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Set Booking Discount</DialogTitle>
+                    <DialogDescription>Apply a percentage discount to the base rate of this booking. Maximum 10%.</DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="discount"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Discount Percentage (%)</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <Input type="number" step="0.1" {...field} className="pr-8" />
+                                            <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>Cancel</Button>
+                            <Button type="submit" disabled={isPending}>{isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Set Discount</Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 export function BookingDetails({ booking, listing, session, allInventory = [], allUsers = [], permissions }: BookingDetailsProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdatePending, startUpdateTransition] = useTransition();
@@ -315,10 +381,15 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
             return 0;
     }
   }, [booking, listing]);
+  
+  const discountAmount = useMemo(() => {
+      if (!booking.discount || booking.discount <= 0) return 0;
+      return (baseBookingCost * booking.discount) / 100;
+  }, [booking.discount, baseBookingCost]);
 
   const addedBillsTotal = useMemo(() => (booking.bills || []).reduce((sum, bill) => sum + bill.amount, 0), [booking.bills]);
   const totalBill = baseBookingCost + addedBillsTotal;
-  const totalPayments = useMemo(() => (booking.payments || []).reduce((sum, payment) => sum + payment.amount, 0), [booking.payments]);
+  const totalPayments = useMemo(() => (booking.payments || []).reduce((sum, payment) => sum + payment.amount, 0) + discountAmount, [booking.payments, discountAmount]);
   const balance = totalBill - totalPayments;
 
   const formatCurrency = (amount: number) => {
@@ -511,7 +582,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                             {booking.userName}
                         </Link>
                         {booking.createdAt && (
-                        <span className="block text-sm">on {format(parseISO(booking.createdAt), 'PPP')}</span>
+                        <span className="block text-sm">on {format(parseISO(booking.createdAt), 'PP')}</span>
                         )}
                     </p>
                     </div>
@@ -616,6 +687,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                             <div className="flex gap-2">
                                 <AddBillDialog bookingId={booking.id} currency={listing.currency} disabled={isAnyActionPending} />
                                 <AddPaymentDialog bookingId={booking.id} currency={listing.currency} disabled={isAnyActionPending} />
+                                <SetDiscountDialog bookingId={booking.id} currentDiscount={booking.discount || 0} disabled={isAnyActionPending} />
                             </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -680,6 +752,15 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
+                                             {(booking.discount && booking.discount > 0) ? (
+                                                <TableRow>
+                                                    <TableCell>
+                                                        <p className="font-medium">Discount ({booking.discount}%)</p>
+                                                        <p className="text-xs text-muted-foreground">Applied to base booking cost</p>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium">{formatCurrency(discountAmount)}</TableCell>
+                                                </TableRow>
+                                             ): null}
                                              {(booking.payments || []).length > 0 ? booking.payments?.map(payment => (
                                                 <TableRow key={payment.id}>
                                                     <TableCell>
@@ -692,9 +773,11 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                                     <TableCell className="text-right font-medium">{formatCurrency(payment.amount)}</TableCell>
                                                 </TableRow>
                                             )) : (
-                                                <TableRow>
-                                                    <TableCell colSpan={2} className="text-center text-muted-foreground">No payments recorded yet.</TableCell>
-                                                </TableRow>
+                                                (booking.discount || 0) <= 0 && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={2} className="text-center text-muted-foreground">No payments recorded yet.</TableCell>
+                                                    </TableRow>
+                                                )
                                             )}
                                         </TableBody>
                                     </Table>
