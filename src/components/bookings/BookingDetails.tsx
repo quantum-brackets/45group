@@ -815,7 +815,11 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl p-0">
-                            <div id={`booking-summary-${booking.id}`} className="printable-area">
+                            <DialogHeader className="p-6 pb-0 sr-only">
+                                <DialogTitle>Booking Summary</DialogTitle>
+                                <DialogDescription>A printable summary of the completed booking.</DialogDescription>
+                            </DialogHeader>
+                            <div id={`booking-summary-${booking.id}`} className="printable-area p-6">
                                 <BookingSummary booking={booking} listing={listing} />
                             </div>
                             <DialogFooter className="p-4 border-t bg-background sm:justify-end">

@@ -1569,7 +1569,7 @@ export async function getAvailableInventoryForBookingAction(data: z.infer<typeof
 
 const SetDiscountSchema = z.object({
     bookingId: z.string(),
-    discountPercentage: z.coerce.number().min(0, "Discount cannot be negative.").max(10, "Discount cannot exceed 10%."),
+    discountPercentage: z.coerce.number().min(0, "Discount cannot be negative.").max(15, "Discount cannot exceed 15%."),
 });
 
 /**
