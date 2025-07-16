@@ -320,12 +320,12 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
               >
                 <div className="flex">
                   <div className="flex-1 p-3">
-                    <Label className="text-xs font-bold uppercase text-muted-foreground">Check-in</Label>
+                    <Label className="text-xs font-bold uppercase text-muted-foreground">From</Label>
                     <div className="text-sm mt-1">{date?.from ? format(date.from, 'MM/dd/yyyy') : 'Add date'}</div>
                   </div>
                   <Separator orientation="vertical" className="h-auto" />
                    <div className="flex-1 p-3">
-                    <Label className="text-xs font-bold uppercase text-muted-foreground">Check-out</Label>
+                    <Label className="text-xs font-bold uppercase text-muted-foreground">To</Label>
                     <div className="text-sm mt-1">{date?.to ? format(date.to, 'MM/dd/yyyy') : 'Add date'}</div>
                   </div>
                 </div>
