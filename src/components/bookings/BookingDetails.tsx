@@ -216,7 +216,7 @@ const AddPaymentDialog = ({ bookingId, currency, disabled }: { bookingId: string
 
 
 const SetDiscountSchema = z.object({
-    discount: z.coerce.number().min(0, "Discount cannot be negative.").max(10, "Discount cannot exceed 10%."),
+    discount: z.coerce.number().min(0, "Discount cannot be negative.").max(15, "Discount cannot exceed 15%."),
 });
 type SetDiscountValues = z.infer<typeof SetDiscountSchema>;
 
@@ -250,7 +250,7 @@ const SetDiscountDialog = ({ bookingId, currentDiscount, disabled }: { bookingId
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Set Booking Discount</DialogTitle>
-                    <DialogDescription>Apply a percentage discount to the base rate of this booking. Maximum 10%.</DialogDescription>
+                    <DialogDescription>Apply a percentage discount to the base rate of this booking. Maximum 15%.</DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
