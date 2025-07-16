@@ -101,6 +101,9 @@ export function ProfileForm({ user }: ProfileFormProps) {
                   <FormControl>
                     <Input type="email" placeholder="user@example.com" {...field} />
                   </FormControl>
+                   <FormDescription>
+                    Your email address cannot be removed.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

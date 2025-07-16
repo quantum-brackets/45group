@@ -21,9 +21,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "../ui/textarea";
 import { BackButton } from "../common/BackButton";
 
-const formSchema = z.object({
+const baseSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
-  email: z.string().email("Please enter a valid email address.").optional().or(z.literal('')),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
   role: z.enum(['admin', 'guest', 'staff'], { required_error: "Role is required."}),
   status: z.enum(['active', 'disabled', 'provisional'], { required_error: "Status is required."}),
@@ -31,7 +30,15 @@ const formSchema = z.object({
   notes: z.string().optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+// Create different schemas for add vs edit, especially for the email field.
+const addUserSchema = baseSchema.extend({
+  email: z.string().email("Please enter a valid email address.").optional().or(z.literal('')),
+});
+
+const editUserSchema = baseSchema.extend({
+  email: z.string().email("A valid email is required and cannot be removed."),
+});
+
 
 interface UserFormProps {
   user?: User; // If user is provided, we are in "edit" mode
@@ -43,6 +50,10 @@ export function UserForm({ user, session }: UserFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const isEditMode = !!user;
+
+  // Choose the right schema based on whether we are adding or editing a user.
+  const formSchema = isEditMode ? editUserSchema : addUserSchema;
+  type FormValues = z.infer<typeof formSchema>;
 
   // Staff can only create users, not edit them. When creating, lock role to 'guest'.
   const lockRoleForStaff = !isEditMode && session.role === 'staff';
@@ -142,7 +153,7 @@ export function UserForm({ user, session }: UserFormProps) {
                     <Input type="email" placeholder="user@example.com" {...field} />
                   </FormControl>
                    <FormDescription>
-                    {isEditMode ? "The user's email address." : "Optional. If provided, a password is also required."}
+                    {isEditMode ? "The user's email address (cannot be removed)." : "Optional. If provided, a password is also required."}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
