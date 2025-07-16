@@ -36,7 +36,7 @@ const addUserSchema = baseSchema.extend({
 });
 
 const editUserSchema = baseSchema.extend({
-  email: z.string().email("A valid email is required and cannot be removed."),
+  email: z.string().email("A valid email is required and cannot be removed.").min(1, "Email cannot be empty."),
 });
 
 
@@ -153,7 +153,7 @@ export function UserForm({ user, session }: UserFormProps) {
                     <Input type="email" placeholder="user@example.com" {...field} />
                   </FormControl>
                    <FormDescription>
-                    {isEditMode ? "The user's email address (cannot be removed)." : "Optional. If provided, a password is also required."}
+                    {isEditMode ? "" : "Optional. If provided, a password is also required."}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
