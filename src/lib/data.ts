@@ -361,14 +361,14 @@ export async function getAllBookings(): Promise<Booking[]> {
         const dateComparison = new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
         if (dateComparison !== 0) return dateComparison;
 
-        // 2. Sort by status: Confirmed -> Pending -> Cancelled -> Checked Out.
-        const statusOrder = { 'Confirmed': 1, 'Pending': 2, 'Cancelled': 3, 'Completed': 4 };
-        const statusComparison = (statusOrder[a.status as keyof typeof statusOrder] || 99) - (statusOrder[b.status as keyof typeof statusOrder] || 99);
-        if (statusComparison !== 0) return statusComparison;
-
-        // 3. Sort by booking name (Booking For) ascending.
+        // 2. Sort by booking name (Booking For) ascending.
         const nameComparison = (a.bookingName || '').localeCompare(b.bookingName || '');
         if (nameComparison !== 0) return nameComparison;
+
+        // 3. Sort by status: Confirmed -> Pending -> Completed -> Cancelled.
+        const statusOrder = { 'Confirmed': 1, 'Pending': 2, 'Completed': 3, 'Cancelled': 4 };
+        const statusComparison = (statusOrder[a.status as keyof typeof statusOrder] || 99) - (statusOrder[b.status as keyof typeof statusOrder] || 99);
+        if (statusComparison !== 0) return statusComparison;
 
         // 4. Sort by venue (listingName) ascending.
         return (a.listingName || '').localeCompare(b.listingName || '');
