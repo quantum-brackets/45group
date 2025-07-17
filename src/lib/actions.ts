@@ -26,8 +26,8 @@ import type { Booking, Listing, ListingInventory, Role, Review, User, BookingAct
 import { randomUUID } from 'crypto'
 import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendBookingSummaryEmail, sendWelcomeEmail } from '@/lib/email'
 import { differenceInCalendarDays, parseISO } from 'date-fns'
-import { preloadPermissions } from '@/lib/permissions/server'
-import { hasPermission } from '@/lib/permissions'
+import { preloadPermissions } from './permissions/server'
+import { hasPermission } from './permissions'
 import { generateRandomString } from '@/lib/utils'
 
 
@@ -1589,7 +1589,7 @@ export async function getAvailableInventoryForBookingAction(data: z.infer<typeof
 
 const SetDiscountSchema = z.object({
     bookingId: z.string(),
-    discountPercentage: z.coerce.number().min(0, "Discount cannot be negative.").max(10, "Discount cannot exceed 10%."),
+    discountPercentage: z.coerce.number().min(0, "Discount cannot be negative.").max(15, "Discount cannot exceed 15%."),
 });
 
 /**

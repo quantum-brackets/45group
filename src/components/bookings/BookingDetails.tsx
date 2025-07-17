@@ -217,24 +217,34 @@ const AddPaymentDialog = ({ bookingId, currency, disabled }: { bookingId: string
 };
 
 
-const SetDiscountSchema = z.object({
-    discount: z.coerce.number().min(0, "Discount cannot be negative.").max(15, "Discount cannot exceed 15%."),
-});
-type SetDiscountValues = z.infer<typeof SetDiscountSchema>;
-
-const SetDiscountDialog = ({ bookingId, currentDiscount, disabled }: { bookingId: string, currentDiscount: number, disabled: boolean }) => {
+const SetDiscountDialog = ({ bookingId, currency, currentDiscount, baseBookingCost, disabled }: { bookingId: string, currency: string, currentDiscount: number, baseBookingCost: number, disabled: boolean }) => {
     const [open, setOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
-    const form = useForm<SetDiscountValues>({ resolver: zodResolver(SetDiscountSchema), defaultValues: { discount: currentDiscount } });
+    
+    const maxDiscountAmount = useMemo(() => baseBookingCost * 0.15, [baseBookingCost]);
+    const currentDiscountAmount = useMemo(() => baseBookingCost * (currentDiscount / 100), [baseBookingCost, currentDiscount]);
+    
+    const SetDiscountSchema = z.object({
+        discount: z.coerce.number()
+            .min(0, "Discount cannot be negative.")
+            .max(maxDiscountAmount, `Discount cannot exceed ${formatCurrency(maxDiscountAmount, currency)} (15% of base cost).`),
+    });
+    type SetDiscountValues = z.infer<typeof SetDiscountSchema>;
+    
+    const form = useForm<SetDiscountValues>({ 
+        resolver: zodResolver(SetDiscountSchema), 
+        defaultValues: { discount: currentDiscountAmount } 
+    });
 
     useEffect(() => {
-        form.reset({ discount: currentDiscount });
-    }, [currentDiscount, form]);
+        form.reset({ discount: currentDiscountAmount });
+    }, [currentDiscountAmount, form]);
 
     const onSubmit = (data: SetDiscountValues) => {
         startTransition(async () => {
-            const result = await setDiscountAction({ bookingId, discountPercentage: data.discount });
+            const discountPercentage = baseBookingCost > 0 ? (data.discount / baseBookingCost) * 100 : 0;
+            const result = await setDiscountAction({ bookingId, discountPercentage });
             if (result.success) {
                 toast({ title: "Success", description: result.message });
                 setOpen(false);
@@ -244,6 +254,10 @@ const SetDiscountDialog = ({ bookingId, currentDiscount, disabled }: { bookingId
         });
     };
 
+    const formatCurrency = (amount: number, currency: string = 'USD') => {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+    }
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -252,7 +266,7 @@ const SetDiscountDialog = ({ bookingId, currentDiscount, disabled }: { bookingId
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Set Booking Discount</DialogTitle>
-                    <DialogDescription>Apply a percentage discount to the base rate of this booking. Maximum 15%.</DialogDescription>
+                    <DialogDescription>Apply a discount amount to the base rate of this booking. Maximum 15%.</DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -261,12 +275,9 @@ const SetDiscountDialog = ({ bookingId, currentDiscount, disabled }: { bookingId
                             name="discount"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Discount Percentage (%)</FormLabel>
+                                    <FormLabel>Discount Amount ({currency})</FormLabel>
                                     <FormControl>
-                                        <div className="relative">
-                                            <Input type="number" step="0.1" {...field} className="pr-8" />
-                                            <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        </div>
+                                        <Input type="number" step="0.01" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -703,7 +714,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                             <div className="flex gap-2">
                                 <AddBillDialog bookingId={booking.id} currency={listing.currency} disabled={isAnyActionPending} />
                                 <AddPaymentDialog bookingId={booking.id} currency={listing.currency} disabled={isAnyActionPending} />
-                                <SetDiscountDialog bookingId={booking.id} currentDiscount={booking.discount || 0} disabled={isAnyActionPending} />
+                                <SetDiscountDialog bookingId={booking.id} currency={listing.currency} currentDiscount={booking.discount || 0} baseBookingCost={baseBookingCost} disabled={isAnyActionPending} />
                             </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -771,7 +782,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                              {(booking.discount && booking.discount > 0) ? (
                                                 <TableRow>
                                                     <TableCell>
-                                                        <p className="font-medium">Discount ({booking.discount}%)</p>
+                                                        <p className="font-medium">Discount ({booking.discount.toFixed(2)}%)</p>
                                                         <p className="text-xs text-muted-foreground">Applied to base booking cost</p>
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">{formatCurrency(discountAmount)}</TableCell>
