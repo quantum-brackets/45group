@@ -28,6 +28,7 @@ import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendBookingSumma
 import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { preloadPermissions } from '@/lib/permissions/server'
 import { hasPermission } from '@/lib/permissions'
+import { generateRandomString } from '@/lib/utils'
 
 
 function unpackUser(user: any): User {
@@ -427,7 +428,7 @@ async function findOrCreateGuestUser(
     }
     
     // If no existing user was found (or if no email was provided), create a new one.
-    const placeholderEmail = email ? email.toLowerCase() : `walk-in-booking-${randomUUID()}@45group.org`;
+    const placeholderEmail = email ? email.toLowerCase() : `walk-in-booking-${generateRandomString(6)}@45group.org`;
     const dataPayload: { name: string; notes?: string } = { name };
     if (notes) {
         dataPayload.notes = notes;
