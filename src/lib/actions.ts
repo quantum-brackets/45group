@@ -530,19 +530,27 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       }
       const inventoryToBook = availableInventory.slice(0, numberOfUnits);
       
+      const { data: listingDataForMessage } = await supabase.from('listings').select('data').eq('id', listingId).single();
+      const listingForMessage = unpackListing({ ...listingDataForMessage, id: listingId });
+      
       const createdAt = new Date().toISOString();
       const isBookingForOther = session && session.id !== finalUserId;
       
-      const message = hasPermission(perms, session, 'booking:create') && isBookingForOther
-        ? `Booking created by staff member ${actorName} on behalf of ${finalUserName}.`
-        : 'Booking request received.';
+      let message;
+      const rateInfo = `Rate: ${listingForMessage.price} ${listingForMessage.currency}/${listingForMessage.price_unit}.`;
+      
+      if (hasPermission(perms, session, 'booking:create') && isBookingForOther) {
+        message = `Booking created by staff member ${actorName} on behalf of ${finalUserName}. ${rateInfo}`;
+      } else {
+        message = `Booking request received. ${rateInfo}`;
+      }
 
       const initialAction: BookingAction = {
         timestamp: createdAt,
         actorId: actorId,
         actorName: actorName,
         action: 'Created',
-        message: message
+        message: message,
       };
 
       const bookingData = {

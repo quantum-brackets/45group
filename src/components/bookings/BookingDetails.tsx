@@ -36,7 +36,7 @@ import { Skeleton } from '../ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Textarea } from '../ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { BookingSummary } from './BookingSummary';
+import { formatCurrency, BookingSummary } from './BookingSummary';
 
 
 interface BookingDetailsProps {
@@ -254,10 +254,6 @@ const SetDiscountDialog = ({ bookingId, currency, currentDiscount, baseBookingCo
         });
     };
 
-    const formatCurrency = (amount: number, currency: string = 'USD') => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
-    }
-
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -404,13 +400,6 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
   const totalBill = baseBookingCost + addedBillsTotal;
   const totalPayments = useMemo(() => (booking.payments || []).reduce((sum, payment) => sum + payment.amount, 0) + discountAmount, [booking.payments, discountAmount]);
   const balance = totalBill - totalPayments;
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: listing.currency || 'USD',
-    }).format(amount);
-  };
 
   const depositRequired = useMemo(() => {
     let deposit = 0;
