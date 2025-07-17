@@ -327,7 +327,7 @@ const CreateBookingSchema = z.object({
     numberOfUnits: z.coerce.number().int().min(1, "At least one unit is required."),
     userId: z.string().optional(),
     guestName: z.string().optional(),
-    guestEmail: z.string().email().optional().or(z.literal('')),
+    guestEmail: z.string().optional().or(z.literal('')),
     guestNotes: z.string().optional(),
   }).superRefine((data, ctx) => {
       // This is a guest checkout (or new user booking by staff).
@@ -464,9 +464,17 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       return { success: false, message: `Validation Error: ${errorMessages || 'Please check your input.'}` };
   }
 
-  const { listingId, startDate, endDate, guests, numberOfUnits, userId, guestName, guestNotes } = validatedFields.data;
+  const { listingId, guests, numberOfUnits, userId, guestName, guestNotes } = validatedFields.data;
   const guestEmail = validatedFields.data.guestEmail ? validatedFields.data.guestEmail.toLowerCase() : undefined;
   
+  // Standardize dates to 12:00 PM (noon)
+  const setTimeToNoon = (date: Date) => {
+    date.setUTCHours(12, 0, 0, 0);
+    return date;
+  }
+  const startDate = setTimeToNoon(parseISO(validatedFields.data.startDate)).toISOString();
+  const endDate = setTimeToNoon(parseISO(validatedFields.data.endDate)).toISOString();
+
   let finalUserId: string;
   let finalUserName: string;
   let finalUserEmail: string | undefined;
@@ -1021,7 +1029,7 @@ export async function completeBookingAction(data: z.infer<typeof BookingActionSc
 }
 
 // Zod schema for adding/updating users.
-const UserFormSchema = z.object({
+const addUserSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   email: z.string().email("Please enter a valid email address.").optional().or(z.literal('')),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
@@ -1032,12 +1040,16 @@ const UserFormSchema = z.object({
   listingIds: z.array(z.string()).optional(),
 });
 
+const editUserSchema = addUserSchema.extend({
+  email: z.string().email("A valid email is required and cannot be removed.").min(1, "Email cannot be empty."),
+});
+
 /**
  * Adds a new user to the system.
  * @param data - The user data.
  * @returns A result object indicating success or failure.
  */
-export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
+export async function addUserAction(data: z.infer<typeof addUserSchema>) {
     const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
@@ -1046,7 +1058,7 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
       return { success: false, message: 'Permission Denied: You are not authorized to create new users.' };
     }
   
-    const validatedFields = UserFormSchema.safeParse(data);
+    const validatedFields = addUserSchema.safeParse(data);
     if (!validatedFields.success) return { success: false, message: "Validation Error: Please check the form for invalid data." };
   
     const { name, password, role: initialRole, status, notes, phone, listingIds } = validatedFields.data;
@@ -1090,7 +1102,7 @@ export async function addUserAction(data: z.infer<typeof UserFormSchema>) {
  * @param data - The updated user data.
  * @returns A result object indicating success or failure.
  */
-export async function updateUserAction(id: string, data: z.infer<typeof UserFormSchema>) {
+export async function updateUserAction(id: string, data: z.infer<typeof editUserSchema>) {
   const perms = await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
@@ -1098,7 +1110,7 @@ export async function updateUserAction(id: string, data: z.infer<typeof UserForm
     return { success: false, message: 'Permission Denied: You are not authorized to update user details.' };
   }
 
-  const validatedFields = UserFormSchema.safeParse(data);
+  const validatedFields = editUserSchema.safeParse(data);
   if (!validatedFields.success) return { success: false, message: "Validation Error: Please check the form for invalid data." };
   
   const { data: existingUser, error: fetchError } = await supabase.from('users').select('data, email, role, status').eq('id', id).single();
@@ -1187,7 +1199,7 @@ export async function deleteUserAction(userId: string) {
 // Zod schema for the user's own profile update form.
 const UpdateProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
-  email: z.string().email("Please enter a valid email address."),
+  email: z.string().email("Please enter a valid email address.").min(1, "Email cannot be empty."),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
   phone: z.string().optional(),
   notes: z.string().optional(),
