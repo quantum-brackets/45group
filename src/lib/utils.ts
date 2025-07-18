@@ -1,8 +1,8 @@
-import { clsx, type ClassValue } from "clsx"
+import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import crypto from "crypto"
-import { utcToZonedTime, format as formatTz } from 'date-fns-tz';
-import { TIMEZONE } from "./constants";
+import { toZonedTime, format } from 'date-fns-tz';
+import { TIMEZONE } from "@/lib/constants";
 
 
 /**
@@ -11,8 +11,8 @@ import { TIMEZONE } from "./constants";
  * @param date - The date to convert, can be a Date object, string, or number.
  * @returns A new Date object in the specified timezone.
  */
-function utcToZonedTimeSafe(date: Date | string | number): Date {
-    return utcToZonedTime(date, TIMEZONE);
+function toZonedTimeSafe(date: Date | string | number): Date {
+    return toZonedTime(date, TIMEZONE);
 }
 
 /**
@@ -22,8 +22,7 @@ function utcToZonedTimeSafe(date: Date | string | number): Date {
  * @returns A formatted date string.
  */
 function formatInTimeZone(date: Date | string | number, formatStr: string): string {
-    const zonedDate = utcToZonedTime(date, TIMEZONE);
-    return formatTz(zonedDate, formatStr, { timeZone: TIMEZONE });
+    return format(toZonedTime(date, TIMEZONE), formatStr, { timeZone: TIMEZONE });
 }
 
 function cn(...inputs: ClassValue[]) {
@@ -47,6 +46,6 @@ function generateRandomString(length: number): string {
 export {
     cn,
     generateRandomString,
-    utcToZonedTimeSafe,
+    toZonedTimeSafe,
     formatInTimeZone
 }

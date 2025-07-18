@@ -322,8 +322,8 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
     defaultValues: {
       bookingName: booking.bookingName || '',
       dates: {
-        from: DateUtils.utcToZonedTimeSafe(booking.startDate),
-        to: DateUtils.utcToZonedTimeSafe(booking.endDate),
+        from: DateUtils.toZonedTimeSafe(booking.startDate),
+        to: DateUtils.toZonedTimeSafe(booking.endDate),
       },
       guests: booking.guests,
       numberOfUnits: booking.inventoryIds?.length || 1,
@@ -363,12 +363,12 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
   const baseBookingCost = useMemo(() => {
     if (!booking.startDate || !booking.endDate || !listing.price || !listing.price_unit) return 0;
 
-    const from = DateUtils.utcToZonedTimeSafe(booking.startDate);
-    const originalEndDate = DateUtils.utcToZonedTimeSafe(booking.endDate);
+    const from = DateUtils.toZonedTimeSafe(booking.startDate);
+    const originalEndDate = DateUtils.toZonedTimeSafe(booking.endDate);
 
     // For ongoing bookings, calculate the bill up to today.
     // For completed/cancelled bookings, use the actual end date.
-    let to = (booking.status === 'Completed' || booking.status === 'Cancelled') ? originalEndDate : DateUtils.utcToZonedTimeSafe(new Date());
+    let to = (booking.status === 'Completed' || booking.status === 'Cancelled') ? originalEndDate : DateUtils.toZonedTimeSafe(new Date());
     // Also, don't show a negative duration if the booking hasn't started yet.
     if (isBefore(to, from)) {
         to = from;
@@ -975,7 +975,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                             selected={field.value}
                             onSelect={field.onChange as (date: DateRange | undefined) => void}
                             numberOfMonths={2}
-                            disabled={(day) => day < DateUtils.utcToZonedTimeSafe(new Date(new Date().setHours(0, 0, 0, 0)), TIMEZONE)}
+                            disabled={(day) => day < DateUtils.toZonedTimeSafe(new Date(new Date().setHours(0, 0, 0, 0)), TIMEZONE)}
                             />
                         </PopoverContent>
                         </Popover>
