@@ -3,7 +3,7 @@
 "use client";
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { differenceInCalendarDays, format, isBefore, parseISO } from 'date-fns';
+import { differenceInCalendarDays, isBefore } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
@@ -22,9 +22,9 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
+import { EVENT_BOOKING_DAILY_HRS, TIMEZONE } from '@/lib/constants';
 import { hasPermission } from '@/lib/permissions';
-import { cn } from "@/lib/utils";
+import { cn, formatInTimeZone, utcToZonedTimeSafe } from "@/lib/utils";
 import { Calendar as CalendarLucide, Check, CheckCircle, CircleUser, CreditCard, DollarSign, Edit, FileText, History, Info, KeySquare, Loader2, Pencil, Percent, Printer, Receipt, User as UserIcon, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import type { DateRange } from "react-day-picker";
@@ -321,8 +321,8 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
     defaultValues: {
       bookingName: booking.bookingName || '',
       dates: {
-        from: parseISO(booking.startDate),
-        to: parseISO(booking.endDate),
+        from: utcToZonedTimeSafe(booking.startDate),
+        to: utcToZonedTimeSafe(booking.endDate),
       },
       guests: booking.guests,
       numberOfUnits: booking.inventoryIds?.length || 1,
@@ -362,12 +362,12 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
   const baseBookingCost = useMemo(() => {
     if (!booking.startDate || !booking.endDate || !listing.price || !listing.price_unit) return 0;
 
-    const from = parseISO(booking.startDate);
-    const originalEndDate = parseISO(booking.endDate);
+    const from = utcToZonedTimeSafe(booking.startDate);
+    const originalEndDate = utcToZonedTimeSafe(booking.endDate);
 
     // For ongoing bookings, calculate the bill up to today.
     // For completed/cancelled bookings, use the actual end date.
-    let to = (booking.status === 'Completed' || booking.status === 'Cancelled') ? originalEndDate : new Date();
+    let to = (booking.status === 'Completed' || booking.status === 'Cancelled') ? originalEndDate : utcToZonedTimeSafe(new Date());
     // Also, don't show a negative duration if the booking hasn't started yet.
     if (isBefore(to, from)) {
         to = from;
@@ -570,7 +570,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                 <div>
                     <p className="font-semibold">Booking Dates</p>
                     <p className="text-muted-foreground">
-                    {format(parseISO(booking.startDate), 'PPP')} to {format(parseISO(booking.endDate), 'PPP')}
+                    {formatInTimeZone(booking.startDate, 'PPP')} to {formatInTimeZone(booking.endDate, 'PPP')}
                     </p>
                 </div>
                 </div>
@@ -598,7 +598,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                             {booking.userName}
                         </Link>
                         {booking.createdAt && (
-                        <span className="block text-sm">on {format(parseISO(booking.createdAt), 'PP')}</span>
+                        <span className="block text-sm">on {formatInTimeZone(booking.createdAt, 'PP')}</span>
                         )}
                     </p>
                     </div>
@@ -647,7 +647,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                     <span className="text-muted-foreground">by {mostRecentAction.actorName}</span>
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    {isClient ? format(parseISO(mostRecentAction.timestamp), 'MMM d, yyyy, h:mm a') : <Skeleton className="h-4 w-32" />}
+                                    {isClient ? formatInTimeZone(mostRecentAction.timestamp, 'MMM d, yyyy, h:mm a') : <Skeleton className="h-4 w-32" />}
                                   </div>
                                   <p className="text-muted-foreground text-sm mt-1">{mostRecentAction.message}</p>
                                   <p className="text-xs text-primary mt-2 font-semibold">View full history...</p>
@@ -678,7 +678,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                         <span className="text-muted-foreground">by {action.actorName}</span>
                                       </div>
                                       <div className="text-xs text-muted-foreground">
-                                        {isClient ? format(parseISO(action.timestamp), 'MMM d, yyyy, h:mm a') : <Skeleton className="h-4 w-32" />}
+                                        {isClient ? formatInTimeZone(action.timestamp, 'MMM d, yyyy, h:mm a') : <Skeleton className="h-4 w-32" />}
                                       </div>
                                       <p className="text-muted-foreground text-sm mt-1">{action.message}</p>
                                     </div>
@@ -700,9 +700,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                 <DollarSign className="h-5 w-5" />
                                 Billing Summary
                             </h3>
-                            <div className="flex gap-2">
-                                <AddBillDialog bookingId={booking.id} currency={listing.currency} disabled={isAnyActionPending} />
-                                <AddPaymentDialog bookingId={booking.id} currency={listing.currency} disabled={isAnyActionPending} />
+                             <div className="flex gap-2">
                                 <SetDiscountDialog bookingId={booking.id} currency={listing.currency} currentDiscount={booking.discount || 0} baseBookingCost={baseBookingCost} disabled={isAnyActionPending} />
                             </div>
                         </div>
@@ -722,7 +720,10 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                         </div>
                         <div className="grid md:grid-cols-2 gap-6">
                              <div>
-                                <h4 className="font-semibold mb-2 flex items-center gap-2"><Receipt className="h-4 w-4" /> Bills</h4>
+                                <div className="flex justify-between items-center mb-2">
+                                    <h4 className="font-semibold flex items-center gap-2"><Receipt className="h-4 w-4" /> Bills</h4>
+                                    <AddBillDialog bookingId={booking.id} currency={listing.currency} disabled={isAnyActionPending} />
+                                </div>
                                 <Card>
                                     <Table>
                                         <TableHeader>
@@ -743,7 +744,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                                 <TableRow key={bill.id}>
                                                     <TableCell>
                                                         <p>{bill.description}</p>
-                                                        <p className="text-xs text-muted-foreground">Added by {bill.actorName} on {format(parseISO(bill.createdAt), 'PP')}</p>
+                                                        <p className="text-xs text-muted-foreground">Added by {bill.actorName} on {formatInTimeZone(bill.createdAt, 'PP')}</p>
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">{formatCurrency(bill.amount)}</TableCell>
                                                 </TableRow>
@@ -758,7 +759,10 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                 </Card>
                              </div>
                              <div>
-                                <h4 className="font-semibold mb-2 flex items-center gap-2"><CreditCard className="h-4 w-4" /> Payments</h4>
+                                <div className="flex justify-between items-center mb-2">
+                                    <h4 className="font-semibold flex items-center gap-2"><CreditCard className="h-4 w-4" /> Payments</h4>
+                                    <AddPaymentDialog bookingId={booking.id} currency={listing.currency} disabled={isAnyActionPending} />
+                                </div>
                                 <Card>
                                      <Table>
                                         <TableHeader>
@@ -784,7 +788,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                                         {payment.notes && (
                                                             <p className="text-sm text-muted-foreground italic mt-1">"{payment.notes}"</p>
                                                         )}
-                                                        <p className="text-xs text-muted-foreground mt-1">Recorded by {payment.actorName} on {format(parseISO(payment.timestamp), 'PP')}</p>
+                                                        <p className="text-xs text-muted-foreground mt-1">Recorded by {payment.actorName} on {formatInTimeZone(payment.timestamp, 'PP')}</p>
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">{formatCurrency(payment.amount)}</TableCell>
                                                 </TableRow>
@@ -950,11 +954,11 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                 {field.value?.from ? (
                                 field.value.to ? (
                                     <>
-                                    {format(field.value.from, "LLL dd, y")} -{" "}
-                                    {format(field.value.to, "LLL dd, y")}
+                                    {formatInTimeZone(field.value.from, "LLL dd, y")} -{" "}
+                                    {formatInTimeZone(field.value.to, "LLL dd, y")}
                                     </>
                                 ) : (
-                                    format(field.value.from, "LLL dd, y")
+                                    formatInTimeZone(field.value.from, "LLL dd, y")
                                 )
                                 ) : (
                                 <span>Pick a date range</span>
@@ -970,7 +974,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                             selected={field.value}
                             onSelect={field.onChange as (date: DateRange | undefined) => void}
                             numberOfMonths={2}
-                            disabled={(day) => day < new Date(new Date().setHours(0, 0, 0, 0))}
+                            disabled={(day) => day < utcToZonedTimeSafe(new Date(new Date().setHours(0, 0, 0, 0)), TIMEZONE)}
                             />
                         </PopoverContent>
                         </Popover>
