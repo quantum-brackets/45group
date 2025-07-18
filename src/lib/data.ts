@@ -10,8 +10,9 @@ import type { Listing, Booking, ListingType, User, ListingInventory, Review, Boo
 import { getSession } from '@/lib/session';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createSupabaseServerClient, createSupabaseAdminClient } from './supabase-server';
-import { preloadPermissions } from './permissions/server';
-import { hasPermission } from './permissions';
+import { preloadPermissions } from '@/lib/permissions/server';
+import { hasPermission } from '@/lib/permissions';
+import { toZonedTimeSafe } from '@/lib/utils'
 
 
 /**
@@ -358,7 +359,7 @@ export async function getAllBookings(): Promise<Booking[]> {
     // Apply a multi-level sort to the bookings.
     mappedBookings.sort((a, b) => {
         // 1. Sort by date (start_date) descending (newest first).
-        const dateComparison = new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+        const dateComparison = toZonedTimeSafe(b.startDate).getTime() - toZonedTimeSafe(a.startDate).getTime();
         if (dateComparison !== 0) return dateComparison;
 
         // 2. Sort by booking name (Booking For) ascending.
@@ -514,8 +515,8 @@ export async function getFilteredListings(filters: FilterValues): Promise<Listin
       return [];
   }
 
-  const from = filters.date.from.toISOString();
-  const to = (filters.date.to || filters.date.from).toISOString();
+  const from = toZonedTimeSafe(filters.date.from).toISOString();
+  const to = toZonedTimeSafe(filters.date.to || filters.date.from).toISOString();
 
   // Find all confirmed bookings that overlap with the selected date range.
   const { data: overlappingBookings, error: bookingsError } = await supabase

@@ -22,13 +22,13 @@ import { getSession, logout as sessionLogout } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import { hashPassword } from '@/lib/password'
-import type { Booking, Listing, ListingInventory, Role, Review, User, BookingAction, Bill, Payment, Permission } from '@/lib/types'
+import type { Booking, Listing, Role, Review, User, BookingAction, Bill, Payment, Permission } from '@/lib/types'
 import { randomUUID } from 'crypto'
 import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendBookingSummaryEmail, sendWelcomeEmail } from '@/lib/email'
 import { differenceInCalendarDays, parseISO } from 'date-fns'
-import { preloadPermissions } from './permissions/server'
-import { hasPermission } from './permissions'
-import { generateRandomString } from '@/lib/utils'
+import { preloadPermissions } from '@/lib/permissions/server'
+import { hasPermission } from '@/lib/permissions'
+import { generateRandomString, toZonedTimeSafe } from '@/lib/utils'
 
 
 function unpackUser(user: any): User {
@@ -652,8 +652,8 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     }
 
     // Determine if critical fields have changed, which may require re-confirmation.
-    const existingStartDate = new Date(booking.start_date).toISOString();
-    const existingEndDate = new Date(booking.end_date).toISOString();
+    const existingStartDate = toZonedTimeSafe(booking.start_date).toISOString();
+    const existingEndDate = toZonedTimeSafe(booking.end_date).toISOString();
     const existingNumberOfUnits = (booking.data.inventoryIds || []).length;
     const existingInventoryIds = new Set<string>(booking.data.inventoryIds || []);
     const newInventoryIds = new Set<string>(inventoryIds || []);

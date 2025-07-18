@@ -13,8 +13,8 @@ import type { Booking, User, Role, Permission } from '@/lib/types';
 import { useTransition } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { cancelBookingAction, confirmBookingAction } from '@/lib/actions';
-import { format, parseISO } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { parseISO } from 'date-fns';
+import { cn, formatDateToStr } from '@/lib/utils';
 import { hasPermission } from '@/lib/permissions';
 
 interface BookingsTableProps {
@@ -122,12 +122,12 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
                     <>
                       <span className="hidden md:inline">
                         {booking.startDate === booking.endDate
-                          ? format(parseISO(booking.startDate), 'PPP')
-                          : `${format(parseISO(booking.startDate), 'PPP')} to ${format(parseISO(booking.endDate), 'PPP')}`}
+                          ? formatDateToStr(parseISO(booking.startDate), 'PPP')
+                          : `${formatDateToStr(parseISO(booking.startDate), 'PPP')} to ${formatDateToStr(parseISO(booking.endDate), 'PPP')}`}
                       </span>
                       <div className="md:hidden flex flex-col text-xs">
-                          <span>{format(parseISO(booking.startDate), 'MMM d, yyyy')}</span>
-                          {booking.startDate !== booking.endDate && <span>to {format(parseISO(booking.endDate), 'MMM d, yyyy')}</span>}
+                          <span>{formatDateToStr(parseISO(booking.startDate), 'MMM d, yyyy')}</span>
+                          {booking.startDate !== booking.endDate && <span>to {formatDateToStr(parseISO(booking.endDate), 'MMM d, yyyy')}</span>}
                       </div>
                     </>
                   ) : (

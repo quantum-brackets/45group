@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import crypto from "crypto"
-import { toZonedTime, format } from 'date-fns-tz';
+import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { TIMEZONE } from "@/lib/constants";
 
 
@@ -21,8 +21,8 @@ function toZonedTimeSafe(date: Date | string | number): Date {
  * @param formatStr - The format string (e.g., 'PPP', 'LLL dd, y').
  * @returns A formatted date string.
  */
-function formatInTimeZone(date: Date | string | number, formatStr: string): string {
-    return format(toZonedTime(date, TIMEZONE), formatStr, { timeZone: TIMEZONE });
+function formatDateToStr(date: Date | string | number, formatStr: string): string {
+    return formatInTimeZone(toZonedTime(date, TIMEZONE), TIMEZONE, formatStr);
 }
 
 function cn(...inputs: ClassValue[]) {
@@ -47,5 +47,5 @@ export {
     cn,
     generateRandomString,
     toZonedTimeSafe,
-    formatInTimeZone
+    formatDateToStr
 }

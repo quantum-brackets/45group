@@ -14,7 +14,7 @@ import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
 import { hasPermission } from '@/lib/permissions';
 import type { Listing, Permission, Role, User } from '@/lib/types';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { add, differenceInCalendarDays, format, isWithinInterval, parseISO } from 'date-fns';
+import { add, differenceInCalendarDays, isWithinInterval, parseISO } from 'date-fns';
 import { Loader2, PartyPopper, Users, Warehouse } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
@@ -26,6 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Separator } from '../ui/separator';
 import { Textarea } from '../ui/textarea';
+import { formatDateToStr, toZonedTimeSafe } from '@/lib/utils';
 
 
 interface BookingFormProps {
@@ -262,8 +263,8 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
 
         const result = await createBookingAction({
             listingId: listing.id,
-            startDate: startDate.toISOString(),
-            endDate: endDate.toISOString(),
+            startDate: toZonedTimeSafe(startDate).toISOString(),
+            endDate: toZonedTimeSafe(endDate).toISOString(),
             guests: guests,
             numberOfUnits: units,
             userId: formData.userId,
@@ -321,12 +322,12 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                 <div className="flex">
                   <div className="flex-1 p-3">
                     <Label className="text-xs font-bold uppercase text-muted-foreground">From</Label>
-                    <div className="text-sm mt-1">{date?.from ? format(date.from, 'MM/dd/yyyy') : 'Add date'}</div>
+                    <div className="text-sm mt-1">{date?.from ? formatDateToStr(date.from, 'MM/dd/yyyy') : 'Add date'}</div>
                   </div>
                   <Separator orientation="vertical" className="h-auto" />
                    <div className="flex-1 p-3">
                     <Label className="text-xs font-bold uppercase text-muted-foreground">To</Label>
-                    <div className="text-sm mt-1">{date?.to ? format(date.to, 'MM/dd/yyyy') : 'Add date'}</div>
+                    <div className="text-sm mt-1">{date?.to ? formatDateToStr(date.to, 'MM/dd/yyyy') : 'Add date'}</div>
                   </div>
                 </div>
               </button>

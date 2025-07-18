@@ -9,9 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { MapPin, Users, Calendar as CalendarIcon, SlidersHorizontal, Search } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { DateRange } from "react-day-picker";
-import { cn } from "@/lib/utils";
+import { cn, formatDateToStr, toZonedTimeSafe } from "@/lib/utils";
 import { ListingType } from '@/lib/types';
 
 export function ListingFilters() {
@@ -111,11 +111,11 @@ export function ListingFilters() {
                 {date?.from ? (
                   date.to ? (
                     <>
-                      {format(date.from, "LLL dd, y")} -{" "}
-                      {format(date.to, "LLL dd, y")}
+                      {formatDateToStr(date.from, "LLL dd, y")} -{" "}
+                      {formatDateToStr(date.to, "LLL dd, y")}
                     </>
                   ) : (
-                    format(date.from, "LLL dd, y")
+                    formatDateToStr(date.from, "LLL dd, y")
                   )
                 ) : (
                   <span>Pick a date range</span>
@@ -130,7 +130,7 @@ export function ListingFilters() {
                 selected={date}
                 onSelect={setDate}
                 numberOfMonths={2}
-                disabled={(day) => day < new Date(new Date().setHours(0, 0, 0, 0))}
+                disabled={(day) => day < toZonedTimeSafe(new Date().setHours(0, 0, 0, 0))}
               />
             </PopoverContent>
           </Popover>

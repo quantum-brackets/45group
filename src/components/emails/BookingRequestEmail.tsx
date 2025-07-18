@@ -1,19 +1,19 @@
 import {
-    Body,
-    Container,
-    Head,
-    Heading,
-    Html,
-    Img,
-    Preview,
-    Section,
-    Text,
-    Row,
-    Column
-  } from '@react-email/components';
-  import * as React from 'react';
-  import { format } from 'date-fns';
-  import type { Booking, Listing, User } from '@/lib/types';
+  Body,
+  Container,
+  Head,
+  Heading,
+  Html,
+  Img,
+  Preview,
+  Section,
+  Text,
+  Row,
+  Column
+} from '@react-email/components';
+import * as React from 'react';
+import type { Booking, Listing, User } from '@/lib/types';
+import { formatDateToStr, toZonedTimeSafe } from '@/lib/utils';
   
   interface BookingRequestEmailProps {
     user: User;
@@ -56,11 +56,11 @@ import {
             <Row>
               <Column style={column}>
                 <Text style={detailTitle}>Check-in</Text>
-                <Text style={detailText}>{format(new Date(booking.startDate), 'PPP')}</Text>
+                <Text style={detailText}>{formatDateToStr(toZonedTimeSafe(booking.startDate), 'PPP')}</Text>
               </Column>
               <Column style={column}>
                 <Text style={detailTitle}>Check-out</Text>
-                <Text style={detailText}>{format(new Date(booking.endDate), 'PPP')}</Text>
+                <Text style={detailText}>{formatDateToStr(toZonedTimeSafe(booking.endDate), 'PPP')}</Text>
               </Column>
             </Row>
              <Row>

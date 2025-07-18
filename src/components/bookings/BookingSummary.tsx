@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/table';
 import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
 import type { Booking, Listing } from '@/lib/types';
+import { formatDateToStr } from '@/lib/utils';
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import {
   Banknote,
@@ -139,8 +140,8 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
           <div>
             <p className="font-bold text-gray-600">Dates</p>
             <p className="text-gray-800">
-              {format(parseISO(booking.startDate), 'MMM d, yyyy')} -{' '}
-              {format(parseISO(booking.endDate), 'MMM d, yyyy')}
+              {formatDateToStr(parseISO(booking.startDate), 'MMM d, yyyy')} -{' '}
+              {formatDateToStr(parseISO(booking.endDate), 'MMM d, yyyy')}
             </p>
           </div>
         </div>
