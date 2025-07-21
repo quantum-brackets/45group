@@ -61,7 +61,7 @@ const calculateBookingFinancials = (booking: Booking, listing: Listing) => {
 
 export function ListingReport({ listing, initialBookings, initialDateRange, initialPeriod, session }: ListingReportProps) {
   const router = useRouter();
-  const [date, setDate] = useState<Date | undefined>(initialDateRange.from);
+  const [date, setDate] = useState<Date | undefined>(initialDateRange.to);
   const [period, setPeriod] = useState(initialPeriod);
 
   const bookingsWithFinancials = useMemo(() => {
@@ -196,7 +196,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4 items-end">
           <div className="grid gap-1.5">
-            <Label>Report From</Label>
+            <Label>Report Up To</Label>
              <Popover>
               <PopoverTrigger asChild>
                 <Button variant={"outline"} className={cn("w-[280px] justify-start text-left font-normal", !date && "text-muted-foreground")}>
@@ -215,7 +215,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
             </Popover>
           </div>
           <div className="grid gap-1.5">
-            <Label>For The Next</Label>
+            <Label>For The Last</Label>
             <div className="flex gap-2">
               <Input
                 type="number"
