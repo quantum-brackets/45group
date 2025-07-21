@@ -155,7 +155,8 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
         headStyles: { fillColor: [211, 76, 35] },
     });
 
-    doc.save(`report_${listing.name.replace(/s+/g, '_')}_${formatDateToStr(new Date(), 'yyyy-MM-dd')}.pdf`);
+    const reportDate = formatDateToStr(initialDateRange?.to || initialDateRange?.from || new Date(), 'yyyy-MM-dd');
+    doc.save(`report_${listing.name.replace(/\s+/g, '_')}_${reportDate}.pdf`);
     setIsExportOpen(false);
   };
   
