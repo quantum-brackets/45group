@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React from 'react';
@@ -19,11 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Textarea } from "../ui/textarea";
-import { BackButton } from "../common/BackButton";
-import { Checkbox } from '../ui/checkbox';
-import { cn } from '@/lib/utils';
-import { ScrollArea } from '../ui/scroll-area';
+import { Textarea } from "@/components/ui/textarea";
+import { BackButton } from "@/components/common/BackButton";
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const baseSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -143,10 +140,7 @@ export function UserForm({ user, session, allListings = [] }: UserFormProps) {
             <FormField
               control={form.control}
               name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl>
+              render={({ field }) => (\n                <FormItem>\n                  <FormLabel>Full Name</FormLabel>\n                  <FormControl>
                     <Input placeholder="John Doe" {...field} />
                   </FormControl>
                   <FormMessage />
@@ -156,10 +150,7 @@ export function UserForm({ user, session, allListings = [] }: UserFormProps) {
              <FormField
               control={form.control}
               name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address</FormLabel>
-                  <FormControl>
+              render={({ field }) => (\n                <FormItem>\n                  <FormLabel>Email Address</FormLabel>\n                  <FormControl>
                     <Input type="email" placeholder="user@example.com" {...field} />
                   </FormControl>
                    <FormDescription>
@@ -172,10 +163,7 @@ export function UserForm({ user, session, allListings = [] }: UserFormProps) {
             <FormField
               control={form.control}
               name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Phone Number</FormLabel>
-                  <FormControl>
+              render={({ field }) => (\n                <FormItem>\n                  <FormLabel>Phone Number</FormLabel>\n                  <FormControl>
                     <Input type="tel" placeholder="+1 (555) 555-5555" {...field} />
                   </FormControl>
                   <FormDescription>
@@ -188,10 +176,7 @@ export function UserForm({ user, session, allListings = [] }: UserFormProps) {
             <FormField
               control={form.control}
               name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
+              render={({ field }) => (\n                <FormItem>\n                  <FormLabel>Password</FormLabel>\n                  <FormControl>
                     <Input type="password" {...field} />
                   </FormControl>
                    <FormDescription>
@@ -204,8 +189,7 @@ export function UserForm({ user, session, allListings = [] }: UserFormProps) {
             <FormField
                 control={form.control}
                 name="role"
-                render={({ field }) => (
-                    <FormItem>
+                render={({ field }) => (\n                    <FormItem>
                     <FormLabel>Role</FormLabel>
                     <Select 
                         onValueChange={field.onChange} 
@@ -239,8 +223,7 @@ export function UserForm({ user, session, allListings = [] }: UserFormProps) {
              <FormField
                 control={form.control}
                 name="status"
-                render={({ field }) => (
-                    <FormItem className="space-y-3">
+                render={({ field }) => (\n                    <FormItem className="space-y-3">
                     <FormLabel>Account Status</FormLabel>
                     <FormControl>
                         <RadioGroup
@@ -281,8 +264,7 @@ export function UserForm({ user, session, allListings = [] }: UserFormProps) {
               <FormField
                 control={form.control}
                 name="listingIds"
-                render={() => (
-                  <FormItem>
+                render={() => (\n                  <FormItem>
                     <div className="mb-4">
                       <FormLabel className="text-base">Listing Assignments</FormLabel>
                       <FormDescription>
@@ -290,14 +272,12 @@ export function UserForm({ user, session, allListings = [] }: UserFormProps) {
                       </FormDescription>
                     </div>
                     <ScrollArea className="h-48 rounded-md border p-4">
-                      {allListings.map((item) => (
-                        <FormField
+                      {allListings.map((item) => (\n                        <FormField
                           key={item.id}
                           control={form.control}
                           name="listingIds"
                           render={({ field }) => {
-                            return (
-                              <FormItem
+                            return (\n                              <FormItem
                                 key={item.id}
                                 className="flex flex-row items-start space-x-3 space-y-0 mb-2"
                               >
@@ -323,8 +303,7 @@ export function UserForm({ user, session, allListings = [] }: UserFormProps) {
                             );
                           }}
                         />
-                      ))}
-                    </ScrollArea>
+                      ))}\n                    </ScrollArea>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -335,8 +314,7 @@ export function UserForm({ user, session, allListings = [] }: UserFormProps) {
             <FormField
               control={form.control}
               name="notes"
-              render={({ field }) => (
-                  <FormItem>
+              render={({ field }) => (\n                  <FormItem>
                       <FormLabel>Notes</FormLabel>
                       <FormControl>
                           <Textarea

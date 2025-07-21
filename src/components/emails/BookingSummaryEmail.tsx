@@ -16,7 +16,7 @@ import {
 import * as React from 'react';
 import { format } from 'date-fns';
 import type { Booking, Listing, User } from '@/lib/types';
-import { BookingSummary, formatCurrency } from '../bookings/BookingSummary';
+import { BookingSummary, formatCurrency } from '@/components/bookings/BookingSummary';
 
 interface BookingSummaryEmailProps {
   user: User;

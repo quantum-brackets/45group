@@ -6,9 +6,9 @@
 'use server'
 
 import 'server-only';
-import type { User } from './types';
+import type { User } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
-import { createSupabaseAdminClient } from './supabase-server';
+import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import { cookies } from 'next/headers';
 import { add } from 'date-fns';
 

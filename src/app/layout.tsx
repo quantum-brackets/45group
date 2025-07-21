@@ -5,7 +5,7 @@
  */
 import type {Metadata} from 'next';
 import Script from 'next/script';
-import './globals.css';
+import '@/app/globals.css';
 import { Header } from '@/components/common/Header';
 import { Toaster } from "@/components/ui/toaster"
 import { getSession } from '@/lib/session';

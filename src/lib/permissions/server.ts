@@ -1,8 +1,8 @@
 /**
  * @fileoverview This file defines the server-side logic for the Role-Based Access Control (RBAC) system.
  */
-import type { Permission, Role } from '../types';
-import { createSupabaseAdminClient } from '../supabase-server';
+import type { Permission, Role } from '@/lib/types';
+import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import 'server-only';
 import { unstable_noStore as noStore } from 'next/cache';
 

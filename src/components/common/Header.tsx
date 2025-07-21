@@ -19,7 +19,7 @@ import { Menu, ChevronDown } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import type { User } from '@/lib/types';
-import { UserNav } from '../auth/UserNav';
+import { UserNav } from '@/components/auth/UserNav';
 import {
   DropdownMenu,
   DropdownMenuContent,

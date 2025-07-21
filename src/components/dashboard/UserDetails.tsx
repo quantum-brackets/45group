@@ -1,11 +1,10 @@
-
 "use client";
 
 import type { User } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { User as UserIcon, Mail, Phone, Shield, FileText, CircleUserRound } from 'lucide-react';
-import { BackButton } from '../common/BackButton';
+import { BackButton } from '@/components/common/BackButton';
 
 interface UserDetailsProps {
     user: User;

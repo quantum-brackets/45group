@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,15 +27,15 @@ import * as DateUtils from '@/lib/utils';
 import { Calendar as CalendarLucide, Check, CheckCircle, CircleUser, CreditCard, DollarSign, Edit, FileText, History, Info, KeySquare, Loader2, Pencil, Percent, Printer, Receipt, User as UserIcon, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import type { DateRange } from "react-day-picker";
-import { BackButton } from '../common/BackButton';
-import { Checkbox } from '../ui/checkbox';
-import { Combobox } from '../ui/combobox';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
-import { Skeleton } from '../ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { Textarea } from '../ui/textarea';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { formatCurrency, BookingSummary } from './BookingSummary';
+import { BackButton } from '@/components/common/BackButton';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Combobox } from '@/components/ui/combobox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatCurrency, BookingSummary } from '@/components/bookings/BookingSummary';
 
 
 interface BookingDetailsProps {
@@ -278,7 +277,7 @@ const SetDiscountDialog = ({ bookingId, currency, currentDiscount, baseBookingCo
                                     <FormMessage />
                                 </FormItem>
                             )}
-                        />
+                            />
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>Cancel</Button>
                             <Button type="submit" disabled={isPending}>{isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Set Discount</Button>
@@ -713,13 +712,13 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                 <CardTitle className="text-lg text-green-600">{formatCurrency(totalPayments, listing.currency)}</CardTitle>
                                 <CardDescription>Total Paid</CardDescription>
                             </Card>
-                             <Card className={cn("text-center p-4", balance > 0 ? "bg-destructive/10" : "bg-green-100")}>
+                                <Card className={cn("text-center p-4", balance > 0 ? "bg-destructive/10" : "bg-green-100")}>
                                 <CardTitle className={cn("text-lg", balance > 0 ? "text-destructive" : "text-green-700")}>{formatCurrency(balance, listing.currency)}</CardTitle>
                                 <CardDescription>{balance > 0 ? 'Balance Due' : 'Credit'}</CardDescription>
                             </Card>
                         </div>
                         <div className="grid md:grid-cols-2 gap-6">
-                             <div>
+                                <div>
                                 <div className="flex justify-between items-center mb-2">
                                     <h4 className="font-semibold flex items-center gap-2"><Receipt className="h-4 w-4" /> Bills</h4>
                                     <AddBillDialog bookingId={booking.id} currency={listing.currency} disabled={isAnyActionPending} />
@@ -733,7 +732,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                             <TableRow>
+                                                <TableRow>
                                                 <TableCell>
                                                     <p className="font-medium">Base Booking Cost</p>
                                                     <p className="text-xs text-muted-foreground">Initial reservation cost ({formatCurrency(listing.price, listing.currency)})</p>
@@ -757,14 +756,14 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                         </TableBody>
                                     </Table>
                                 </Card>
-                             </div>
-                             <div>
+                                </div>
+                                <div>
                                 <div className="flex justify-between items-center mb-2">
                                     <h4 className="font-semibold flex items-center gap-2"><CreditCard className="h-4 w-4" /> Payments</h4>
                                     <AddPaymentDialog bookingId={booking.id} currency={listing.currency} disabled={isAnyActionPending} />
                                 </div>
                                 <Card>
-                                     <Table>
+                                        <Table>
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead>Details</TableHead>
@@ -772,7 +771,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                             {(booking.discount && booking.discount > 0) ? (
+                                                {(booking.discount && booking.discount > 0) ? (
                                                 <TableRow>
                                                     <TableCell>
                                                         <p className="font-medium">Discount ({booking.discount.toFixed(2)}%)</p>
@@ -780,8 +779,8 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">{formatCurrency(discountAmount, listing.currency)}</TableCell>
                                                 </TableRow>
-                                             ): null}
-                                             {(booking.payments || []).length > 0 ? booking.payments?.map(payment => (
+                                                ): null}
+                                                {(booking.payments || []).length > 0 ? booking.payments?.map(payment => (
                                                 <TableRow key={payment.id}>
                                                     <TableCell>
                                                         <p className="font-medium">{payment.method}</p>
@@ -847,12 +846,12 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                 <div className="inline-block"> {/* Wrapper for Tooltip with disabled button */}
+                                    <div className="inline-block"> {/* Wrapper for Tooltip with disabled button */}
                                     <Button size="sm" onClick={handleConfirm} disabled={isAnyActionPending || staffActionIsBlocked} className="bg-accent hover:bg-accent/90 text-accent-foreground">
                                         {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                                         Confirm
                                     </Button>
-                                 </div>
+                                    </div>
                             </TooltipTrigger>
                             {staffActionIsBlocked && (
                                 <TooltipContent>
@@ -912,9 +911,9 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
             </div>
         </CardFooter>
     </>
-  );
+    );
 
-  const EditView = () => (
+    const EditView = () => (
     <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
             <CardContent className="grid md:grid-cols-2 gap-6 pt-6">
@@ -1029,7 +1028,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                 />
 
                 {canReassignUnits && (
-                     <div className="md:col-span-2 space-y-2">
+                        <div className="md:col-span-2 space-y-2">
                         <FormField
                             control={form.control}
                             name="inventoryIds"
@@ -1134,16 +1133,16 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
             </CardFooter>
         </form>
     </Form>
-  );
+    );
 
-  return (
+    return (
     <>
-      <style>{`
+        <style>{`
         @media print {
-          body > *:not(.printable-area) {
+            body > *:not(.printable-area) {
             display: none !important;
-          }
-          .printable-area {
+            }
+            .printable-area {
             display: block !important;
             position: absolute;
             top: 0;
@@ -1152,24 +1151,24 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
             height: auto !important;
             max-height: none !important;
             overflow: visible !important;
-          }
-          html, body {
+            }
+            html, body {
             background-color: #fff !important;
-          }
+            }
         }
-      `}</style>
-      <Card className="max-w-4xl mx-auto shadow-lg">
+        `}</style>
+        <Card className="max-w-4xl mx-auto shadow-lg">
         <CardHeader>
-          <CardTitle className="text-2xl font-headline text-primary">
+            <CardTitle className="text-2xl font-headline text-primary">
             <Link href={`/listing/${listing.id}`} className="hover:underline">{listing.name}</Link>
-          </CardTitle>
-          <CardDescription className="pt-1">
-              <span className="font-mono text-muted-foreground break-all">{booking.id}</span>
-          </CardDescription>
+            </CardTitle>
+            <CardDescription className="pt-1">
+                <span className="font-mono text-muted-foreground break-all">{booking.id}</span>
+            </CardDescription>
         </CardHeader>
 
         {isEditing ? <EditView /> : <DisplayView />}
-      </Card>
+        </Card>
     </>
   );
 }

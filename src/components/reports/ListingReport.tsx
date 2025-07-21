@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { DateRange } from 'react-day-picker';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, differenceInCalendarDays, parseISO, add, sub } from 'date-fns';
+import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone } from 'lucide-react';
 
 import type { Booking, Listing, User } from '@/lib/types';
@@ -18,10 +18,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { formatCurrency } from '../bookings/BookingSummary';
-import { Input } from '../ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '../ui/dialog';
-import { Label } from '../ui/label';
+import { formatCurrency } from '@/components/bookings/BookingSummary';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { cn, toZonedTimeSafe, formatDateToStr } from '@/lib/utils';
 
 
@@ -148,7 +148,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
         headStyles: { fillColor: [211, 76, 35] },
     });
 
-    doc.save(`report_${listing.name.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    doc.save(`report_${listing.name.replace(/s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
   const ReportTable = ({ bookings, title }: { bookings: typeof bookingsWithFinancials, title: string }) => (

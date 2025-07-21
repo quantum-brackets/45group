@@ -6,10 +6,10 @@
  * data needed for rendering pages and components. They are designed to be
  * used within Server Components and Server Actions.
  */
-import type { Listing, Booking, ListingType, User, ListingInventory, Review, BookingAction } from './types';
+import type { Listing, Booking, ListingType, User, ListingInventory, BookingAction } from '@/lib/types';
 import { getSession } from '@/lib/session';
 import { unstable_noStore as noStore } from 'next/cache';
-import { createSupabaseServerClient, createSupabaseAdminClient } from './supabase-server';
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server';
 import { preloadPermissions } from '@/lib/permissions/server';
 import { hasPermission } from '@/lib/permissions';
 import { toZonedTimeSafe } from '@/lib/utils'

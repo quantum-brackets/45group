@@ -9,7 +9,7 @@ import { Resend } from 'resend';
 import { WelcomeEmail } from '@/components/emails/WelcomeEmail';
 import { PasswordResetEmail } from '@/components/emails/PasswordResetEmail';
 import { BookingConfirmationEmail } from '@/components/emails/BookingConfirmationEmail';
-import type { Booking, Listing, User } from './types';
+import type { Booking, Listing, User } from '@/lib/types';
 import { BookingRequestEmail } from '@/components/emails/BookingRequestEmail';
 import { BookingSummaryEmail } from '@/components/emails/BookingSummaryEmail';
 
