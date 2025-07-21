@@ -103,8 +103,9 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     );
 
     return {
-        ...groupings,
         status: sortedStatusGroup,
+        guest: groupings.guest,
+        unit: groupings.unit,
     };
 
   }, [bookingsWithFinancials]);
@@ -186,7 +187,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
           </TableHeader>
           <TableBody>
             {bookings.map(b => (
-              <TableRow key={b.id}>
+              <TableRow key={b.id} onClick={() => router.push(`/booking/${b.id}`)} className="cursor-pointer">
                 <TableCell>{b.userName}</TableCell>
                 <TableCell>{b.inventoryNames?.join(', ') || 'N/A'}</TableCell>
                 <TableCell>{formatDateToStr(toZonedTimeSafe(b.startDate), 'MMM d')} - {formatDateToStr(toZonedTimeSafe(b.endDate), 'MMM d, yyyy')} ({b.financials.stayDuration}d)</TableCell>
