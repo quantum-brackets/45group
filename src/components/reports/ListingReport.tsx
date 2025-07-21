@@ -151,6 +151,22 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     doc.save(`report_${listing.name.replace(/s+/g, '_')}_${formatDateToStr(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
+  const getStatusBadge = (status: Booking['status']) => {
+    const variants = {
+        Confirmed: 'default',
+        Pending: 'secondary',
+        Cancelled: 'destructive',
+        'Completed': 'outline'
+    } as const;
+    
+    const styles = {
+        Confirmed: 'bg-accent text-accent-foreground',
+        'Completed': 'bg-blue-500 text-white border-blue-500'
+    }
+
+    return <Badge variant={variants[status] || 'secondary'} className={cn(styles[status as keyof typeof styles])}>{status}</Badge>
+  }
+
   const ReportTable = ({ bookings, title }: { bookings: typeof bookingsWithFinancials, title: string }) => (
     <Card>
       <CardHeader>
@@ -176,7 +192,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
                 <TableCell>{formatDateToStr(toZonedTimeSafe(b.startDate), 'MMM d')} - {formatDateToStr(toZonedTimeSafe(b.endDate), 'MMM d, yyyy')} ({b.financials.stayDuration}d)</TableCell>
                 <TableCell className="text-right text-green-600">{formatCurrency(b.financials.totalPayments, listing.currency)}</TableCell>
                 <TableCell className={`text-right font-medium ${b.financials.balance > 0 ? 'text-destructive' : ''}`} style={{whiteSpace: 'nowrap'}}>{formatCurrency(b.financials.balance, listing.currency)}</TableCell>
-                <TableCell><Badge>{b.status}</Badge></TableCell>
+                <TableCell>{getStatusBadge(b.status)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
