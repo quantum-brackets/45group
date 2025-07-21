@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -439,11 +438,11 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
     if (!staffActionIsBlocked) return null;
 
     if (booking.status === 'Confirmed') {
-      return `Cannot mark as completed with an outstanding balance of ${formatCurrency(balance)}.`;
+      return `Cannot mark as completed with an outstanding balance of ${formatCurrency(balance, listing.currency)}.`;
     }
 
     if (booking.status === 'Pending') {
-      return `A deposit of at least ${formatCurrency(depositRequired)} is required to confirm.`;
+      return `A deposit of at least ${formatCurrency(depositRequired, listing.currency)} is required to confirm.`;
     }
 
     return "This action is currently blocked.";
@@ -707,15 +706,15 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                             <Card className="text-center p-4">
-                                <CardTitle className="text-lg">{formatCurrency(totalBill)}</CardTitle>
+                                <CardTitle className="text-lg">{formatCurrency(totalBill, listing.currency)}</CardTitle>
                                 <CardDescription>Total Bill</CardDescription>
                             </Card>
                             <Card className="text-center p-4">
-                                <CardTitle className="text-lg text-green-600">{formatCurrency(totalPayments)}</CardTitle>
+                                <CardTitle className="text-lg text-green-600">{formatCurrency(totalPayments, listing.currency)}</CardTitle>
                                 <CardDescription>Total Paid</CardDescription>
                             </Card>
                              <Card className={cn("text-center p-4", balance > 0 ? "bg-destructive/10" : "bg-green-100")}>
-                                <CardTitle className={cn("text-lg", balance > 0 ? "text-destructive" : "text-green-700")}>{formatCurrency(balance)}</CardTitle>
+                                <CardTitle className={cn("text-lg", balance > 0 ? "text-destructive" : "text-green-700")}>{formatCurrency(balance, listing.currency)}</CardTitle>
                                 <CardDescription>{balance > 0 ? 'Balance Due' : 'Credit'}</CardDescription>
                             </Card>
                         </div>
@@ -737,9 +736,9 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                              <TableRow>
                                                 <TableCell>
                                                     <p className="font-medium">Base Booking Cost</p>
-                                                    <p className="text-xs text-muted-foreground">Initial reservation cost ({formatCurrency(listing.price)})</p>
+                                                    <p className="text-xs text-muted-foreground">Initial reservation cost ({formatCurrency(listing.price, listing.currency)})</p>
                                                 </TableCell>
-                                                <TableCell className="text-right font-medium">{formatCurrency(baseBookingCost)}</TableCell>
+                                                <TableCell className="text-right font-medium">{formatCurrency(baseBookingCost, listing.currency)}</TableCell>
                                             </TableRow>
                                             {booking.bills?.map(bill => (
                                                 <TableRow key={bill.id}>
@@ -747,7 +746,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                                         <p>{bill.description}</p>
                                                         <p className="text-xs text-muted-foreground">Added by {bill.actorName} on {DateUtils.formatDateToStr(bill.createdAt, 'PP')}</p>
                                                     </TableCell>
-                                                    <TableCell className="text-right font-medium">{formatCurrency(bill.amount)}</TableCell>
+                                                    <TableCell className="text-right font-medium">{formatCurrency(bill.amount, listing.currency)}</TableCell>
                                                 </TableRow>
                                             ))}
                                             {(booking.bills || []).length === 0 && (
@@ -779,7 +778,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                                         <p className="font-medium">Discount ({booking.discount.toFixed(2)}%)</p>
                                                         <p className="text-xs text-muted-foreground">Applied to base booking cost</p>
                                                     </TableCell>
-                                                    <TableCell className="text-right font-medium">{formatCurrency(discountAmount)}</TableCell>
+                                                    <TableCell className="text-right font-medium">{formatCurrency(discountAmount, listing.currency)}</TableCell>
                                                 </TableRow>
                                              ): null}
                                              {(booking.payments || []).length > 0 ? booking.payments?.map(payment => (
@@ -791,7 +790,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                                         )}
                                                         <p className="text-xs text-muted-foreground mt-1">Recorded by {payment.actorName} on {DateUtils.formatDateToStr(payment.timestamp, 'PP')}</p>
                                                     </TableCell>
-                                                    <TableCell className="text-right font-medium">{formatCurrency(payment.amount)}</TableCell>
+                                                    <TableCell className="text-right font-medium">{formatCurrency(payment.amount, listing.currency)}</TableCell>
                                                 </TableRow>
                                             )) : (
                                                 (booking.discount || 0) <= 0 && (

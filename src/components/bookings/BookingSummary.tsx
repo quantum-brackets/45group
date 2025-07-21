@@ -33,7 +33,7 @@ interface BookingSummaryProps {
   listing: Listing;
 }
 
-export function formatCurrency(amount: number, currency: string = 'USD') {
+export function formatCurrency(amount: number, currency: string) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
@@ -270,4 +270,3 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
     </div>
   );
 };
-
