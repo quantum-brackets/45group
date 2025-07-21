@@ -1,13 +1,13 @@
 
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { DateRange } from 'react-day-picker';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { differenceInCalendarDays } from 'date-fns';
-import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone, Loader2 } from 'lucide-react';
 
 import type { Booking, Listing, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -20,9 +20,11 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrency } from '@/components/bookings/BookingSummary';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { cn, toZonedTimeSafe, formatDateToStr } from '@/lib/utils';
+import { sendReportEmailAction } from '@/lib/actions';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface ListingReportProps {
@@ -61,8 +63,12 @@ const calculateBookingFinancials = (booking: Booking, listing: Listing) => {
 
 export function ListingReport({ listing, initialBookings, initialDateRange, initialPeriod, session }: ListingReportProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [date, setDate] = useState<Date | undefined>(initialDateRange.to);
   const [period, setPeriod] = useState(initialPeriod);
+  const [isEmailPending, startEmailTransition] = useTransition();
+  const [email, setEmail] = useState(session?.email || '');
+  const [isExportOpen, setIsExportOpen] = useState(false);
 
   const bookingsWithFinancials = useMemo(() => {
       return initialBookings.map(b => ({
@@ -116,7 +122,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     router.push(`/reports/listing/${listing.id}/${formatDateToStr(targetDate, 'yyyy-MM-dd')}/${periodString}`);
   };
 
-  const handleExport = (format: 'pdf' | 'csv') => {
+  const handleExportPdf = () => {
     const doc = new jsPDF();
     const tableData: any[] = [];
     const headers = ["Guest", "Units", "Start Date", "Duration (days)", "Paid", "Owed", "Balance", "Status"];
@@ -150,6 +156,32 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     });
 
     doc.save(`report_${listing.name.replace(/s+/g, '_')}_${formatDateToStr(new Date(), 'yyyy-MM-dd')}.pdf`);
+    setIsExportOpen(false);
+  };
+  
+  const handleSendEmail = () => {
+    startEmailTransition(async () => {
+      const result = await sendReportEmailAction({
+        listingId: listing.id,
+        fromDate: initialDateRange.from!.toISOString(),
+        toDate: initialDateRange.to!.toISOString(),
+        email,
+      });
+
+      if (result.success) {
+        toast({
+          title: 'Report Sent!',
+          description: result.message,
+        });
+        setIsExportOpen(false);
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message,
+          variant: 'destructive',
+        });
+      }
+    });
   };
 
   const getStatusBadge = (status: Booking['status']) => {
@@ -256,7 +288,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
           </div>
           <Button onClick={handleDateOrPeriodChange}>Generate Report</Button>
           <div className="flex-grow"></div>
-          <Dialog>
+          <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>
             <DialogTrigger asChild>
                 <Button variant="outline">
                     <Download className="mr-2 h-4 w-4" />
@@ -271,7 +303,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4 space-y-4">
-                    <Button onClick={() => handleExport('pdf')} className="w-full">
+                    <Button onClick={handleExportPdf} className="w-full">
                         <Download className="mr-2 h-4 w-4" /> Download as PDF
                     </Button>
                      <div className="relative">
@@ -285,13 +317,16 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
                     <div className="space-y-2">
                         <Label htmlFor="email">Send to Email</Label>
                         <div className="flex gap-2">
-                            <Input id="email" type="email" defaultValue={session?.email} />
-                            <Button variant="secondary" disabled> {/* Email sending not implemented yet */}
-                                <Send className="mr-2 h-4 w-4" /> Send
+                            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                            <Button variant="secondary" onClick={handleSendEmail} disabled={isEmailPending}>
+                                {isEmailPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />} Send
                             </Button>
                         </div>
                     </div>
                 </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsExportOpen(false)}>Close</Button>
+                </DialogFooter>
             </DialogContent>
           </Dialog>
 
@@ -323,3 +358,4 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     </div>
   );
 }
+

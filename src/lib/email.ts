@@ -12,6 +12,7 @@ import { BookingConfirmationEmail } from '@/components/emails/BookingConfirmatio
 import type { Booking, Listing, User } from '@/lib/types';
 import { BookingRequestEmail } from '@/components/emails/BookingRequestEmail';
 import { BookingSummaryEmail } from '@/components/emails/BookingSummaryEmail';
+import { ReportEmail, type ReportEmailProps } from '@/components/emails/ReportEmail';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const fromEmail = process.env.RESEND_FROM_EMAIL;
@@ -135,5 +136,34 @@ export async function sendBookingSummaryEmail(user: User, booking: Booking, list
         });
     } catch (error) {
         console.error("Failed to send booking summary email:", error);
+    }
+}
+
+
+interface SendReportEmailProps {
+    email: string;
+    listing: Listing;
+    bookings: Booking[];
+    dateRange: { from: Date; to: Date };
+}
+  
+/**
+ * Sends a report email containing booking data.
+ * @param props - The properties for the report email.
+ */
+export async function sendReportEmail({ email, ...props }: SendReportEmailProps) {
+    if (!canSendEmail()) return;
+  
+    try {
+      await resend.emails.send({
+        from: fromEmail!,
+        to: email,
+        subject: `Booking Report for ${props.listing.name}`,
+        react: ReportEmail(props),
+      });
+    } catch (error) {
+      console.error('Failed to send report email:', error);
+      // Re-throw the error to be handled by the server action
+      throw error;
     }
 }

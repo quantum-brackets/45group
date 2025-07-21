@@ -24,11 +24,12 @@ import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import { hashPassword } from '@/lib/password'
 import type { Booking, Listing, Role, Review, User, BookingAction, Bill, Payment, Permission } from '@/lib/types'
 import { randomUUID } from 'crypto'
-import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendBookingSummaryEmail, sendWelcomeEmail } from '@/lib/email'
+import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendBookingSummaryEmail, sendReportEmail, sendWelcomeEmail } from '@/lib/email'
 import { differenceInCalendarDays } from 'date-fns'
 import { preloadPermissions } from '@/lib/permissions/server'
 import { hasPermission } from '@/lib/permissions'
 import { generateRandomString, toZonedTimeSafe } from '@/lib/utils'
+import { getBookingsByDateRange } from './data'
 
 
 function unpackUser(user: any): User {
@@ -1635,4 +1636,51 @@ export async function setDiscountAction(data: z.infer<typeof SetDiscountSchema>)
 
     revalidatePath(`/booking/${bookingId}`);
     return { success: true, message: 'Discount applied successfully.' };
+}
+
+const SendReportEmailSchema = z.object({
+    listingId: z.string(),
+    fromDate: z.string().datetime(),
+    toDate: z.string().datetime(),
+    email: z.string().email(),
+});
+
+export async function sendReportEmailAction(data: z.infer<typeof SendReportEmailSchema>) {
+    const perms = await preloadPermissions();
+    const supabase = createSupabaseAdminClient();
+    const session = await getSession();
+
+    if (!session || (!hasPermission(perms, session, 'listing:read'))) {
+        return { success: false, message: 'Permission Denied' };
+    }
+
+    const validatedFields = SendReportEmailSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, message: 'Invalid data provided for report.' };
+    }
+    
+    const { listingId, fromDate, toDate, email } = validatedFields.data;
+
+    const { data: listingData, error: listingError } = await supabase
+        .from('listings').select('data').eq('id', listingId).single();
+
+    if (listingError || !listingData) {
+        return { success: false, message: 'Could not find listing for report.' };
+    }
+    const listing = unpackListing({ ...listingData, id: listingId });
+    
+    const bookings = await getBookingsByDateRange(listingId, fromDate, toDate);
+
+    try {
+        await sendReportEmail({
+            email,
+            listing,
+            bookings,
+            dateRange: { from: new Date(fromDate), to: new Date(toDate) },
+        });
+        return { success: true, message: `Report successfully sent to ${email}` };
+    } catch (error) {
+        console.error("Failed to send report email:", error);
+        return { success: false, message: 'An error occurred while sending the email.' };
+    }
 }
