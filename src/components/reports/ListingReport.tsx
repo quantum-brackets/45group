@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { DateRange } from 'react-day-picker';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, differenceInCalendarDays, parseISO } from 'date-fns';
+import { differenceInCalendarDays } from 'date-fns';
 import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone } from 'lucide-react';
 
 import type { Booking, Listing, User } from '@/lib/types';
@@ -112,7 +112,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
   const handleDateOrPeriodChange = () => {
     const targetDate = date || new Date();
     const periodString = `${period.amount}${period.unit}`;
-    router.push(`/reports/listing/${listing.id}/${format(targetDate, 'yyyy-MM-dd')}/${periodString}`);
+    router.push(`/reports/listing/${listing.id}/${formatDateToStr(targetDate, 'yyyy-MM-dd')}/${periodString}`);
   };
 
   const handleExport = (format: 'pdf' | 'csv') => {
@@ -124,7 +124,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
         tableData.push([
             b.userName,
             b.inventoryNames?.join(', ') || 'N/A',
-            format(parseISO(b.startDate), 'MMM d, yyyy'),
+            formatDateToStr(toZonedTimeSafe(b.startDate), 'MMM d, yyyy'),
             b.financials.stayDuration,
             formatCurrency(b.financials.totalPayments, listing.currency),
             formatCurrency(b.financials.totalBill, listing.currency),
@@ -137,7 +137,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     doc.text(`Booking Report for ${listing.name}`, 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
-    const dateDisplay = initialDateRange?.from ? `${format(initialDateRange.from, 'LLL dd, y')} - ${initialDateRange.to ? format(initialDateRange.to, 'LLL dd, y') : ''}` : 'All time';
+    const dateDisplay = initialDateRange?.from ? `${formatDateToStr(initialDateRange.from, 'LLL dd, y')} - ${initialDateRange.to ? formatDateToStr(initialDateRange.to, 'LLL dd, y') : ''}` : 'All time';
     doc.text(`Period: ${dateDisplay}`, 14, 30);
     
     autoTable(doc, {
@@ -148,7 +148,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
         headStyles: { fillColor: [211, 76, 35] },
     });
 
-    doc.save(`report_${listing.name.replace(/s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    doc.save(`report_${listing.name.replace(/s+/g, '_')}_${formatDateToStr(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
   const ReportTable = ({ bookings, title }: { bookings: typeof bookingsWithFinancials, title: string }) => (
@@ -173,7 +173,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
               <TableRow key={b.id}>
                 <TableCell>{b.userName}</TableCell>
                 <TableCell>{b.inventoryNames?.join(', ') || 'N/A'}</TableCell>
-                <TableCell>{format(parseISO(b.startDate), 'MMM d')} - {format(parseISO(b.endDate), 'MMM d, yyyy')} ({b.financials.stayDuration}d)</TableCell>
+                <TableCell>{formatDateToStr(toZonedTimeSafe(b.startDate), 'MMM d')} - {formatDateToStr(toZonedTimeSafe(b.endDate), 'MMM d, yyyy')} ({b.financials.stayDuration}d)</TableCell>
                 <TableCell className="text-right text-green-600">{formatCurrency(b.financials.totalPayments, listing.currency)}</TableCell>
                 <TableCell className={`text-right font-medium ${b.financials.balance > 0 ? 'text-destructive' : ''}`} style={{whiteSpace: 'nowrap'}}>{formatCurrency(b.financials.balance, listing.currency)}</TableCell>
                 <TableCell><Badge>{b.status}</Badge></TableCell>

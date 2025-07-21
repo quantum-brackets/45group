@@ -9,14 +9,13 @@ import {
 } from '@/components/ui/table';
 import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
 import type { Booking, Listing } from '@/lib/types';
-import { formatDateToStr } from '@/lib/utils';
-import { differenceInCalendarDays, format, parseISO } from 'date-fns';
+import { formatDateToStr, toZonedTimeSafe } from '@/lib/utils';
+import { differenceInCalendarDays } from 'date-fns';
 import {
   Banknote,
   Building2,
   Calendar,
   CreditCard,
-  Hash,
   Home,
   KeySquare,
   MapPin,
@@ -42,8 +41,8 @@ export function formatCurrency(amount: number, currency: string) {
 
 export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
   const { baseBookingCost, discountAmount, addedBillsTotal, totalBill, totalPayments, balance } = useMemo(() => {
-    const from = parseISO(booking.startDate);
-    const originalEndDate = parseISO(booking.endDate);
+    const from = toZonedTimeSafe(booking.startDate);
+    const originalEndDate = toZonedTimeSafe(booking.endDate);
     const to = originalEndDate;
 
     const units = (booking.inventoryIds || []).length;
@@ -140,8 +139,8 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
           <div>
             <p className="font-bold text-gray-600">Dates</p>
             <p className="text-gray-800">
-              {formatDateToStr(parseISO(booking.startDate), 'MMM d, yyyy')} -{' '}
-              {formatDateToStr(parseISO(booking.endDate), 'MMM d, yyyy')}
+              {formatDateToStr(toZonedTimeSafe(booking.startDate), 'MMM d, yyyy')} -{' '}
+              {formatDateToStr(toZonedTimeSafe(booking.endDate), 'MMM d, yyyy')}
             </p>
           </div>
         </div>
@@ -265,7 +264,7 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
        {/* Footer */}
        <div className="mt-12 text-center text-xs text-gray-400">
             <p>Thank you for choosing {listing.name}.</p>
-            <p>Generated on {format(new Date(), 'PPp')}</p>
+            <p>Generated on {formatDateToStr(new Date(), 'PPp')}</p>
         </div>
     </div>
   );

@@ -14,7 +14,7 @@ import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
 import { hasPermission } from '@/lib/permissions';
 import type { Listing, Permission, Role, User } from '@/lib/types';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { add, differenceInCalendarDays, isWithinInterval, parseISO } from 'date-fns';
+import { add, differenceInCalendarDays, isWithinInterval } from 'date-fns';
 import { Loader2, PartyPopper, Users, Warehouse } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
@@ -121,8 +121,8 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
 
     for (const booking of confirmedBookings) {
       const bookingRange = {
-        start: parseISO(booking.startDate),
-        end: parseISO(booking.endDate),
+        start: toZonedTimeSafe(booking.startDate),
+        end: toZonedTimeSafe(booking.endDate),
       };
 
       if (

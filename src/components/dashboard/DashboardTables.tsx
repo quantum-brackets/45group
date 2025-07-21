@@ -19,8 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { hasPermission } from '@/lib/permissions';
-import { format } from 'date-fns'
+import { formatDateToStr } from '@/lib/utils';
 
 
 interface DashboardTablesProps {
@@ -314,9 +313,8 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                                     </>
                                   )}
                                   <DropdownMenuItem onClick={() => router.push(`/bookings?q=${listing.id}`)}>Bookings</DropdownMenuItem>
-                                   <DropdownMenuItem onClick={() => router.push(`/reports/listing/${listing.id}/${format(new Date(), 'yyyy-MM-dd')}/1m`)}>
-                                      <FileBarChart className="mr-2 h-4 w-4" />
-                                      View Reports
+                                   <DropdownMenuItem onClick={() => router.push(`/reports/listing/${listing.id}/${formatDateToStr(new Date(), 'yyyy-MM-dd')}/1m`)}>
+                                      Reports
                                   </DropdownMenuItem>
                                   {canCreateListing && (
                                     <>

@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation';
-import { add, sub, formatISO, parseISO } from 'date-fns';
+import { add, sub } from 'date-fns';
 import { getListingById, getBookingsByDateRange } from '@/lib/data';
 import { ListingReport } from '@/components/reports/ListingReport';
 import { getSession } from '@/lib/session';
+import { toZonedTimeSafe } from '@/lib/utils';
 
 interface ListingReportPageProps {
   params: {
@@ -42,7 +43,7 @@ export default async function ListingReportPage({ params }: ListingReportPagePro
     }
 
     const { unit: durationUnit, amount: durationAmount } = parsePeriod(params.period);
-    const targetDate = parseISO(params.date);
+    const targetDate = toZonedTimeSafe(params.date);
 
     // Calculate date range based on the period type
     // For day, week, month, it's the period *ending* on the target date.

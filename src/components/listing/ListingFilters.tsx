@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { MapPin, Users, Calendar as CalendarIcon, SlidersHorizontal, Search } from 'lucide-react';
-import { parseISO } from 'date-fns';
 import { DateRange } from "react-day-picker";
 import { cn, formatDateToStr, toZonedTimeSafe } from "@/lib/utils";
 import { ListingType } from '@/lib/types';
@@ -30,7 +29,7 @@ export function ListingFilters() {
     const from = searchParams.get('from');
     const to = searchParams.get('to');
     if (from) {
-      setDate({ from: parseISO(from), to: to ? parseISO(to) : undefined });
+      setDate({ from: toZonedTimeSafe(from), to: to ? toZonedTimeSafe(to) : undefined });
     } else {
       setDate(undefined);
     }

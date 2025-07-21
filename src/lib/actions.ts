@@ -25,7 +25,7 @@ import { hashPassword } from '@/lib/password'
 import type { Booking, Listing, Role, Review, User, BookingAction, Bill, Payment, Permission } from '@/lib/types'
 import { randomUUID } from 'crypto'
 import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendBookingSummaryEmail, sendWelcomeEmail } from '@/lib/email'
-import { differenceInCalendarDays, parseISO } from 'date-fns'
+import { differenceInCalendarDays } from 'date-fns'
 import { preloadPermissions } from '@/lib/permissions/server'
 import { hasPermission } from '@/lib/permissions'
 import { generateRandomString, toZonedTimeSafe } from '@/lib/utils'
@@ -472,8 +472,8 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     date.setUTCHours(12, 0, 0, 0);
     return date;
   }
-  const startDate = setTimeToNoon(parseISO(validatedFields.data.startDate)).toISOString();
-  const endDate = setTimeToNoon(parseISO(validatedFields.data.endDate)).toISOString();
+  const startDate = setTimeToNoon(toZonedTimeSafe(validatedFields.data.startDate)).toISOString();
+  const endDate = setTimeToNoon(toZonedTimeSafe(validatedFields.data.endDate)).toISOString();
 
   let finalUserId: string;
   let finalUserName: string;
@@ -828,8 +828,8 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
  * @returns An object with `totalBill`, `totalPayments`, and `balance`.
  */
 function calculateBookingBalance(booking: Booking, listing: Listing) {
-    const from = parseISO(booking.startDate);
-    const to = parseISO(booking.endDate);
+    const from = toZonedTimeSafe(booking.startDate);
+    const to = toZonedTimeSafe(booking.endDate);
     const units = (booking.inventoryIds || []).length;
     const guests = booking.guests;
 

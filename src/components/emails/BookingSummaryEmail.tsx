@@ -9,14 +9,11 @@ import {
   Preview,
   Section,
   Text,
-  Row,
-  Column,
   Hr,
 } from '@react-email/components';
 import * as React from 'react';
-import { format } from 'date-fns';
 import type { Booking, Listing, User } from '@/lib/types';
-import { BookingSummary, formatCurrency } from '@/components/bookings/BookingSummary';
+import { BookingSummary } from '@/components/bookings/BookingSummary';
 
 interface BookingSummaryEmailProps {
   user: User;
