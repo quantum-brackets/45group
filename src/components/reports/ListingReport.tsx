@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState } from 'react';
@@ -21,7 +22,7 @@ import { formatCurrency } from '../bookings/BookingSummary';
 import { Input } from '../ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '../ui/dialog';
 import { Label } from '../ui/label';
-import { cn } from '@/lib/utils';
+import { cn, toZonedTimeSafe, formatDateToStr } from '@/lib/utils';
 
 
 interface ListingReportProps {
@@ -35,8 +36,8 @@ interface ListingReportProps {
 type Grouping = 'status' | 'guest' | 'unit';
 
 const calculateBookingFinancials = (booking: Booking, listing: Listing) => {
-    const from = parseISO(booking.startDate);
-    let to = (booking.status === 'Completed' || booking.status === 'Cancelled') ? parseISO(booking.endDate) : new Date();
+    const from = toZonedTimeSafe(booking.startDate);
+    let to = (booking.status === 'Completed' || booking.status === 'Cancelled') ? toZonedTimeSafe(booking.endDate) : toZonedTimeSafe(new Date());
     if (to < from) to = from;
 
     const units = (booking.inventoryIds || []).length;
@@ -60,7 +61,7 @@ const calculateBookingFinancials = (booking: Booking, listing: Listing) => {
 
 export function ListingReport({ listing, initialBookings, initialDateRange, initialPeriod, session }: ListingReportProps) {
   const router = useRouter();
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(initialDateRange);
+  const [date, setDate] = useState<Date | undefined>(initialDateRange.from);
   const [period, setPeriod] = useState(initialPeriod);
 
   const bookingsWithFinancials = useMemo(() => {
@@ -71,6 +72,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
   }, [initialBookings, listing]);
 
   const groupedData = useMemo(() => {
+    const statusOrder: Booking['status'][] = ['Confirmed', 'Pending', 'Completed', 'Cancelled'];
     const groupings: Record<Grouping, Record<string, typeof bookingsWithFinancials>> = {
       status: {},
       guest: {},
@@ -93,11 +95,22 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
         groupings.unit[unitName].push(booking);
       });
     });
-    return groupings;
+
+    const sortedStatusGroup = Object.fromEntries(
+        Object.entries(groupings.status).sort(([a], [b]) => {
+            return statusOrder.indexOf(a as Booking['status']) - statusOrder.indexOf(b as Booking['status']);
+        })
+    );
+
+    return {
+        ...groupings,
+        status: sortedStatusGroup,
+    };
+
   }, [bookingsWithFinancials]);
 
   const handleDateOrPeriodChange = () => {
-    const targetDate = dateRange?.from || new Date();
+    const targetDate = date || new Date();
     const periodString = `${period.amount}${period.unit}`;
     router.push(`/reports/listing/${listing.id}/${format(targetDate, 'yyyy-MM-dd')}/${periodString}`);
   };
@@ -124,7 +137,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     doc.text(`Booking Report for ${listing.name}`, 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
-    const dateDisplay = dateRange?.from ? `${format(dateRange.from, 'LLL dd, y')} - ${dateRange.to ? format(dateRange.to, 'LLL dd, y') : ''}` : 'All time';
+    const dateDisplay = initialDateRange?.from ? `${format(initialDateRange.from, 'LLL dd, y')} - ${initialDateRange.to ? format(initialDateRange.to, 'LLL dd, y') : ''}` : 'All time';
     doc.text(`Period: ${dateDisplay}`, 14, 30);
     
     autoTable(doc, {
@@ -183,38 +196,26 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4 items-end">
           <div className="grid gap-1.5">
-            <Label>Date Range</Label>
-            <Popover>
+            <Label>Report From</Label>
+             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-[280px] justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
+                <Button variant={"outline"} className={cn("w-[280px] justify-start text-left font-normal", !date && "text-muted-foreground")}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateRange?.from ? (
-                    dateRange.to ? (
-                      <>
-                        {format(dateRange.from, 'LLL dd, y')} - {format(dateRange.to, 'LLL dd, y')}
-                      </>
-                    ) : (
-                      format(dateRange.from, 'LLL dd, y')
-                    )
-                  ) : (
-                    <span>Pick a date range</span>
-                  )}
+                  {date ? formatDateToStr(date, 'PPP') : <span>Pick a date</span>}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0">
                 <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
                   initialFocus
-                  mode="range"
-                  defaultMonth={dateRange?.from}
-                  selected={dateRange}
-                  onSelect={setDateRange}
-                  numberOfMonths={2}
                 />
               </PopoverContent>
             </Popover>
           </div>
           <div className="grid gap-1.5">
-            <Label>Time Period</Label>
+            <Label>For The Next</Label>
             <div className="flex gap-2">
               <Input
                 type="number"
@@ -280,24 +281,24 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
         </CardContent>
       </Card>
       
-      <Tabs defaultValue="status">
+      <Tabs defaultValue="guest">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="status"><Milestone className="mr-2 h-4 w-4"/>Group by Status</TabsTrigger>
           <TabsTrigger value="guest"><Users className="mr-2 h-4 w-4"/>Group by Guest</TabsTrigger>
+          <TabsTrigger value="status"><Milestone className="mr-2 h-4 w-4"/>Group by Status</TabsTrigger>
           <TabsTrigger value="unit"><Warehouse className="mr-2 h-4 w-4"/>Group by Unit</TabsTrigger>
         </TabsList>
+        <TabsContent value="guest" className="space-y-4">
+          {Object.entries(groupedData.guest).sort(([a], [b]) => a.localeCompare(b)).map(([guest, bookings]) => (
+            <ReportTable key={guest} bookings={bookings} title={guest} />
+          ))}
+        </TabsContent>
         <TabsContent value="status" className="space-y-4">
           {Object.entries(groupedData.status).map(([status, bookings]) => (
             <ReportTable key={status} bookings={bookings} title={status} />
           ))}
         </TabsContent>
-        <TabsContent value="guest" className="space-y-4">
-          {Object.entries(groupedData.guest).map(([guest, bookings]) => (
-            <ReportTable key={guest} bookings={bookings} title={guest} />
-          ))}
-        </TabsContent>
         <TabsContent value="unit" className="space-y-4">
-          {Object.entries(groupedData.unit).map(([unit, bookings]) => (
+          {Object.entries(groupedData.unit).sort(([a], [b]) => a.localeCompare(b)).map(([unit, bookings]) => (
             <ReportTable key={unit} bookings={bookings} title={unit} />
           ))}
         </TabsContent>
