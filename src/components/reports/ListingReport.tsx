@@ -1,0 +1,307 @@
+"use client";
+
+import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { DateRange } from 'react-day-picker';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { format, differenceInCalendarDays, parseISO, add, sub } from 'date-fns';
+import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone } from 'lucide-react';
+
+import type { Booking, Listing, User } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { formatCurrency } from '../bookings/BookingSummary';
+import { Input } from '../ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '../ui/dialog';
+import { Label } from '../ui/label';
+import { cn } from '@/lib/utils';
+
+
+interface ListingReportProps {
+  listing: Listing;
+  initialBookings: Booking[];
+  initialDateRange: DateRange;
+  initialPeriod: { unit: string, amount: number };
+  session: User | null;
+}
+
+type Grouping = 'status' | 'guest' | 'unit';
+
+const calculateBookingFinancials = (booking: Booking, listing: Listing) => {
+    const from = parseISO(booking.startDate);
+    let to = (booking.status === 'Completed' || booking.status === 'Cancelled') ? parseISO(booking.endDate) : new Date();
+    if (to < from) to = from;
+
+    const units = (booking.inventoryIds || []).length;
+    const guests = booking.guests;
+    const durationDays = differenceInCalendarDays(to, from) + 1;
+    const nights = durationDays > 1 ? durationDays - 1 : 1;
+    let baseBookingCost = 0;
+    switch(listing.price_unit) {
+        case 'night': baseBookingCost = listing.price * nights * units; break;
+        case 'hour': baseBookingCost = listing.price * durationDays * 10 * units; break;
+        case 'person': baseBookingCost = listing.price * guests * units; break;
+    }
+    const discountAmount = baseBookingCost * (booking.discount || 0) / 100;
+    const addedBillsTotal = (booking.bills || []).reduce((sum, bill) => sum + bill.amount, 0);
+    const totalBill = baseBookingCost + addedBillsTotal;
+    const totalPayments = (booking.payments || []).reduce((sum, payment) => sum + payment.amount, 0) + discountAmount;
+    const balance = totalBill - totalPayments;
+    
+    return { totalBill, totalPayments, balance, stayDuration: durationDays };
+}
+
+export function ListingReport({ listing, initialBookings, initialDateRange, initialPeriod, session }: ListingReportProps) {
+  const router = useRouter();
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(initialDateRange);
+  const [period, setPeriod] = useState(initialPeriod);
+
+  const bookingsWithFinancials = useMemo(() => {
+      return initialBookings.map(b => ({
+          ...b,
+          financials: calculateBookingFinancials(b, listing)
+      }));
+  }, [initialBookings, listing]);
+
+  const groupedData = useMemo(() => {
+    const groupings: Record<Grouping, Record<string, typeof bookingsWithFinancials>> = {
+      status: {},
+      guest: {},
+      unit: {},
+    };
+
+    bookingsWithFinancials.forEach(booking => {
+      // Group by Status
+      if (!groupings.status[booking.status]) groupings.status[booking.status] = [];
+      groupings.status[booking.status].push(booking);
+
+      // Group by Guest
+      const guestName = booking.userName || 'Unknown Guest';
+      if (!groupings.guest[guestName]) groupings.guest[guestName] = [];
+      groupings.guest[guestName].push(booking);
+
+      // Group by Unit
+      (booking.inventoryNames || ['Unassigned']).forEach(unitName => {
+        if (!groupings.unit[unitName]) groupings.unit[unitName] = [];
+        groupings.unit[unitName].push(booking);
+      });
+    });
+    return groupings;
+  }, [bookingsWithFinancials]);
+
+  const handleDateOrPeriodChange = () => {
+    const targetDate = dateRange?.from || new Date();
+    const periodString = `${period.amount}${period.unit}`;
+    router.push(`/reports/listing/${listing.id}/${format(targetDate, 'yyyy-MM-dd')}/${periodString}`);
+  };
+
+  const handleExport = (format: 'pdf' | 'csv') => {
+    const doc = new jsPDF();
+    const tableData: any[] = [];
+    const headers = ["Guest", "Units", "Start Date", "Duration (days)", "Paid", "Owed", "Balance", "Status"];
+
+    bookingsWithFinancials.forEach(b => {
+        tableData.push([
+            b.userName,
+            b.inventoryNames?.join(', ') || 'N/A',
+            format(parseISO(b.startDate), 'MMM d, yyyy'),
+            b.financials.stayDuration,
+            formatCurrency(b.financials.totalPayments, listing.currency),
+            formatCurrency(b.financials.totalBill, listing.currency),
+            formatCurrency(b.financials.balance, listing.currency),
+            b.status,
+        ]);
+    });
+
+    doc.setFontSize(18);
+    doc.text(`Booking Report for ${listing.name}`, 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    const dateDisplay = dateRange?.from ? `${format(dateRange.from, 'LLL dd, y')} - ${dateRange.to ? format(dateRange.to, 'LLL dd, y') : ''}` : 'All time';
+    doc.text(`Period: ${dateDisplay}`, 14, 30);
+    
+    autoTable(doc, {
+        startY: 35,
+        head: [headers],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [211, 76, 35] },
+    });
+
+    doc.save(`report_${listing.name.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  };
+
+  const ReportTable = ({ bookings, title }: { bookings: typeof bookingsWithFinancials, title: string }) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Guest</TableHead>
+              <TableHead>Units</TableHead>
+              <TableHead>Dates</TableHead>
+              <TableHead className="text-right">Paid</TableHead>
+              <TableHead className="text-right">Balance</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {bookings.map(b => (
+              <TableRow key={b.id}>
+                <TableCell>{b.userName}</TableCell>
+                <TableCell>{b.inventoryNames?.join(', ') || 'N/A'}</TableCell>
+                <TableCell>{format(parseISO(b.startDate), 'MMM d')} - {format(parseISO(b.endDate), 'MMM d, yyyy')} ({b.financials.stayDuration}d)</TableCell>
+                <TableCell className="text-right text-green-600">{formatCurrency(b.financials.totalPayments, listing.currency)}</TableCell>
+                <TableCell className={`text-right font-medium ${b.financials.balance > 0 ? 'text-destructive' : ''}`}>{formatCurrency(b.financials.balance, listing.currency)}</TableCell>
+                <TableCell><Badge>{b.status}</Badge></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="space-y-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Booking Report: {listing.name}</CardTitle>
+          <CardDescription>
+            View and export booking data for different time periods.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-4 items-end">
+          <div className="grid gap-1.5">
+            <Label>Date Range</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-[280px] justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, 'LLL dd, y')} - {format(dateRange.to, 'LLL dd, y')}
+                      </>
+                    ) : (
+                      format(dateRange.from, 'LLL dd, y')
+                    )
+                  ) : (
+                    <span>Pick a date range</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={dateRange?.from}
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Time Period</Label>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                className="w-20"
+                value={period.amount}
+                onChange={(e) => setPeriod(p => ({ ...p, amount: parseInt(e.target.value, 10) || 1 }))}
+              />
+              <Select value={period.unit} onValueChange={(v) => setPeriod(p => ({ ...p, unit: v }))}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="d">Day(s)</SelectItem>
+                  <SelectItem value="w">Week(s)</SelectItem>
+                  <SelectItem value="m">Month(s)</SelectItem>
+                  <SelectItem value="q">Quarter(s)</SelectItem>
+                  <SelectItem value="y">Year(s)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Button onClick={handleDateOrPeriodChange}>Generate Report</Button>
+          <div className="flex-grow"></div>
+          <Dialog>
+            <DialogTrigger asChild>
+                <Button variant="outline">
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Export Report</DialogTitle>
+                    <DialogDescription>
+                        Export the current report view to PDF or send it via email.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                    <Button onClick={() => handleExport('pdf')} className="w-full">
+                        <Download className="mr-2 h-4 w-4" /> Download as PDF
+                    </Button>
+                     <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-background px-2 text-muted-foreground">Or</span>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Send to Email</Label>
+                        <div className="flex gap-2">
+                            <Input id="email" type="email" defaultValue={session?.email} />
+                            <Button variant="secondary" disabled> {/* Email sending not implemented yet */}
+                                <Send className="mr-2 h-4 w-4" /> Send
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </DialogContent>
+          </Dialog>
+
+        </CardContent>
+      </Card>
+      
+      <Tabs defaultValue="status">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="status"><Milestone className="mr-2 h-4 w-4"/>Group by Status</TabsTrigger>
+          <TabsTrigger value="guest"><Users className="mr-2 h-4 w-4"/>Group by Guest</TabsTrigger>
+          <TabsTrigger value="unit"><Warehouse className="mr-2 h-4 w-4"/>Group by Unit</TabsTrigger>
+        </TabsList>
+        <TabsContent value="status" className="space-y-4">
+          {Object.entries(groupedData.status).map(([status, bookings]) => (
+            <ReportTable key={status} bookings={bookings} title={status} />
+          ))}
+        </TabsContent>
+        <TabsContent value="guest" className="space-y-4">
+          {Object.entries(groupedData.guest).map(([guest, bookings]) => (
+            <ReportTable key={guest} bookings={bookings} title={guest} />
+          ))}
+        </TabsContent>
+        <TabsContent value="unit" className="space-y-4">
+          {Object.entries(groupedData.unit).map(([unit, bookings]) => (
+            <ReportTable key={unit} bookings={bookings} title={unit} />
+          ))}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

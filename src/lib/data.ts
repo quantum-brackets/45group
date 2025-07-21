@@ -578,3 +578,46 @@ export async function getConfirmedBookingsForListing(listingId: string) {
         inventoryIds: d.data.inventoryIds || [] 
     }));
 }
+
+export async function getBookingsByDateRange(listingId: string, fromDate: string, toDate: string): Promise<Booking[]> {
+    noStore();
+    const supabase = createSupabaseAdminClient();
+    const session = await getSession();
+    if (!session) return [];
+
+    const { data: bookingsData, error } = await supabase
+        .from('bookings')
+        .select('id, listing_id, user_id, status, start_date, end_date, data')
+        .eq('listing_id', listingId)
+        .gte('start_date', fromDate)
+        .lte('start_date', toDate)
+        .order('start_date', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching bookings by date range:', error);
+        return [];
+    }
+
+    const unpackedBookings = bookingsData.map(unpackBooking);
+    const userIds = [...new Set(unpackedBookings.map(b => b.userId))];
+    const allInventoryIds = [...new Set(unpackedBookings.flatMap(b => b.inventoryIds || []))];
+
+    const [usersResult, inventoryResult] = await Promise.all([
+        supabase.from('users').select('id, data').in('id', userIds),
+        allInventoryIds.length > 0 ? supabase.from('listing_inventory').select('id, name').in('id', allInventoryIds) : Promise.resolve({ data: [], error: null })
+    ]);
+        
+    if (usersResult.error) console.error("Error fetching user names for report:", usersResult.error);
+    if (inventoryResult.error) console.error("Error fetching inventory names for report:", inventoryResult.error);
+
+    const usersMap = new Map(usersResult.data?.map(u => [u.id, u.data?.name]));
+    const inventoryMap = new Map(inventoryResult.data?.map(i => [i.id, i.name]));
+    
+    const mappedBookings = unpackedBookings.map((b) => ({
+      ...b,
+      userName: usersMap.get(b.userId),
+      inventoryNames: (b.inventoryIds || []).map(id => inventoryMap.get(id)).filter(Boolean) as string[],
+    }));
+
+    return mappedBookings;
+}

@@ -5,7 +5,7 @@
 import { useState, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, Users, List, PlusCircle, Trash2, AlertCircle, Warehouse, Merge, X, Search } from 'lucide-react';
+import { MoreHorizontal, Users, List, PlusCircle, Trash2, AlertCircle, Warehouse, Merge, X, Search, FileBarChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
@@ -20,6 +20,8 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { hasPermission } from '@/lib/permissions';
+import { format } from 'date-fns'
+
 
 interface DashboardTablesProps {
   listings: Listing[];
@@ -312,6 +314,10 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                                     </>
                                   )}
                                   <DropdownMenuItem onClick={() => router.push(`/bookings?q=${listing.id}`)}>Bookings</DropdownMenuItem>
+                                   <DropdownMenuItem onClick={() => router.push(`/reports/listing/${listing.id}/${format(new Date(), 'yyyy-MM-dd')}/1m`)}>
+                                      <FileBarChart className="mr-2 h-4 w-4" />
+                                      View Reports
+                                  </DropdownMenuItem>
                                   {canCreateListing && (
                                     <>
                                       <DropdownMenuSeparator />
