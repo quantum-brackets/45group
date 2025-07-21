@@ -162,7 +162,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
                 <TableCell>{b.inventoryNames?.join(', ') || 'N/A'}</TableCell>
                 <TableCell>{format(parseISO(b.startDate), 'MMM d')} - {format(parseISO(b.endDate), 'MMM d, yyyy')} ({b.financials.stayDuration}d)</TableCell>
                 <TableCell className="text-right text-green-600">{formatCurrency(b.financials.totalPayments, listing.currency)}</TableCell>
-                <TableCell className={`text-right font-medium ${b.financials.balance > 0 ? 'text-destructive' : ''}`}>{formatCurrency(b.financials.balance, listing.currency)}</TableCell>
+                <TableCell className={`text-right font-medium ${b.financials.balance > 0 ? 'text-destructive' : ''}`} style={{whiteSpace: 'nowrap'}}>{formatCurrency(b.financials.balance, listing.currency)}</TableCell>
                 <TableCell><Badge>{b.status}</Badge></TableCell>
               </TableRow>
             ))}
