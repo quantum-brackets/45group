@@ -8,7 +8,7 @@ import { DateRange } from 'react-day-picker';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { differenceInCalendarDays, sub } from 'date-fns';
-import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone, Loader2, Home, BarChart, XOctagon, FileCsv } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone, Loader2, Home, BarChart, XOctagon, FileSpreadsheet } from 'lucide-react';
 
 import type { Booking, Listing, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -407,7 +407,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
                             <Download className="mr-2 h-4 w-4" /> Download as PDF
                         </Button>
                         <Button onClick={handleExportCsv} className="w-full" variant="secondary">
-                            <FileCsv className="mr-2 h-4 w-4" /> Download as CSV
+                            <FileSpreadsheet className="mr-2 h-4 w-4" /> Download as CSV
                         </Button>
                     </div>
                      <div className="relative">
@@ -507,5 +507,6 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     </div>
   );
 }
+
 
 
