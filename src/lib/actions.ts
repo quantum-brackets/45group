@@ -1627,7 +1627,16 @@ export async function setDiscountAction(data: z.infer<typeof SetDiscountSchema>)
         return { success: false, message: 'Database Error: Could not find the booking.' };
     }
 
-    const updatedData = { ...booking.data, discount: discountPercentage };
+    const discountAction: BookingAction = {
+      timestamp: new Date().toISOString(),
+      actorId: session.id,
+      actorName: session.name,
+      action: 'Updated',
+      message: `Discount set to ${discountPercentage.toFixed(2)}% by ${session.name}.`
+    };
+
+    const updatedActions = [...(booking.data.actions || []), discountAction];
+    const updatedData = { ...booking.data, discount: discountPercentage, actions: updatedActions };
 
     const { error } = await supabase.from('bookings').update({ data: updatedData }).eq('id', bookingId);
     if (error) {
