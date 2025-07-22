@@ -145,13 +145,14 @@ interface SendReportEmailProps {
     listing: Listing | null; // Can be null for global reports
     bookings: Booking[];
     dateRange: { from: Date; to: Date };
+    csvContent: string;
 }
   
 /**
  * Sends a report email containing booking data.
  * @param props - The properties for the report email.
  */
-export async function sendReportEmail({ email, ...props }: SendReportEmailProps) {
+export async function sendReportEmail({ email, csvContent, ...props }: SendReportEmailProps) {
     if (!canSendEmail()) return;
   
     try {
@@ -160,6 +161,12 @@ export async function sendReportEmail({ email, ...props }: SendReportEmailProps)
         to: email,
         subject: `Booking Report for ${props.listing?.name || 'All Venues'}`,
         react: ReportEmail(props),
+        attachments: [
+            {
+                filename: 'report.csv',
+                content: csvContent,
+            }
+        ]
       });
     } catch (error) {
       console.error('Failed to send report email:', error);

@@ -1,4 +1,5 @@
 
+
 /**
  * @fileoverview This file contains all the "Server Actions" for the application.
  * Server Actions are asynchronous functions that are only executed on the server.
@@ -29,8 +30,9 @@ import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendBookingSumma
 import { differenceInCalendarDays } from 'date-fns'
 import { preloadPermissions } from '@/lib/permissions/server'
 import { hasPermission } from '@/lib/permissions'
-import { generateRandomString, toZonedTimeSafe } from '@/lib/utils'
+import { generateRandomString, toZonedTimeSafe, formatDateToStr } from '@/lib/utils'
 import { getAllBookings, getBookingsByDateRange } from './data'
+import { EVENT_BOOKING_DAILY_HRS } from './constants'
 
 
 function unpackUser(user: any): User {
@@ -844,16 +846,17 @@ function calculateBookingBalance(booking: Booking, listing: Listing) {
             baseBookingCost = listing.price * nights * units;
             break;
         case 'hour':
-            baseBookingCost = listing.price * durationDays * 8 * units;
+            baseBookingCost = listing.price * durationDays * EVENT_BOOKING_DAILY_HRS * units;
             break;
         case 'person':
             baseBookingCost = listing.price * guests * units;
             break;
     }
 
+    const discountAmount = baseBookingCost * (booking.discount || 0) / 100;
     const addedBillsTotal = (booking.bills || []).reduce((sum, bill) => sum + bill.amount, 0);
     const totalBill = baseBookingCost + addedBillsTotal;
-    const totalPayments = (booking.payments || []).reduce((sum, payment) => sum + payment.amount, 0);
+    const totalPayments = (booking.payments || []).reduce((sum, payment) => sum + payment.amount, 0) + discountAmount;
     const balance = totalBill - totalPayments;
 
     return { totalBill, totalPayments, balance };
@@ -1689,11 +1692,38 @@ export async function sendReportEmailAction(data: z.infer<typeof SendReportEmail
     }
 
     try {
+        const bookingsWithFinancials = bookings.map(b => ({
+            ...b,
+            financials: calculateBookingFinancials(b, listing)
+        }));
+
+        const headers = ["Booking ID", "Guest", "Venue", "Units", "Start Date", "End Date", "Duration (days)", "Paid", "Owed", "Balance", "Status", "Currency"];
+        const currencyCode = listing?.currency || bookings[0]?.currency || 'NGN';
+      
+        const rows = bookingsWithFinancials.map(b => [
+            b.id,
+            b.userName,
+            b.listingName,
+            b.inventoryNames?.join(', ') || 'N/A',
+            formatDateToStr(toZonedTimeSafe(b.startDate), 'yyyy-MM-dd'),
+            formatDateToStr(toZonedTimeSafe(b.endDate), 'yyyy-MM-dd'),
+            b.financials.stayDuration,
+            b.financials.totalPayments.toFixed(2),
+            b.financials.totalBill.toFixed(2),
+            b.financials.balance.toFixed(2),
+            b.status,
+            currencyCode,
+        ].map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','));
+      
+        const csvContent = [headers.join(','), ...rows].join('\n');
+
+
         await sendReportEmail({
             email,
             listing, // Can be null for global reports
             bookings,
             dateRange: { from: new Date(fromDate), to: new Date(toDate) },
+            csvContent: csvContent
         });
         return { success: true, message: `Report successfully sent to ${email}` };
     } catch (error) {

@@ -8,7 +8,7 @@ import { DateRange } from 'react-day-picker';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { differenceInCalendarDays, sub } from 'date-fns';
-import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone, Loader2, Home, BarChart, XOctagon } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone, Loader2, Home, BarChart, XOctagon, FileCsv } from 'lucide-react';
 
 import type { Booking, Listing, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -146,6 +146,45 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     const periodString = `${period.amount}${period.unit}`;
     const basePath = listing ? `/reports/listing/${listing.id}` : '/reports';
     router.push(`${basePath}/${formatDateToStr(targetDate, 'yyyy-MM-dd')}/${periodString}`);
+  };
+
+  const getCsvData = () => {
+    const headers = ["Booking ID", "Guest", "Venue", "Units", "Start Date", "End Date", "Duration (days)", "Paid", "Owed", "Balance", "Status", "Currency"];
+    const currencyCode = listing?.currency || initialBookings[0]?.currency || 'NGN';
+  
+    const rows = bookingsWithFinancials.map(b => [
+        b.id,
+        b.userName,
+        b.listingName,
+        b.inventoryNames?.join(', ') || 'N/A',
+        formatDateToStr(toZonedTimeSafe(b.startDate), 'yyyy-MM-dd'),
+        formatDateToStr(toZonedTimeSafe(b.endDate), 'yyyy-MM-dd'),
+        b.financials.stayDuration,
+        b.financials.totalPayments.toFixed(2),
+        b.financials.totalBill.toFixed(2),
+        b.financials.balance.toFixed(2),
+        b.status,
+        currencyCode,
+    ].map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','));
+  
+    return [headers.join(','), ...rows].join('\n');
+  };
+
+  const handleExportCsv = () => {
+    const csvContent = getCsvData();
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      const reportDate = formatDateToStr(initialDateRange?.to || initialDateRange?.from || new Date(), 'yyyy-MM-dd');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `report_${(listing?.name || 'all').replace(/\s+/g, '_')}_${reportDate}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    setIsExportOpen(false);
   };
 
   const handleExportPdf = () => {
@@ -359,13 +398,18 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
                 <DialogHeader>
                     <DialogTitle>Export Report</DialogTitle>
                     <DialogDescription>
-                        Export the current report view to PDF or send it via email.
+                        Export the current report view as a PDF or CSV file, or send it via email.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4 space-y-4">
-                    <Button onClick={handleExportPdf} className="w-full">
-                        <Download className="mr-2 h-4 w-4" /> Download as PDF
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button onClick={handleExportPdf} className="w-full">
+                            <Download className="mr-2 h-4 w-4" /> Download as PDF
+                        </Button>
+                        <Button onClick={handleExportCsv} className="w-full" variant="secondary">
+                            <FileCsv className="mr-2 h-4 w-4" /> Download as CSV
+                        </Button>
+                    </div>
                      <div className="relative">
                         <div className="absolute inset-0 flex items-center">
                             <span className="w-full border-t" />
@@ -375,7 +419,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="email">Send to Email</Label>
+                        <Label htmlFor="email">Send to Email (with CSV attached)</Label>
                         <div className="flex gap-2">
                             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
                             <Button variant="secondary" onClick={handleSendEmail} disabled={isEmailPending}>
@@ -463,4 +507,5 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     </div>
   );
 }
+
 
