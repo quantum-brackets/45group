@@ -177,8 +177,9 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
       const reportDate = formatDateToStr(initialDateRange?.to || initialDateRange?.from || new Date(), 'yyyy-MM-dd');
+      const periodString = `${initialPeriod.amount}${initialPeriod.unit}`;
       link.setAttribute('href', url);
-      link.setAttribute('download', `report_${(listing?.name || 'all').replace(/\s+/g, '_')}_${reportDate}.csv`);
+      link.setAttribute('download', `report_${(listing?.name || 'all').replace(/\s+/g, '_')}_${reportDate}_${periodString}.csv`);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
@@ -251,7 +252,8 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
 
 
     const reportDate = formatDateToStr(initialDateRange?.to || initialDateRange?.from || new Date(), 'yyyy-MM-dd');
-    doc.save(`report_${(listing?.name || 'all').replace(/\s+/g, '_')}_${reportDate}.pdf`);
+    const periodString = `${initialPeriod.amount}${initialPeriod.unit}`;
+    doc.save(`report_${(listing?.name || 'all').replace(/\s+/g, '_')}_${reportDate}_${periodString}.pdf`);
     setIsExportOpen(false);
   };
   
@@ -507,6 +509,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     </div>
   );
 }
+
 
 
 
