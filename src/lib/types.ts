@@ -122,6 +122,9 @@ export interface Booking {
   listingName?: string; // The name of the listing being booked.
   inventoryNames?: string[]; // The names of the specific units booked.
   userNotes?: string; // Internal notes about the user.
+  price?: number; // The base price of the listing, joined for reports
+  price_unit?: 'night' | 'hour' | 'person'; // The price unit, joined for reports
+  currency?: Currency; // The currency, joined for reports
 }
 
 /**

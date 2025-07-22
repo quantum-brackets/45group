@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useMemo, useState, useTransition } from 'react';
@@ -6,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { DateRange } from 'react-day-picker';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { differenceInCalendarDays } from 'date-fns';
+import { differenceInCalendarDays, sub } from 'date-fns';
 import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone, Loader2, Home, BarChart, XOctagon } from 'lucide-react';
 
 import type { Booking, Listing, User } from '@/lib/types';
@@ -25,6 +26,7 @@ import { Label } from '@/components/ui/label';
 import { cn, toZonedTimeSafe, formatDateToStr } from '@/lib/utils';
 import { sendReportEmailAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
+import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
 
 
 interface ListingReportProps {
@@ -37,23 +39,24 @@ interface ListingReportProps {
 
 type Grouping = 'status' | 'guest' | 'unit';
 
-const calculateBookingFinancials = (booking: Booking, listing: Listing) => {
+const calculateBookingFinancials = (booking: Booking, listing?: Listing) => {
     const from = toZonedTimeSafe(booking.startDate);
-    let to = (booking.status === 'Completed' || booking.status === 'Cancelled') ? toZonedTimeSafe(booking.endDate) : toZonedTimeSafe(new Date());
-    if (to < from) to = from;
+    const to = toZonedTimeSafe(booking.endDate);
 
     const units = (booking.inventoryIds || []).length;
     const guests = booking.guests;
     const durationDays = differenceInCalendarDays(to, from) + 1;
     const nights = durationDays > 1 ? durationDays - 1 : 1;
     let baseBookingCost = 0;
-    // When listing is not available (global report), we need a fallback for price and currency
-    const price = listing?.price || 0;
-    const price_unit = listing?.price_unit || 'night';
+    
+    // For global reports, pricing info is attached to the booking object itself.
+    // For single-listing reports, it's on the listing object.
+    const price = booking.price ?? listing?.price ?? 0;
+    const price_unit = booking.price_unit ?? listing?.price_unit ?? 'night';
 
     switch(price_unit) {
         case 'night': baseBookingCost = price * nights * units; break;
-        case 'hour': baseBookingCost = price * durationDays * 10 * units; break;
+        case 'hour': baseBookingCost = price * durationDays * EVENT_BOOKING_DAILY_HRS * units; break;
         case 'person': baseBookingCost = price * guests * units; break;
     }
     const discountAmount = baseBookingCost * (booking.discount || 0) / 100;
@@ -78,8 +81,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
       // For global reports, the listing context is on each booking.
       return initialBookings.map(b => ({
           ...b,
-          // If a specific listing is passed, use it. Otherwise, use the listingName/currency from the booking object itself.
-          financials: calculateBookingFinancials(b, listing || { name: b.listingName, currency: 'NGN', price: 0, price_unit: 'night' } as Listing)
+          financials: calculateBookingFinancials(b, listing)
       }));
   }, [initialBookings, listing]);
 
@@ -150,6 +152,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     const doc = new jsPDF({ orientation: 'landscape' });
     const tableData: any[] = [];
     const headers = ["Guest", "Venue", "Units", "Start Date", "Duration (days)", "Paid", "Owed", "Balance", "Status"];
+    const currencyCode = listing?.currency || initialBookings[0]?.currency || 'NGN';
 
     bookingsWithFinancials.forEach(b => {
         tableData.push([
@@ -158,9 +161,9 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
             b.inventoryNames?.join(', ') || 'N/A',
             formatDateToStr(toZonedTimeSafe(b.startDate), 'MMM d, yyyy'),
             b.financials.stayDuration,
-            formatCurrency(b.financials.totalPayments, listing?.currency || 'NGN'),
-            formatCurrency(b.financials.totalBill, listing?.currency || 'NGN'),
-            formatCurrency(b.financials.balance, listing?.currency || 'NGN'),
+            formatCurrency(b.financials.totalPayments, currencyCode),
+            formatCurrency(b.financials.totalBill, currencyCode),
+            formatCurrency(b.financials.balance, currencyCode),
             b.status,
         ]);
     });
@@ -188,15 +191,15 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     const summaryData = [
         [
             `${financialSummary.active.count} Active/Completed Booking(s)`,
-            formatCurrency(financialSummary.active.totalPaid, listing?.currency || 'NGN'),
-            formatCurrency(financialSummary.active.totalOwed, listing?.currency || 'NGN'),
-            formatCurrency(financialSummary.active.balance, listing?.currency || 'NGN'),
+            formatCurrency(financialSummary.active.totalPaid, currencyCode),
+            formatCurrency(financialSummary.active.totalOwed, currencyCode),
+            formatCurrency(financialSummary.active.balance, currencyCode),
         ],
         [
             `${financialSummary.cancelled.count} Cancelled Booking(s)`,
-            formatCurrency(financialSummary.cancelled.totalPaid, listing?.currency || 'NGN'),
-            formatCurrency(financialSummary.cancelled.totalOwed, listing?.currency || 'NGN'),
-            formatCurrency(financialSummary.cancelled.balance, listing?.currency || 'NGN'),
+            formatCurrency(financialSummary.cancelled.totalPaid, currencyCode),
+            formatCurrency(financialSummary.cancelled.totalOwed, currencyCode),
+            formatCurrency(financialSummary.cancelled.balance, currencyCode),
         ],
     ];
 
@@ -280,8 +283,8 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
                 {!listing && <TableCell>{b.listingName}</TableCell>}
                 <TableCell>{b.inventoryNames?.join(', ') || 'N/A'}</TableCell>
                 <TableCell>{formatDateToStr(toZonedTimeSafe(b.startDate), 'MMM d')} - {formatDateToStr(toZonedTimeSafe(b.endDate), 'MMM d, yyyy')} ({b.financials.stayDuration}d)</TableCell>
-                <TableCell className="text-right text-green-600">{formatCurrency(b.financials.totalPayments, listing?.currency || 'NGN')}</TableCell>
-                <TableCell className={`text-right font-medium ${b.financials.balance > 0 ? 'text-destructive' : ''}`} style={{whiteSpace: 'nowrap'}}>{formatCurrency(b.financials.balance, listing?.currency || 'NGN')}</TableCell>
+                <TableCell className="text-right text-green-600">{formatCurrency(b.financials.totalPayments, b.currency || listing?.currency || 'NGN')}</TableCell>
+                <TableCell className={`text-right font-medium ${b.financials.balance > 0 ? 'text-destructive' : ''}`} style={{whiteSpace: 'nowrap'}}>{formatCurrency(b.financials.balance, b.currency || listing?.currency || 'NGN')}</TableCell>
                 <TableCell>{getStatusBadge(b.status)}</TableCell>
               </TableRow>
             ))}
@@ -460,3 +463,4 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     </div>
   );
 }
+

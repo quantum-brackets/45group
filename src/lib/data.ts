@@ -349,16 +349,23 @@ export async function getAllBookings(options?: { fromDate?: string; toDate?: str
 
     // Create maps for efficient lookup.
     const usersMap = new Map(usersResult.data?.map(u => [u.id, u.data?.name]));
-    const listingsMap = new Map(listingsResult.data?.map(l => [l.id, l.data?.name]));
+    const listingsMap = new Map(listingsResult.data?.map(l => [l.id, l.data]));
     const inventoryMap = new Map(inventoryResult.data?.map(i => [i.id, i.name]));
     
-    // Enrich the booking objects with the fetched names.
-    const mappedBookings = unpackedBookings.map((b) => ({
-      ...b,
-      userName: usersMap.get(b.userId),
-      listingName: listingsMap.get(b.listingId) || 'Unknown Listing',
-      inventoryNames: (b.inventoryIds || []).map(id => inventoryMap.get(id)).filter(Boolean) as string[],
-    }));
+    // Enrich the booking objects with the fetched names and pricing data.
+    const mappedBookings = unpackedBookings.map((b) => {
+        const listingData = listingsMap.get(b.listingId);
+        return {
+          ...b,
+          userName: usersMap.get(b.userId),
+          listingName: listingData?.name || 'Unknown Listing',
+          inventoryNames: (b.inventoryIds || []).map(id => inventoryMap.get(id)).filter(Boolean) as string[],
+          // Embed pricing info for global reports
+          price: listingData?.price,
+          price_unit: listingData?.price_unit,
+          currency: listingData?.currency,
+        }
+    });
 
     // Apply a multi-level sort to the bookings.
     mappedBookings.sort((a, b) => {
@@ -625,3 +632,4 @@ export async function getBookingsByDateRange(listingId: string, fromDate: string
 
     return mappedBookings;
 }
+
