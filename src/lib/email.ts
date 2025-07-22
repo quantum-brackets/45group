@@ -142,7 +142,7 @@ export async function sendBookingSummaryEmail(user: User, booking: Booking, list
 
 interface SendReportEmailProps {
     email: string;
-    listing: Listing;
+    listing: Listing | null; // Can be null for global reports
     bookings: Booking[];
     dateRange: { from: Date; to: Date };
 }
@@ -158,7 +158,7 @@ export async function sendReportEmail({ email, ...props }: SendReportEmailProps)
       await resend.emails.send({
         from: fromEmail!,
         to: email,
-        subject: `Booking Report for ${props.listing.name}`,
+        subject: `Booking Report for ${props.listing?.name || 'All Venues'}`,
         react: ReportEmail(props),
       });
     } catch (error) {

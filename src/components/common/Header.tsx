@@ -39,7 +39,7 @@ import { useState, useEffect } from 'react';
 const navLinks = [
   { href: '/search', label: 'Search' },
   { href: '/bookings', label: 'Bookings' },
-  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/dashboard', label: 'Dashboard', roles: ['admin', 'staff'] },
 ];
 
 export function Header({ session }: { session: User | null }) {
@@ -55,13 +55,11 @@ export function Header({ session }: { session: User | null }) {
 
   // Filter navigation links based on user role and session status.
   const visibleNavLinks = navLinks.filter(link => {
-    // Hide Dashboard if user is not admin or staff.
-    if (link.href.startsWith('/dashboard') && session?.role !== 'admin' && session?.role !== 'staff') {
+    if (!session && (link.href === '/bookings' || link.href === '/dashboard' || link.href === '/reports')) {
       return false;
     }
-    // Hide Bookings if user is not logged in.
-    if (link.href.startsWith('/bookings') && !session) {
-        return false;
+    if (link.roles && session && !link.roles.includes(session.role)) {
+      return false;
     }
     return true;
   });
@@ -86,7 +84,7 @@ export function Header({ session }: { session: User | null }) {
                   <DropdownMenuTrigger asChild>
                     <Button 
                         variant="ghost" 
-                        data-active={isClient && pathname.startsWith('/dashboard')}
+                        data-active={isClient && (pathname.startsWith('/dashboard') || pathname.startsWith('/reports'))}
                         className={cn(
                             'flex items-center gap-1 p-0 h-auto text-sm font-medium hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0',
                             'transition-colors hover:text-primary text-muted-foreground data-[active=true]:text-primary'
@@ -102,6 +100,9 @@ export function Header({ session }: { session: User | null }) {
                     <DropdownMenuItem asChild>
                       <Link href="/dashboard?tab=users">Users</Link>
                     </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/reports">Reports</Link>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
@@ -109,7 +110,7 @@ export function Header({ session }: { session: User | null }) {
                 <Link
                   key={link.href}
                   href={link.href}
-                  data-active={isClient && pathname === link.href}
+                  data-active={isClient && pathname.startsWith(link.href)}
                   className={cn(
                     'transition-colors hover:text-primary text-muted-foreground data-[active=true]:text-primary'
                   )}
@@ -157,7 +158,7 @@ export function Header({ session }: { session: User | null }) {
                         <Accordion key={link.href} type="single" collapsible className="w-full -my-2">
                             <AccordionItem value="dashboard" className="border-b-0">
                                 <AccordionTrigger
-                                    data-active={isClient && pathname.startsWith('/dashboard')}
+                                    data-active={isClient && (pathname.startsWith('/dashboard') || pathname.startsWith('/reports'))}
                                     className={cn(
                                         'py-2 hover:no-underline transition-colors hover:text-primary [&[data-state=open]>svg]:text-primary',
                                         'text-muted-foreground data-[active=true]:text-primary'
@@ -177,6 +178,12 @@ export function Header({ session }: { session: User | null }) {
                                         className={cn(
                                             'text-muted-foreground hover:text-primary data-[active=true]:text-primary data-[active=true]:font-semibold'
                                     )}>Users</Link>
+                                    <Link 
+                                        href="/reports"
+                                        data-active={isClient && pathname.startsWith('/reports')}
+                                        className={cn(
+                                            'text-muted-foreground hover:text-primary data-[active=true]:text-primary data-[active=true]:font-semibold'
+                                    )}>Reports</Link>
                                 </AccordionContent>
                             </AccordionItem>
                         </Accordion>
@@ -185,7 +192,7 @@ export function Header({ session }: { session: User | null }) {
                         <Link
                             key={link.href}
                             href={link.href}
-                            data-active={isClient && pathname === link.href}
+                            data-active={isClient && pathname.startsWith(link.href)}
                             className={cn(
                             'transition-colors hover:text-primary',
                             'text-muted-foreground data-[active=true]:text-primary'

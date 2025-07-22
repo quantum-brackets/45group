@@ -7,7 +7,7 @@ import { DateRange } from 'react-day-picker';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { differenceInCalendarDays } from 'date-fns';
-import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone, Loader2, Home } from 'lucide-react';
 
 import type { Booking, Listing, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 
 
 interface ListingReportProps {
-  listing: Listing;
+  listing?: Listing; // Optional: for single-listing reports
   initialBookings: Booking[];
   initialDateRange: DateRange;
   initialPeriod: { unit: string, amount: number };
@@ -47,10 +47,14 @@ const calculateBookingFinancials = (booking: Booking, listing: Listing) => {
     const durationDays = differenceInCalendarDays(to, from) + 1;
     const nights = durationDays > 1 ? durationDays - 1 : 1;
     let baseBookingCost = 0;
-    switch(listing.price_unit) {
-        case 'night': baseBookingCost = listing.price * nights * units; break;
-        case 'hour': baseBookingCost = listing.price * durationDays * 10 * units; break;
-        case 'person': baseBookingCost = listing.price * guests * units; break;
+    // When listing is not available (global report), we need a fallback for price and currency
+    const price = listing?.price || 0;
+    const price_unit = listing?.price_unit || 'night';
+
+    switch(price_unit) {
+        case 'night': baseBookingCost = price * nights * units; break;
+        case 'hour': baseBookingCost = price * durationDays * 10 * units; break;
+        case 'person': baseBookingCost = price * guests * units; break;
     }
     const discountAmount = baseBookingCost * (booking.discount || 0) / 100;
     const addedBillsTotal = (booking.bills || []).reduce((sum, bill) => sum + bill.amount, 0);
@@ -71,9 +75,11 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   const bookingsWithFinancials = useMemo(() => {
+      // For global reports, the listing context is on each booking.
       return initialBookings.map(b => ({
           ...b,
-          financials: calculateBookingFinancials(b, listing)
+          // If a specific listing is passed, use it. Otherwise, use the listingName/currency from the booking object itself.
+          financials: calculateBookingFinancials(b, listing || { name: b.listingName, currency: 'NGN', price: 0, price_unit: 'night' } as Listing)
       }));
   }, [initialBookings, listing]);
 
@@ -119,29 +125,31 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
   const handleDateOrPeriodChange = () => {
     const targetDate = date || new Date();
     const periodString = `${period.amount}${period.unit}`;
-    router.push(`/reports/listing/${listing.id}/${formatDateToStr(targetDate, 'yyyy-MM-dd')}/${periodString}`);
+    const basePath = listing ? `/reports/listing/${listing.id}` : '/reports';
+    router.push(`${basePath}/${formatDateToStr(targetDate, 'yyyy-MM-dd')}/${periodString}`);
   };
 
   const handleExportPdf = () => {
     const doc = new jsPDF();
     const tableData: any[] = [];
-    const headers = ["Guest", "Units", "Start Date", "Duration (days)", "Paid", "Owed", "Balance", "Status"];
+    const headers = ["Guest", "Venue", "Units", "Start Date", "Duration (days)", "Paid", "Owed", "Balance", "Status"];
 
     bookingsWithFinancials.forEach(b => {
         tableData.push([
             b.userName,
+            b.listingName,
             b.inventoryNames?.join(', ') || 'N/A',
             formatDateToStr(toZonedTimeSafe(b.startDate), 'MMM d, yyyy'),
             b.financials.stayDuration,
-            formatCurrency(b.financials.totalPayments, listing.currency),
-            formatCurrency(b.financials.totalBill, listing.currency),
-            formatCurrency(b.financials.balance, listing.currency),
+            formatCurrency(b.financials.totalPayments, listing?.currency || 'NGN'),
+            formatCurrency(b.financials.totalBill, listing?.currency || 'NGN'),
+            formatCurrency(b.financials.balance, listing?.currency || 'NGN'),
             b.status,
         ]);
     });
 
     doc.setFontSize(18);
-    doc.text(`Booking Report for ${listing.name}`, 14, 22);
+    doc.text(`Booking Report for ${listing?.name || 'All Venues'}`, 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
     const dateDisplay = initialDateRange?.from ? `${formatDateToStr(initialDateRange.from, 'LLL dd, y')} - ${initialDateRange.to ? formatDateToStr(initialDateRange.to, 'LLL dd, y') : ''}` : 'All time';
@@ -156,14 +164,15 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     });
 
     const reportDate = formatDateToStr(initialDateRange?.to || initialDateRange?.from || new Date(), 'yyyy-MM-dd');
-    doc.save(`report_${listing.name.replace(/\s+/g, '_')}_${reportDate}.pdf`);
+    doc.save(`report_${(listing?.name || 'all').replace(/\s+/g, '_')}_${reportDate}.pdf`);
     setIsExportOpen(false);
   };
   
   const handleSendEmail = () => {
     startEmailTransition(async () => {
+      // For a global report, listingId is null. The server action needs to handle this.
       const result = await sendReportEmailAction({
-        listingId: listing.id,
+        listingId: listing?.id,
         fromDate: initialDateRange.from!.toISOString(),
         toDate: initialDateRange.to!.toISOString(),
         email,
@@ -211,6 +220,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
           <TableHeader>
             <TableRow>
               <TableHead>Guest</TableHead>
+              {!listing && <TableHead>Venue</TableHead>}
               <TableHead>Units</TableHead>
               <TableHead>Dates</TableHead>
               <TableHead className="text-right">Paid</TableHead>
@@ -222,10 +232,11 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
             {bookings.map(b => (
               <TableRow key={b.id} onClick={() => router.push(`/booking/${b.id}`)} className="cursor-pointer">
                 <TableCell>{b.userName}</TableCell>
+                {!listing && <TableCell>{b.listingName}</TableCell>}
                 <TableCell>{b.inventoryNames?.join(', ') || 'N/A'}</TableCell>
                 <TableCell>{formatDateToStr(toZonedTimeSafe(b.startDate), 'MMM d')} - {formatDateToStr(toZonedTimeSafe(b.endDate), 'MMM d, yyyy')} ({b.financials.stayDuration}d)</TableCell>
-                <TableCell className="text-right text-green-600">{formatCurrency(b.financials.totalPayments, listing.currency)}</TableCell>
-                <TableCell className={`text-right font-medium ${b.financials.balance > 0 ? 'text-destructive' : ''}`} style={{whiteSpace: 'nowrap'}}>{formatCurrency(b.financials.balance, listing.currency)}</TableCell>
+                <TableCell className="text-right text-green-600">{formatCurrency(b.financials.totalPayments, listing?.currency || 'NGN')}</TableCell>
+                <TableCell className={`text-right font-medium ${b.financials.balance > 0 ? 'text-destructive' : ''}`} style={{whiteSpace: 'nowrap'}}>{formatCurrency(b.financials.balance, listing?.currency || 'NGN')}</TableCell>
                 <TableCell>{getStatusBadge(b.status)}</TableCell>
               </TableRow>
             ))}
@@ -239,7 +250,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     <div className="space-y-8">
       <Card>
         <CardHeader>
-          <CardTitle>Booking Report: {listing.name}</CardTitle>
+          <CardTitle>Booking Report: {listing?.name || "All Venues"}</CardTitle>
           <CardDescription>
             View and export booking data for different time periods.
           </CardDescription>
@@ -359,4 +370,3 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     </div>
   );
 }
-

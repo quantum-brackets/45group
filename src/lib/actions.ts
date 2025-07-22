@@ -29,7 +29,7 @@ import { differenceInCalendarDays } from 'date-fns'
 import { preloadPermissions } from '@/lib/permissions/server'
 import { hasPermission } from '@/lib/permissions'
 import { generateRandomString, toZonedTimeSafe } from '@/lib/utils'
-import { getBookingsByDateRange } from './data'
+import { getAllBookings, getBookingsByDateRange } from './data'
 
 
 function unpackUser(user: any): User {
@@ -1639,7 +1639,7 @@ export async function setDiscountAction(data: z.infer<typeof SetDiscountSchema>)
 }
 
 const SendReportEmailSchema = z.object({
-    listingId: z.string(),
+    listingId: z.string().optional(),
     fromDate: z.string().datetime(),
     toDate: z.string().datetime(),
     email: z.string().email(),
@@ -1661,20 +1661,26 @@ export async function sendReportEmailAction(data: z.infer<typeof SendReportEmail
     
     const { listingId, fromDate, toDate, email } = validatedFields.data;
 
-    const { data: listingData, error: listingError } = await supabase
-        .from('listings').select('data').eq('id', listingId).single();
+    let listing: Listing | null = null;
+    let bookings: Booking[];
 
-    if (listingError || !listingData) {
-        return { success: false, message: 'Could not find listing for report.' };
+    if (listingId) {
+        const { data: listingData, error: listingError } = await supabase
+            .from('listings').select('data').eq('id', listingId).single();
+        if (listingError || !listingData) {
+            return { success: false, message: 'Could not find listing for report.' };
+        }
+        listing = unpackListing({ ...listingData, id: listingId });
+        bookings = await getBookingsByDateRange(listingId, fromDate, toDate);
+    } else {
+        // Global report
+        bookings = await getAllBookings({ fromDate, toDate });
     }
-    const listing = unpackListing({ ...listingData, id: listingId });
-    
-    const bookings = await getBookingsByDateRange(listingId, fromDate, toDate);
 
     try {
         await sendReportEmail({
             email,
-            listing,
+            listing, // Can be null for global reports
             bookings,
             dateRange: { from: new Date(fromDate), to: new Date(toDate) },
         });

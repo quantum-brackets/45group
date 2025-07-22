@@ -18,7 +18,7 @@ import {
   import { differenceInCalendarDays } from 'date-fns';
   
   export interface ReportEmailProps {
-    listing: Listing;
+    listing: Listing | null; // Can be null for global reports
     bookings: Booking[];
     dateRange: { from: Date; to: Date };
   }
@@ -32,7 +32,7 @@ import {
     }).format(amount);
   }
   
-  const calculateBookingFinancials = (booking: Booking, listing: Listing) => {
+  const calculateBookingFinancials = (booking: Booking, listing: Listing | null) => {
       const from = toZonedTimeSafe(booking.startDate);
       let to = (booking.status === 'Completed' || booking.status === 'Cancelled') ? toZonedTimeSafe(booking.endDate) : toZonedTimeSafe(new Date());
       if (to < from) to = from;
@@ -42,10 +42,16 @@ import {
       const durationDays = differenceInCalendarDays(to, from) + 1;
       const nights = durationDays > 1 ? durationDays - 1 : 1;
       let baseBookingCost = 0;
-      switch(listing.price_unit) {
-          case 'night': baseBookingCost = listing.price * nights * units; break;
-          case 'hour': baseBookingCost = listing.price * durationDays * 10 * units; break;
-          case 'person': baseBookingCost = listing.price * guests * units; break;
+
+      // For global reports, we don't have a single listing context, so we have to make some assumptions
+      // or handle this differently if currencies can vary. Assuming a default for now.
+      const price = listing?.price || 0;
+      const price_unit = listing?.price_unit || 'night';
+
+      switch(price_unit) {
+          case 'night': baseBookingCost = price * nights * units; break;
+          case 'hour': baseBookingCost = price * durationDays * 10 * units; break;
+          case 'person': baseBookingCost = price * guests * units; break;
       }
       const discountAmount = baseBookingCost * (booking.discount || 0) / 100;
       const addedBillsTotal = (booking.bills || []).reduce((sum, bill) => sum + bill.amount, 0);
@@ -69,11 +75,14 @@ import {
       acc.totalBalance += curr.financials.balance;
       return acc;
     }, { totalPaid: 0, totalOwed: 0, totalBalance: 0 });
+    
+    // Assume a default currency if no single listing is provided
+    const currency = listing?.currency || 'NGN';
   
     return (
       <Html>
         <Head />
-        <Preview>Report for {listing.name} from {formatDateToStr(dateRange.from, 'PPP')}</Preview>
+        <Preview>Report for {listing?.name || 'All Venues'} from {formatDateToStr(dateRange.from, 'PPP')}</Preview>
         <Body style={main}>
           <Container style={container}>
             <Img
@@ -87,7 +96,7 @@ import {
               <Row>
                 <Column style={column}>
                   <Text style={detailTitle}>Venue</Text>
-                  <Text style={detailText}>{listing.name}</Text>
+                  <Text style={detailText}>{listing?.name || 'All Venues'}</Text>
                 </Column>
                 <Column style={column}>
                   <Text style={detailTitle}>Date Range</Text>
@@ -100,8 +109,8 @@ import {
             <Section style={summarySection}>
                 <Row>
                     <Column style={summaryCell}><span style={summaryTitle}>Total Bookings</span><br/>{bookings.length}</Column>
-                    <Column style={summaryCell}><span style={summaryTitle}>Total Paid</span><br/>{formatCurrency(totals.totalPaid, listing.currency)}</Column>
-                    <Column style={summaryCell}><span style={summaryTitle}>Outstanding Balance</span><br/>{formatCurrency(totals.totalBalance, listing.currency)}</Column>
+                    <Column style={summaryCell}><span style={summaryTitle}>Total Paid</span><br/>{formatCurrency(totals.totalPaid, currency)}</Column>
+                    <Column style={summaryCell}><span style={summaryTitle}>Outstanding Balance</span><br/>{formatCurrency(totals.totalBalance, currency)}</Column>
                 </Row>
             </Section>
             
@@ -110,8 +119,9 @@ import {
               <thead style={tableHead}>
                 <tr>
                   <th style={tableCell}>Guest</th>
-                  <th style={tableCell}>Dates</th>
+                  {!listing && <th style={tableCell}>Venue</th>}
                   <th style={tableCell}>Units</th>
+                  <th style={tableCell}>Dates</th>
                   <th style={tableCell}>Status</th>
                   <th style={tableCell}>Paid</th>
                   <th style={tableCell}>Balance</th>
@@ -121,11 +131,12 @@ import {
                 {bookingsWithFinancials.map(booking => (
                   <tr key={booking.id}>
                     <td style={tableCell}>{booking.userName}</td>
-                    <td style={tableCell}>{formatDateToStr(booking.startDate, 'MMM d')} - {formatDateToStr(booking.endDate, 'MMM d, yyyy')}</td>
+                    {!listing && <td style={tableCell}>{booking.listingName}</td>}
                     <td style={tableCell}>{booking.inventoryNames?.join(', ')}</td>
+                    <td style={tableCell}>{formatDateToStr(booking.startDate, 'MMM d')} - {formatDateToStr(booking.endDate, 'MMM d, yyyy')}</td>
                     <td style={tableCell}>{booking.status}</td>
-                    <td style={tableCell}>{formatCurrency(booking.financials.totalPayments, listing.currency)}</td>
-                    <td style={tableCell}>{formatCurrency(booking.financials.balance, listing.currency)}</td>
+                    <td style={tableCell}>{formatCurrency(booking.financials.totalPayments, currency)}</td>
+                    <td style={tableCell}>{formatCurrency(booking.financials.balance, currency)}</td>
                   </tr>
                 ))}
               </tbody>

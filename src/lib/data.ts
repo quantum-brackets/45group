@@ -293,7 +293,7 @@ export async function getListingById(id: string): Promise<Listing | null> {
  * Admins see all bookings.
  * @returns An array of Booking objects, enriched with user and listing names.
  */
-export async function getAllBookings(): Promise<Booking[]> {
+export async function getAllBookings(options?: { fromDate?: string; toDate?: string }): Promise<Booking[]> {
     noStore();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
@@ -315,6 +315,10 @@ export async function getAllBookings(): Promise<Booking[]> {
     }
     // Admins have no filter applied and see all bookings.
     
+    if (options?.fromDate && options?.toDate) {
+        query = query.gte('start_date', options.fromDate).lte('start_date', options.toDate);
+    }
+
     const { data: bookingsData, error } = await query;
 
     if (error) {
