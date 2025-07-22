@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This file contains all the "Server Actions" for the application.
  * Server Actions are asynchronous functions that are only executed on the server.
@@ -1599,6 +1600,7 @@ export async function getAvailableInventoryForBookingAction(data: z.infer<typeof
 const SetDiscountSchema = z.object({
     bookingId: z.string(),
     discountPercentage: z.coerce.number().min(0, "Discount cannot be negative.").max(15, "Discount cannot exceed 15%."),
+    reason: z.string().min(1, "A reason for the discount is required."),
 });
 
 /**
@@ -1620,7 +1622,7 @@ export async function setDiscountAction(data: z.infer<typeof SetDiscountSchema>)
         return { success: false, message: "Validation Error: Please check the form for invalid data." };
     }
 
-    const { bookingId, discountPercentage } = validatedFields.data;
+    const { bookingId, discountPercentage, reason } = validatedFields.data;
 
     const { data: booking, error: fetchError } = await supabase.from('bookings').select('data').eq('id', bookingId).single();
     if (fetchError || !booking) {
@@ -1632,7 +1634,7 @@ export async function setDiscountAction(data: z.infer<typeof SetDiscountSchema>)
       actorId: session.id,
       actorName: session.name,
       action: 'Updated',
-      message: `Discount set to ${discountPercentage.toFixed(2)}% by ${session.name}.`
+      message: `Discount set to ${discountPercentage.toFixed(2)}% by ${session.name}. Reason: ${reason}`
     };
 
     const updatedActions = [...(booking.data.actions || []), discountAction];

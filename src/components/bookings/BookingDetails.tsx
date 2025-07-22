@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -228,22 +229,23 @@ const SetDiscountDialog = ({ bookingId, currency, currentDiscount, baseBookingCo
         discount: z.coerce.number()
             .min(0, "Discount cannot be negative.")
             .max(maxDiscountAmount, `Discount cannot exceed ${formatCurrency(maxDiscountAmount, currency)} (15% of base cost).`),
+        reason: z.string().min(1, "A reason for the discount is required."),
     });
     type SetDiscountValues = z.infer<typeof SetDiscountSchema>;
     
     const form = useForm<SetDiscountValues>({ 
         resolver: zodResolver(SetDiscountSchema), 
-        defaultValues: { discount: currentDiscountAmount } 
+        defaultValues: { discount: currentDiscountAmount, reason: '' } 
     });
 
     useEffect(() => {
-        form.reset({ discount: currentDiscountAmount });
+        form.reset({ discount: currentDiscountAmount, reason: '' });
     }, [currentDiscountAmount, form]);
 
     const onSubmit = (data: SetDiscountValues) => {
         startTransition(async () => {
             const discountPercentage = baseBookingCost > 0 ? (data.discount / baseBookingCost) * 100 : 0;
-            const result = await setDiscountAction({ bookingId, discountPercentage });
+            const result = await setDiscountAction({ bookingId, discountPercentage, reason: data.reason });
             if (result.success) {
                 toast({ title: "Success", description: result.message });
                 setOpen(false);
@@ -277,7 +279,20 @@ const SetDiscountDialog = ({ bookingId, currency, currentDiscount, baseBookingCo
                                     <FormMessage />
                                 </FormItem>
                             )}
-                            />
+                        />
+                         <FormField
+                            control={form.control}
+                            name="reason"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Reason for Discount</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="e.g., Special promotion, customer loyalty reward" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>Cancel</Button>
                             <Button type="submit" disabled={isPending}>{isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Set Discount</Button>
@@ -362,15 +377,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
     if (!booking.startDate || !booking.endDate || !listing.price || !listing.price_unit) return 0;
 
     const from = DateUtils.toZonedTimeSafe(booking.startDate);
-    const originalEndDate = DateUtils.toZonedTimeSafe(booking.endDate);
-
-    // For ongoing bookings, calculate the bill up to today.
-    // For completed/cancelled bookings, use the actual end date.
-    let to = (booking.status === 'Completed' || booking.status === 'Cancelled') ? originalEndDate : DateUtils.toZonedTimeSafe(new Date());
-    // Also, don't show a negative duration if the booking hasn't started yet.
-    if (isBefore(to, from)) {
-        to = from;
-    }
+    const to = DateUtils.toZonedTimeSafe(booking.endDate);
 
     const units = (booking.inventoryIds || []).length;
     const guests = booking.guests;
@@ -388,7 +395,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
         default:
             return 0;
     }
-  }, [booking, listing]);
+  }, [booking.startDate, booking.endDate, listing.price, listing.price_unit, listing.price_unit, booking.inventoryIds, booking.guests]);
   
   const discountAmount = useMemo(() => {
       if (!booking.discount || booking.discount <= 0) return 0;
