@@ -69,12 +69,17 @@ import {
       financials: calculateBookingFinancials(b, listing)
     }));
   
-    const totals = bookingsWithFinancials.reduce((acc, curr) => {
-      acc.totalPaid += curr.financials.totalPayments;
-      acc.totalOwed += curr.financials.totalBill;
-      acc.totalBalance += curr.financials.balance;
-      return acc;
-    }, { totalPaid: 0, totalOwed: 0, totalBalance: 0 });
+    const financialSummary = bookingsWithFinancials.reduce((acc, booking) => {
+        const target = booking.status === 'Cancelled' ? acc.cancelled : acc.active;
+        target.count += 1;
+        target.totalPaid += booking.financials.totalPayments;
+        target.totalOwed += booking.financials.totalBill;
+        target.balance += booking.financials.balance;
+        return acc;
+    }, {
+        active: { count: 0, totalPaid: 0, totalOwed: 0, balance: 0 },
+        cancelled: { count: 0, totalPaid: 0, totalOwed: 0, balance: 0 },
+    });
     
     // Assume a default currency if no single listing is provided
     const currency = listing?.currency || 'NGN';
@@ -105,16 +110,33 @@ import {
               </Row>
             </Section>
   
-            <Heading as="h2" style={subHeading}>Summary</Heading>
-            <Section style={summarySection}>
-                <Row>
-                    <Column style={summaryCell}><span style={summaryTitle}>Total Bookings</span><br/>{bookings.length}</Column>
-                    <Column style={summaryCell}><span style={summaryTitle}>Total Paid</span><br/>{formatCurrency(totals.totalPaid, currency)}</Column>
-                    <Column style={summaryCell}><span style={summaryTitle}>Outstanding Balance</span><br/>{formatCurrency(totals.totalBalance, currency)}</Column>
-                </Row>
-            </Section>
+            <Heading as="h2" style={subHeading}>Financial Summary</Heading>
+            <table style={table} cellPadding={0} cellSpacing={0}>
+                <thead style={tableHead}>
+                    <tr>
+                        <th style={tableCell}>Category</th>
+                        <th style={tableCell}>Total Paid</th>
+                        <th style={tableCell}>Total Owed</th>
+                        <th style={tableCell}>Balance</th>
+                    </tr>
+                </thead>
+                <tbody style={tableBody}>
+                    <tr>
+                        <td style={tableCell}>{financialSummary.active.count} Active/Completed Booking(s)</td>
+                        <td style={tableCell}>{formatCurrency(financialSummary.active.totalPaid, currency)}</td>
+                        <td style={tableCell}>{formatCurrency(financialSummary.active.totalOwed, currency)}</td>
+                        <td style={tableCell}>{formatCurrency(financialSummary.active.balance, currency)}</td>
+                    </tr>
+                     <tr>
+                        <td style={tableCell}>{financialSummary.cancelled.count} Cancelled Booking(s)</td>
+                        <td style={tableCell}>{formatCurrency(financialSummary.cancelled.totalPaid, currency)}</td>
+                        <td style={tableCell}>{formatCurrency(financialSummary.cancelled.totalOwed, currency)}</td>
+                        <td style={tableCell}>{formatCurrency(financialSummary.cancelled.balance, currency)}</td>
+                    </tr>
+                </tbody>
+            </table>
             
-            <Heading as="h2" style={subHeading}>Details</Heading>
+            <Heading as="h2" style={subHeading}>Booking Details</Heading>
             <table style={table} cellPadding={0} cellSpacing={0}>
               <thead style={tableHead}>
                 <tr>
@@ -180,7 +202,7 @@ import {
       fontSize: '20px',
       fontWeight: 'bold',
       color: '#d34c23',
-      padding: '0 20px',
+      padding: '20px 20px 10px 20px',
   };
   
   const detailsSection = {
@@ -228,6 +250,7 @@ import {
     width: '100%',
     borderCollapse: 'collapse' as const,
     padding: '0 20px',
+    marginBottom: '20px'
   };
   
   const tableHead = {
@@ -257,3 +280,4 @@ import {
     textAlign: 'center' as const,
   };
   
+

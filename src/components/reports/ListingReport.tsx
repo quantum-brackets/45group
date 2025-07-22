@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useMemo, useState, useTransition } from 'react';
@@ -7,7 +8,7 @@ import { DateRange } from 'react-day-picker';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { differenceInCalendarDays } from 'date-fns';
-import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone, Loader2, Home } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone, Loader2, Home, BarChart, XOctagon } from 'lucide-react';
 
 import type { Booking, Listing, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -82,6 +83,23 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
           financials: calculateBookingFinancials(b, listing || { name: b.listingName, currency: 'NGN', price: 0, price_unit: 'night' } as Listing)
       }));
   }, [initialBookings, listing]);
+
+  const financialSummary = useMemo(() => {
+    const summary = {
+      active: { count: 0, totalPaid: 0, totalOwed: 0, balance: 0 },
+      cancelled: { count: 0, totalPaid: 0, totalOwed: 0, balance: 0 },
+    };
+
+    bookingsWithFinancials.forEach(booking => {
+      const target = booking.status === 'Cancelled' ? summary.cancelled : summary.active;
+      target.count += 1;
+      target.totalPaid += booking.financials.totalPayments;
+      target.totalOwed += booking.financials.totalBill;
+      target.balance += booking.financials.balance;
+    });
+
+    return summary;
+  }, [bookingsWithFinancials]);
 
   const groupedData = useMemo(() => {
     const statusOrder: Booking['status'][] = ['Confirmed', 'Pending', 'Completed', 'Cancelled'];
@@ -162,6 +180,34 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
         theme: 'striped',
         headStyles: { fillColor: [211, 76, 35] },
     });
+
+    // Add financial summary to the PDF
+    const finalY = (doc as any).lastAutoTable.finalY || 10;
+    doc.setFontSize(14);
+    doc.text('Financial Summary', 14, finalY + 15);
+
+    const summaryData = [
+        [
+            `${financialSummary.active.count} Active/Completed Booking(s)`,
+            formatCurrency(financialSummary.active.totalPaid, listing?.currency || 'NGN'),
+            formatCurrency(financialSummary.active.totalOwed, listing?.currency || 'NGN'),
+            formatCurrency(financialSummary.active.balance, listing?.currency || 'NGN'),
+        ],
+        [
+            `${financialSummary.cancelled.count} Cancelled Booking(s)`,
+            formatCurrency(financialSummary.cancelled.totalPaid, listing?.currency || 'NGN'),
+            formatCurrency(financialSummary.cancelled.totalOwed, listing?.currency || 'NGN'),
+            formatCurrency(financialSummary.cancelled.balance, listing?.currency || 'NGN'),
+        ],
+    ];
+
+    autoTable(doc, {
+        startY: finalY + 20,
+        head: [['Category', 'Total Paid', 'Total Owed', 'Balance']],
+        body: summaryData,
+        theme: 'grid',
+    });
+
 
     const reportDate = formatDateToStr(initialDateRange?.to || initialDateRange?.from || new Date(), 'yyyy-MM-dd');
     doc.save(`report_${(listing?.name || 'all').replace(/\s+/g, '_')}_${reportDate}.pdf`);
@@ -367,6 +413,51 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
           ))}
         </TabsContent>
       </Tabs>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Financial Summary</CardTitle>
+          <CardDescription>
+            A summary of all financial transactions for the selected period.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Category</TableHead>
+                <TableHead className="text-right">Total Paid</TableHead>
+                <TableHead className="text-right">Total Owed</TableHead>
+                <TableHead className="text-right">Balance</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow className="font-medium">
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <BarChart className="h-4 w-4 text-accent" />
+                    <span>{financialSummary.active.count} Active & Completed Booking(s)</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">{formatCurrency(financialSummary.active.totalPaid, listing?.currency || 'NGN')}</TableCell>
+                <TableCell className="text-right">{formatCurrency(financialSummary.active.totalOwed, listing?.currency || 'NGN')}</TableCell>
+                <TableCell className="text-right">{formatCurrency(financialSummary.active.balance, listing?.currency || 'NGN')}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>
+                   <div className="flex items-center gap-2">
+                    <XOctagon className="h-4 w-4 text-destructive" />
+                    <span>{financialSummary.cancelled.count} Cancelled Booking(s)</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">{formatCurrency(financialSummary.cancelled.totalPaid, listing?.currency || 'NGN')}</TableCell>
+                <TableCell className="text-right">{formatCurrency(financialSummary.cancelled.totalOwed, listing?.currency || 'NGN')}</TableCell>
+                <TableCell className="text-right">{formatCurrency(financialSummary.cancelled.balance, listing?.currency || 'NGN')}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
