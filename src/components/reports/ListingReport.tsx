@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useMemo, useState, useTransition } from 'react';
@@ -148,7 +147,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
   };
 
   const handleExportPdf = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF({ orientation: 'landscape' });
     const tableData: any[] = [];
     const headers = ["Guest", "Venue", "Units", "Start Date", "Duration (days)", "Paid", "Owed", "Balance", "Status"];
 
