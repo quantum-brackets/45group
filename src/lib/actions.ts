@@ -1173,7 +1173,7 @@ export async function updateUserAction(id: string, data: z.infer<typeof editUser
 }
 
 /**
- * Deletes a user from the system.
+ * Deletes a user from the system. This action is now safer and checks for any bookings.
  * @param userId - The ID of the user to delete.
  * @returns A result object indicating success or failure.
  */
@@ -1185,25 +1185,23 @@ export async function deleteUserAction(userId: string) {
     return { success: false, message: 'Permission Denied: You are not authorized to delete users.' };
   }
 
-  // Safety check: Prevent users from deleting themselves.
   if (userId === session.id) {
     return { success: false, message: "Deletion Failed: You cannot delete your own account." };
   }
 
-  // Safety check: Prevent deleting users with active bookings.
-  const { data: activeBookings, error: bookingCheckError } = await supabase
+  // Safety check: Prevent deleting users with ANY bookings, active or not.
+  // For merging, `consolidateUsersAction` should be used instead.
+  const { data: anyBookings, error: bookingCheckError } = await supabase
     .from('bookings')
-    .select('id')
+    .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
-    .in('status', ['Pending', 'Confirmed'])
-    .limit(1);
 
   if (bookingCheckError) {
-    return { success: false, message: `Database Error: Failed to check for active bookings. ${bookingCheckError.message}` };
+    return { success: false, message: `Database Error: Failed to check for bookings. ${bookingCheckError.message}` };
   }
   
-  if (activeBookings && activeBookings.length > 0) {
-    return { success: false, message: 'Deletion Failed: This user has active or pending bookings and cannot be deleted.' };
+  if (anyBookings && anyBookings.length > 0) {
+    return { success: false, message: 'Deletion Failed: This user has bookings associated with them and cannot be deleted. Use the "Consolidate Users" tool to merge this user into another.' };
   }
 
   const { error } = await supabase.from('users').delete().eq('id', userId);
@@ -1216,6 +1214,7 @@ export async function deleteUserAction(userId: string) {
   revalidatePath('/dashboard?tab=users', 'page');
   return { success: true, message: 'User has been successfully deleted.' };
 }
+
 
 // Zod schema for the user's own profile update form.
 const UpdateProfileSchema = z.object({
@@ -1897,4 +1896,64 @@ export async function createWalkInReservationAction(data: z.infer<typeof WalkInR
     } catch (e: any) {
         return { success: false, message: e.message };
     }
+}
+
+const ConsolidateUsersSchema = z.object({
+  primaryUserId: z.string(),
+  userIdsToMerge: z.array(z.string()).min(1),
+});
+
+/**
+ * Consolidates multiple user accounts into a single primary account.
+ * Re-assigns all bookings from the merged users to the primary user and then deletes the merged users.
+ * @param data - The primary user ID and the IDs of users to merge.
+ * @returns A result object indicating success or failure.
+ */
+export async function consolidateUsersAction(data: z.infer<typeof ConsolidateUsersSchema>) {
+    const perms = await preloadPermissions();
+    const supabase = createSupabaseAdminClient();
+    const session = await getSession();
+  
+    if (!session || !hasPermission(perms, session, 'user:delete')) {
+      return { success: false, message: 'Permission Denied: You are not authorized to consolidate users.' };
+    }
+  
+    const validatedFields = ConsolidateUsersSchema.safeParse(data);
+    if (!validatedFields.success) {
+      return { success: false, message: "Validation Error: Invalid data provided for consolidation." };
+    }
+  
+    const { primaryUserId, userIdsToMerge } = validatedFields.data;
+  
+    if (userIdsToMerge.includes(primaryUserId)) {
+      return { success: false, message: "Error: Cannot merge a user into themselves." };
+    }
+  
+    // Step 1: Re-assign all bookings from the users-to-be-merged to the primary user.
+    const { error: updateBookingsError } = await supabase
+      .from('bookings')
+      .update({ user_id: primaryUserId })
+      .in('user_id', userIdsToMerge);
+  
+    if (updateBookingsError) {
+      console.error('[CONSOLIDATE_USERS] Error updating bookings:', updateBookingsError);
+      return { success: false, message: `Database Error: Failed to re-assign bookings. ${updateBookingsError.message}` };
+    }
+  
+    // Step 2: Delete the now-redundant user accounts.
+    const { error: deleteUsersError } = await supabase
+      .from('users')
+      .delete()
+      .in('id', userIdsToMerge);
+  
+    if (deleteUsersError) {
+      console.error('[CONSOLIDATE_USERS] Error deleting merged users:', deleteUsersError);
+      // At this point, bookings are reassigned, which is better than a partial failure.
+      // We return an error but acknowledge that the main goal was partially achieved.
+      return { success: false, message: `Database Error: Failed to delete the merged user accounts, but their bookings were re-assigned. ${deleteUsersError.message}` };
+    }
+  
+    revalidatePath('/dashboard?tab=users');
+    revalidatePath('/bookings');
+    return { success: true, message: `${userIdsToMerge.length} user(s) were successfully merged.` };
 }

@@ -20,6 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { formatDateToStr } from '@/lib/utils';
+import { ConsolidateUsersDialog } from './ConsolidateUsersDialog';
 
 
 interface DashboardTablesProps {
@@ -75,6 +76,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
   
   const [selectedRowIds, setSelectedRowIds] = useState<Record<string, boolean>>({});
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isConsolidateOpen, setIsConsolidateOpen] = useState(false);
   
   const [userSearch, setUserSearch] = useState('');
   const [listingSearch, setListingSearch] = useState('');
@@ -343,7 +345,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
         </TabsContent>
         <TabsContent value="users">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -353,14 +355,19 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                     className="w-full max-w-sm pl-10"
                   />
                 </div>
-              {canCreateUser && (
-                <Button asChild>
-                  <Link href="/dashboard/add-user">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add User
-                  </Link>
-                </Button>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {canDeleteUser && (
+                  <ConsolidateUsersDialog allUsers={users} isOpen={isConsolidateOpen} onOpenChange={setIsConsolidateOpen} />
+                )}
+                {canCreateUser && (
+                  <Button asChild>
+                    <Link href="/dashboard/add-user">
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Add User
+                    </Link>
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
@@ -488,7 +495,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
               Are you sure you want to delete this user?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the user account for <strong>{userToDelete?.name}</strong> and remove their data. Existing bookings will not be deleted.
+              This action cannot be undone. This will permanently delete the user account for <strong>{userToDelete?.name}</strong>. This action will fail if the user has any existing bookings. To merge users, please use the "Consolidate Users" tool.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
