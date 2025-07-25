@@ -25,14 +25,19 @@ type DuplicateGroups = {
     [key: string]: User[];
 };
 
-// Helper function to find potential duplicate users based on name parts.
-// Now requires at least two matching name parts to form a group.
+// Helper function to find potential duplicate users using a graph-based clustering approach.
+// This ensures that groups are properly normalized (e.g., A-B and B-C become A-B-C).
 const findDuplicateUsers = (users: User[]): DuplicateGroups => {
-    const duplicateGroups: DuplicateGroups = {};
+    if (users.length < 2) return {};
+
     const userTokens: { id: string, tokens: Set<string> }[] = users.map(user => ({
         id: user.id,
         tokens: new Set(user.name.toLowerCase().split(/\s+/).filter(Boolean))
     }));
+
+    // Build an adjacency list for the graph where an edge represents a potential duplicate pair.
+    const adj: Record<string, string[]> = {};
+    userTokens.forEach(u => adj[u.id] = []);
 
     for (let i = 0; i < userTokens.length; i++) {
         for (let j = i + 1; j < userTokens.length; j++) {
@@ -41,38 +46,54 @@ const findDuplicateUsers = (users: User[]): DuplicateGroups => {
 
             const intersection = new Set([...userA.tokens].filter(token => userB.tokens.has(token)));
 
+            // If they share 2 or more name parts, they are connected in the graph.
             if (intersection.size >= 2) {
-                // We found a pair with at least 2 common name parts.
-                const userA_full = users.find(u => u.id === userA.id)!;
-                const userB_full = users.find(u => u.id === userB.id)!;
-
-                // Create a group key based on the sorted IDs of all potential members in this cluster.
-                // This is more complex but helps merge larger groups together.
-                // For simplicity here, we'll group by pairs and merge them.
-                // A more advanced implementation might use a graph-based clustering algorithm.
-                
-                const groupMembers = [userA_full, userB_full];
-                const sortedIds = groupMembers.map(u => u.id).sort().join(',');
-
-                if (!duplicateGroups[sortedIds]) {
-                    duplicateGroups[sortedIds] = [];
-                }
-
-                // Add users to the group, ensuring no duplicates within the group list itself.
-                const existingIds = new Set(duplicateGroups[sortedIds].map(u => u.id));
-                if (!existingIds.has(userA_full.id)) {
-                    duplicateGroups[sortedIds].push(userA_full);
-                }
-                if (!existingIds.has(userB_full.id)) {
-                    duplicateGroups[sortedIds].push(userB_full);
-                }
+                adj[userA.id].push(userB.id);
+                adj[userB.id].push(userA.id);
             }
         }
     }
-    
-    // We can further merge overlapping groups here if needed.
-    // e.g., if (A,B) is a group and (B,C) is a group, they could be merged into (A,B,C).
-    // For now, this pairwise grouping should suffice.
+
+    const clusters: User[][] = [];
+    const visited = new Set<string>();
+
+    // Traverse the graph to find all connected components (the clusters of duplicates).
+    userTokens.forEach(user => {
+        if (!visited.has(user.id)) {
+            const currentCluster: User[] = [];
+            const stack = [user.id];
+            visited.add(user.id);
+
+            while (stack.length > 0) {
+                const uId = stack.pop()!;
+                const fullUser = users.find(u => u.id === uId);
+                if (fullUser) {
+                    currentCluster.push(fullUser);
+                }
+
+                (adj[uId] || []).forEach(vId => {
+                    if (!visited.has(vId)) {
+                        visited.add(vId);
+                        stack.push(vId);
+                    }
+                });
+            }
+
+            // Only consider clusters with more than one user as a duplicate group.
+            if (currentCluster.length > 1) {
+                clusters.push(currentCluster);
+            }
+        }
+    });
+
+    // Convert the clusters into the required DuplicateGroups format.
+    const duplicateGroups: DuplicateGroups = {};
+    clusters.forEach(cluster => {
+        // Sort by name to keep the order consistent.
+        cluster.sort((a, b) => a.name.localeCompare(b.name));
+        const groupKey = cluster.map(u => u.id).sort().join(',');
+        duplicateGroups[groupKey] = cluster;
+    });
 
     return duplicateGroups;
 };
