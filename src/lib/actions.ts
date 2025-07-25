@@ -1848,6 +1848,22 @@ export async function createWalkInReservationAction(data: z.infer<typeof WalkInR
             action: 'Created',
             message: `Walk-in booking created by staff member ${actorName}.`,
         };
+        
+        let bookingStatus: 'Pending' | 'Confirmed' | 'Completed' = 'Pending';
+        if (bills && bills.length > 0) {
+            const paidBills = bills.filter(b => b.paid);
+            if (paidBills.length === bills.length) {
+                bookingStatus = 'Completed';
+            } else if (paidBills.length > 0) {
+                bookingStatus = 'Confirmed';
+            }
+        }
+        
+        if (bookingStatus === 'Completed') {
+            initialAction.message = `Walk-in booking created and marked as completed by staff member ${actorName}.`;
+        } else if (bookingStatus === 'Confirmed') {
+            initialAction.message = `Walk-in booking created and confirmed by staff member ${actorName}.`;
+        }
 
         const bookingData = {
             guests: guests,
@@ -1865,14 +1881,14 @@ export async function createWalkInReservationAction(data: z.infer<typeof WalkInR
             user_id: finalUserId,
             start_date: today.toISOString(),
             end_date: endDate.toISOString(),
-            status: 'Confirmed',
+            status: bookingStatus,
             data: bookingData,
         });
 
         if (createError) throw createError;
 
         revalidatePath('/bookings');
-        return { success: true, message: `Confirmed reservation created for ${finalUserName}.` };
+        return { success: true, message: `Reservation created for ${finalUserName} with status: ${bookingStatus}.` };
 
     } catch (e: any) {
         return { success: false, message: e.message };
