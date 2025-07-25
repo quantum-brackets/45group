@@ -110,7 +110,7 @@ const AddBillDialog = ({ bookingId, currency, disabled }: { bookingId: string, c
                         <FormField control={form.control} name="amount" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Amount ({currency})</FormLabel>
-                                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                <FormControl><Input type="number" step="1" {...field} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
@@ -167,7 +167,7 @@ const AddPaymentDialog = ({ bookingId, currency, disabled }: { bookingId: string
                         <FormField control={form.control} name="amount" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Amount ({currency})</FormLabel>
-                                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                <FormControl><Input type="number" step="1" {...field} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
@@ -274,7 +274,7 @@ const SetDiscountDialog = ({ bookingId, currency, currentDiscount, baseBookingCo
                                 <FormItem>
                                     <FormLabel>Discount Amount ({currency})</FormLabel>
                                     <FormControl>
-                                        <Input type="number" step="0.01" {...field} />
+                                        <Input type="number" step="1" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -944,7 +944,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                     control={form.control}
                     name="dates"
                     render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem className="flex flex-col gap-1">
                         <FormLabel>Booking Dates</FormLabel>
                         <Popover>
                         <PopoverTrigger asChild>
@@ -1106,7 +1106,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                             control={form.control}
                             name="userId"
                             render={({ field }) => (
-                                <FormItem className="flex flex-col">
+                                <FormItem className="flex flex-col gap-1">
                                     <FormLabel>Booking Owner</FormLabel>
                                     <FormControl>
                                         <Combobox
