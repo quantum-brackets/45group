@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useTransition, useEffect } from 'react';
 import type { User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -72,7 +72,7 @@ export function ConsolidateUsersDialog({ allUsers, isOpen, onOpenChange }: Conso
     const [primaryUserSelections, setPrimaryUserSelections] = useState<Record<string, string>>({});
     
     // Set default primary user for each group (the first user in the list).
-    useMemo(() => {
+    useEffect(() => {
         const initialSelections: Record<string, string> = {};
         groupKeys.forEach(key => {
             initialSelections[key] = duplicateGroups[key][0].id;
@@ -180,4 +180,3 @@ export function ConsolidateUsersDialog({ allUsers, isOpen, onOpenChange }: Conso
         </Dialog>
     );
 }
-
