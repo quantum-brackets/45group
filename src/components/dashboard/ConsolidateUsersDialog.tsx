@@ -26,41 +26,57 @@ type DuplicateGroups = {
 };
 
 // Helper function to find potential duplicate users based on name parts.
+// Now requires at least two matching name parts to form a group.
 const findDuplicateUsers = (users: User[]): DuplicateGroups => {
-    const nameMap: { [namePart: string]: User[] } = {};
-    users.forEach(user => {
-        // Split name into parts and normalize (lowercase)
-        const nameParts = user.name.toLowerCase().split(/\s+/).filter(Boolean);
-        nameParts.forEach(part => {
-            if (!nameMap[part]) {
-                nameMap[part] = [];
-            }
-            nameMap[part].push(user);
-        });
-    });
-
     const duplicateGroups: DuplicateGroups = {};
-    Object.values(nameMap).forEach(group => {
-        if (group.length > 1) {
-            // Use the user IDs to group them uniquely.
-            const userIds = new Set(group.map(u => u.id));
-            if (userIds.size > 1) {
-                const sortedIds = Array.from(userIds).sort().join(',');
-                // To avoid duplicate groups, we check if this combination of users has already been added.
+    const userTokens: { id: string, tokens: Set<string> }[] = users.map(user => ({
+        id: user.id,
+        tokens: new Set(user.name.toLowerCase().split(/\s+/).filter(Boolean))
+    }));
+
+    for (let i = 0; i < userTokens.length; i++) {
+        for (let j = i + 1; j < userTokens.length; j++) {
+            const userA = userTokens[i];
+            const userB = userTokens[j];
+
+            const intersection = new Set([...userA.tokens].filter(token => userB.tokens.has(token)));
+
+            if (intersection.size >= 2) {
+                // We found a pair with at least 2 common name parts.
+                const userA_full = users.find(u => u.id === userA.id)!;
+                const userB_full = users.find(u => u.id === userB.id)!;
+
+                // Create a group key based on the sorted IDs of all potential members in this cluster.
+                // This is more complex but helps merge larger groups together.
+                // For simplicity here, we'll group by pairs and merge them.
+                // A more advanced implementation might use a graph-based clustering algorithm.
+                
+                const groupMembers = [userA_full, userB_full];
+                const sortedIds = groupMembers.map(u => u.id).sort().join(',');
+
                 if (!duplicateGroups[sortedIds]) {
-                    const uniqueUsers = group.filter((user, index, self) =>
-                        index === self.findIndex((t) => (t.id === user.id))
-                    );
-                    if (uniqueUsers.length > 1) {
-                        duplicateGroups[sortedIds] = uniqueUsers;
-                    }
+                    duplicateGroups[sortedIds] = [];
+                }
+
+                // Add users to the group, ensuring no duplicates within the group list itself.
+                const existingIds = new Set(duplicateGroups[sortedIds].map(u => u.id));
+                if (!existingIds.has(userA_full.id)) {
+                    duplicateGroups[sortedIds].push(userA_full);
+                }
+                if (!existingIds.has(userB_full.id)) {
+                    duplicateGroups[sortedIds].push(userB_full);
                 }
             }
         }
-    });
+    }
+    
+    // We can further merge overlapping groups here if needed.
+    // e.g., if (A,B) is a group and (B,C) is a group, they could be merged into (A,B,C).
+    // For now, this pairwise grouping should suffice.
 
     return duplicateGroups;
 };
+
 
 export function ConsolidateUsersDialog({ allUsers, isOpen, onOpenChange }: ConsolidateUsersDialogProps) {
     const { toast } = useToast();
@@ -75,11 +91,13 @@ export function ConsolidateUsersDialog({ allUsers, isOpen, onOpenChange }: Conso
     useEffect(() => {
         const initialSelections: Record<string, string> = {};
         groupKeys.forEach(key => {
-            initialSelections[key] = duplicateGroups[key][0].id;
+            if (duplicateGroups[key] && duplicateGroups[key].length > 0) {
+              initialSelections[key] = duplicateGroups[key][0].id;
+            }
         });
 
         // Add a check to prevent re-rendering if the selections haven't changed.
-        if (JSON.stringify(initialSelections) !== JSON.stringify(primaryUserSelections)) {
+        if (JSON.stringify(Object.keys(initialSelections)) !== JSON.stringify(Object.keys(primaryUserSelections))) {
             setPrimaryUserSelections(initialSelections);
         }
     }, [duplicateGroups, groupKeys, primaryUserSelections]);
@@ -125,7 +143,7 @@ export function ConsolidateUsersDialog({ allUsers, isOpen, onOpenChange }: Conso
                 <DialogHeader>
                     <DialogTitle>Consolidate Duplicate Users</DialogTitle>
                     <DialogDescription>
-                        Review potential duplicate accounts. Select one user to keep as the primary account; all bookings from the other users in that group will be moved to the primary account, and the others will be deleted.
+                        Review potential duplicate accounts (2+ matching name parts). Select one user to keep as the primary account; all bookings from the other users in that group will be moved to the primary account, and the others will be deleted.
                     </DialogDescription>
                 </DialogHeader>
 
