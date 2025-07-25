@@ -77,8 +77,12 @@ export function ConsolidateUsersDialog({ allUsers, isOpen, onOpenChange }: Conso
         groupKeys.forEach(key => {
             initialSelections[key] = duplicateGroups[key][0].id;
         });
-        setPrimaryUserSelections(initialSelections);
-    }, [duplicateGroups, groupKeys]);
+
+        // Add a check to prevent re-rendering if the selections haven't changed.
+        if (JSON.stringify(initialSelections) !== JSON.stringify(primaryUserSelections)) {
+            setPrimaryUserSelections(initialSelections);
+        }
+    }, [duplicateGroups, groupKeys, primaryUserSelections]);
 
 
     const handleConsolidate = () => {
