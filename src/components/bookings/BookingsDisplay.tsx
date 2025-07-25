@@ -1,21 +1,28 @@
 
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { BookingsTable } from '@/components/bookings/BookingsTable';
 import { BookingsFilters } from '@/components/bookings/BookingsFilters';
-import type { Booking, User, Role, Permission } from '@/lib/types';
+import type { Booking, User, Role, Permission, Listing } from '@/lib/types';
+import { Button } from '../ui/button';
+import { PlusCircle } from 'lucide-react';
+import { AddReservationDialog } from './AddReservationDialog';
+import { hasPermission } from '@/lib/permissions';
 
 interface BookingsDisplayProps {
   allBookings: Booking[];
+  allListings: Listing[];
+  allUsers: User[];
   session: User | null;
   permissions: Record<Role, Permission[]> | null;
 }
 
-export function BookingsDisplay({ allBookings, session, permissions }: BookingsDisplayProps) {
+export function BookingsDisplay({ allBookings, allListings, allUsers, session, permissions }: BookingsDisplayProps) {
   const searchParams = useSearchParams();
   const filterQuery = searchParams.get('q')?.toLowerCase() || '';
+  const [isAddOpen, setIsAddOpen] = useState(false);
 
   const filteredBookings = useMemo(() => {
     if (!filterQuery) {
@@ -27,6 +34,7 @@ export function BookingsDisplay({ allBookings, session, permissions }: BookingsD
   }, [allBookings, filterQuery]);
 
   const isFiltered = !!filterQuery;
+  const canCreateBooking = session && hasPermission(permissions, session, 'booking:create');
 
   return (
     <div className="grid gap-8">
@@ -35,6 +43,19 @@ export function BookingsDisplay({ allBookings, session, permissions }: BookingsD
             <div className="flex-grow">
                 <BookingsFilters />
             </div>
+             {canCreateBooking && (
+                <AddReservationDialog
+                    allListings={allListings}
+                    allUsers={allUsers}
+                    isOpen={isAddOpen}
+                    setIsOpen={setIsAddOpen}
+                >
+                    <Button onClick={() => setIsAddOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Reservation
+                    </Button>
+                </AddReservationDialog>
+            )}
         </div>
       </section>
       

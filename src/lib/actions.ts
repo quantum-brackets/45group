@@ -27,7 +27,7 @@ import { hashPassword } from '@/lib/password'
 import type { Booking, Listing, Role, Review, User, BookingAction, Bill, Payment, Permission } from '@/lib/types'
 import { randomUUID } from 'crypto'
 import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendBookingSummaryEmail, sendReportEmail, sendWelcomeEmail } from '@/lib/email'
-import { differenceInCalendarDays } from 'date-fns'
+import { add, differenceInCalendarDays } from 'date-fns'
 import { preloadPermissions } from '@/lib/permissions/server'
 import { hasPermission } from '@/lib/permissions'
 import { generateRandomString, toZonedTimeSafe, formatDateToStr } from '@/lib/utils'
@@ -50,7 +50,13 @@ function unpackListing(listing: any): Listing {
 function unpackBooking(booking: any): Booking {
     if (!booking) return null as any;
     const { data, listing_id, user_id, start_date, end_date, ...rest } = booking;
-    return { ...rest, ...data, listingId: listing_id, userId: user_id, startDate: start_date, endDate: end_date };
+    // For backwards compatibility, derive `createdAt` from the actions array if not present.
+    // New bookings will have `data.createdAt` directly.
+    const createdAt = data?.createdAt || (data?.actions && data.actions.length > 0
+        ? data.actions.find((a: BookingAction) => a.action === 'Created')?.timestamp
+        : new Date(0).toISOString()); // Fallback for very old data with no actions
+        
+    return { ...rest, ...data, listingId: listing_id, userId: user_id, startDate: start_date, endDate: end_date, createdAt };
 }
 
 /**
@@ -1729,5 +1735,135 @@ export async function sendReportEmailAction(data: z.infer<typeof SendReportEmail
     } catch (error) {
         console.error("Failed to send report email:", error);
         return { success: false, message: 'An error occurred while sending the email.' };
+    }
+}
+
+
+const WalkInReservationSchema = z.object({
+    listingId: z.string().min(1, "Please select a listing."),
+    userId: z.string().optional(),
+    newCustomerName: z.string().optional(),
+    guests: z.coerce.number().int().min(1, "At least one guest is required."),
+    units: z.coerce.number().int().min(1, "At least one unit is required."),
+    bills: z.array(z.object({
+        description: z.string().min(1),
+        amount: z.coerce.number().positive(),
+        paid: z.boolean(),
+    })).optional(),
+}).superRefine((data, ctx) => {
+    if (!data.userId && !data.newCustomerName) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['newCustomerName'],
+            message: 'Please select an existing customer or enter a name for a new one.',
+        });
+    }
+});
+
+export async function createWalkInReservationAction(data: z.infer<typeof WalkInReservationSchema>) {
+    const perms = await preloadPermissions();
+    const supabase = createSupabaseAdminClient();
+    const session = await getSession();
+
+    if (!session || !hasPermission(perms, session, 'booking:create')) {
+        return { success: false, message: 'Permission Denied: You are not authorized to create bookings.' };
+    }
+
+    const validatedFields = WalkInReservationSchema.safeParse(data);
+    if (!validatedFields.success) {
+        const messages = Object.values(validatedFields.error.flatten().fieldErrors).flat();
+        return { success: false, message: `Validation Error: ${messages.join(', ')}` };
+    }
+
+    const { listingId, userId, newCustomerName, guests, units, bills } = validatedFields.data;
+    const actorId = session.id;
+    const actorName = session.name;
+
+    try {
+        let finalUserId: string;
+        let finalUserName: string;
+
+        if (userId) {
+            const { data: existingUser } = await supabase.from('users').select('data->>name as name').eq('id', userId).single();
+            if (!existingUser) throw new Error("Selected customer not found.");
+            finalUserId = userId;
+            finalUserName = existingUser.name;
+        } else if (newCustomerName) {
+            const result = await findOrCreateGuestUser(supabase, newCustomerName);
+            if (result.error) throw new Error(result.error);
+            finalUserId = result.userId;
+            finalUserName = result.userName;
+        } else {
+            throw new Error("No customer specified.");
+        }
+
+        const today = toZonedTimeSafe(new Date());
+        today.setUTCHours(12, 0, 0, 0);
+
+        const { data: listing } = await supabase.from('listings').select('data').eq('id', listingId).single();
+        if (!listing) throw new Error("Selected listing not found.");
+
+        const endDate = add(today, { days: listing.data.type === 'hotel' ? 1 : 0 });
+
+        const availableInventory = await findAvailableInventory(supabase, listingId, today.toISOString(), endDate.toISOString());
+        if (availableInventory.length < units) {
+            return { success: false, message: `Only ${availableInventory.length} units available for today.` };
+        }
+        const inventoryToBook = availableInventory.slice(0, units);
+        
+        const initialBills: Bill[] = (bills || []).map(bill => ({
+            id: randomUUID(),
+            description: bill.description,
+            amount: bill.amount,
+            createdAt: new Date().toISOString(),
+            actorName: actorName,
+        }));
+
+        const initialPayments: Payment[] = (bills || [])
+            .filter(bill => bill.paid)
+            .map(bill => ({
+                id: randomUUID(),
+                amount: bill.amount,
+                method: 'Cash', // Defaulting to Cash for walk-ins
+                notes: `Paid on creation for: ${bill.description}`,
+                timestamp: new Date().toISOString(),
+                actorName: actorName,
+            }));
+
+        const initialAction: BookingAction = {
+            timestamp: new Date().toISOString(),
+            actorId: actorId,
+            actorName: actorName,
+            action: 'Created',
+            message: `Walk-in booking created by staff member ${actorName}.`,
+        };
+
+        const bookingData = {
+            guests: guests,
+            bookingName: finalUserName,
+            inventoryIds: inventoryToBook,
+            actions: [initialAction],
+            createdAt: new Date().toISOString(),
+            bills: initialBills,
+            payments: initialPayments,
+            discount: 0,
+        };
+
+        const { error: createError } = await supabase.from('bookings').insert({
+            listing_id: listingId,
+            user_id: finalUserId,
+            start_date: today.toISOString(),
+            end_date: endDate.toISOString(),
+            status: 'Confirmed',
+            data: bookingData,
+        });
+
+        if (createError) throw createError;
+
+        revalidatePath('/bookings');
+        return { success: true, message: `Confirmed reservation created for ${finalUserName}.` };
+
+    } catch (e: any) {
+        return { success: false, message: e.message };
     }
 }
