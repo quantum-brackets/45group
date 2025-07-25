@@ -4,7 +4,7 @@
 import { useForm, SubmitHandler, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { Listing, ListingInventory } from "@/lib/types";
+import { LISTING_TYPES, type Listing, type ListingInventory, ListingTypes } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -18,11 +18,11 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowDown, ArrowUp, Loader2, PlusCircle, Trash2, Warehouse } from "lucide-react";
 import { BackButton } from "../common/BackButton";
-import { Separator } from "../ui/separator";
+
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required."),
-  type: z.enum(['hotel', 'events', 'restaurant'], { required_error: "Type is required."}),
+  type: z.enum(LISTING_TYPES, { required_error: "Type is required."}),
   location: z.string().min(1, "Location is required."),
   description: z.string().min(10, "Description must be at least 10 characters."),
   price: z.coerce.number().positive("Price must be a positive number."),
@@ -168,9 +168,11 @@ export function ListingForm({ listing, inventory = [], isDuplicate = false }: Li
                           </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                          <SelectItem value="hotel">Hotel</SelectItem>
-                          <SelectItem value="events">Events</SelectItem>
-                          <SelectItem value="restaurant">Restaurant</SelectItem>
+                          {LISTING_TYPES.map(type => (
+                            <SelectItem key={type} value={type}>
+                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </SelectItem>
+                          ))}
                           </SelectContent>
                       </Select>
                       <FormMessage />
@@ -397,3 +399,5 @@ export function ListingForm({ listing, inventory = [], isDuplicate = false }: Li
     </div>
   );
 }
+
+    

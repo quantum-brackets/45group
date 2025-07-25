@@ -11,7 +11,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { MapPin, Users, Calendar as CalendarIcon, SlidersHorizontal, Search } from 'lucide-react';
 import { DateRange } from "react-day-picker";
 import { cn, formatDateToStr, toZonedTimeSafe } from "@/lib/utils";
-import { ListingType } from '@/lib/types';
+import { ListingType, LISTING_TYPES } from '@/lib/types';
 
 export function ListingFilters() {
   const router = useRouter();
@@ -74,9 +74,11 @@ export function ListingFilters() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="hotel">Hotel</SelectItem>
-              <SelectItem value="events">Events</SelectItem>
-              <SelectItem value="restaurant">Restaurant</SelectItem>
+              {LISTING_TYPES.map(type => (
+                <SelectItem key={type} value={type}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -145,3 +147,5 @@ export function ListingFilters() {
     </div>
   );
 }
+
+    

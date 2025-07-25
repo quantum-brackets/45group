@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { createBookingAction } from '@/lib/actions';
 import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
 import { hasPermission } from '@/lib/permissions';
-import type { Listing, Permission, Role, User } from '@/lib/types';
+import { ListingTypes, type Listing, type Permission, type Role, type User } from '@/lib/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { add, differenceInCalendarDays, isWithinInterval } from 'date-fns';
 import { Loader2, PartyPopper, Users, Warehouse } from 'lucide-react';
@@ -249,11 +249,11 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
         // If no end date is selected, apply default duration based on listing type
         if (!endDate) {
           switch (listing.type) {
-            case 'hotel':
+            case ListingTypes.HOTEL:
               endDate = add(startDate, { days: 7 });
               break;
-            case 'events':
-            case 'restaurant':
+            case ListingTypes.EVENTS:
+            case ListingTypes.RESTAURANT:
               endDate = startDate;
               break;
             default:

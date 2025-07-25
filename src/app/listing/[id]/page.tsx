@@ -12,17 +12,18 @@ import { BackButton } from '@/components/common/BackButton';
 import type { User } from '@/lib/types';
 import { preloadPermissions } from '@/lib/permissions/server';
 import { hasPermission } from '@/lib/permissions';
+import { ListingTypes } from '@/lib/types';
 
 const typeIcons = {
-  hotel: <BedDouble className="w-5 h-5 mr-2" />,
-  events: <Building2 className="w-5 h-5 mr-2" />,
-  restaurant: <Utensils className="w-5 h-5 mr-2" />,
+  [ListingTypes.HOTEL]: <BedDouble className="w-5 h-5 mr-2" />,
+  [ListingTypes.EVENTS]: <Building2 className="w-5 h-5 mr-2" />,
+  [ListingTypes.RESTAURANT]: <Utensils className="w-5 h-5 mr-2" />,
 };
 
 const AITypeHints = {
-    hotel: 'hotel room interior',
-    events: 'conference hall',
-    restaurant: 'restaurant interior',
+    [ListingTypes.HOTEL]: 'hotel room interior',
+    [ListingTypes.EVENTS]: 'conference hall',
+    [ListingTypes.RESTAURANT]: 'restaurant interior',
 }
 
 export default async function ListingDetailPage({ params }: { params: { id: string } }) {
@@ -132,3 +133,5 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
     </div>
   );
 }
+
+    

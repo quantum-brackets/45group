@@ -1,4 +1,6 @@
+
 import type {NextConfig} from 'next';
+import { ListingTypes } from './src/lib/types';
 
 // Extract the hostname from the Supabase URL
 const supabaseHostname = process.env.NEXT_PUBLIC_SUPABASE_URL 
@@ -17,17 +19,17 @@ const nextConfig: NextConfig = {
       },
       {
         source: '/cuisine',
-        destination: '/search?type=restaurant',
+        destination: `/search?type=${ListingTypes.RESTAURANT}`,
         permanent: true,
       },
       {
         source: '/events',
-        destination: '/search?type=events',
+        destination: `/search?type=${ListingTypes.EVENTS}`,
         permanent: true,
       },
       {
         source: '/lodges',
-        destination: '/search?type=hotel',
+        destination: `/search?type=${ListingTypes.HOTEL}`,
         permanent: true,
       },
     ]
@@ -76,3 +78,5 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+    

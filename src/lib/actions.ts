@@ -24,7 +24,7 @@ import { getSession, logout as sessionLogout } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import { hashPassword } from '@/lib/password'
-import type { Booking, Listing, Role, Review, User, BookingAction, Bill, Payment, Permission } from '@/lib/types'
+import { type Booking, type Listing, type Role, type Review, type User, type BookingAction, type Bill, type Payment, type Permission, LISTING_TYPES, ListingTypes } from '@/lib/types'
 import { randomUUID } from 'crypto'
 import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendBookingSummaryEmail, sendReportEmail, sendWelcomeEmail } from '@/lib/email'
 import { add, differenceInCalendarDays } from 'date-fns'
@@ -101,7 +101,7 @@ export async function updatePermissionsAction(permissions: Record<Role, Permissi
 // This ensures data integrity before it reaches the database.
 const ListingFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
-  type: z.enum(['hotel', 'events', 'restaurant'], { required_error: "Type is required."}),
+  type: z.enum(LISTING_TYPES, { required_error: "Type is required."}),
   location: z.string().min(1, "Location is required."),
   description: z.string().min(10, "Description must be at least 10 characters."),
   price: z.coerce.number().positive("Price must be a positive number."),
@@ -1818,7 +1818,7 @@ export async function createWalkInReservationAction(data: z.infer<typeof WalkInR
             return { success: false, message: `Number of units (${units}) exceeds the total available for this listing (${listing.inventoryCount || 0}).` };
         }
         
-        const endDate = add(today, { days: listing.type === 'hotel' ? 1 : 0 });
+        const endDate = add(today, { days: listing.type === ListingTypes.HOTEL ? 1 : 0 });
 
         const availableInventory = await findAvailableInventory(supabase, listingId, today.toISOString(), endDate.toISOString());
         if (availableInventory.length < units) {

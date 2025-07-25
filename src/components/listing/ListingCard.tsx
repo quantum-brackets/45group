@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BedDouble, Building2, Star, Utensils } from 'lucide-react';
-import type { Listing } from '@/lib/types';
+import { ListingTypes, type Listing } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
 interface ListingCardProps {
@@ -13,21 +13,21 @@ interface ListingCardProps {
 }
 
 const typeIcons = {
-  hotel: <BedDouble className="w-4 h-4" />,
-  events: <Building2 className="w-4 h-4" />,
-  restaurant: <Utensils className="w-4 h-4" />,
+  [ListingTypes.HOTEL]: <BedDouble className="w-4 h-4" />,
+  [ListingTypes.EVENTS]: <Building2 className="w-4 h-4" />,
+  [ListingTypes.RESTAURANT]: <Utensils className="w-4 h-4" />,
 };
 
 const typeLabels = {
-  hotel: 'Hotel',
-  events: 'Events',
-  restaurant: 'Restaurant',
+  [ListingTypes.HOTEL]: 'Hotel',
+  [ListingTypes.EVENTS]: 'Events',
+  [ListingTypes.RESTAURANT]: 'Restaurant',
 };
 
 const AITypeHints = {
-  hotel: 'hotel room',
-  events: 'event venue',
-  restaurant: 'restaurant dining',
+  [ListingTypes.HOTEL]: 'hotel room',
+  [ListingTypes.EVENTS]: 'event venue',
+  [ListingTypes.RESTAURANT]: 'restaurant dining',
 }
 
 export function ListingCard({ listing }: ListingCardProps) {

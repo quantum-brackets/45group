@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview The homepage of the application.
  * This server component fetches a sample of listings for each service type
@@ -85,3 +86,5 @@ export default async function HomePage() {
     </div>
   );
 }
+
+    

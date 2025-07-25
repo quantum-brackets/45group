@@ -6,8 +6,20 @@
  * type safety across the entire codebase.
  */
 
+export enum ListingTypes {
+  HOTEL = 'hotel',
+  EVENTS = 'events',
+  RESTAURANT = 'restaurant',
+  LAUNDRY = 'laundry',
+}
+export const LISTING_TYPES = [
+  ListingTypes.HOTEL,
+  ListingTypes.EVENTS,
+  ListingTypes.RESTAURANT,
+  ListingTypes.LAUNDRY,
+];
 // Represents the types of listings available.
-export type ListingType = 'hotel' | 'events' | 'restaurant';
+export type ListingType = (typeof LISTING_TYPES)[number];
 // Represents the supported currencies.
 export type Currency = 'USD' | 'EUR' | 'GBP' | 'NGN';
 

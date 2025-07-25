@@ -26,6 +26,7 @@ import {
   Users,
 } from 'lucide-react';
 import React, { useMemo } from 'react';
+import { ListingTypes } from '@/lib/types';
 
 interface BookingSummaryProps {
   booking: Booking;
@@ -89,9 +90,9 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
   }, [booking, listing]);
   
   const typeIcon = {
-    hotel: <Home className="h-4 w-4 text-gray-500" />,
-    events: <Building2 className="h-4 w-4 text-gray-500" />,
-    restaurant: <Banknote className="h-4 w-4 text-gray-500" />,
+    [ListingTypes.HOTEL]: <Home className="h-4 w-4 text-gray-500" />,
+    [ListingTypes.EVENTS]: <Building2 className="h-4 w-4 text-gray-500" />,
+    [ListingTypes.RESTAURANT]: <Banknote className="h-4 w-4 text-gray-500" />,
   };
 
   return (
@@ -269,3 +270,5 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
     </div>
   );
 };
+
+    
