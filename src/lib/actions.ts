@@ -1236,7 +1236,7 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
   if (!session) return { success: false, message: 'Authentication Error: You must be logged in to perform this action.' };
   
   if (!hasPermission(perms, session, 'user:update:own', { ownerId: session.id })) {
-    return { success: false, message: 'Permission Denied: You are not authorized to update your profile.'}
+    return { success: false, message: 'Permission Denied: You are not authorized to update your profile.'};
   }
 
   const validatedFields = UpdateProfileSchema.safeParse(data);
@@ -1686,7 +1686,7 @@ export async function sendReportEmailAction(data: z.infer<typeof SendReportEmail
 
     if (listingId) {
         const { data: listingData, error: listingError } = await supabase
-            .from('listings').select('data').eq('id', listingId).single();
+            .from('listings').select('id, data').eq('id', listingId).single();
         if (listingError || !listingData) {
             return { success: false, message: 'Could not find listing for report.' };
         }
@@ -1698,31 +1698,28 @@ export async function sendReportEmailAction(data: z.infer<typeof SendReportEmail
     }
 
     try {
-        const bookingsWithFinancials = bookings.map(b => ({
-            ...b,
-            financials: calculateBookingFinancials(b, listing)
-        }));
-
         const headers = ["Booking ID", "Guest", "Venue", "Units", "Start Date", "End Date", "Duration (days)", "Paid", "Owed", "Balance", "Status", "Currency"];
         const currencyCode = listing?.currency || bookings[0]?.currency || 'NGN';
       
-        const rows = bookingsWithFinancials.map(b => [
-            b.id,
-            b.userName,
-            b.listingName,
-            b.inventoryNames?.join(', ') || 'N/A',
-            formatDateToStr(toZonedTimeSafe(b.startDate), 'yyyy-MM-dd'),
-            formatDateToStr(toZonedTimeSafe(b.endDate), 'yyyy-MM-dd'),
-            b.financials.stayDuration,
-            b.financials.totalPayments.toFixed(2),
-            b.financials.totalBill.toFixed(2),
-            b.financials.balance.toFixed(2),
-            b.status,
-            currencyCode,
-        ].map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','));
+        const rows = bookings.map(b => {
+            const financials = calculateBookingFinancials(b, listing ? listing : { ...b } as Listing);
+            return [
+                b.id,
+                b.userName,
+                b.listingName,
+                b.inventoryNames?.join(', ') || 'N/A',
+                formatDateToStr(toZonedTimeSafe(b.startDate), 'yyyy-MM-dd'),
+                formatDateToStr(toZonedTimeSafe(b.endDate), 'yyyy-MM-dd'),
+                financials.stayDuration,
+                financials.totalPayments.toFixed(2),
+                financials.totalBill.toFixed(2),
+                financials.balance.toFixed(2),
+                b.status,
+                currencyCode,
+            ].map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(',');
+        });
       
         const csvContent = [headers.join(','), ...rows].join('\n');
-
 
         await sendReportEmail({
             email,
@@ -1800,10 +1797,24 @@ export async function createWalkInReservationAction(data: z.infer<typeof WalkInR
         const today = toZonedTimeSafe(new Date());
         today.setUTCHours(12, 0, 0, 0);
 
-        const { data: listing } = await supabase.from('listings').select('data').eq('id', listingId).single();
-        if (!listing) throw new Error("Selected listing not found.");
+        const { data: listingData } = await supabase.from('listings')
+            .select('data, listing_inventory(count)')
+            .eq('id', listingId)
+            .single();
 
-        const endDate = add(today, { days: listing.data.type === 'hotel' ? 1 : 0 });
+        if (!listingData) throw new Error("Selected listing not found.");
+        
+        const listing = unpackListing(listingData);
+
+        if (guests > (listing.max_guests * units)) {
+            return { success: false, message: `Number of guests (${guests}) exceeds the maximum allowed (${listing.max_guests * units}) for ${units} unit(s).` };
+        }
+
+        if (units > (listing.inventoryCount || 0)) {
+            return { success: false, message: `Number of units (${units}) exceeds the total available for this listing (${listing.inventoryCount || 0}).` };
+        }
+        
+        const endDate = add(today, { days: listing.type === 'hotel' ? 1 : 0 });
 
         const availableInventory = await findAvailableInventory(supabase, listingId, today.toISOString(), endDate.toISOString());
         if (availableInventory.length < units) {
