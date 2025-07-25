@@ -43,9 +43,11 @@ function unpackUser(user: any): User {
 
 function unpackListing(listing: any): Listing {
     if (!listing) return null as any;
-    const { data, ...rest } = listing;
-    return { ...rest, ...data };
-}
+    const { data, listing_inventory, ...rest } = listing;
+    // The count is returned as an object in an array, e.g., [{ count: 5 }]
+    const inventoryCount = listing_inventory ? (Array.isArray(listing_inventory) ? listing_inventory[0]?.count : 0) : 0;
+    return { ...rest, ...data, inventoryCount };
+};
 
 function unpackBooking(booking: any): Booking {
     if (!booking) return null as any;
@@ -1781,10 +1783,11 @@ export async function createWalkInReservationAction(data: z.infer<typeof WalkInR
         let finalUserName: string;
 
         if (userId) {
-            const { data: existingUser } = await supabase.from('users').select('data->>name as name').eq('id', userId).single();
-            if (!existingUser) throw new Error("Selected customer not found.");
+            const { data: existingUser } = await supabase.from('users').select('data').eq('id', userId).single();
+            const existingUserName = existingUser?.data.name;
+            if (!existingUserName) throw new Error(`Selected customer not found. ${existingUser}`);
             finalUserId = userId;
-            finalUserName = existingUser.name;
+            finalUserName = existingUserName;
         } else if (newCustomerName) {
             const result = await findOrCreateGuestUser(supabase, newCustomerName);
             if (result.error) throw new Error(result.error);
@@ -1797,8 +1800,9 @@ export async function createWalkInReservationAction(data: z.infer<typeof WalkInR
         const today = toZonedTimeSafe(new Date());
         today.setUTCHours(12, 0, 0, 0);
 
-        const { data: listingData } = await supabase.from('listings')
-            .select('data, listing_inventory(count)')
+        const { data: listingData } = await supabase
+            .from('listings')
+            .select('*, listing_inventory(count)')
             .eq('id', listingId)
             .single();
 
@@ -1852,7 +1856,7 @@ export async function createWalkInReservationAction(data: z.infer<typeof WalkInR
         let bookingStatus: 'Pending' | 'Confirmed' | 'Completed' = 'Pending';
         if (bills && bills.length > 0) {
             const paidBills = bills.filter(b => b.paid);
-            if (paidBills.length === bills.length) {
+            if (bills.every(b => b.paid)) {
                 bookingStatus = 'Completed';
             } else if (paidBills.length > 0) {
                 bookingStatus = 'Confirmed';
