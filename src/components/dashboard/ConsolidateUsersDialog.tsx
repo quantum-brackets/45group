@@ -30,9 +30,9 @@ type DuplicateGroups = {
 const findDuplicateUsers = (users: User[]): DuplicateGroups => {
     if (users.length < 2) return {};
 
-    const userTokens: { id: string, tokens: Set<string> }[] = users.map(user => ({
+    const userTokens: { id: string, tokens: string[] }[] = users.map(user => ({
         id: user.id,
-        tokens: new Set(user.name.toLowerCase().split(/\s+/).filter(Boolean))
+        tokens: user.name.toLowerCase().split(/\s+/).filter(Boolean).sort((a, b) => b.length - a.length) // Sort by length descending
     }));
 
     // Build an adjacency list for the graph where an edge represents a potential duplicate pair.
@@ -44,10 +44,25 @@ const findDuplicateUsers = (users: User[]): DuplicateGroups => {
             const userA = userTokens[i];
             const userB = userTokens[j];
 
-            const intersection = new Set([...userA.tokens].filter(token => userB.tokens.has(token)));
+            let commonTokens = 0;
+            const seenTokens = new Set<string>();
 
+            // Use substring matching instead of exact matching.
+            for (const tokenA of userA.tokens) {
+                for (const tokenB of userB.tokens) {
+                    if (seenTokens.has(tokenA) || seenTokens.has(tokenB)) continue;
+
+                    if (tokenA.includes(tokenB) || tokenB.includes(tokenA)) {
+                        commonTokens++;
+                        seenTokens.add(tokenA);
+                        seenTokens.add(tokenB);
+                        break; // Move to the next tokenA once a match is found
+                    }
+                }
+            }
+            
             // If they share 2 or more name parts, they are connected in the graph.
-            if (intersection.size >= 2) {
+            if (commonTokens >= 2) {
                 adj[userA.id].push(userB.id);
                 adj[userB.id].push(userA.id);
             }
