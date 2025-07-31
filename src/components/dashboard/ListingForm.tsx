@@ -69,7 +69,7 @@ export function ListingForm({ listing, inventory = [], isDuplicate = false }: Li
       features: (Array.isArray(listing?.features) ? listing.features.join(', ') : listing?.features) || "",
       images: (listing?.images && listing.images.length > 0) ? listing.images : ["https://placehold.co/800x600.png"],
       inventory: inventory && inventory.length > 0
-          ? (isDuplicate ? inventory.map(i => ({ name: i.name })) : inventory)
+          ? (isDuplicate ? inventory.map(i => ({ name: i.name })) : inventory.sort((a, b) => a.name.localeCompare(b.name)))
           : [{ name: 'Unit 1' }]
     },
   });
