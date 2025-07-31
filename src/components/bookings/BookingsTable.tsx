@@ -1,11 +1,8 @@
 
-
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Calendar, BedDouble, User as UserIcon, Tag, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
@@ -15,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cancelBookingAction, confirmBookingAction } from '@/lib/actions';
 import { cn, formatDateToStr, toZonedTimeSafe } from '@/lib/utils';
 import { hasPermission } from '@/lib/permissions';
+import { Badge } from '../ui/badge';
 
 interface BookingsTableProps {
   bookings: Booking[];
@@ -92,86 +90,81 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
           : 'An overview of your past and upcoming bookings.'}
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Venue / Units</TableHead>
-              <TableHead className="hidden sm:table-cell">Booking For</TableHead>
-              <TableHead>Dates</TableHead>
-              <TableHead>Status</TableHead>
-                <TableHead><span className="sr-only">Actions</span></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {bookings.map((booking) => (
-              <TableRow key={booking.id} onClick={() => router.push(`/booking/${booking.id}`)} className="cursor-pointer">
-                <TableCell className="font-medium">
-                  <div className="font-medium">{booking.listingName}</div>
-                  <div className="text-sm text-muted-foreground">{(booking.inventoryIds || []).length} unit(s)</div>
-                </TableCell>
-                <TableCell className="hidden sm:table-cell">
-                    <div className="font-medium">{booking.bookingName || 'N/A'}</div>
-                    {canSeeAllUserDetails && (
-                        <div className="text-sm text-muted-foreground">{booking.userName}</div>
-                    )}
-                </TableCell>
-                <TableCell>
-                  {booking.startDate && booking.endDate ? (
-                    <>
-                      <span className="hidden md:inline">
-                        {booking.startDate === booking.endDate
-                          ? formatDateToStr(toZonedTimeSafe(booking.startDate), 'PPP')
-                          : `${formatDateToStr(toZonedTimeSafe(booking.startDate), 'PPP')} to ${formatDateToStr(toZonedTimeSafe(booking.endDate), 'PPP')}`}
-                      </span>
-                      <div className="md:hidden flex flex-col text-xs">
-                          <span>{formatDateToStr(toZonedTimeSafe(booking.startDate), 'MMM d, yyyy')}</span>
-                          {booking.startDate !== booking.endDate && <span>to {formatDateToStr(toZonedTimeSafe(booking.endDate), 'MMM d, yyyy')}</span>}
-                      </div>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground">Invalid dates</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {getStatusBadge(booking.status)}
-                </TableCell>
-                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                    {session && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <span className="sr-only">Open menu</span>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => router.push(`/booking/${booking.id}`)}>View Details</DropdownMenuItem>
-                                {hasPermission(permissions, session, 'user:read') && (
-                                    <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-user/${booking.userId}`)}>View Guest</DropdownMenuItem>
-                                )}
-                                {hasPermission(permissions, session, 'booking:confirm') && booking.status === 'Pending' && (
-                                    <DropdownMenuItem 
-                                        disabled={isConfirmPending}
-                                        onClick={() => handleConfirm(booking.id)}
-                                    >Confirm Booking</DropdownMenuItem>
-                                )}
-                                {(hasPermission(permissions, session, 'booking:cancel') || hasPermission(permissions, session, 'booking:cancel:own', { ownerId: booking.userId })) && booking.status !== 'Cancelled' && booking.status !== 'Completed' && (
-                                    <DropdownMenuItem 
-                                        className="text-destructive"
-                                        disabled={isCancelPending}
-                                        onClick={() => handleCancel(booking.id)}
-                                    >Cancel Booking</DropdownMenuItem>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <CardContent className="space-y-4">
+        {bookings.map((booking) => (
+            <Card key={booking.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => router.push(`/booking/${booking.id}`)}>
+                <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-start relative">
+                    {/* Venue */}
+                    <div className="flex items-start gap-3">
+                        <BedDouble className="h-5 w-5 text-muted-foreground mt-1"/>
+                        <div>
+                            <p className="font-semibold">{booking.listingName}</p>
+                            <p className="text-sm text-muted-foreground">{(booking.inventoryIds || []).length} unit(s)</p>
+                        </div>
+                    </div>
+
+                    {/* Booking For */}
+                    <div className="flex items-start gap-3">
+                        <Tag className="h-5 w-5 text-muted-foreground mt-1"/>
+                        <div>
+                            <p className="font-semibold">{booking.bookingName || 'N/A'}</p>
+                            {canSeeAllUserDetails && (
+                                <p className="text-sm text-muted-foreground">{booking.userName}</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Dates & Status */}
+                    <div className="flex items-start gap-3 md:col-span-2">
+                       <div className="flex items-start gap-3 flex-grow">
+                         <Calendar className="h-5 w-5 text-muted-foreground mt-1"/>
+                          <div>
+                              <p className="font-semibold">
+                                  {booking.startDate === booking.endDate
+                                  ? formatDateToStr(toZonedTimeSafe(booking.startDate), 'PPP')
+                                  : `${formatDateToStr(toZonedTimeSafe(booking.startDate), 'MMM d, yyyy')} - ${formatDateToStr(toZonedTimeSafe(booking.endDate), 'MMM d, yyyy')}`}
+                              </p>
+                              <p className="text-sm text-muted-foreground">{getStatusBadge(booking.status)}</p>
+                          </div>
+                       </div>
+                        
+                        {/* Actions */}
+                        <div className="absolute top-4 right-4" onClick={(e) => e.stopPropagation()}>
+                           {session && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                            <span className="sr-only">Open menu</span>
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                        <DropdownMenuItem onClick={() => router.push(`/booking/${booking.id}`)}>View Details</DropdownMenuItem>
+                                        {hasPermission(permissions, session, 'user:read') && (
+                                            <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-user/${booking.userId}`)}>View Guest</DropdownMenuItem>
+                                        )}
+                                        {hasPermission(permissions, session, 'booking:confirm') && booking.status === 'Pending' && (
+                                            <DropdownMenuItem 
+                                                disabled={isConfirmPending}
+                                                onClick={() => handleConfirm(booking.id)}
+                                            >Confirm Booking</DropdownMenuItem>
+                                        )}
+                                        {(hasPermission(permissions, session, 'booking:cancel') || hasPermission(permissions, session, 'booking:cancel:own', { ownerId: booking.userId })) && booking.status !== 'Cancelled' && booking.status !== 'Completed' && (
+                                            <DropdownMenuItem 
+                                                className="text-destructive"
+                                                disabled={isCancelPending}
+                                                onClick={() => handleCancel(booking.id)}
+                                            >Cancel Booking</DropdownMenuItem>
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        ))}
       </CardContent>
     </Card>
   );
