@@ -56,7 +56,7 @@ export function AddReservationDialog({ children, allListings, allUsers, isOpen, 
         defaultValues: {
             guests: 1,
             units: 1,
-            bills: [{ description: '', amount: 0, paid: true }],
+            bills: [{ description: '', amount: 0, paid: false }],
         },
     });
 
@@ -234,10 +234,10 @@ export function AddReservationDialog({ children, allListings, allUsers, isOpen, 
                                         <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="h-8 w-8 text-destructive p-4"><XCircle /></Button>
                                     </div>
                                 ))}
-                                <Button type="button" variant="outline" className="flex p-2" size="sm" onClick={() => append({ description: '', amount: 0, paid: true })}><PlusCircle className="mr-2 h-4 w-4" /> Add Bill</Button>
+                                <Button type="button" variant="outline" className="flex p-2" size="sm" onClick={() => append({ description: '', amount: 0, paid: false })}><PlusCircle className="mr-2 h-4 w-4" /> Add Bill</Button>
                             </div>
                         </div>
-                        <DialogFooter className="gap-2">
+                        <DialogFooter className="gap-2 mt-4">
                             <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} disabled={isPending}>Cancel</Button>
                             <Button type="submit" disabled={isPending}>{isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Create Reservation</Button>
                         </DialogFooter>
