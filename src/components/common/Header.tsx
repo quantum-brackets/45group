@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
+  SheetCloseLink,
   SheetContent,
   SheetTrigger,
   SheetHeader,
@@ -148,9 +149,9 @@ export function Header({ session }: { session: User | null }) {
                     <SheetDescription>Main navigation for Hospitality.</SheetDescription>
                 </SheetHeader>
                 <nav className="grid gap-6 text-lg font-medium">
-                    <Link href="/" className="flex items-center gap-2 font-bold text-lg mb-4">
+                    <SheetCloseLink href="/" className="flex items-center gap-2 font-bold text-lg mb-4">
                       <img src="/icon.svg" alt="Hospitality Logo" className="h-6 w-6" />
-                    </Link>
+                    </SheetCloseLink>
                     {/* Map through visible links for mobile */}
                     {visibleNavLinks.map((link) => (
                       // The Dashboard link is an accordion on mobile.
@@ -166,30 +167,30 @@ export function Header({ session }: { session: User | null }) {
                                     {link.label}
                                 </AccordionTrigger>
                                 <AccordionContent className="pl-6 pt-4 pb-0 flex flex-col gap-4">
-                                    <Link 
+                                    <SheetCloseLink 
                                         href="/dashboard?tab=listings" 
                                         data-active={isClient && pathname === '/dashboard' && (searchParams.get('tab') === 'listings' || !searchParams.has('tab'))}
                                         className={cn(
                                             'text-muted-foreground hover:text-primary data-[active=true]:text-primary data-[active=true]:font-semibold'
-                                    )}>Listings</Link>
-                                    <Link 
+                                    )}>Listings</SheetCloseLink>
+                                    <SheetCloseLink 
                                         href="/dashboard?tab=users"
                                         data-active={isClient && pathname === '/dashboard' && searchParams.get('tab') === 'users'} 
                                         className={cn(
                                             'text-muted-foreground hover:text-primary data-[active=true]:text-primary data-[active=true]:font-semibold'
-                                    )}>Users</Link>
-                                    <Link 
+                                    )}>Users</SheetCloseLink>
+                                    <SheetCloseLink 
                                         href="/reports"
                                         data-active={isClient && pathname.startsWith('/reports')}
                                         className={cn(
                                             'text-muted-foreground hover:text-primary data-[active=true]:text-primary data-[active=true]:font-semibold'
-                                    )}>Reports</Link>
+                                    )}>Reports</SheetCloseLink>
                                 </AccordionContent>
                             </AccordionItem>
                         </Accordion>
                       ) : (
                         // Standard mobile navigation link.
-                        <Link
+                        <SheetCloseLink
                             key={link.href}
                             href={link.href}
                             data-active={isClient && pathname.startsWith(link.href)}
@@ -199,7 +200,7 @@ export function Header({ session }: { session: User | null }) {
                             )}
                         >
                             {link.label}
-                        </Link>
+                        </SheetCloseLink>
                       )
                     ))}
                     {/* User controls at the bottom of the mobile menu */}
@@ -208,7 +209,7 @@ export function Header({ session }: { session: User | null }) {
                              <UserNav user={session} />
                         ): (
                             <div className="grid gap-4">
-                                <Button asChild><Link href="/login">Account</Link></Button>
+                                <Button asChild><SheetCloseLink href="/login">Account</SheetCloseLink></Button>
                             </div>
                         )}
                     </div>

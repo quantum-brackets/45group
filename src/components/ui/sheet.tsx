@@ -6,12 +6,29 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 const Sheet = SheetPrimitive.Root
 
 const SheetTrigger = SheetPrimitive.Trigger
 
 const SheetClose = SheetPrimitive.Close
+
+const SheetCloseLink = ({ href, onClick, className, ...props }: React.ComponentProps<typeof Link>) => {
+  const router = useRouter();
+  const buttonProps = props as React.ComponentProps<typeof SheetClose>;
+  return (
+    <SheetClose
+      className={cn(className, 'text-left')}
+      onClick={(ev) => {
+        router.push(href.toString());
+        // @ts-expect-error button mouse event passed to link anchor mouse event handler
+        return onClick?.(ev);
+      }}
+      {...buttonProps}></SheetClose>
+  );
+}
 
 const SheetPortal = SheetPrimitive.Portal
 
@@ -51,7 +68,7 @@ const sheetVariants = cva(
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+  VariantProps<typeof sheetVariants> {}
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
@@ -132,6 +149,7 @@ export {
   SheetOverlay,
   SheetTrigger,
   SheetClose,
+  SheetCloseLink,
   SheetContent,
   SheetHeader,
   SheetFooter,
