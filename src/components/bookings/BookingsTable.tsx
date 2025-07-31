@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MoreHorizontal, Calendar, BedDouble, User as UserIcon, Tag, Info } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
@@ -93,43 +93,8 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
       <CardContent className="space-y-4">
         {bookings.map((booking) => (
             <Card key={booking.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => router.push(`/booking/${booking.id}`)}>
-                <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-start relative">
-                    {/* Venue */}
-                    <div className="flex items-start gap-3">
-                        <BedDouble className="h-5 w-5 text-muted-foreground mt-1"/>
-                        <div>
-                            <p className="font-semibold">{booking.listingName}</p>
-                            <p className="text-sm text-muted-foreground">{(booking.inventoryIds || []).length} unit(s)</p>
-                        </div>
-                    </div>
-
-                    {/* Booking For */}
-                    <div className="flex items-start gap-3">
-                        <Tag className="h-5 w-5 text-muted-foreground mt-1"/>
-                        <div>
-                            <p className="font-semibold">{booking.bookingName || 'N/A'}</p>
-                            {canSeeAllUserDetails && (
-                                <p className="text-sm text-muted-foreground">{booking.userName}</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Dates & Status */}
-                    <div className="flex items-start gap-3 md:col-span-2">
-                       <div className="flex items-start gap-3 flex-grow">
-                         <Calendar className="h-5 w-5 text-muted-foreground mt-1"/>
-                          <div>
-                              <p className="font-semibold">
-                                  {booking.startDate === booking.endDate
-                                  ? formatDateToStr(toZonedTimeSafe(booking.startDate), 'PPP')
-                                  : `${formatDateToStr(toZonedTimeSafe(booking.startDate), 'MMM d, yyyy')} - ${formatDateToStr(toZonedTimeSafe(booking.endDate), 'MMM d, yyyy')}`}
-                              </p>
-                              <p className="text-sm text-muted-foreground">{getStatusBadge(booking.status)}</p>
-                          </div>
-                       </div>
-                        
-                        {/* Actions */}
-                        <div className="absolute top-4 right-4" onClick={(e) => e.stopPropagation()}>
+                <CardContent className="p-4 relative">
+                     <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
                            {session && (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -161,7 +126,29 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
                                 </DropdownMenu>
                             )}
                         </div>
+
+                    <div className="flex justify-between items-start gap-4 pr-10">
+                        <div>
+                            <p className="font-bold text-base leading-tight">{booking.listingName}</p>
+                             <p className="text-sm text-muted-foreground">
+                                {booking.bookingName || 'N/A'}
+                                {canSeeAllUserDetails && ` (${booking.userName})`}
+                            </p>
+                        </div>
+                        {getStatusBadge(booking.status)}
                     </div>
+                    
+                    <div className="mt-2 text-sm text-muted-foreground space-y-1">
+                        <p>
+                            <span className="font-semibold text-foreground/80">Dates:</span> {booking.startDate === booking.endDate
+                                ? formatDateToStr(toZonedTimeSafe(booking.startDate), 'PPP')
+                                : `${formatDateToStr(toZonedTimeSafe(booking.startDate), 'MMM d, yyyy')} - ${formatDateToStr(toZonedTimeSafe(booking.endDate), 'MMM d, yyyy')}`}
+                        </p>
+                        <p>
+                            <span className="font-semibold text-foreground/80">Units:</span> {(booking.inventoryIds || []).length} unit(s)
+                        </p>
+                    </div>
+
                 </CardContent>
             </Card>
         ))}
