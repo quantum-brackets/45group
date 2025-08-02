@@ -21,7 +21,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
+import { EVENT_BOOKING_DAILY_HRS, MAX_DISCOUNT_PERCENT } from '@/lib/constants';
 import { hasPermission } from '@/lib/permissions';
 import { cn } from "@/lib/utils";
 import * as DateUtils from '@/lib/utils';
@@ -221,21 +221,21 @@ const SetDiscountDialog = ({ bookingId, currency, currentDiscount, baseBookingCo
     const [open, setOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
-    
-    const maxDiscountAmount = useMemo(() => baseBookingCost * 0.15, [baseBookingCost]);
+
+    const maxDiscountAmount = useMemo(() => baseBookingCost * MAX_DISCOUNT_PERCENT / 100, [baseBookingCost]);
     const currentDiscountAmount = useMemo(() => baseBookingCost * (currentDiscount / 100), [baseBookingCost, currentDiscount]);
-    
+
     const SetDiscountSchema = z.object({
         discount: z.coerce.number()
             .min(0, "Discount cannot be negative.")
-            .max(maxDiscountAmount, `Discount cannot exceed ${formatCurrency(maxDiscountAmount, currency)} (15% of base cost).`),
+            .max(maxDiscountAmount, `Discount cannot exceed ${formatCurrency(maxDiscountAmount, currency)} (${MAX_DISCOUNT_PERCENT}% of base cost).`),
         reason: z.string().min(1, "A reason for the discount is required."),
     });
     type SetDiscountValues = z.infer<typeof SetDiscountSchema>;
-    
-    const form = useForm<SetDiscountValues>({ 
-        resolver: zodResolver(SetDiscountSchema), 
-        defaultValues: { discount: currentDiscountAmount, reason: '' } 
+
+    const form = useForm<SetDiscountValues>({
+        resolver: zodResolver(SetDiscountSchema),
+        defaultValues: { discount: currentDiscountAmount, reason: '' }
     });
 
     useEffect(() => {
@@ -263,7 +263,7 @@ const SetDiscountDialog = ({ bookingId, currency, currentDiscount, baseBookingCo
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Set Booking Discount</DialogTitle>
-                    <DialogDescription>Apply a discount amount to the base rate of this booking. Maximum 15%.</DialogDescription>
+                    <DialogDescription>Apply a discount amount to the base rate of this booking. Maximum {MAX_DISCOUNT_PERCENT}%.</DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -396,7 +396,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
             return 0;
     }
   }, [booking.startDate, booking.endDate, listing.price, listing.price_unit, listing.price_unit, booking.inventoryIds, booking.guests]);
-  
+
   const discountAmount = useMemo(() => {
       if (!booking.discount || booking.discount <= 0) return 0;
       return (baseBookingCost * booking.discount) / 100;
@@ -544,14 +544,14 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
 
       return <Badge variant={variants[booking.status] || 'secondary'} className={cn(styles[booking.status as keyof typeof styles])}>{booking.status}</Badge>
   }
-  
+
   const handlePrint = () => {
     const printContent = document.getElementById(`booking-summary-${booking.id}`);
     if (!printContent) return;
 
     const originalContents = document.body.innerHTML;
     const printSection = printContent.innerHTML;
-    
+
     document.body.innerHTML = printSection;
     window.print();
     document.body.innerHTML = originalContents;

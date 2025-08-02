@@ -32,7 +32,7 @@ import { preloadPermissions } from '@/lib/permissions/server'
 import { hasPermission } from '@/lib/permissions'
 import { generateRandomString, toZonedTimeSafe, formatDateToStr } from '@/lib/utils'
 import { getAllBookings, getBookingsByDateRange } from './data'
-import { EVENT_BOOKING_DAILY_HRS } from './constants'
+import { EVENT_BOOKING_DAILY_HRS, MAX_DISCOUNT_PERCENT } from './constants'
 
 
 function unpackUser(user: any): User {
@@ -57,7 +57,7 @@ function unpackBooking(booking: any): Booking {
     const createdAt = data?.createdAt || (data?.actions && data.actions.length > 0
         ? data.actions.find((a: BookingAction) => a.action === 'Created')?.timestamp
         : new Date(0).toISOString()); // Fallback for very old data with no actions
-        
+
     return { ...rest, ...data, listingId: listing_id, userId: user_id, startDate: start_date, endDate: end_date, createdAt };
 }
 
@@ -74,9 +74,9 @@ export async function updatePermissionsAction(permissions: Record<Role, Permissi
     if (!session || !hasPermission(perms, session, 'permissions:update')) {
       return { success: false, message: 'Permission Denied: You are not authorized to update roles and permissions.' };
     }
-  
+
     const supabase = createSupabaseAdminClient();
-    
+
     // Prepare the data for a bulk `upsert` operation.
     const updates = Object.entries(permissions).map(([role, perms]) => ({
       role: role,
@@ -85,12 +85,12 @@ export async function updatePermissionsAction(permissions: Record<Role, Permissi
 
     // Upsert atomically updates existing roles or inserts new ones.
     const { error } = await supabase.from('role_permissions').upsert(updates, { onConflict: 'role' });
-  
+
     if (error) {
       console.error('Error saving permissions:', error);
       return { success: false, message: `Database Error: Failed to save permissions. ${error.message}` };
     }
-  
+
     // Invalidate the cache for the permissions page to show the new data.
     revalidatePath('/dashboard/permissions');
     return { success: true, message: 'Permissions updated successfully.' };
@@ -140,10 +140,10 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
     }
 
     const { name, type, location, description, price, price_unit, currency, max_guests, features, images, inventory } = validatedFields.data;
-    
+
     // Data is stored in a JSONB column for flexibility.
     const listingJsonData = {
-        name, description, price, price_unit, currency, max_guests, 
+        name, description, price, price_unit, currency, max_guests,
         features: features.split(',').map(f => f.trim()), // Convert comma-separated string to array
         images,
         rating: 0, // Initialize rating
@@ -176,7 +176,7 @@ export async function createListingAction(data: z.infer<typeof ListingFormSchema
             return { success: false, message: `Database Error: Failed to create inventory. ${inventoryError.message}` };
         }
     }
-    
+
     // Revalidate the dashboard path to show the new listing.
     revalidatePath('/dashboard?tab=listings', 'page');
     return { success: true, message: `Listing "${name}" has been created with ${inventory.length} units.` };
@@ -195,7 +195,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
   if (!session || !hasPermission(perms, session, 'listing:update')) {
     return { success: false, message: 'Permission Denied: You are not authorized to update listings.' };
   }
-  
+
   const validatedFields = ListingFormSchema.safeParse(data);
   if (!validatedFields.success) {
     return {
@@ -215,7 +215,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
   if (fetchError || !existingListing) {
       return { success: false, message: 'Database Error: Could not find the listing to update.' };
   }
-  
+
   const { name, type, location, description, price, price_unit, currency, max_guests, features, images, inventory: formInventory } = validatedFields.data;
 
   // Merge new form data with existing data to prevent overwriting reviews/ratings.
@@ -273,7 +273,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
   if (idsToDelete.length > 0) {
     operations.push(supabase.from('listing_inventory').delete().in('id', idsToDelete));
   }
-  
+
   const results = await Promise.all(operations);
   const firstError = results.find(r => r.error);
 
@@ -286,7 +286,7 @@ export async function updateListingAction(id: string, data: z.infer<typeof Listi
   revalidatePath('/dashboard?tab=listings', 'page');
   revalidatePath(`/listing/${id}`);
   revalidatePath('/bookings');
-  
+
   return { success: true, message: `The details for "${name}" have been saved.` };
 }
 
@@ -302,7 +302,7 @@ export async function deleteListingAction(id: string) {
   if (!session || !hasPermission(perms, session, 'listing:delete')) {
     return { success: false, message: 'Permission Denied: You are not authorized to delete listings.' };
   }
-  
+
   // Safety check: Prevent deletion if there are active bookings.
   const { data: activeBookings, error: bookingCheckError } = await supabase
     .from('bookings')
@@ -382,19 +382,19 @@ async function findAvailableInventory(supabase: any, listingId: string, startDat
         .eq('status', 'Confirmed') // Only `Confirmed` bookings block availability.
         .lte('start_date', endDate) // A booking that starts before or on the day the new one ends.
         .gte('end_date', startDate); // A booking that ends after or on the day the new one starts.
-    
+
     // If we are updating a booking, we need to exclude it from the check.
     if (excludeBookingId) {
         bookingsQuery = bookingsQuery.neq('id', excludeBookingId);
     }
-        
+
     const { data: overlappingBookings, error: bookingsError } = await bookingsQuery;
-    
+
     if (bookingsError) throw new Error('Database Error: Could not check for overlapping bookings.');
-    
+
     // Get a set of all inventory IDs that are booked during the overlapping period.
     const bookedInventoryIds = new Set(overlappingBookings.flatMap((b: any) => b.data.inventoryIds || []));
-    
+
     // Return the list of inventory IDs that are not booked.
     return allInventoryIds.filter((id: string) => !bookedInventoryIds.has(id));
 }
@@ -438,14 +438,14 @@ async function findOrCreateGuestUser(
             return { userId: existingUser.id, userName: existingUser.data.name || name, userEmail: lowerCaseEmail, isNewUser: false };
         }
     }
-    
+
     // If no existing user was found (or if no email was provided), create a new one.
     const placeholderEmail = email ? email.toLowerCase() : `walk-in-booking-${generateRandomString(6)}@45group.org`;
     const dataPayload: { name: string; notes?: string } = { name };
     if (notes) {
         dataPayload.notes = notes;
     }
-    
+
     const { data: newUser, error: insertError } = await supabase
         .from('users')
         .insert({ email: placeholderEmail, role: 'guest', status: 'provisional', data: dataPayload })
@@ -456,7 +456,7 @@ async function findOrCreateGuestUser(
         console.error('Error creating provisional user:', insertError);
         return { error: 'Database Error: Could not create a provisional guest account.', isNewUser: false, userId: '', userName: '' };
     }
-    
+
     return { userId: newUser.id, userName: name, userEmail: email ? email.toLowerCase() : undefined, isNewUser: true };
 }
 
@@ -478,7 +478,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
 
   const { listingId, guests, numberOfUnits, userId, guestName, guestNotes } = validatedFields.data;
   const guestEmail = validatedFields.data.guestEmail ? validatedFields.data.guestEmail.toLowerCase() : undefined;
-  
+
   // Standardize dates to 12:00 PM (noon)
   const setTimeToNoon = (date: Date) => {
     date.setUTCHours(12, 0, 0, 0);
@@ -534,23 +534,23 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
     isNewUser = result.isNewUser;
     actorId = finalUserId; // For guest checkout, the guest is the actor.
   }
-  
+
   try {
       const availableInventory = await findAvailableInventory(supabase, listingId, startDate, endDate);
       if (availableInventory.length < numberOfUnits) {
           return { success: false, message: `Booking Failed: Not enough units available for the selected dates. Only ${availableInventory.length} left.` };
       }
       const inventoryToBook = availableInventory.slice(0, numberOfUnits);
-      
+
       const { data: listingDataForMessage } = await supabase.from('listings').select('data').eq('id', listingId).single();
       const listingForMessage = unpackListing({ ...listingDataForMessage, id: listingId });
-      
+
       const createdAt = new Date().toISOString();
       const isBookingForOther = session && session.id !== finalUserId;
-      
+
       let message;
       const rateInfo = `Rate: ${listingForMessage.price} ${listingForMessage.currency}/${listingForMessage.price_unit}.`;
-      
+
       if (hasPermission(perms, session, 'booking:create') && isBookingForOther) {
         message = `Booking created by staff member ${actorName} on behalf of ${finalUserName}. ${rateInfo}`;
       } else {
@@ -586,7 +586,7 @@ export async function createBookingAction(data: z.infer<typeof CreateBookingSche
       }).select().single();
 
       if (createBookingError || !newBooking) throw createBookingError;
-      
+
       const userForEmail = { name: finalUserName, email: finalUserEmail, id: finalUserId };
 
       if (finalUserEmail && !finalUserEmail.includes('@45group.org')) {
@@ -636,7 +636,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session) return { success: false, message: 'Authentication Error: You must be logged in to perform this action.' };
-  
+
     const validatedFields = UpdateBookingSchema.safeParse(data);
     if (!validatedFields.success) return { success: false, message: "Validation Error: Please check the form for invalid data." };
 
@@ -647,7 +647,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
       .select('user_id, listing_id, data, status, start_date, end_date')
       .eq('id', bookingId)
       .single();
-      
+
     if (fetchError || !booking) return { success: false, message: 'Database Error: Could not find the booking to update.' };
 
     const canUpdate = hasPermission(perms, session, 'booking:update:own', { ownerId: booking.user_id }) || hasPermission(perms, session, 'booking:update');
@@ -672,7 +672,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
     const unitsChanged = inventoryIds ? !(existingInventoryIds.size === newInventoryIds.size && [...existingInventoryIds].every(id => newInventoryIds.has(id))) : (numberOfUnits !== existingNumberOfUnits);
 
     const datesChanged = startDate !== existingStartDate || endDate !== existingEndDate;
-    
+
 
     let newStatus = booking.status;
     let successMessage: string;
@@ -721,7 +721,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
              // Re-check inventory availability for the new dates, excluding the current booking.
             const availableInventory = await findAvailableInventory(supabase, booking.listing_id, startDate, endDate, bookingId);
             const availableInventorySet = new Set(availableInventory);
-            
+
             if (canReassignUnits && inventoryIds) {
                 if (inventoryIds.length !== numberOfUnits) return { success: false, message: `Update Failed: You must select exactly ${numberOfUnits} unit(s).` };
                 const allSelectedAreAvailable = inventoryIds.every(id => availableInventorySet.has(id) || existingInventoryIds.has(id));
@@ -736,7 +736,7 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
                 inventoryToBook = availableInventory.slice(0, numberOfUnits);
             }
         }
-        
+
         const updatePayload: {
             start_date: string;
             end_date: string;
@@ -755,15 +755,15 @@ export async function updateBookingAction(data: z.infer<typeof UpdateBookingSche
                 actions: actions,
             },
         };
-        
+
         if (ownerChanged) {
             updatePayload.user_id = userId;
         }
 
         const { error } = await supabase.from('bookings').update(updatePayload).eq('id', bookingId);
-        
+
         if (error) throw error;
-        
+
         revalidatePath('/bookings');
         revalidatePath(`/booking/${bookingId}`);
         return { success: true, message: successMessage };
@@ -805,9 +805,9 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
   if (!hasPermission(perms, session, 'booking:cancel:own', { ownerId: booking.user_id }) && !hasPermission(perms, session, 'booking:cancel')) {
     return { error: 'Permission Denied: You are not authorized to cancel this booking.' };
   }
-  
+
   const { data: listing } = await supabase.from('listings').select('data').eq('id', booking.listing_id).single();
-  
+
   // Add a "Cancelled" action to the booking's history.
   const cancelAction: BookingAction = {
     timestamp: new Date().toISOString(),
@@ -824,12 +824,12 @@ export async function cancelBookingAction(data: z.infer<typeof BookingActionSche
       actions: [...(booking.data.actions || []), cancelAction]
     }
   }).eq('id', bookingId);
-  
+
   if (error) return { error: `Database Error: Failed to cancel booking. ${error.message}` };
 
   revalidatePath('/bookings');
   revalidatePath(`/booking/${bookingId}`);
-  
+
   return { success: `Booking for ${listing?.data.name || 'listing'} has been cancelled.` };
 }
 
@@ -847,7 +847,7 @@ function calculateBookingBalance(booking: Booking, listing: Listing) {
 
     const durationDays = differenceInCalendarDays(to, from) + 1;
     const nights = durationDays > 1 ? durationDays - 1 : 1;
-    
+
     let baseBookingCost = 0;
     switch(listing.price_unit) {
         case 'night':
@@ -883,9 +883,9 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     if (!session || !hasPermission(perms, session, 'booking:confirm')) {
       return { error: 'Permission Denied: You are not authorized to confirm bookings.' };
     }
-  
+
     const { bookingId } = BookingActionSchema.parse(data);
-  
+
     const { data: booking, error: fetchError } = await supabase.from('bookings').select('*').eq('id', bookingId).single();
     if(fetchError || !booking) return { error: 'Database Error: Could not find the booking to confirm.' };
 
@@ -895,11 +895,11 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     const { data: listingData } = await supabase.from('listings').select('id, data').eq('id', unpackedBooking.listingId).single();
     if(!listingData) return { error: 'Database Error: Could not find the associated listing.' };
     const unpackedListing = unpackListing(listingData);
-    
+
     // Check payment status for staff AND ADMINS
     if (session.role === 'staff' || session.role === 'admin') {
         const { totalPayments } = calculateBookingBalance(unpackedBooking, unpackedListing);
-        
+
         let depositRequired = 0;
         const units = (unpackedBooking.inventoryIds || []).length;
 
@@ -923,7 +923,7 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
     try {
         // Final availability check at the moment of confirmation to prevent race conditions.
         const availableInventory = await findAvailableInventory(supabase, booking.listing_id, booking.start_date, booking.end_date, bookingId);
-        
+
         const currentlyHeldIds = new Set(booking.data.inventoryIds || []);
         const stillAvailable = availableInventory.filter(id => currentlyHeldIds.has(id));
 
@@ -966,7 +966,7 @@ export async function confirmBookingAction(data: z.infer<typeof BookingActionSch
         }).eq('id', bookingId);
 
         if (error) throw error;
-        
+
         // Send confirmation email
         const { data: userData } = await supabase.from('users').select('*').eq('id', booking.user_id).single();
 
@@ -994,9 +994,9 @@ export async function completeBookingAction(data: z.infer<typeof BookingActionSc
     if (!session || !hasPermission(perms, session, 'booking:confirm')) {
         return { error: 'Permission Denied: You are not authorized to complete bookings.' };
     }
-    
+
     const { bookingId } = BookingActionSchema.parse(data);
-    
+
     const { data: bookingData, error: fetchError } = await supabase.from('bookings').select('*').eq('id', bookingId).single();
     if (fetchError || !bookingData) {
         return { error: 'Database Error: Could not find the booking to complete.' };
@@ -1007,14 +1007,14 @@ export async function completeBookingAction(data: z.infer<typeof BookingActionSc
     const { data: listingData } = await supabase.from('listings').select('id, data').eq('id', unpackedBooking.listingId).single();
     if(!listingData) return { error: 'Database Error: Could not find the associated listing.' };
     const unpackedListing = unpackListing(listingData);
-    
+
     if (session.role === 'staff' || session.role === 'admin') {
         const { balance } = calculateBookingBalance(unpackedBooking, unpackedListing);
         if (balance > 0) {
             return { error: 'Action Blocked: Cannot complete a booking with an outstanding balance.' };
         }
     }
-    
+
     const completeAction: BookingAction = {
         timestamp: new Date().toISOString(),
         actorId: session.id,
@@ -1027,12 +1027,12 @@ export async function completeBookingAction(data: z.infer<typeof BookingActionSc
         ...bookingData.data,
         actions: [...(bookingData.data.actions || []), completeAction]
     };
-    
+
     const { error } = await supabase.from('bookings').update({
         status: 'Completed',
         data: updatedBookingData
     }).eq('id', bookingId);
-    
+
     if (error) {
         return { error: `Database Error: Failed to complete booking. ${error.message}` };
     }
@@ -1043,7 +1043,7 @@ export async function completeBookingAction(data: z.infer<typeof BookingActionSc
         // We need to pass the *final* booking state to the email, including the 'Completed' action.
         await sendBookingSummaryEmail(unpackUser(userData), { ...unpackedBooking, ...{ data: updatedBookingData } }, unpackedListing);
     }
-    
+
     revalidatePath('/bookings');
     revalidatePath(`/booking/${bookingId}`);
     return { success: 'Booking has been marked as completed.' };
@@ -1074,22 +1074,22 @@ export async function addUserAction(data: z.infer<typeof addUserSchema>) {
     const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-  
+
     if (!session || !hasPermission(perms, session, 'user:create')) {
       return { success: false, message: 'Permission Denied: You are not authorized to create new users.' };
     }
-  
+
     const validatedFields = addUserSchema.safeParse(data);
     if (!validatedFields.success) return { success: false, message: "Validation Error: Please check the form for invalid data." };
-  
+
     const { name, password, role: initialRole, status, notes, phone, listingIds } = validatedFields.data;
     const email = validatedFields.data.email ? validatedFields.data.email.toLowerCase() : undefined;
-    
+
     let role = initialRole;
     if (session.role === 'staff') {
         role = 'guest'; // Staff can only create guests.
     }
-  
+
     if (email && !password) return { success: false, message: "Validation Error: Password is required if an email is provided." };
 
     // Use the centralized helper to create the user.
@@ -1100,19 +1100,19 @@ export async function addUserAction(data: z.infer<typeof addUserSchema>) {
     if (password) {
         userJsonData.password = await hashPassword(password);
     }
-    
-    const { error } = await supabase.from('users').update({ 
-        role, 
+
+    const { error } = await supabase.from('users').update({
+        role,
         status: email && password ? status : 'provisional', // Ensure status is provisional if no credentials
-        data: userJsonData 
+        data: userJsonData
     }).eq('id', result.userId);
 
     if (error) return { success: false, message: `Database Error: Failed to create user. ${error.message}` };
-  
+
     if (result.isNewUser && email) {
       await sendWelcomeEmail({ name, email });
     }
-  
+
     revalidatePath('/dashboard?tab=users', 'page');
     return { success: true, message: `User "${name}" was created successfully.` };
 }
@@ -1133,7 +1133,7 @@ export async function updateUserAction(id: string, data: z.infer<typeof editUser
 
   const validatedFields = editUserSchema.safeParse(data);
   if (!validatedFields.success) return { success: false, message: "Validation Error: Please check the form for invalid data." };
-  
+
   const { data: existingUser, error: fetchError } = await supabase.from('users').select('data, email, role, status').eq('id', id).single();
   if(fetchError || !existingUser) return { success: false, message: 'Database Error: Could not find the user to update.' };
 
@@ -1150,13 +1150,13 @@ export async function updateUserAction(id: string, data: z.infer<typeof editUser
     (existingUser.data.phone || '') !== (phone || '') ||
     (existingUser.data.notes || '') !== (notes || '') ||
     JSON.stringify(existingUser.data.listingIds || []) !== JSON.stringify(listingIds || []);
-    
+
   if (!hasChanged) {
       return { success: true, message: "No changes were detected.", changesMade: false };
   }
 
   let userJsonData = { ...existingUser.data, name, notes, phone, listingIds };
-  
+
   // Only hash and update the password if a new one was provided.
   if (password) {
     userJsonData.password = await hashPassword(password);
@@ -1168,7 +1168,7 @@ export async function updateUserAction(id: string, data: z.infer<typeof editUser
 
   revalidatePath('/dashboard?tab=users', 'page');
   revalidatePath(`/dashboard/edit-user/${id}`);
-  
+
   return { success: true, message: `User "${name}" was updated successfully.`, changesMade: true };
 }
 
@@ -1199,7 +1199,7 @@ export async function deleteUserAction(userId: string) {
   if (bookingCheckError) {
     return { success: false, message: `Database Error: Failed to check for bookings. ${bookingCheckError.message}` };
   }
-  
+
   if (anyBookings && anyBookings.length > 0) {
     return { success: false, message: 'Deletion Failed: This user has bookings associated with them and cannot be deleted. Use the "Consolidate Users" tool to merge this user into another.' };
   }
@@ -1235,7 +1235,7 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
   if (!session) return { success: false, message: 'Authentication Error: You must be logged in to perform this action.' };
-  
+
   if (!hasPermission(perms, session, 'user:update:own', { ownerId: session.id })) {
     return { success: false, message: 'Permission Denied: You are not authorized to update your profile.'};
   }
@@ -1245,7 +1245,7 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
 
   const { data: existingUser, error: fetchError } = await supabase.from('users').select('data').eq('id', session.id).single();
   if (fetchError || !existingUser) return { success: false, message: 'Database Error: Could not find your user profile.' };
-  
+
   const { name, password, notes, phone } = validatedFields.data;
   const email = validatedFields.data.email.toLowerCase();
   let userJsonData = { ...existingUser.data, name, notes, phone };
@@ -1256,10 +1256,10 @@ export async function updateUserProfileAction(data: z.infer<typeof UpdateProfile
 
   const { error } = await supabase.from('users').update({ email, data: userJsonData }).eq('id', session.id);
   if (error) return { success: false, message: `Database Error: Failed to update profile. ${error.message}` };
-  
+
   revalidatePath('/profile');
   revalidatePath('/', 'layout'); // Revalidate layout to update header with new user name/email.
-  
+
   return { success: true, message: `Your profile has been updated successfully.` };
 }
 
@@ -1280,7 +1280,7 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session) return { success: false, message: 'Authentication Error: You must be logged in to submit a review.' };
-    
+
     if (!hasPermission(perms, session, 'review:create:own', { ownerId: session.id })) {
       return { success: false, message: 'Permission Denied: You are not authorized to create or update reviews.'};
     }
@@ -1289,7 +1289,7 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
     if (!validatedFields.success) return { success: false, message: "Validation Error: Please check the form for invalid data." };
 
     const { listingId, rating, comment } = validatedFields.data;
-    
+
     // Fetch the listing to update its `reviews` array in the JSONB data.
     const { data: listing, error: fetchError } = await supabase.from('listings').select('data').eq('id', listingId).single();
     if (fetchError || !listing) return { success: false, message: `Database Error: Could not find the listing.` };
@@ -1314,7 +1314,7 @@ export async function addOrUpdateReviewAction(data: z.infer<typeof ReviewSchema>
     } else {
         reviews.push(newReviewData);
     }
-    
+
     // TODO: This could be moved to a database trigger for consistency.
     // When a review is added/updated, we update the entire reviews array in the listing's data.
     const { error: updateError } = await supabase.from('listings').update({ data: { ...listing.data, reviews: reviews } }).eq('id', listingId);
@@ -1357,7 +1357,7 @@ export async function approveReviewAction(data: z.infer<typeof ReviewActionSchem
     const newAverageRating = approvedReviews.length > 0
         ? approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length
         : 0;
-    
+
     const updatedData = { ...listing.data, reviews: reviews, rating: newAverageRating };
 
     const { error: updateError } = await supabase.from('listings').update({ data: updatedData }).eq('id', listingId);
@@ -1377,14 +1377,14 @@ export async function deleteReviewAction(data: z.infer<typeof ReviewActionSchema
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
     if (!session || !hasPermission(perms, session, 'review:delete')) return { success: false, message: 'Permission Denied: You are not authorized to delete reviews.' };
-    
+
     const { listingId, reviewId } = data;
     const { data: listing, error: fetchError } = await supabase.from('listings').select('data').eq('id', listingId).single();
     if (fetchError || !listing) return { success: false, message: 'Database Error: Could not find the listing.' };
-    
+
     const reviews = (listing.data.reviews || []) as Review[];
     const updatedReviews = reviews.filter(r => r.id !== reviewId);
-    
+
     // Recalculate average rating after deletion.
     const approvedReviews = updatedReviews.filter(r => r.status === 'approved');
     const newAverageRating = approvedReviews.length > 0
@@ -1422,7 +1422,7 @@ export async function toggleUserStatusAction(data: z.infer<typeof ToggleUserStat
   const { userId, status } = ToggleUserStatusSchema.parse(data);
   // Safety check: Prevent users from disabling themselves.
   if (userId === session.id) return { success: false, message: "Action Failed: You cannot change your own status." };
-  
+
   const { error } = await supabase.from('users').update({ status }).eq('id', userId);
   if (error) return { success: false, message: `Database Error: ${error.message}` };
 
@@ -1463,7 +1463,7 @@ export async function bulkDeleteListingsAction(data: z.infer<typeof BulkDeleteLi
 
     const { error } = await supabase.from('listings').delete().in('id', listingIds);
     if (error) return { success: false, message: `Database Error: Failed to delete listings. ${error.message}` };
-    
+
     revalidatePath('/dashboard');
     return { success: true, message: `${listingIds.length} listing(s) have been deleted.` };
 }
@@ -1484,7 +1484,7 @@ export async function addBillAction(data: z.infer<typeof AddBillSchema>) {
   const perms = await preloadPermissions();
   const supabase = createSupabaseAdminClient();
   const session = await getSession();
-  
+
   if (!session || !hasPermission(perms, session, 'booking:update')) {
     return { success: false, message: 'Permission Denied: You are not authorized to add bills to a booking.' };
   }
@@ -1538,23 +1538,23 @@ export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
     const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-    
+
     if (!session || !hasPermission(perms, session, 'booking:update')) {
         return { success: false, message: 'Permission Denied: You are not authorized to record payments.' };
     }
-    
+
     const validatedFields = AddPaymentSchema.safeParse(data);
     if (!validatedFields.success) {
         return { success: false, message: "Validation Error: Please check the form for invalid data." };
     }
-    
+
     const { bookingId, amount, method, notes } = validatedFields.data;
-    
+
     const { data: booking, error: fetchError } = await supabase.from('bookings').select('data').eq('id', bookingId).single();
     if (fetchError || !booking) {
         return { success: false, message: 'Database Error: Could not find the booking.' };
     }
-    
+
     const newPayment: Payment = {
         id: randomUUID(),
         amount,
@@ -1563,15 +1563,15 @@ export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
         timestamp: new Date().toISOString(),
         actorName: session.name, // Record who recorded the payment.
     };
-    
+
     const updatedPayments = [...(booking.data.payments || []), newPayment];
     const updatedData = { ...booking.data, payments: updatedPayments };
-    
+
     const { error } = await supabase.from('bookings').update({ data: updatedData }).eq('id', bookingId);
     if (error) {
         return { success: false, message: `Database Error: Failed to record payment. ${error.message}` };
     }
-    
+
     revalidatePath(`/booking/${bookingId}`);
     return { success: true, message: 'Payment recorded successfully.' };
 }
@@ -1609,7 +1609,7 @@ export async function getAvailableInventoryForBookingAction(data: z.infer<typeof
 
 const SetDiscountSchema = z.object({
     bookingId: z.string(),
-    discountPercentage: z.coerce.number().min(0, "Discount cannot be negative.").max(15, "Discount cannot exceed 15%."),
+    discountPercentage: z.coerce.number().min(0, "Discount cannot be negative.").max(MAX_DISCOUNT_PERCENT, `Discount cannot exceed ${MAX_DISCOUNT_PERCENT}%.`),
     reason: z.string().min(1, "A reason for the discount is required."),
 });
 
@@ -1679,7 +1679,7 @@ export async function sendReportEmailAction(data: z.infer<typeof SendReportEmail
     if (!validatedFields.success) {
         return { success: false, message: 'Invalid data provided for report.' };
     }
-    
+
     const { listingId, fromDate, toDate, email } = validatedFields.data;
 
     let listing: Listing | null = null;
@@ -1701,7 +1701,7 @@ export async function sendReportEmailAction(data: z.infer<typeof SendReportEmail
     try {
         const headers = ["Booking ID", "Guest", "Venue", "Units", "Start Date", "End Date", "Duration (days)", "Paid", "Owed", "Balance", "Status", "Currency"];
         const currencyCode = listing?.currency || bookings[0]?.currency || 'NGN';
-      
+
         const rows = bookings.map(b => {
             const financials = calculateBookingFinancials(b, listing ? listing : { ...b } as Listing);
             return [
@@ -1719,7 +1719,7 @@ export async function sendReportEmailAction(data: z.infer<typeof SendReportEmail
                 currencyCode,
             ].map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(',');
         });
-      
+
         const csvContent = [headers.join(','), ...rows].join('\n');
 
         await sendReportEmail({
@@ -1806,7 +1806,7 @@ export async function createWalkInReservationAction(data: z.infer<typeof WalkInR
             .single();
 
         if (!listingData) throw new Error("Selected listing not found.");
-        
+
         const listing = unpackListing(listingData);
 
         if (guests > (listing.max_guests * units)) {
@@ -1816,7 +1816,7 @@ export async function createWalkInReservationAction(data: z.infer<typeof WalkInR
         if (units > (listing.inventoryCount || 0)) {
             return { success: false, message: `Number of units (${units}) exceeds the total available for this listing (${listing.inventoryCount || 0}).` };
         }
-        
+
         const endDate = add(today, { days: listing.type === ListingTypes.HOTEL ? 1 : 0 });
 
         const availableInventory = await findAvailableInventory(supabase, listingId, today.toISOString(), endDate.toISOString());
@@ -1824,7 +1824,7 @@ export async function createWalkInReservationAction(data: z.infer<typeof WalkInR
             return { success: false, message: `Only ${availableInventory.length} units available for today.` };
         }
         const inventoryToBook = availableInventory.slice(0, units);
-        
+
         const initialBills: Bill[] = (bills || []).map(bill => ({
             id: randomUUID(),
             description: bill.description,
@@ -1851,7 +1851,7 @@ export async function createWalkInReservationAction(data: z.infer<typeof WalkInR
             action: 'Created',
             message: `Walk-in booking created by staff member ${actorName}.`,
         };
-        
+
         let bookingStatus: 'Pending' | 'Confirmed' | 'Completed' = 'Pending';
         if (bills && bills.length > 0) {
             const paidBills = bills.filter(b => b.paid);
@@ -1861,7 +1861,7 @@ export async function createWalkInReservationAction(data: z.infer<typeof WalkInR
                 bookingStatus = 'Confirmed';
             }
         }
-        
+
         if (bookingStatus === 'Completed') {
             initialAction.message = `Walk-in booking created and marked as completed by staff member ${actorName}.`;
         } else if (bookingStatus === 'Confirmed') {
@@ -1913,46 +1913,46 @@ export async function consolidateUsersAction(data: z.infer<typeof ConsolidateUse
     const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
-  
+
     if (!session || !hasPermission(perms, session, 'user:delete')) {
       return { success: false, message: 'Permission Denied: You are not authorized to consolidate users.' };
     }
-  
+
     const validatedFields = ConsolidateUsersSchema.safeParse(data);
     if (!validatedFields.success) {
       return { success: false, message: "Validation Error: Invalid data provided for consolidation." };
     }
-  
+
     const { primaryUserId, userIdsToMerge } = validatedFields.data;
-  
+
     if (userIdsToMerge.includes(primaryUserId)) {
       return { success: false, message: "Error: Cannot merge a user into themselves." };
     }
-  
+
     // Step 1: Re-assign all bookings from the users-to-be-merged to the primary user.
     const { error: updateBookingsError } = await supabase
       .from('bookings')
       .update({ user_id: primaryUserId })
       .in('user_id', userIdsToMerge);
-  
+
     if (updateBookingsError) {
       console.error('[CONSOLIDATE_USERS] Error updating bookings:', updateBookingsError);
       return { success: false, message: `Database Error: Failed to re-assign bookings. ${updateBookingsError.message}` };
     }
-  
+
     // Step 2: Delete the now-redundant user accounts.
     const { error: deleteUsersError } = await supabase
       .from('users')
       .delete()
       .in('id', userIdsToMerge);
-  
+
     if (deleteUsersError) {
       console.error('[CONSOLIDATE_USERS] Error deleting merged users:', deleteUsersError);
       // At this point, bookings are reassigned, which is better than a partial failure.
       // We return an error but acknowledge that the main goal was partially achieved.
       return { success: false, message: `Database Error: Failed to delete the merged user accounts, but their bookings were re-assigned. ${deleteUsersError.message}` };
     }
-  
+
     revalidatePath('/dashboard?tab=users');
     revalidatePath('/bookings');
     return { success: true, message: `${userIdsToMerge.length} user(s) were successfully merged.` };
