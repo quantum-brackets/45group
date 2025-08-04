@@ -1,0 +1,34 @@
+name: Supa-backup
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *' # Runs every day at midnight
+jobs:
+  run_db_backup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      supabase_db_url: ${{ secrets.DATABASE_URL }}
+      GITHUB_TOKEN: ${{ secrets.DB_REPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: quantum-brackets/45group-backup
+          ref: 'main'
+          token:  ${{ secrets.DB_REPO_TOKEN }}
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Backup roles
+        run: supabase db dump --db-url "$supabase_db_url" -f roles.sql --role-only
+      - name: Backup schema
+        run: supabase db dump --db-url "$supabase_db_url" -f schema.sql
+      - name: Backup data
+        run: supabase db dump --db-url "$supabase_db_url" -f data.sql --data-only --use-copy
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Supabase backup
