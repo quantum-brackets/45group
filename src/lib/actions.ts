@@ -27,7 +27,7 @@ import { hashPassword } from '@/lib/password'
 import { type Booking, type Listing, type Role, type Review, type User, type BookingAction, type Bill, type Payment, type Permission, LISTING_TYPES, ListingTypes } from '@/lib/types'
 import { randomUUID } from 'crypto'
 import { sendBookingConfirmationEmail, sendBookingRequestEmail, sendBookingSummaryEmail, sendReportEmail, sendWelcomeEmail } from '@/lib/email'
-import { add, differenceInCalendarDays } from 'date-fns'
+import { add, addDays, differenceInCalendarDays, eachDayOfInterval, isWithinInterval } from 'date-fns'
 import { preloadPermissions } from '@/lib/permissions/server'
 import { hasPermission } from '@/lib/permissions'
 import { generateRandomString, toZonedTimeSafe, formatDateToStr } from '@/lib/utils'
@@ -1666,6 +1666,53 @@ const SendReportEmailSchema = z.object({
     email: z.string().email(),
 });
 
+function getDailySummaryCsv(bookings: Booking[], dateRange: { from: Date, to: Date }, listing: Listing | null) {
+    const dailyData: Record<string, { date: string; unitsUsed: number; dailyCharge: number; payments: Record<Payment['method'], number>; totalPaid: number; balance: number }> = {};
+    const reportDays = eachDayOfInterval({ start: toZonedTimeSafe(dateRange.from), end: toZonedTimeSafe(dateRange.to) });
+
+    reportDays.forEach(day => {
+        const dayStr = formatDateToStr(day, 'yyyy-MM-dd');
+        dailyData[dayStr] = { date: dayStr, unitsUsed: 0, dailyCharge: 0, payments: { Cash: 0, Transfer: 0, Debit: 0, Credit: 0 }, totalPaid: 0, balance: 0 };
+    });
+
+    bookings.forEach(booking => {
+        const listingForBooking = { price: booking.price, price_unit: booking.price_unit, ...listing };
+        const bookingDays = eachDayOfInterval({ start: toZonedTimeSafe(booking.startDate), end: toZonedTimeSafe(booking.endDate) });
+        const bookingDuration = differenceInCalendarDays(toZonedTimeSafe(booking.endDate), toZonedTimeSafe(booking.startDate)) || 1;
+        const dailyRate = (listingForBooking.price || 0) / bookingDuration;
+
+        bookingDays.forEach(day => {
+            if (isWithinInterval(day, { start: toZonedTimeSafe(dateRange.from), end: addDays(toZonedTimeSafe(dateRange.to), 1) })) {
+                const dayStr = formatDateToStr(day, 'yyyy-MM-dd');
+                if (dailyData[dayStr]) {
+                    dailyData[dayStr].unitsUsed += (booking.inventoryIds || []).length;
+                    dailyData[dayStr].dailyCharge += dailyRate * (booking.inventoryIds || []).length;
+                }
+            }
+        });
+
+        (booking.payments || []).forEach(payment => {
+            const paymentDayStr = formatDateToStr(toZonedTimeSafe(payment.timestamp), 'yyyy-MM-dd');
+            if (dailyData[paymentDayStr]) {
+                dailyData[paymentDayStr].payments[payment.method] = (dailyData[paymentDayStr].payments[payment.method] || 0) + payment.amount;
+                dailyData[paymentDayStr].totalPaid += payment.amount;
+            }
+        });
+    });
+
+    Object.values(dailyData).forEach(day => {
+        day.balance = day.dailyCharge - day.totalPaid;
+    });
+
+    const headers = ["Date", "Units Used", "Daily Charge", "Paid (Cash)", "Paid (Transfer)", "Paid (Debit)", "Paid (Credit)", "Owed", "Currency"];
+    const currencyCode = listing?.currency || bookings[0]?.currency || 'NGN';
+    const rows = Object.values(dailyData).map(d => [
+        d.date, d.unitsUsed, d.dailyCharge.toFixed(2), d.payments.Cash.toFixed(2), d.payments.Transfer.toFixed(2), d.payments.Debit.toFixed(2), d.payments.Credit.toFixed(2), d.balance.toFixed(2), currencyCode
+    ].map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','));
+
+    return [headers.join(','), ...rows].join('\n');
+}
+
 export async function sendReportEmailAction(data: z.infer<typeof SendReportEmailSchema>) {
     const perms = await preloadPermissions();
     const supabase = createSupabaseAdminClient();
@@ -1721,13 +1768,15 @@ export async function sendReportEmailAction(data: z.infer<typeof SendReportEmail
         });
 
         const csvContent = [headers.join(','), ...rows].join('\n');
+        const dailyCsvContent = getDailySummaryCsv(bookings, { from: new Date(fromDate), to: new Date(toDate) }, listing);
 
         await sendReportEmail({
             email,
             listing, // Can be null for global reports
             bookings,
             dateRange: { from: new Date(fromDate), to: new Date(toDate) },
-            csvContent: csvContent
+            csvContent,
+            dailyCsvContent
         });
         return { success: true, message: `Report successfully sent to ${email}` };
     } catch (error) {
@@ -1957,3 +2006,4 @@ export async function consolidateUsersAction(data: z.infer<typeof ConsolidateUse
     revalidatePath('/bookings');
     return { success: true, message: `${userIdsToMerge.length} user(s) were successfully merged.` };
 }
+

@@ -7,10 +7,10 @@ import { useRouter } from 'next/navigation';
 import { DateRange } from 'react-day-picker';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { differenceInCalendarDays, sub } from 'date-fns';
+import { addDays, differenceInCalendarDays, eachDayOfInterval, isWithinInterval, sub } from 'date-fns';
 import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone, Loader2, Home, BarChart, XOctagon, FileSpreadsheet } from 'lucide-react';
 
-import type { Booking, Listing, User } from '@/lib/types';
+import type { Booking, Listing, Payment, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -190,23 +190,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
 
   const handleExportPdf = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
-    const tableData: any[] = [];
-    const headers = ["Guest", "Venue", "Units", "Start Date", "Duration (days)", "Paid", "Owed", "Balance", "Status"];
     const currencyCode = listing?.currency || initialBookings[0]?.currency || 'NGN';
-
-    bookingsWithFinancials.forEach(b => {
-        tableData.push([
-            b.userName,
-            b.listingName,
-            b.inventoryNames?.join(', ') || 'N/A',
-            formatDateToStr(toZonedTimeSafe(b.startDate), 'MMM d, yyyy'),
-            b.financials.stayDuration,
-            formatCurrency(b.financials.totalPayments, currencyCode),
-            formatCurrency(b.financials.totalBill, currencyCode),
-            formatCurrency(b.financials.balance, currencyCode),
-            b.status,
-        ]);
-    });
 
     doc.setFontSize(18);
     doc.text(`Booking Report for ${listing?.name || 'All Venues'}`, 14, 22);
@@ -217,36 +201,67 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     
     autoTable(doc, {
         startY: 35,
-        head: [headers],
-        body: tableData,
+        head: [['Guest', 'Venue', 'Units', 'Start Date', 'Duration (days)', 'Paid', 'Owed', 'Balance', 'Status']],
+        body: bookingsWithFinancials.map(b => [
+            b.userName,
+            b.listingName,
+            b.inventoryNames?.join(', ') || 'N/A',
+            formatDateToStr(toZonedTimeSafe(b.startDate), 'MMM d, yyyy'),
+            b.financials.stayDuration,
+            formatCurrency(b.financials.totalPayments, currencyCode),
+            formatCurrency(b.financials.totalBill, currencyCode),
+            formatCurrency(b.financials.balance, currencyCode),
+            b.status,
+        ]),
         theme: 'striped',
         headStyles: { fillColor: [211, 76, 35] },
     });
 
-    // Add financial summary to the PDF
-    const finalY = (doc as any).lastAutoTable.finalY || 10;
+    let finalY = (doc as any).lastAutoTable.finalY || 10;
+    
+    // --- Daily Summary Section ---
+    const dailyData = getDailySummaryData();
+    doc.addPage();
+    doc.setFontSize(18);
+    doc.text('Daily Summary', 14, 22);
+    autoTable(doc, {
+        startY: 30,
+        head: [['Date', 'Units Used', 'Daily Charge', 'Paid (Cash)', 'Paid (Transfer)', 'Paid (Debit)', 'Paid (Credit)', 'Owed']],
+        body: Object.values(dailyData).map(day => [
+            formatDateToStr(day.date, 'MMM d, yyyy'),
+            day.unitsUsed,
+            formatCurrency(day.dailyCharge, currencyCode),
+            formatCurrency(day.payments.Cash, currencyCode),
+            formatCurrency(day.payments.Transfer, currencyCode),
+            formatCurrency(day.payments.Debit, currencyCode),
+            formatCurrency(day.payments.Credit, currencyCode),
+            formatCurrency(day.balance, currencyCode),
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [34, 139, 34] },
+    });
+    finalY = (doc as any).lastAutoTable.finalY || finalY;
+
+    // --- Financial Summary Section ---
     doc.setFontSize(14);
     doc.text('Financial Summary', 14, finalY + 15);
-
-    const summaryData = [
-        [
-            `${financialSummary.active.count} Active/Completed Booking(s)`,
-            formatCurrency(financialSummary.active.totalPaid, currencyCode),
-            formatCurrency(financialSummary.active.totalOwed, currencyCode),
-            formatCurrency(financialSummary.active.balance, currencyCode),
-        ],
-        [
-            `${financialSummary.cancelled.count} Cancelled Booking(s)`,
-            formatCurrency(financialSummary.cancelled.totalPaid, currencyCode),
-            formatCurrency(financialSummary.cancelled.totalOwed, currencyCode),
-            formatCurrency(financialSummary.cancelled.balance, currencyCode),
-        ],
-    ];
-
     autoTable(doc, {
         startY: finalY + 20,
         head: [['Category', 'Total Paid', 'Total Owed', 'Balance']],
-        body: summaryData,
+        body: [
+            [
+                `${financialSummary.active.count} Active/Completed Booking(s)`,
+                formatCurrency(financialSummary.active.totalPaid, currencyCode),
+                formatCurrency(financialSummary.active.totalOwed, currencyCode),
+                formatCurrency(financialSummary.active.balance, currencyCode),
+            ],
+            [
+                `${financialSummary.cancelled.count} Cancelled Booking(s)`,
+                formatCurrency(financialSummary.cancelled.totalPaid, currencyCode),
+                formatCurrency(financialSummary.cancelled.totalOwed, currencyCode),
+                formatCurrency(financialSummary.cancelled.balance, currencyCode),
+            ],
+        ],
         theme: 'grid',
     });
 
@@ -257,6 +272,57 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     setIsExportOpen(false);
   };
   
+  const getDailySummaryData = () => {
+    const dailyData: Record<string, { date: string; unitsUsed: number; dailyCharge: number; payments: Record<Payment['method'], number>; totalPaid: number; balance: number }> = {};
+    if (!initialDateRange?.from || !initialDateRange?.to) return dailyData;
+
+    const reportDays = eachDayOfInterval({ start: toZonedTimeSafe(initialDateRange.from), end: toZonedTimeSafe(initialDateRange.to) });
+
+    reportDays.forEach(day => {
+        const dayStr = formatDateToStr(day, 'yyyy-MM-dd');
+        dailyData[dayStr] = {
+            date: dayStr,
+            unitsUsed: 0,
+            dailyCharge: 0,
+            payments: { Cash: 0, Transfer: 0, Debit: 0, Credit: 0 },
+            totalPaid: 0,
+            balance: 0,
+        };
+    });
+
+    initialBookings.forEach(booking => {
+        const listingForBooking = { price: booking.price, price_unit: booking.price_unit, ...listing };
+        const bookingDays = eachDayOfInterval({ start: toZonedTimeSafe(booking.startDate), end: toZonedTimeSafe(booking.endDate) });
+
+        const bookingDuration = differenceInCalendarDays(toZonedTimeSafe(booking.endDate), toZonedTimeSafe(booking.startDate)) || 1;
+        const dailyRate = (listingForBooking.price || 0) / bookingDuration;
+
+        bookingDays.forEach(day => {
+            if (isWithinInterval(day, { start: toZonedTimeSafe(initialDateRange.from), end: addDays(toZonedTimeSafe(initialDateRange.to), 1) })) {
+                const dayStr = formatDateToStr(day, 'yyyy-MM-dd');
+                if (dailyData[dayStr]) {
+                    dailyData[dayStr].unitsUsed += (booking.inventoryIds || []).length;
+                    dailyData[dayStr].dailyCharge += dailyRate * (booking.inventoryIds || []).length;
+                }
+            }
+        });
+
+        (booking.payments || []).forEach(payment => {
+            const paymentDayStr = formatDateToStr(toZonedTimeSafe(payment.timestamp), 'yyyy-MM-dd');
+            if (dailyData[paymentDayStr]) {
+                dailyData[paymentDayStr].payments[payment.method] = (dailyData[paymentDayStr].payments[payment.method] || 0) + payment.amount;
+                dailyData[paymentDayStr].totalPaid += payment.amount;
+            }
+        });
+    });
+
+    Object.values(dailyData).forEach(day => {
+        day.balance = day.dailyCharge - day.totalPaid;
+    });
+
+    return dailyData;
+  };
+
   const handleSendEmail = () => {
     startEmailTransition(async () => {
       // For a global report, listingId is null. The server action needs to handle this.
@@ -509,6 +575,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     </div>
   );
 }
+
 
 
 

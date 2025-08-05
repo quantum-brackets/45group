@@ -146,13 +146,14 @@ interface SendReportEmailProps {
     bookings: Booking[];
     dateRange: { from: Date; to: Date };
     csvContent: string;
+    dailyCsvContent: string;
 }
   
 /**
  * Sends a report email containing booking data.
  * @param props - The properties for the report email.
  */
-export async function sendReportEmail({ email, csvContent, ...props }: SendReportEmailProps) {
+export async function sendReportEmail({ email, csvContent, dailyCsvContent, ...props }: SendReportEmailProps) {
     if (!canSendEmail()) return;
   
     try {
@@ -163,8 +164,12 @@ export async function sendReportEmail({ email, csvContent, ...props }: SendRepor
         react: ReportEmail(props),
         attachments: [
             {
-                filename: 'report.csv',
+                filename: 'report_details.csv',
                 content: csvContent,
+            },
+            {
+                filename: 'report_daily_summary.csv',
+                content: dailyCsvContent,
             }
         ]
       });

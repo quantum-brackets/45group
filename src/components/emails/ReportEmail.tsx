@@ -13,9 +13,9 @@ import {
     Column,
   } from '@react-email/components';
   import * as React from 'react';
-  import type { Booking, Listing } from '@/lib/types';
+  import type { Booking, Listing, Payment } from '@/lib/types';
   import { formatDateToStr, toZonedTimeSafe } from '@/lib/utils';
-  import { differenceInCalendarDays } from 'date-fns';
+  import { addDays, differenceInCalendarDays, eachDayOfInterval, isWithinInterval } from 'date-fns';
   
   export interface ReportEmailProps {
     listing: Listing | null; // Can be null for global reports
@@ -83,7 +83,52 @@ import {
     
     // Assume a default currency if no single listing is provided
     const currency = listing?.currency || 'NGN';
-  
+
+    // Daily Aggregation Logic
+    const dailyData: Record<string, { date: string; unitsUsed: number; dailyCharge: number; payments: Record<Payment['method'], number>; totalPaid: number; balance: number }> = {};
+    const reportDays = eachDayOfInterval({ start: toZonedTimeSafe(dateRange.from), end: toZonedTimeSafe(dateRange.to) });
+
+    reportDays.forEach(day => {
+        const dayStr = formatDateToStr(day, 'yyyy-MM-dd');
+        dailyData[dayStr] = {
+            date: dayStr,
+            unitsUsed: 0,
+            dailyCharge: 0,
+            payments: { Cash: 0, Transfer: 0, Debit: 0, Credit: 0 },
+            totalPaid: 0,
+            balance: 0,
+        };
+    });
+
+    bookings.forEach(booking => {
+        const listingForBooking = { price: booking.price, price_unit: booking.price_unit, ...listing };
+        const bookingDays = eachDayOfInterval({ start: toZonedTimeSafe(booking.startDate), end: toZonedTimeSafe(booking.endDate) });
+
+        const dailyRate = (listingForBooking.price || 0) / (differenceInCalendarDays(toZonedTimeSafe(booking.endDate), toZonedTimeSafe(booking.startDate)) || 1);
+
+        bookingDays.forEach(day => {
+            if (isWithinInterval(day, { start: toZonedTimeSafe(dateRange.from), end: addDays(toZonedTimeSafe(dateRange.to), 1) })) {
+                const dayStr = formatDateToStr(day, 'yyyy-MM-dd');
+                if (dailyData[dayStr]) {
+                    dailyData[dayStr].unitsUsed += (booking.inventoryIds || []).length;
+                    dailyData[dayStr].dailyCharge += dailyRate * (booking.inventoryIds || []).length;
+                }
+            }
+        });
+
+        (booking.payments || []).forEach(payment => {
+            const paymentDayStr = formatDateToStr(toZonedTimeSafe(payment.timestamp), 'yyyy-MM-dd');
+            if (dailyData[paymentDayStr]) {
+                dailyData[paymentDayStr].payments[payment.method] = (dailyData[paymentDayStr].payments[payment.method] || 0) + payment.amount;
+                dailyData[paymentDayStr].totalPaid += payment.amount;
+            }
+        });
+    });
+
+    Object.values(dailyData).forEach(day => {
+        day.balance = day.dailyCharge - day.totalPaid;
+    });
+
     return (
       <Html>
         <Head />
@@ -162,6 +207,36 @@ import {
                   </tr>
                 ))}
               </tbody>
+            </table>
+
+            <Heading as="h2" style={subHeading}>Daily Summary</Heading>
+            <table style={table} cellPadding={0} cellSpacing={0}>
+                <thead style={tableHead}>
+                    <tr>
+                        <th style={tableCell}>Date</th>
+                        <th style={tableCell}>Units Used</th>
+                        <th style={tableCell}>Daily Charge</th>
+                        <th style={tableCell}>Paid (Cash)</th>
+                        <th style={tableCell}>Paid (Transfer)</th>
+                        <th style={tableCell}>Paid (Debit)</th>
+                        <th style={tableCell}>Paid (Credit)</th>
+                        <th style={tableCell}>Owed</th>
+                    </tr>
+                </thead>
+                <tbody style={tableBody}>
+                    {Object.values(dailyData).map(day => (
+                        <tr key={day.date}>
+                            <td style={tableCell}>{formatDateToStr(day.date, 'MMM d, yyyy')}</td>
+                            <td style={tableCell}>{day.unitsUsed}</td>
+                            <td style={tableCell}>{formatCurrency(day.dailyCharge, currency)}</td>
+                            <td style={tableCell}>{formatCurrency(day.payments.Cash, currency)}</td>
+                            <td style={tableCell}>{formatCurrency(day.payments.Transfer, currency)}</td>
+                            <td style={tableCell}>{formatCurrency(day.payments.Debit, currency)}</td>
+                            <td style={tableCell}>{formatCurrency(day.payments.Credit, currency)}</td>
+                            <td style={tableCell}>{formatCurrency(day.balance, currency)}</td>
+                        </tr>
+                    ))}
+                </tbody>
             </table>
             
             <Hr style={hr} />
@@ -280,4 +355,3 @@ import {
     textAlign: 'center' as const,
   };
   
-
