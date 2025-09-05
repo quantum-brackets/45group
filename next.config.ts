@@ -17,21 +17,6 @@ const nextConfig: NextConfig = {
         destination: '/#services',
         permanent: true,
       },
-      {
-        source: '/cuisine',
-        destination: `/search?type=${ListingTypes.RESTAURANT}`,
-        permanent: true,
-      },
-      {
-        source: '/events',
-        destination: `/search?type=${ListingTypes.EVENTS}`,
-        permanent: true,
-      },
-      {
-        source: '/lodges',
-        destination: `/search?type=${ListingTypes.HOTEL}`,
-        permanent: true,
-      },
     ]
   },
   typescript: {

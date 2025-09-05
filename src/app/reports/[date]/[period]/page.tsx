@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { sub } from 'date-fns';
-import { getAllBookings } from '@/lib/data';
+import { getAllBookings, getAllListings } from '@/lib/data';
 import { ListingReport } from '@/components/reports/ListingReport';
 import { getSession } from '@/lib/session';
 import { toZonedTimeSafe } from '@/lib/utils';
@@ -48,10 +48,13 @@ export default async function AllListingsReportPage({ params }: AllListingsRepor
         toDate: toDate.toISOString()
     });
 
+    const allListingsForDropdown = await getAllListings();
+
     return (
         <div className="container mx-auto py-8">
             <ListingReport 
                 // No specific listing is passed, indicating an aggregated report
+                allListings={allListingsForDropdown}
                 initialBookings={bookings}
                 initialDateRange={{ from: fromDate, to: toDate }}
                 initialPeriod={{ unit: params.period.slice(-1), amount: durationAmount }}

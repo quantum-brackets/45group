@@ -1,13 +1,13 @@
 import { notFound } from 'next/navigation';
 import { sub } from 'date-fns';
-import { getListingById, getBookingsByDateRange, getAllListings } from '@/lib/data';
+import { getAllBookings, getAllListings } from '@/lib/data';
 import { ListingReport } from '@/components/reports/ListingReport';
 import { getSession } from '@/lib/session';
 import { toZonedTimeSafe } from '@/lib/utils';
 
-interface ListingReportPageProps {
+interface LocationReportPageProps {
   params: {
-    id: string;
+    location: string;
     date: string;
     period: string;
   };
@@ -30,34 +30,32 @@ const parsePeriod = (period: string): { unit: Duration; amount: number } => {
 };
 
 
-export default async function ListingReportPage({ params }: ListingReportPageProps) {
+export default async function LocationReportPage({ params }: LocationReportPageProps) {
     const session = await getSession();
 
     if (session?.role !== 'admin' && session?.role !== 'staff') {
         notFound();
     }
-
-    const listing = await getListingById(params.id);
-    if (!listing) {
-        notFound();
-    }
     
     const allListingsForDropdown = await getAllListings();
+    const location = decodeURIComponent(params.location);
 
     const { unit: durationUnit, amount: durationAmount } = parsePeriod(params.period);
     const targetDate = toZonedTimeSafe(params.date);
 
-    // The date in the URL is now the END date of the report.
     const toDate = targetDate;
-    // The start date is calculated by subtracting the period from the end date.
     const fromDate = sub(toDate, durationUnit);
 
-    const bookings = await getBookingsByDateRange(params.id, fromDate.toISOString(), toDate.toISOString());
+    const bookings = await getAllBookings({
+        fromDate: fromDate.toISOString(),
+        toDate: toDate.toISOString(),
+        location: location,
+    });
 
     return (
         <div className="container mx-auto py-8">
             <ListingReport 
-                listing={listing}
+                location={location}
                 allListings={allListingsForDropdown}
                 initialBookings={bookings}
                 initialDateRange={{ from: fromDate, to: toDate }}

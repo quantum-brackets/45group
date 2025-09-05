@@ -3,12 +3,12 @@
 "use client";
 
 import { useMemo, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { DateRange } from 'react-day-picker';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { addDays, differenceInCalendarDays, eachDayOfInterval, isWithinInterval, sub } from 'date-fns';
-import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone, Loader2, Home, BarChart, XOctagon, FileSpreadsheet } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, Send, Users, Warehouse, Milestone, Loader2, Home, BarChart, XOctagon, FileSpreadsheet, ChevronsUpDown } from 'lucide-react';
 
 import type { Booking, Listing, Payment, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -27,10 +27,13 @@ import { cn, toZonedTimeSafe, formatDateToStr } from '@/lib/utils';
 import { sendReportEmailAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 
 
 interface ListingReportProps {
   listing?: Listing; // Optional: for single-listing reports
+  location?: string; // Optional: for location-based reports
+  allListings: Listing[];
   initialBookings: Booking[];
   initialDateRange: DateRange;
   initialPeriod: { unit: string, amount: number };
@@ -68,14 +71,22 @@ const calculateBookingFinancials = (booking: Booking, listing?: Listing) => {
     return { totalBill, totalPayments, balance, stayDuration: durationDays };
 }
 
-export function ListingReport({ listing, initialBookings, initialDateRange, initialPeriod, session }: ListingReportProps) {
+export function ListingReport({ listing, location, allListings, initialBookings, initialDateRange, initialPeriod, session }: ListingReportProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { toast } = useToast();
   const [date, setDate] = useState<Date | undefined>(initialDateRange.to);
   const [period, setPeriod] = useState(initialPeriod);
   const [isEmailPending, startEmailTransition] = useTransition();
   const [email, setEmail] = useState(session?.email || '');
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isScopeOpen, setIsScopeOpen] = useState(false);
+  
+  const uniqueLocations = useMemo(() => {
+    return [...new Set(allListings.map(l => l.location).sort((a,b) => a.localeCompare(b)))];
+  }, [allListings]);
+
+  const reportTitle = listing?.name || (location ? `Location: ${decodeURIComponent(location)}` : 'All Venues');
 
   const bookingsWithFinancials = useMemo(() => {
       // For global reports, the listing context is on each booking.
@@ -144,8 +155,22 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
   const handleDateOrPeriodChange = () => {
     const targetDate = date || new Date();
     const periodString = `${period.amount}${period.unit}`;
-    const basePath = listing ? `/reports/listing/${listing.id}` : '/reports';
+    
+    // Use the current pathname to rebuild the URL, preserving the scope (listing, location, or global)
+    const currentPathSegments = pathname.split('/');
+    // e.g. /reports/listing/some-id/2024-01-01/1m -> /reports/listing/some-id/
+    // e.g. /reports/location/some-loc/2024-01-01/1m -> /reports/location/some-loc/
+    // e.g. /reports/2024-01-01/1m -> /reports/
+    const basePath = currentPathSegments.slice(0, -2).join('/');
+    
     router.push(`${basePath}/${formatDateToStr(targetDate, 'yyyy-MM-dd')}/${periodString}`);
+  };
+
+  const handleScopeChange = (newPath: string) => {
+    setIsScopeOpen(false);
+    const dateStr = formatDateToStr(date || new Date(), 'yyyy-MM-dd');
+    const periodStr = `${period.amount}${period.unit}`;
+    router.push(`${newPath}/${dateStr}/${periodStr}`);
   };
 
   const getCsvData = () => {
@@ -193,7 +218,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     const currencyCode = listing?.currency || initialBookings[0]?.currency || 'NGN';
 
     doc.setFontSize(18);
-    doc.text(`Booking Report for ${listing?.name || 'All Venues'}`, 14, 22);
+    doc.text(`Booking Report for ${reportTitle}`, 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
     const dateDisplay = initialDateRange?.from ? `${formatDateToStr(initialDateRange.from, 'LLL dd, y')} - ${initialDateRange.to ? formatDateToStr(initialDateRange.to, 'LLL dd, y') : ''}` : 'All time';
@@ -405,10 +430,49 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     <div className="space-y-8">
       <Card>
         <CardHeader>
-          <CardTitle>Booking Report: {listing?.name || "All Venues"}</CardTitle>
-          <CardDescription>
-            View and export booking data for different time periods.
-          </CardDescription>
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div>
+              <CardTitle>Booking Report</CardTitle>
+              <CardDescription>
+                View and export booking data for different time periods.
+              </CardDescription>
+            </div>
+            <Popover open={isScopeOpen} onOpenChange={setIsScopeOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" aria-expanded={isScopeOpen} className="w-full md:w-[250px] justify-between">
+                  <span className="truncate">{reportTitle}</span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <Command>
+                  <CommandInput placeholder="Search scope..." />
+                  <CommandList>
+                    <CommandEmpty>No scope found.</CommandEmpty>
+                    <CommandGroup heading="Global">
+                      <CommandItem onSelect={() => handleScopeChange('/reports')}>
+                        All Reports
+                      </CommandItem>
+                    </CommandGroup>
+                    <CommandGroup heading="By Location">
+                      {uniqueLocations.map(loc => (
+                          <CommandItem key={loc} onSelect={() => handleScopeChange(`/reports/location/${encodeURIComponent(loc)}`)}>
+                              {loc}
+                          </CommandItem>
+                      ))}
+                    </CommandGroup>
+                    <CommandGroup heading="By Listing">
+                        {allListings.map(l => (
+                             <CommandItem key={l.id} onSelect={() => handleScopeChange(`/reports/listing/${l.id}`)}>
+                                {l.name}
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4 items-end">
           <div className="grid gap-1.5">
@@ -575,6 +639,7 @@ export function ListingReport({ listing, initialBookings, initialDateRange, init
     </div>
   );
 }
+
 
 
 

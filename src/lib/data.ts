@@ -204,6 +204,7 @@ export async function getListingTypesWithSampleImages(): Promise<{ name: string,
  * @returns An array of Listing objects.
  */
 export async function getAllListings(): Promise<Listing[]> {
+  noStore();
   const supabase = createSupabaseServerClient();
   const session = await getSession();
   
@@ -293,7 +294,7 @@ export async function getListingById(id: string): Promise<Listing | null> {
  * Admins see all bookings.
  * @returns An array of Booking objects, enriched with user and listing names.
  */
-export async function getAllBookings(options?: { fromDate?: string; toDate?: string }): Promise<Booking[]> {
+export async function getAllBookings(options?: { fromDate?: string; toDate?: string, location?: string }): Promise<Booking[]> {
     noStore();
     const supabase = createSupabaseAdminClient();
     const session = await getSession();
@@ -303,7 +304,7 @@ export async function getAllBookings(options?: { fromDate?: string; toDate?: str
     
     const perms = await preloadPermissions();
 
-    let query = supabase.from('bookings').select('id, listing_id, user_id, status, start_date, end_date, data');
+    let query = supabase.from('bookings').select('id, listing_id, user_id, status, start_date, end_date, data, listing:listings(location)');
 
     // Apply scoping based on role.
     if (session.role === 'staff' && session.listingIds && session.listingIds.length > 0) {
@@ -317,6 +318,10 @@ export async function getAllBookings(options?: { fromDate?: string; toDate?: str
     
     if (options?.fromDate && options?.toDate) {
         query = query.gte('start_date', options.fromDate).lte('start_date', options.toDate);
+    }
+
+    if (options?.location) {
+        query = query.eq('listing.location', options.location);
     }
 
     const { data: bookingsData, error } = await query;
