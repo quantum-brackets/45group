@@ -457,14 +457,14 @@ export function ListingReport({ listing, location, allListings, initialBookings,
                   <CommandList>
                     <CommandEmpty>No scope found.</CommandEmpty>
                     <CommandGroup heading="Global">
-                      <CommandItem value="all" onSelect={() => handleScopeChange('/reports')}>
+                      <CommandItem value="All Reports" onSelect={() => handleScopeChange('/reports')}>
                         <Check className={cn("mr-2 h-4 w-4", currentScopeValue === 'all' ? "opacity-100" : "opacity-0")} />
                         All Reports
                       </CommandItem>
                     </CommandGroup>
                     <CommandGroup heading="By Location">
                       {uniqueLocations.map(loc => (
-                          <CommandItem key={loc} value={`location:${loc}`} onSelect={() => handleScopeChange(`/reports/location/${encodeURIComponent(loc)}`)}>
+                          <CommandItem key={loc} value={loc} onSelect={() => handleScopeChange(`/reports/location/${encodeURIComponent(loc)}`)}>
                               <Check className={cn("mr-2 h-4 w-4", currentScopeValue === `location:${loc}` ? "opacity-100" : "opacity-0")} />
                               {loc}
                           </CommandItem>
@@ -472,7 +472,7 @@ export function ListingReport({ listing, location, allListings, initialBookings,
                     </CommandGroup>
                     <CommandGroup heading="By Listing">
                         {allListings.map(l => (
-                             <CommandItem key={l.id} value={`listing:${l.id}`} onSelect={() => handleScopeChange(`/reports/listing/${l.id}`)}>
+                             <CommandItem key={l.id} value={l.name} onSelect={() => handleScopeChange(`/reports/listing/${l.id}`)}>
                                 <Check className={cn("mr-2 h-4 w-4", currentScopeValue === `listing:${l.id}` ? "opacity-100" : "opacity-0")} />
                                 {l.name}
                             </CommandItem>
@@ -649,10 +649,3 @@ export function ListingReport({ listing, location, allListings, initialBookings,
     </div>
   );
 }
-
-
-
-
-
-
-
