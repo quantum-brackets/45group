@@ -304,7 +304,7 @@ export async function getAllBookings(options?: { fromDate?: string; toDate?: str
     
     const perms = await preloadPermissions();
 
-    let query = supabase.from('bookings').select('id, listing_id, user_id, status, start_date, end_date, data, listing:listings(location)');
+    let query = supabase.from('bookings').select('id, listing_id, user_id, status, start_date, end_date, data, listing:listings!inner(location)');
 
     // Apply scoping based on role.
     if (session.role === 'staff' && session.listingIds && session.listingIds.length > 0) {
@@ -637,4 +637,3 @@ export async function getBookingsByDateRange(listingId: string, fromDate: string
 
     return mappedBookings;
 }
-
