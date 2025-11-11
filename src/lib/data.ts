@@ -317,7 +317,9 @@ export async function getAllBookings(options?: { fromDate?: string; toDate?: str
     // Admins have no filter applied and see all bookings.
     
     if (options?.fromDate && options?.toDate) {
-        query = query.gte('start_date', options.fromDate).lte('start_date', options.toDate);
+        // Corrected Overlap Logic: A booking overlaps if its start is before the report's end,
+        // AND its end is after the report's start.
+        query = query.lte('start_date', options.toDate).gte('end_date', options.fromDate);
     }
 
     if (options?.location) {
@@ -605,8 +607,8 @@ export async function getBookingsByDateRange(listingId: string, fromDate: string
         .from('bookings')
         .select('id, listing_id, user_id, status, start_date, end_date, data')
         .eq('listing_id', listingId)
-        .gte('start_date', fromDate)
         .lte('start_date', toDate)
+        .gte('end_date', fromDate)
         .order('start_date', { ascending: true });
 
     if (error) {
