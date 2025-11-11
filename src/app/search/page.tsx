@@ -1,9 +1,9 @@
 
+
 import { getFilteredListings } from '@/lib/data';
 import { ListingFilters } from '@/components/listing/ListingFilters';
 import { ListingCard } from '@/components/listing/ListingCard';
 import type { Listing } from '@/lib/types';
-import { toZonedTimeSafe } from '@/lib/utils';
 
 interface SearchPageProps {
   searchParams: {
@@ -22,7 +22,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     guests: searchParams.guests || '',
     date:
       searchParams.from 
-      ? { from: toZonedTimeSafe(searchParams.from), to: searchParams.to ? toZonedTimeSafe(searchParams.to) : undefined }
+      ? { from: searchParams.from, to: searchParams.to }
       : undefined,
   };
 

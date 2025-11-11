@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -10,7 +10,7 @@ import type { Booking, User, Role, Permission } from '@/lib/types';
 import { useTransition } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { cancelBookingAction, confirmBookingAction } from '@/lib/actions';
-import { cn, formatDateToStr, toZonedTimeSafe } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { hasPermission } from '@/lib/permissions';
 import { Badge } from '../ui/badge';
 
@@ -81,19 +81,10 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
   const canSeeAllUserDetails = session && hasPermission(permissions, session, 'user:read');
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Bookings ({bookings.length})</CardTitle>
-        <CardDescription>
-          {session?.role === 'admin' ? 'An overview of all bookings across all venues.' 
-          : session?.role === 'staff' ? 'An overview of all bookings for your assigned venues.'
-          : 'An overview of your past and upcoming bookings.'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {bookings.map((booking) => (
-            <Card key={booking.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => router.push(`/booking/${booking.id}`)}>
-                <CardContent className="p-4 relative">
+            <Card key={booking.id} className="cursor-pointer hover:bg-muted/50 transition-colors flex flex-col" onClick={() => router.push(`/booking/${booking.id}`)}>
+                <CardContent className="p-4 relative flex-grow">
                      <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
                            {session && (
                                 <DropdownMenu>
@@ -128,9 +119,9 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
                         </div>
 
                     <div className="flex justify-between items-start gap-4 pr-10">
-                        <div>
-                            <p className="font-bold text-base leading-tight">{booking.listingName}</p>
-                             <p className="text-sm text-muted-foreground">
+                        <div className="flex-grow">
+                            <p className="font-bold text-base leading-tight truncate">{booking.listingName}</p>
+                            <p className="text-sm text-muted-foreground truncate">
                                 {booking.bookingName || 'N/A'}
                                 {canSeeAllUserDetails && ` (${booking.userName})`}
                             </p>
@@ -141,8 +132,8 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
                     <div className="mt-2 text-sm text-muted-foreground space-y-1">
                         <p>
                             <span className="font-semibold text-foreground/80">Dates:</span> {booking.startDate === booking.endDate
-                                ? formatDateToStr(toZonedTimeSafe(booking.startDate), 'PPP')
-                                : `${formatDateToStr(toZonedTimeSafe(booking.startDate), 'MMM d, yyyy')} - ${formatDateToStr(toZonedTimeSafe(booking.endDate), 'MMM d, yyyy')}`}
+                                ? booking.startDate
+                                : `${booking.startDate} to ${booking.endDate}`}
                         </p>
                         <p>
                             <span className="font-semibold text-foreground/80">Units:</span> {(booking.inventoryIds || []).length} unit(s)
@@ -152,7 +143,6 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
                 </CardContent>
             </Card>
         ))}
-      </CardContent>
-    </Card>
+      </div>
   );
 }

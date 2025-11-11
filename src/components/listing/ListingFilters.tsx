@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -10,8 +11,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { MapPin, Users, Calendar as CalendarIcon, SlidersHorizontal, Search } from 'lucide-react';
 import { DateRange } from "react-day-picker";
-import { cn, formatDateToStr, toZonedTimeSafe } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { ListingType, LISTING_TYPES } from '@/lib/types';
+import { format, parse } from 'date-fns';
 
 export function ListingFilters() {
   const router = useRouter();
@@ -29,7 +31,10 @@ export function ListingFilters() {
     const from = searchParams.get('from');
     const to = searchParams.get('to');
     if (from) {
-      setDate({ from: toZonedTimeSafe(from), to: to ? toZonedTimeSafe(to) : undefined });
+      setDate({ 
+        from: parse(from, 'yyyy-MM-dd', new Date()), 
+        to: to ? parse(to, 'yyyy-MM-dd', new Date()) : undefined 
+      });
     } else {
       setDate(undefined);
     }
@@ -40,8 +45,8 @@ export function ListingFilters() {
     if (location) params.set('location', location); else params.delete('location');
     if (type) params.set('type', type); else params.delete('type');
     if (guests) params.set('guests', guests); else params.delete('guests');
-    if (date?.from) params.set('from', date.from.toISOString()); else params.delete('from');
-    if (date?.to) params.set('to', date.to.toISOString()); else params.delete('to');
+    if (date?.from) params.set('from', format(date.from, 'yyyy-MM-dd')); else params.delete('from');
+    if (date?.to) params.set('to', format(date.to, 'yyyy-MM-dd')); else params.delete('to');
     router.push(`/search?${params.toString()}`);
   };
 
@@ -112,11 +117,11 @@ export function ListingFilters() {
                 {date?.from ? (
                   date.to ? (
                     <>
-                      {formatDateToStr(date.from, "LLL dd, y")} -{" "}
-                      {formatDateToStr(date.to, "LLL dd, y")}
+                      {format(date.from, "yyyy-MM-dd")} -{" "}
+                      {format(date.to, "yyyy-MM-dd")}
                     </>
                   ) : (
-                    formatDateToStr(date.from, "LLL dd, y")
+                    format(date.from, "yyyy-MM-dd")
                   )
                 ) : (
                   <span>Pick a date range</span>
@@ -131,7 +136,7 @@ export function ListingFilters() {
                 selected={date}
                 onSelect={setDate}
                 numberOfMonths={2}
-                disabled={(day) => day < toZonedTimeSafe(new Date().setHours(0, 0, 0, 0))}
+                disabled={(day) => day < new Date(new Date().setHours(0, 0, 0, 0))}
               />
             </PopoverContent>
           </Popover>
@@ -147,5 +152,3 @@ export function ListingFilters() {
     </div>
   );
 }
-
-    

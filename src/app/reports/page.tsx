@@ -1,8 +1,9 @@
-import { formatDateToStr } from '@/lib/utils';
+
 import { redirect } from 'next/navigation';
+import { format } from 'date-fns';
 
 export default function ReportsRedirectPage() {
   // Redirect to a default global report: current date, 1-month period.
-  const today = formatDateToStr(new Date(), 'yyyy-MM-dd');
+  const today = format(new Date(), 'yyyy-MM-dd');
   redirect(`/reports/${today}/1m`);
 }

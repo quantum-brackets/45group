@@ -19,9 +19,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { formatDateToStr } from '@/lib/utils';
 import { ConsolidateUsersDialog } from './ConsolidateUsersDialog';
-
+import { format } from 'date-fns';
 
 interface DashboardTablesProps {
   listings: Listing[];
@@ -315,7 +314,7 @@ export function DashboardTables({ listings, users, session, defaultTab }: Dashbo
                                     </>
                                   )}
                                   <DropdownMenuItem onClick={() => router.push(`/bookings?q=${listing.id}`)}>Bookings</DropdownMenuItem>
-                                   <DropdownMenuItem onClick={() => router.push(`/reports/listing/${listing.id}/${formatDateToStr(new Date(), 'yyyy-MM-dd')}/1m`)}>
+                                   <DropdownMenuItem onClick={() => router.push(`/reports/listing/${listing.id}/${format(new Date(), 'yyyy-MM-dd')}/1m`)}>
                                       Reports
                                   </DropdownMenuItem>
                                   {canCreateListing && (

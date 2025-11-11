@@ -1,6 +1,7 @@
 {
   "git": {
     "deploymentEnabled": {
+      "master": false,
       "backup": false
     }
   }

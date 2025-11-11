@@ -7,6 +7,7 @@ Welcome to the 45 Booking project! This document serves as a guide for developer
 **45 Booking** is a comprehensive hospitality management application. It allows users to search for and book hotels, event centers, and restaurants. The platform also includes a full-featured administrative dashboard for staff and administrators to manage listings, users, bookings, and reviews.
 
 Key features include:
+
 - Secure user authentication, profile management, and password reset via email.
 - Guest checkout with provisional account creation.
 - Automated email notifications for account creation and booking status changes.
@@ -59,23 +60,25 @@ To run this project locally, you will need to set up a Supabase project and conf
 
 ### Setup Steps
 
-1.  **Clone the repository:**
+1. **Clone the repository:**
+
     ```bash
     git clone <repository-url>
     cd <project-directory>
     ```
 
-2.  **Install dependencies:**
+2. **Install dependencies:**
+
     ```bash
     npm install
     ```
 
-3.  **Set up Supabase:**
+3. **Set up Supabase:**
     - Go to [Supabase](https://supabase.com/) and create a new project.
     - Use the SQL scripts located in the `supabase/` directory of this project to set up your database schema and initial data.
     - In your Supabase project settings, go to the "API" section.
 
-4.  **Configure Environment Variables:**
+4. **Configure Environment Variables:**
     - Create a new file named `.env.local` in the root of the project.
     - Copy the contents of `.env.example` into `.env.local`.
     - Fill in the values using the credentials from your Supabase API settings and your Resend account:
@@ -91,14 +94,16 @@ To run this project locally, you will need to set up a Supabase project and conf
     # Must be a domain you have verified in Resend
     RESEND_FROM_EMAIL="noreply@yourdomain.com"
     # The public URL of your deployed application
-    NEXT_PUBLIC_BASE_URL="http://localhost:9002"
+    NEXT_PUBLIC_BASE_URL="http://localhost:3000"
     ```
 
-5.  **Run the development server:**
+5. **Run the development server:**
+
     ```bash
     npm run dev
     ```
-    The application will be available at `http://localhost:9002`.
+
+    The application will be available at `http://localhost:3000`.
 
 ## 5. Architectural Decisions
 

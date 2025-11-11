@@ -1,3 +1,4 @@
+
 import {
     Body,
     Button,
@@ -14,7 +15,6 @@ import {
   } from '@react-email/components';
   import * as React from 'react';
   import type { Booking, Listing, User } from '@/lib/types';
-import { formatDateToStr, toZonedTimeSafe } from '@/lib/utils';
   
   interface BookingConfirmationEmailProps {
     user: User;
@@ -57,11 +57,11 @@ import { formatDateToStr, toZonedTimeSafe } from '@/lib/utils';
             <Row>
               <Column style={column}>
                 <Text style={detailTitle}>Check-in</Text>
-                <Text style={detailText}>{formatDateToStr(toZonedTimeSafe(booking.startDate), 'PPP')}</Text>
+                <Text style={detailText}>{booking.startDate}</Text>
               </Column>
               <Column style={column}>
                 <Text style={detailTitle}>Check-out</Text>
-                <Text style={detailText}>{formatDateToStr(toZonedTimeSafe(booking.endDate), 'PPP')}</Text>
+                <Text style={detailText}>{booking.endDate}</Text>
               </Column>
             </Row>
              <Row>
@@ -170,4 +170,3 @@ import { formatDateToStr, toZonedTimeSafe } from '@/lib/utils';
     display: 'inline-block',
     padding: '12px 20px',
   };
-  

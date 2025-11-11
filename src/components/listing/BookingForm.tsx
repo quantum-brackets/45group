@@ -14,7 +14,7 @@ import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
 import { hasPermission } from '@/lib/permissions';
 import { ListingTypes, type Listing, type Permission, type Role, type User } from '@/lib/types';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { add, differenceInCalendarDays, isWithinInterval } from 'date-fns';
+import { addDays, format, parse, differenceInCalendarDays } from 'date-fns';
 import { Loader2, PartyPopper, Users, Warehouse } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
@@ -26,7 +26,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { formatDateToStr, toZonedTimeSafe } from '@/lib/utils';
 
 
 interface BookingFormProps {
@@ -111,29 +110,22 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
     }
 
     setAvailability(prev => ({ ...prev, isChecking: true, message: 'Checking availability...' }));
-
-    const checkRange = {
-      start: date.from,
-      end: date.to || date.from,
-    };
+    
+    const checkStart = date.from;
+    const checkEnd = date.to || date.from;
 
     const bookedUnits = new Set<string>();
 
     for (const booking of confirmedBookings) {
-      const bookingRange = {
-        start: toZonedTimeSafe(booking.startDate),
-        end: toZonedTimeSafe(booking.endDate),
-      };
+        const bookingStart = parse(booking.startDate, 'yyyy-MM-dd', new Date());
+        const bookingEnd = parse(booking.endDate, 'yyyy-MM-dd', new Date());
 
-      if (
-        isWithinInterval(checkRange.start, bookingRange) ||
-        isWithinInterval(checkRange.end, bookingRange) ||
-        isWithinInterval(bookingRange.start, checkRange) ||
-        isWithinInterval(bookingRange.end, checkRange)
-      ) {
-        booking.inventoryIds.forEach(id => bookedUnits.add(id));
-      }
+        // Check for overlap
+        if (checkStart <= bookingEnd && checkEnd >= bookingStart) {
+            booking.inventoryIds.forEach(id => bookedUnits.add(id));
+        }
     }
+
 
     const totalInventory = listing.inventoryCount || 0;
     const availableCount = totalInventory - bookedUnits.size;
@@ -250,7 +242,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
         if (!endDate) {
           switch (listing.type) {
             case ListingTypes.HOTEL:
-              endDate = add(startDate, { days: 7 });
+              endDate = addDays(startDate, 7);
               break;
             case ListingTypes.EVENTS:
             case ListingTypes.RESTAURANT:
@@ -263,8 +255,8 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
 
         const result = await createBookingAction({
             listingId: listing.id,
-            startDate: toZonedTimeSafe(startDate).toISOString(),
-            endDate: toZonedTimeSafe(endDate).toISOString(),
+            startDate: format(startDate, 'yyyy-MM-dd'),
+            endDate: format(endDate, 'yyyy-MM-dd'),
             guests: guests,
             numberOfUnits: units,
             userId: formData.userId,
@@ -322,12 +314,12 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                 <div className="flex">
                   <div className="flex-1 p-3">
                     <Label className="text-xs font-bold uppercase text-muted-foreground">From</Label>
-                    <div className="text-sm mt-1">{date?.from ? formatDateToStr(date.from, 'MM/dd/yyyy') : 'Add date'}</div>
+                    <div className="text-sm mt-1">{date?.from ? format(date.from, 'yyyy-MM-dd') : 'Add date'}</div>
                   </div>
                   <Separator orientation="vertical" className="h-auto" />
                    <div className="flex-1 p-3">
                     <Label className="text-xs font-bold uppercase text-muted-foreground">To</Label>
-                    <div className="text-sm mt-1">{date?.to ? formatDateToStr(date.to, 'MM/dd/yyyy') : 'Add date'}</div>
+                    <div className="text-sm mt-1">{date?.to ? format(date.to, 'yyyy-MM-dd') : 'Add date'}</div>
                   </div>
                 </div>
               </button>

@@ -23,8 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EVENT_BOOKING_DAILY_HRS, MAX_DISCOUNT_PERCENT } from '@/lib/constants';
 import { hasPermission } from '@/lib/permissions';
-import { cn } from "@/lib/utils";
-import * as DateUtils from '@/lib/utils';
+import { cn, formatCurrency, formatDateToStr, parseDate } from "@/lib/utils";
 import { Calendar as CalendarLucide, Check, CheckCircle, CircleUser, CreditCard, DollarSign, Edit, FileText, History, Info, KeySquare, Loader2, Pencil, Percent, Printer, Receipt, User as UserIcon, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import type { DateRange } from "react-day-picker";
@@ -36,7 +35,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatCurrency, BookingSummary } from '@/components/bookings/BookingSummary';
+import { BookingSummary } from '@/components/bookings/BookingSummary';
 
 
 interface BookingDetailsProps {
@@ -335,8 +334,8 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
     defaultValues: {
       bookingName: booking.bookingName || '',
       dates: {
-        from: DateUtils.toZonedTimeSafe(booking.startDate),
-        to: DateUtils.toZonedTimeSafe(booking.endDate),
+        from: parseDate(booking.startDate),
+        to: parseDate(booking.endDate),
       },
       guests: booking.guests,
       numberOfUnits: booking.inventoryIds?.length || 1,
@@ -355,8 +354,8 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
         setIsCheckingUnits(true);
         const result = await getAvailableInventoryForBookingAction({
             listingId: booking.listingId,
-            startDate: DateUtils.toZonedTimeSafe(watchedDates.from!).toISOString(),
-            endDate: DateUtils.toZonedTimeSafe(watchedDates.to || watchedDates.from)!.toISOString(),
+            startDate: formatDateToStr(watchedDates.from!),
+            endDate: formatDateToStr(watchedDates.to || watchedDates.from!),
             excludeBookingId: booking.id,
         });
 
@@ -376,8 +375,8 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
   const baseBookingCost = useMemo(() => {
     if (!booking.startDate || !booking.endDate || !listing.price || !listing.price_unit) return 0;
 
-    const from = DateUtils.toZonedTimeSafe(booking.startDate);
-    const to = DateUtils.toZonedTimeSafe(booking.endDate);
+    const from = parseDate(booking.startDate);
+    const to = parseDate(booking.endDate);
 
     const units = (booking.inventoryIds || []).length;
     const guests = booking.guests;
@@ -468,8 +467,8 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
       const result = await updateBookingAction({
         bookingId: booking.id,
         bookingName: data.bookingName,
-        startDate: DateUtils.toZonedTimeSafe(data.dates.from).toISOString(),
-        endDate: DateUtils.toZonedTimeSafe(data.dates.to || data.dates.from).toISOString(),
+        startDate: formatDateToStr(data.dates.from),
+        endDate: formatDateToStr(data.dates.to || data.dates.from),
         guests: data.guests,
         numberOfUnits: data.numberOfUnits,
         userId: data.userId,
@@ -576,7 +575,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                 <div>
                     <p className="font-semibold">Booking Dates</p>
                     <p className="text-muted-foreground">
-                    {DateUtils.formatDateToStr(booking.startDate, 'PPP')} to {DateUtils.formatDateToStr(booking.endDate, 'PPP')}
+                    {formatDateToStr(booking.startDate, 'PPP')} to {formatDateToStr(booking.endDate, 'PPP')}
                     </p>
                 </div>
                 </div>
@@ -604,7 +603,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                             {booking.userName}
                         </Link>
                         {booking.createdAt && (
-                        <span className="block text-sm">on {DateUtils.formatDateToStr(booking.createdAt, 'PP')}</span>
+                        <span className="block text-sm">on {formatDateToStr(booking.createdAt, 'PP')}</span>
                         )}
                     </p>
                     </div>
@@ -632,7 +631,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                 </div>
                 </div>
                 {booking.actions && booking.actions.length > 0 && (() => {
-                  const sortedActions = booking.actions.sort((a, b) => DateUtils.toZonedTimeSafe(b.timestamp).getTime() - DateUtils.toZonedTimeSafe(a.timestamp).getTime());
+                  const sortedActions = booking.actions.sort((a, b) => parseDate(b.timestamp).getTime() - parseDate(a.timestamp).getTime());
                   const mostRecentAction = sortedActions[0];
 
                   return (
@@ -653,7 +652,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                     <span className="text-muted-foreground">by {mostRecentAction.actorName}</span>
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    {isClient ? DateUtils.formatDateToStr(mostRecentAction.timestamp, 'MMM d, yyyy, h:mm a') : <Skeleton className="h-4 w-32" />}
+                                    {isClient ? formatDateToStr(mostRecentAction.timestamp, 'MMM d, yyyy, h:mm a') : <Skeleton className="h-4 w-32" />}
                                   </div>
                                   <p className="text-muted-foreground text-sm mt-1">{mostRecentAction.message}</p>
                                   <p className="text-xs text-primary mt-2 font-semibold">View full history...</p>
@@ -684,7 +683,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                         <span className="text-muted-foreground">by {action.actorName}</span>
                                       </div>
                                       <div className="text-xs text-muted-foreground">
-                                        {isClient ? DateUtils.formatDateToStr(action.timestamp, 'MMM d, yyyy, h:mm a') : <Skeleton className="h-4 w-32" />}
+                                        {isClient ? formatDateToStr(action.timestamp, 'MMM d, yyyy, h:mm a') : <Skeleton className="h-4 w-32" />}
                                       </div>
                                       <p className="text-muted-foreground text-sm mt-1">{action.message}</p>
                                     </div>
@@ -750,7 +749,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                                 <TableRow key={bill.id}>
                                                     <TableCell>
                                                         <p>{bill.description}</p>
-                                                        <p className="text-xs text-muted-foreground">Added by {bill.actorName} on {DateUtils.formatDateToStr(bill.createdAt, 'PP')}</p>
+                                                        <p className="text-xs text-muted-foreground">Added by {bill.actorName} on {formatDateToStr(bill.createdAt, 'PP')}</p>
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">{formatCurrency(bill.amount, listing.currency)}</TableCell>
                                                 </TableRow>
@@ -794,7 +793,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                                         {payment.notes && (
                                                             <p className="text-sm text-muted-foreground italic mt-1">"{payment.notes}"</p>
                                                         )}
-                                                        <p className="text-xs text-muted-foreground mt-1">Recorded by {payment.actorName} on {DateUtils.formatDateToStr(payment.timestamp, 'PP')}</p>
+                                                        <p className="text-xs text-muted-foreground mt-1">Recorded by {payment.actorName} on {formatDateToStr(payment.timestamp, 'PP')}</p>
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">{formatCurrency(payment.amount, listing.currency)}</TableCell>
                                                 </TableRow>
@@ -960,11 +959,11 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                 {field.value?.from ? (
                                 field.value.to ? (
                                     <>
-                                    {DateUtils.formatDateToStr(field.value.from, "LLL dd, y")} -{" "}
-                                    {DateUtils.formatDateToStr(field.value.to, "LLL dd, y")}
+                                    {formatDateToStr(field.value.from, "LLL dd, y")} -{" "}
+                                    {formatDateToStr(field.value.to, "LLL dd, y")}
                                     </>
                                 ) : (
-                                    DateUtils.formatDateToStr(field.value.from, "LLL dd, y")
+                                    formatDateToStr(field.value.from, "LLL dd, y")
                                 )
                                 ) : (
                                 <span>Pick a date range</span>
@@ -980,7 +979,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                             selected={field.value}
                             onSelect={field.onChange as (date: DateRange | undefined) => void}
                             numberOfMonths={2}
-                            disabled={(day) => day < DateUtils.toZonedTimeSafe(new Date(new Date().setHours(0, 0, 0, 0)))}
+                            disabled={(day) => day < new Date(new Date().setHours(0, 0, 0, 0))}
                             />
                         </PopoverContent>
                         </Popover>

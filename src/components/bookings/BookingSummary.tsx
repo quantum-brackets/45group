@@ -1,4 +1,3 @@
-
 import {
   Table,
   TableBody,
@@ -6,11 +5,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { EVENT_BOOKING_DAILY_HRS } from '@/lib/constants';
-import type { Booking, Listing } from '@/lib/types';
-import { formatDateToStr, toZonedTimeSafe } from '@/lib/utils';
-import { differenceInCalendarDays } from 'date-fns';
+} from "@/components/ui/table";
+import { EVENT_BOOKING_DAILY_HRS } from "@/lib/constants";
+import type { Booking, Listing } from "@/lib/types";
 import {
   Banknote,
   Building2,
@@ -24,44 +21,43 @@ import {
   Receipt,
   User as UserIcon,
   Users,
-} from 'lucide-react';
-import React, { useMemo } from 'react';
-import { ListingTypes } from '@/lib/types';
+} from "lucide-react";
+import React, { useMemo } from "react";
+import { ListingTypes } from "@/lib/types";
+import { differenceInDays } from "date-fns";
+import { formatCurrency } from "@/lib/utils";
 
 interface BookingSummaryProps {
   booking: Booking;
   listing: Listing;
 }
 
-export function formatCurrency(amount: number, currency: string) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-  }).format(amount);
-}
-
 export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
-  const { baseBookingCost, discountAmount, addedBillsTotal, totalBill, totalPayments, balance } = useMemo(() => {
-    const from = toZonedTimeSafe(booking.startDate);
-    const originalEndDate = toZonedTimeSafe(booking.endDate);
-    const to = originalEndDate;
-
+  const {
+    baseBookingCost,
+    discountAmount,
+    addedBillsTotal,
+    totalBill,
+    totalPayments,
+    balance,
+  } = useMemo(() => {
     const units = (booking.inventoryIds || []).length;
     const guests = booking.guests;
 
-    const durationDays = differenceInCalendarDays(to, from) + 1;
+    const durationDays =
+      differenceInDays(booking.endDate, booking.startDate) + 1;
     const nights = durationDays > 1 ? durationDays - 1 : 1;
 
     let baseBookingCost = 0;
     switch (listing.price_unit) {
-      case 'night':
+      case "night":
         baseBookingCost = listing.price * nights * units;
         break;
-      case 'hour':
+      case "hour":
         baseBookingCost =
           listing.price * durationDays * EVENT_BOOKING_DAILY_HRS * units;
         break;
-      case 'person':
+      case "person":
         baseBookingCost = listing.price * guests * units;
         break;
       default:
@@ -75,8 +71,10 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
     );
     const totalBill = baseBookingCost + addedBillsTotal;
     const totalPayments =
-      (booking.payments || []).reduce((sum, payment) => sum + payment.amount, 0) +
-      discountAmount;
+      (booking.payments || []).reduce(
+        (sum, payment) => sum + payment.amount,
+        0
+      ) + discountAmount;
     const balance = totalBill - totalPayments;
 
     return {
@@ -88,7 +86,7 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
       balance,
     };
   }, [booking, listing]);
-  
+
   const typeIcon = {
     [ListingTypes.HOTEL]: <Home className="h-4 w-4 text-gray-500" />,
     [ListingTypes.EVENTS]: <Building2 className="h-4 w-4 text-gray-500" />,
@@ -96,7 +94,10 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
   };
 
   return (
-    <div className="bg-white text-black font-sans p-8" id={`booking-summary-${booking.id}`}>
+    <div
+      className="bg-white text-black font-sans p-8"
+      id={`booking-summary-${booking.id}`}
+    >
       {/* Header */}
       <div className="flex justify-between items-start mb-8">
         <div>
@@ -125,7 +126,7 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
           <Pencil className="h-5 w-5 text-gray-500 mt-1 flex-shrink-0" />
           <div>
             <p className="font-bold text-gray-600">Booking Name</p>
-            <p className="text-gray-800">{booking.bookingName || 'N/A'}</p>
+            <p className="text-gray-800">{booking.bookingName || "N/A"}</p>
           </div>
         </div>
         <div className="flex items-start gap-3">
@@ -140,8 +141,7 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
           <div>
             <p className="font-bold text-gray-600">Dates</p>
             <p className="text-gray-800">
-              {formatDateToStr(toZonedTimeSafe(booking.startDate), 'MMM d, yyyy')} -{' '}
-              {formatDateToStr(toZonedTimeSafe(booking.endDate), 'MMM d, yyyy')}
+              {booking.startDate} - {booking.endDate}
             </p>
           </div>
         </div>
@@ -149,17 +149,16 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
           <Users className="h-5 w-5 text-gray-500 mt-1 flex-shrink-0" />
           <div>
             <p className="font-bold text-gray-600">Number of Guests</p>
-            <p className="text-gray-800">
-              {booking.guests} Guest(s)
-            </p>
+            <p className="text-gray-800">{booking.guests} Guest(s)</p>
           </div>
         </div>
-         <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3">
           <KeySquare className="h-5 w-5 text-gray-500 mt-1 flex-shrink-0" />
           <div>
             <p className="font-bold text-gray-600">Units Booked</p>
             <p className="text-gray-800">
-              {booking.inventoryNames?.join(', ') || `${booking.inventoryIds.length} Unit(s)`}
+              {booking.inventoryNames?.join(", ") ||
+                `${booking.inventoryIds.length} Unit(s)`}
             </p>
           </div>
         </div>
@@ -181,12 +180,16 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-gray-600">Description</TableHead>
-                  <TableHead className="text-right text-gray-600">Amount</TableHead>
+                  <TableHead className="text-right text-gray-600">
+                    Amount
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 <TableRow>
-                  <TableCell className="font-medium">Base Booking Cost</TableCell>
+                  <TableCell className="font-medium">
+                    Base Booking Cost
+                  </TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(baseBookingCost, listing.currency)}
                   </TableCell>
@@ -213,15 +216,17 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-gray-600">Description</TableHead>
-                  <TableHead className="text-right text-gray-600">Amount</TableHead>
+                  <TableHead className="text-right text-gray-600">
+                    Amount
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {booking.discount && booking.discount > 0 ? (
                   <TableRow>
                     <TableCell className="font-medium flex items-center gap-2">
-                        <Percent className="h-4 w-4" />
-                        Discount ({booking.discount}%)
+                      <Percent className="h-4 w-4" />
+                      Discount ({booking.discount}%)
                     </TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(discountAmount, listing.currency)}
@@ -245,30 +250,32 @@ export const BookingSummary = ({ booking, listing }: BookingSummaryProps) => {
       {/* Totals */}
       <div className="mt-8 pt-4 border-t-2 border-gray-200 text-right">
         <div className="space-y-2 max-w-sm ml-auto text-sm">
-            <div className="flex justify-between">
-                <span className="text-gray-600">Total Charges:</span>
-                <span className="font-medium">{formatCurrency(totalBill, listing.currency)}</span>
-            </div>
-            <div className="flex justify-between">
-                <span className="text-gray-600">Total Payments:</span>
-                <span className="text-green-600 font-medium">{formatCurrency(totalPayments, listing.currency)}</span>
-            </div>
-            <div className="flex justify-between font-bold text-base border-t pt-2 mt-2">
-                <span className="text-gray-800">Final Balance:</span>
-                <span className={balance > 0 ? 'text-red-600' : 'text-gray-800'}>
-                    {formatCurrency(balance, listing.currency)}
-                </span>
-            </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Total Charges:</span>
+            <span className="font-medium">
+              {formatCurrency(totalBill, listing.currency)}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Total Payments:</span>
+            <span className="text-green-600 font-medium">
+              {formatCurrency(totalPayments, listing.currency)}
+            </span>
+          </div>
+          <div className="flex justify-between font-bold text-base border-t pt-2 mt-2">
+            <span className="text-gray-800">Final Balance:</span>
+            <span className={balance > 0 ? "text-red-600" : "text-gray-800"}>
+              {formatCurrency(balance, listing.currency)}
+            </span>
+          </div>
         </div>
       </div>
 
-       {/* Footer */}
-       <div className="mt-12 text-center text-xs text-gray-400">
-            <p>Thank you for choosing {listing.name}.</p>
-            <p>Generated on {formatDateToStr(new Date(), 'PPp')}</p>
-        </div>
+      {/* Footer */}
+      <div className="mt-12 text-center text-xs text-gray-400">
+        <p>Thank you for choosing {listing.name}.</p>
+        <p>Generated on {new Date().toLocaleDateString()}</p>
+      </div>
     </div>
   );
 };
-
-    

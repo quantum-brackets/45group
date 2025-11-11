@@ -13,7 +13,9 @@ export default async function BookingDetailsPage({ params }: { params: { id: str
     redirect('/login');
   }
 
-  const booking = await getBookingById(params.id);
+  const { id: bookingId } = await params;
+
+  const booking = await getBookingById(bookingId);
 
   if (!booking) {
     notFound();
@@ -28,7 +30,7 @@ export default async function BookingDetailsPage({ params }: { params: { id: str
   if (session.role !== 'guest') {
     allInventory = await getInventoryByListingId(booking.listingId);
   }
-  
+
   let allUsers: User[] = [];
   if (permissions && session.role !== 'guest') {
     allUsers = await getAllUsers();

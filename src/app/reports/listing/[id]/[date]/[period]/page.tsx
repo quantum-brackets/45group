@@ -1,9 +1,8 @@
 import { notFound } from 'next/navigation';
-import { sub } from 'date-fns';
 import { getListingById, getBookingsByDateRange, getAllListings } from '@/lib/data';
 import { ListingReport } from '@/components/reports/ListingReport';
 import { getSession } from '@/lib/session';
-import { toZonedTimeSafe } from '@/lib/utils';
+import { sub, format } from 'date-fns';
 
 interface ListingReportPageProps {
   params: {
@@ -20,11 +19,11 @@ const parsePeriod = (period: string): { unit: Duration; amount: number } => {
   if (isNaN(amount)) return { unit: { months: 1 }, amount: 1 };
 
   switch (unitChar) {
-    case 'd': return { unit: { days: amount }, amount };
-    case 'w': return { unit: { weeks: amount }, amount };
-    case 'm': return { unit: { months: amount }, amount };
-    case 'q': return { unit: { quarters: amount }, amount };
-    case 'y': return { unit: { years: amount }, amount };
+    case 'd': return { unit: { days: amount }, amount: 1 };
+    case 'w': return { unit: { weeks: amount }, amount: 1 };
+    case 'm': return { unit: { months: amount }, amount: 1 };
+    case 'q': return { unit: { quarters: amount }, amount: 1 };
+    case 'y': return { unit: { years: amount }, amount: 1 };
     default: return { unit: { months: 1 }, amount: 1 };
   }
 };
@@ -41,22 +40,20 @@ export default async function ListingReportPage({ params }: ListingReportPagePro
     if (!listing) {
         notFound();
     }
-    
+
     const allListingsForDropdown = await getAllListings();
 
     const { unit: durationUnit, amount: durationAmount } = parsePeriod(params.period);
-    const targetDate = toZonedTimeSafe(params.date);
+    const toDate = params.date;
 
-    // The date in the URL is now the END date of the report.
-    const toDate = targetDate;
-    // The start date is calculated by subtracting the period from the end date.
-    const fromDate = sub(toDate, durationUnit);
+  // the duration points to a date in the past
+    const fromDate = format(sub(new Date(toDate), durationUnit), 'yyyy-MM-dd');
 
-    const bookings = await getBookingsByDateRange(params.id, fromDate.toISOString(), toDate.toISOString());
+    const bookings = await getBookingsByDateRange(params.id, fromDate, toDate);
 
     return (
         <div className="container mx-auto py-8">
-            <ListingReport 
+            <ListingReport
                 listing={listing}
                 allListings={allListingsForDropdown}
                 initialBookings={bookings}
