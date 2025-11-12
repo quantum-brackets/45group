@@ -255,11 +255,11 @@ export function ListingReport({
     );
 
     const sortedStartDateGroup = Object.fromEntries(
-      Object.entries(groupings.startDate).sort(([a], [b]) => a.localeCompare(b))
+      Object.entries(groupings.startDate).sort(([a], [b]) => b.localeCompare(a))
     );
 
     const sortedEndDateGroup = Object.fromEntries(
-      Object.entries(groupings.endDate).sort(([a], [b]) => a.localeCompare(b))
+      Object.entries(groupings.endDate).sort(([a], [b]) => b.localeCompare(a))
     );
 
     return {
