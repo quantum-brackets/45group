@@ -73,7 +73,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { cn, parseDate, formatDateToStr, formatCurrency } from "@/lib/utils";
+import { cn, parseDate, formatDateToStr, formatCurrency, subDays, differenceInDays as differenceInDaysStr} from "@/lib/utils";
 import { sendReportEmailAction } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { EVENT_BOOKING_DAILY_HRS } from "@/lib/constants";
@@ -99,12 +99,12 @@ interface ListingReportProps {
 type Grouping = "status" | "guest" | "unit" | "startDate" | "endDate";
 
 const calculateBookingFinancials = (booking: Booking, listing?: Listing) => {
-  const from = parseDate(booking.startDate);
-  const to = parseDate(booking.endDate);
+  const from = booking.startDate;
+  const to = booking.endDate;
 
   const units = (booking.inventoryIds || []).length;
   const guests = booking.guests;
-  const durationDays = differenceInCalendarDays(to, from) + 1;
+  const durationDays = differenceInDaysStr(to, from) + 1;
   const nights = durationDays > 1 ? durationDays - 1 : 1;
   let baseBookingCost = 0;
 
@@ -490,13 +490,10 @@ export function ListingReport({
     > = {};
     if (!initialDateRange?.from || !initialDateRange?.to) return dailyData;
 
-    const reportDays = eachDayOfInterval({
-      start: parseDate(initialDateRange.from!),
-      end: parseDate(initialDateRange.to!),
-    });
+    const reportDays = subDays(initialDateRange.from, initialDateRange.to);
 
-    reportDays.forEach((day) => {
-      const dayStr = formatDateToStr(day);
+    reportDays.forEach((day:any) => {
+      const dayStr = day;
       dailyData[dayStr] = {
         date: dayStr,
         unitsUsed: 0,
@@ -513,26 +510,20 @@ export function ListingReport({
         price_unit: booking.price_unit,
         ...listing,
       };
-      const bookingDays = eachDayOfInterval({
-        start: parseDate(booking.startDate),
-        end: parseDate(booking.endDate),
-      });
+      const bookingDays = subDays(booking.startDate, booking.endDate);
 
       const bookingDuration =
-        differenceInCalendarDays(
-          parseDate(booking.endDate),
-          parseDate(booking.startDate)
+        differenceInDaysStr(
+          booking.endDate,
+          booking.startDate
         ) || 1;
       const dailyRate = (listingForBooking.price || 0) / bookingDuration;
 
-      bookingDays.forEach((day) => {
+      bookingDays.forEach((day:any) => {
         if (
-          isWithinInterval(day, {
-            start: parseDate(initialDateRange.from!),
-            end: addDays(parseDate(initialDateRange.to!), 1),
-          })
+          day >= initialDateRange.from! && day <= initialDateRange.to!
         ) {
-          const dayStr = formatDateToStr(day);
+          const dayStr = day;
           if (dailyData[dayStr]) {
             dailyData[dayStr].unitsUsed += (booking.inventoryIds || []).length;
             dailyData[dayStr].dailyCharge +=
@@ -543,7 +534,7 @@ export function ListingReport({
 
       (booking.payments || []).forEach((payment) => {
         const paymentDayStr = formatDateToStr(
-          parseDate(payment.timestamp)
+          payment.timestamp
         );
         if (dailyData[paymentDayStr]) {
           dailyData[paymentDayStr].payments[payment.method] =
@@ -907,26 +898,26 @@ export function ListingReport({
       </Card>
 
       <Tabs defaultValue="guest">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto md:h-10">
           <TabsTrigger value="guest">
-            <Users className="mr-2 h-4 w-4" />
-            Group by Guest
+            <Users className="md:mr-2 h-4 w-4" />
+            <span className="hidden md:inline">Group by Guest</span>
           </TabsTrigger>
           <TabsTrigger value="status">
-            <Milestone className="mr-2 h-4 w-4" />
-            Group by Status
+            <Milestone className="md:mr-2 h-4 w-4" />
+            <span className="hidden md:inline">Group by Status</span>
           </TabsTrigger>
           <TabsTrigger value="unit">
-            <Warehouse className="mr-2 h-4 w-4" />
-            Group by Unit
+            <Warehouse className="md:mr-2 h-4 w-4" />
+            <span className="hidden md:inline">Group by Unit</span>
           </TabsTrigger>
           <TabsTrigger value="startDate">
-            <CalendarArrowDown className="mr-2 h-4 w-4" />
-            Group by Start Date
+            <CalendarArrowDown className="md:mr-2 h-4 w-4" />
+            <span className="hidden md:inline">Group by Start Date</span>
           </TabsTrigger>
           <TabsTrigger value="endDate">
-            <CalendarArrowUp className="mr-2 h-4 w-4" />
-            Group by End Date
+            <CalendarArrowUp className="md:mr-2 h-4 w-4" />
+            <span className="hidden md:inline">Group by End Date</span>
           </TabsTrigger>
         </TabsList>
         <TabsContent value="guest" className="space-y-4">
