@@ -69,7 +69,7 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
           Cancelled: 'destructive',
           'Completed': 'outline'
       } as const;
-      
+
       const styles = {
           Confirmed: 'bg-accent text-accent-foreground',
           'Completed': 'bg-blue-500 text-white border-blue-500'
@@ -81,7 +81,8 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
   const canSeeAllUserDetails = session && hasPermission(permissions, session, 'user:read');
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    // Keep as row because grids have the cards truncated
+    <div className="space-y-4">
         {bookings.map((booking) => (
             <Card key={booking.id} className="cursor-pointer hover:bg-muted/50 transition-colors flex flex-col" onClick={() => router.push(`/booking/${booking.id}`)}>
                 <CardContent className="p-4 relative flex-grow">
@@ -101,13 +102,13 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
                                             <DropdownMenuItem onClick={() => router.push(`/dashboard/edit-user/${booking.userId}`)}>View Guest</DropdownMenuItem>
                                         )}
                                         {hasPermission(permissions, session, 'booking:confirm') && booking.status === 'Pending' && (
-                                            <DropdownMenuItem 
+                                            <DropdownMenuItem
                                                 disabled={isConfirmPending}
                                                 onClick={() => handleConfirm(booking.id)}
                                             >Confirm Booking</DropdownMenuItem>
                                         )}
                                         {(hasPermission(permissions, session, 'booking:cancel') || hasPermission(permissions, session, 'booking:cancel:own', { ownerId: booking.userId })) && booking.status !== 'Cancelled' && booking.status !== 'Completed' && (
-                                            <DropdownMenuItem 
+                                            <DropdownMenuItem
                                                 className="text-destructive"
                                                 disabled={isCancelPending}
                                                 onClick={() => handleCancel(booking.id)}
@@ -128,7 +129,7 @@ export function BookingsTable({ bookings, session, permissions }: BookingsTableP
                         </div>
                         {getStatusBadge(booking.status)}
                     </div>
-                    
+
                     <div className="mt-2 text-sm text-muted-foreground space-y-1">
                         <p>
                             <span className="font-semibold text-foreground/80">Dates:</span> {booking.startDate === booking.endDate
