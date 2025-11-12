@@ -61,10 +61,20 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+const BILL_TYPES = ["Kitchen", "Bar (drinking)", "Bar (wine)", "Service charge", "Laundry", "Other"] as const;
 
 const AddBillSchema = z.object({
-  description: z.string().min(1, "Description is required."),
+  billType: z.enum(BILL_TYPES, { required_error: "Please select a bill type." }),
+  description: z.string().optional(),
   amount: z.coerce.number().positive("Amount must be a positive number."),
+}).superRefine((data, ctx) => {
+    if (data.billType === "Other" && (!data.description || data.description.trim().length === 0)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["description"],
+            message: "Description is required when 'Other' is selected.",
+        });
+    }
 });
 type AddBillValues = z.infer<typeof AddBillSchema>;
 
@@ -72,11 +82,18 @@ const AddBillDialog = ({ bookingId, currency, disabled }: { bookingId: string, c
     const [open, setOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
-    const form = useForm<AddBillValues>({ resolver: zodResolver(AddBillSchema), defaultValues: { description: '', amount: 0 } });
+    const form = useForm<AddBillValues>({ resolver: zodResolver(AddBillSchema), defaultValues: { amount: 0 } });
+    const watchedBillType = form.watch("billType");
 
     const onSubmit = (data: AddBillValues) => {
         startTransition(async () => {
-            const result = await addBillAction({ bookingId, ...data });
+            const finalDescription = data.billType === "Other" ? data.description : data.billType;
+            if (!finalDescription) {
+                toast({ title: "Error", description: "A description is required.", variant: "destructive" });
+                return;
+            }
+
+            const result = await addBillAction({ bookingId, description: finalDescription, amount: data.amount });
             if (result.success) {
                 toast({ title: "Success", description: result.message });
                 form.reset();
@@ -99,13 +116,37 @@ const AddBillDialog = ({ bookingId, currency, disabled }: { bookingId: string, c
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField control={form.control} name="description" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Description</FormLabel>
-                                <FormControl><Textarea placeholder="e.g., Room Service, Damages" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
+                        <FormField
+                            control={form.control}
+                            name="billType"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Bill Type</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select a bill type" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {BILL_TYPES.map(type => (
+                                                <SelectItem key={type} value={type}>{type}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        {watchedBillType === "Other" && (
+                             <FormField control={form.control} name="description" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Description</FormLabel>
+                                    <FormControl><Textarea placeholder="e.g., Room Service, Damages" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        )}
                         <FormField control={form.control} name="amount" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Amount ({currency})</FormLabel>
