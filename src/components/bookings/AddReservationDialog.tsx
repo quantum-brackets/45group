@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, PlusCircle, XCircle } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { Checkbox } from '../ui/checkbox';
+import Link from 'next/link';
 
 interface AddReservationDialogProps {
     children: React.ReactNode;
@@ -72,6 +73,11 @@ export function AddReservationDialog({ children, allListings, allUsers, isOpen, 
                 toast({
                     title: "Reservation Created",
                     description: result.message,
+                    action: result.bookingId ? (
+                        <Button asChild variant="secondary" size="sm">
+                          <Link href={`/booking/${result.bookingId}`}>View Reservation</Link>
+                        </Button>
+                      ) : undefined,
                 });
                 form.reset();
                 setIsOpen(false);

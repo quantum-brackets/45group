@@ -43,19 +43,13 @@ import {
   sendReportEmail,
   sendWelcomeEmail,
 } from "@/lib/email";
-import {
-  add,
-  eachDayOfInterval,
-  isWithinInterval,
-} from "date-fns";
 import { preloadPermissions } from "@/lib/permissions/server";
 import { hasPermission } from "@/lib/permissions";
 import {
   generateRandomString,
-  parseDate,
-  formatDateToStr,
   calculateBookingFinancials,
   differenceInDays,
+  subDays,
 } from "@/lib/utils";
 import { getAllBookings, getBookingsByDateRange } from "./data";
 import { EVENT_BOOKING_DAILY_HRS, MAX_DISCOUNT_PERCENT } from "./constants";
@@ -544,16 +538,8 @@ export async function deleteListingAction(id: string) {
 const CreateBookingSchema = z
   .object({
     listingId: z.string(),
-    startDate: z
-      .string()
-      .refine((val) => val.match(/^\d{4}-\d{2}-\d{2}$/), {
-        message: "Invalid start date format, expected YYYY-MM-DD",
-      }),
-    endDate: z
-      .string()
-      .refine((val) => val.match(/^\d{4}-\d{2}-\d{2}$/), {
-        message: "Invalid end date format, expected YYYY-MM-DD",
-      }),
+    startDate: z.string(),
+    endDate: z.string(),
     guests: z.coerce.number().int().min(1, "At least one guest is required."),
     numberOfUnits: z.coerce
       .number()
@@ -966,16 +952,8 @@ export async function createBookingAction(
 const UpdateBookingSchema = z.object({
   bookingId: z.string(),
   bookingName: z.string().min(1, "Booking name is required."),
-  startDate: z
-    .string()
-    .refine((val) => val.match(/^\d{4}-\d{2}-\d{2}$/), {
-      message: "Invalid start date format, expected YYYY-MM-DD",
-    }),
-  endDate: z
-    .string()
-    .refine((val) => val.match(/^\d{4}-\d{2}-\d{2}$/), {
-      message: "Invalid end date format, expected YYYY-MM-DD",
-    }),
+  startDate: z.string(),
+  endDate: z.string(),
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
   numberOfUnits: z.coerce
     .number()
@@ -1310,8 +1288,8 @@ function calculateBookingBalance(booking: Booking, listing: Listing) {
   const units = (booking.inventoryIds || []).length;
   const guests = booking.guests;
 
-  const durationDays = differenceInDays(booking.endDate, booking.startDate) + 1;
-  const nights = durationDays > 1 ? durationDays - 1 : 1;
+  const durationDays = differenceInDays(booking.endDate, booking.startDate);
+  const nights = durationDays > 0 ? durationDays : 1;
 
   let baseBookingCost = 0;
   switch (listing.price_unit) {
@@ -2596,13 +2574,10 @@ function getDailySummaryCsv(
       balance: number;
     }
   > = {};
-  const reportDays = eachDayOfInterval({
-    start: parseDate(dateRange.from),
-    end: parseDate(dateRange.to),
-  });
+  const reportDays = subDays(dateRange.from, dateRange.to);
 
-  reportDays.forEach((day) => {
-    const dayStr = formatDateToStr(day, "yyyy-MM-dd");
+  reportDays.forEach((day:any) => {
+    const dayStr = day;
     dailyData[dayStr] = {
       date: dayStr,
       unitsUsed: 0,
@@ -2619,10 +2594,7 @@ function getDailySummaryCsv(
       price_unit: booking.price_unit,
       ...listing,
     };
-    const bookingDays = eachDayOfInterval({
-      start: parseDate(booking.startDate),
-      end: parseDate(booking.endDate),
-    });
+    const bookingDays = subDays(booking.startDate, booking.endDate);
     const bookingDuration =
       differenceInDays(
         booking.endDate,
@@ -2630,14 +2602,11 @@ function getDailySummaryCsv(
       ) || 1;
     const dailyRate = (listingForBooking.price || 0) / bookingDuration;
 
-    bookingDays.forEach((day) => {
-      const dayStr = formatDateToStr(day);
+    bookingDays.forEach((day:any) => {
       if (
-        isWithinInterval(parseDate(dayStr), {
-          start: parseDate(dateRange.from),
-          end: add(parseDate(dateRange.to), { days: 1 }),
-        })
+       (day >= dateRange.from && day <= dateRange.to)
       ) {
+        const dayStr = day;
         if (dailyData[dayStr]) {
           dailyData[dayStr].unitsUsed += (booking.inventoryIds || []).length;
           dailyData[dayStr].dailyCharge +=
@@ -2647,9 +2616,7 @@ function getDailySummaryCsv(
     });
 
     (booking.payments || []).forEach((payment) => {
-      const paymentDayStr = formatDateToStr(
-        parseDate(payment.timestamp),
-      );
+      const paymentDayStr = payment.timestamp;
       if (dailyData[paymentDayStr]) {
         dailyData[paymentDayStr].payments[payment.method] =
           (dailyData[paymentDayStr].payments[payment.method] || 0) +
@@ -2872,7 +2839,7 @@ export async function createWalkInReservationAction(
       throw new Error("No customer specified.");
     }
 
-    const today = formatDateToStr(new Date());
+    const today = new Date().toISOString().split("T")[0];
 
     const { data: listingData } = await supabase
       .from("listings")
@@ -2902,7 +2869,7 @@ export async function createWalkInReservationAction(
       };
     }
 
-    const endDate = listing.type === ListingTypes.HOTEL ? formatDateToStr(add(parseDate(today), { days: 1 })) : today;
+    const endDate = listing.type === ListingTypes.HOTEL ? subDays(today, -1) : today;
 
 
     const availableInventory = await findAvailableInventory(
@@ -2973,14 +2940,14 @@ export async function createWalkInReservationAction(
       discount: 0,
     };
 
-    const { error: createError } = await supabase.from("bookings").insert({
+    const { data: newBooking, error: createError } = await supabase.from("bookings").insert({
       listing_id: listingId,
       user_id: finalUserId,
       start_date: today,
       end_date: endDate,
       status: bookingStatus,
       data: bookingData,
-    });
+    }).select('id').single();
 
     if (createError) throw createError;
 
@@ -2988,6 +2955,7 @@ export async function createWalkInReservationAction(
     return {
       success: true,
       message: `Reservation created for ${finalUserName} with status: ${bookingStatus}.`,
+      bookingId: newBooking.id,
     };
   } catch (e: any) {
     return { success: false, message: e.message };
