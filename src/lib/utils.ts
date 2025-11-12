@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import crypto from "crypto";
-import { format } from "date-fns";
+import { eachDayOfInterval, format } from "date-fns";
 import { Booking, Listing } from "./types";
 
 function cn(...inputs: ClassValue[]) {
@@ -22,6 +22,12 @@ function generateRandomString(length: number): string {
     .join("");
   return result;
 }
+
+const subDays = (from: string, to: string) =>
+  eachDayOfInterval({
+    start: parseDate(from),
+    end: parseDate(to),
+  });
 
 function formatDateToStr(
   date: string | Date,
@@ -93,9 +99,10 @@ const calculateBookingFinancials = (
 export {
   cn,
   calculateBookingFinancials,
-  generateRandomString,
+  differenceInDays,
   formatCurrency,
   formatDateToStr,
+  generateRandomString,
   parseDate,
-  differenceInDays,
+  subDays,
 };

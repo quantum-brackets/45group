@@ -1,17 +1,9 @@
-
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { DateRange } from "react-day-picker";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import {
-  addDays,
-  differenceInCalendarDays,
-  eachDayOfInterval,
-  isWithinInterval,
-} from "date-fns";
 import {
   Calendar as CalendarIcon,
   Download,
@@ -20,7 +12,6 @@ import {
   Warehouse,
   Milestone,
   Loader2,
-  Home,
   BarChart,
   XOctagon,
   FileSpreadsheet,
@@ -73,7 +64,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { cn, parseDate, formatDateToStr, formatCurrency, subDays, differenceInDays as differenceInDaysStr} from "@/lib/utils";
+import {
+  cn,
+  parseDate,
+  formatDateToStr,
+  formatCurrency,
+  subDays,
+  differenceInDays as differenceInDaysStr,
+} from "@/lib/utils";
 import { sendReportEmailAction } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { EVENT_BOOKING_DAILY_HRS } from "@/lib/constants";
@@ -255,13 +253,13 @@ export function ListingReport({
         );
       })
     );
-    
+
     const sortedStartDateGroup = Object.fromEntries(
-        Object.entries(groupings.startDate).sort(([a], [b]) => a.localeCompare(b))
+      Object.entries(groupings.startDate).sort(([a], [b]) => a.localeCompare(b))
     );
 
     const sortedEndDateGroup = Object.fromEntries(
-        Object.entries(groupings.endDate).sort(([a], [b]) => a.localeCompare(b))
+      Object.entries(groupings.endDate).sort(([a], [b]) => a.localeCompare(b))
     );
 
     return {
@@ -284,9 +282,7 @@ export function ListingReport({
     // e.g. /reports/2024-01-01/1m -> /reports/
     const basePath = currentPathSegments.slice(0, -2).join("/");
 
-    router.push(
-      `${basePath}/${targetDate}/${periodString}`
-    );
+    router.push(`${basePath}/${targetDate}/${periodString}`);
   };
 
   const handleScopeChange = (newPath: string) => {
@@ -342,8 +338,7 @@ export function ListingReport({
     const link = document.createElement("a");
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
-      const reportDate =
-        initialDateRange?.to || initialDateRange?.from;
+      const reportDate = initialDateRange?.to || initialDateRange?.from;
       const periodString = `${initialPeriod.amount}${initialPeriod.unit}`;
       link.setAttribute("href", url);
       link.setAttribute(
@@ -464,8 +459,7 @@ export function ListingReport({
       theme: "grid",
     });
 
-    const reportDate =
-      initialDateRange?.to || initialDateRange?.from;
+    const reportDate = initialDateRange?.to || initialDateRange?.from;
     const periodString = `${initialPeriod.amount}${initialPeriod.unit}`;
     doc.save(
       `report_${(listing?.name || "all").replace(
@@ -492,7 +486,7 @@ export function ListingReport({
 
     const reportDays = subDays(initialDateRange.from, initialDateRange.to);
 
-    reportDays.forEach((day:any) => {
+    reportDays.forEach((day: any) => {
       const dayStr = day;
       dailyData[dayStr] = {
         date: dayStr,
@@ -513,16 +507,11 @@ export function ListingReport({
       const bookingDays = subDays(booking.startDate, booking.endDate);
 
       const bookingDuration =
-        differenceInDaysStr(
-          booking.endDate,
-          booking.startDate
-        ) || 1;
+        differenceInDaysStr(booking.endDate, booking.startDate) || 1;
       const dailyRate = (listingForBooking.price || 0) / bookingDuration;
 
-      bookingDays.forEach((day:any) => {
-        if (
-          day >= initialDateRange.from! && day <= initialDateRange.to!
-        ) {
+      bookingDays.forEach((day: any) => {
+        if (day >= initialDateRange.from! && day <= initialDateRange.to!) {
           const dayStr = day;
           if (dailyData[dayStr]) {
             dailyData[dayStr].unitsUsed += (booking.inventoryIds || []).length;
@@ -533,9 +522,7 @@ export function ListingReport({
       });
 
       (booking.payments || []).forEach((payment) => {
-        const paymentDayStr = formatDateToStr(
-          payment.timestamp
-        );
+        const paymentDayStr = formatDateToStr(payment.timestamp);
         if (dailyData[paymentDayStr]) {
           dailyData[paymentDayStr].payments[payment.method] =
             (dailyData[paymentDayStr].payments[payment.method] || 0) +
@@ -898,7 +885,7 @@ export function ListingReport({
       </Card>
 
       <Tabs defaultValue="guest">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto md:h-10">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="guest">
             <Users className="md:mr-2 h-4 w-4" />
             <span className="hidden md:inline">Group by Guest</span>
@@ -940,15 +927,13 @@ export function ListingReport({
             ))}
         </TabsContent>
         <TabsContent value="startDate" className="space-y-4">
-          {Object.entries(groupedData.startDate).map(
-            ([date, bookings]) => (
-              <ReportTable
-                key={date}
-                bookings={bookings}
-                title={`Starting on ${formatDateToStr(date, "PPP")}`}
-              />
-            )
-          )}
+          {Object.entries(groupedData.startDate).map(([date, bookings]) => (
+            <ReportTable
+              key={date}
+              bookings={bookings}
+              title={`Starting on ${formatDateToStr(date, "PPP")}`}
+            />
+          ))}
         </TabsContent>
         <TabsContent value="endDate" className="space-y-4">
           {Object.entries(groupedData.endDate).map(([date, bookings]) => (
