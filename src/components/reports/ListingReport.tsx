@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
@@ -10,7 +11,6 @@ import {
   differenceInCalendarDays,
   eachDayOfInterval,
   isWithinInterval,
-  sub,
 } from "date-fns";
 import {
   Calendar as CalendarIcon,
@@ -26,6 +26,8 @@ import {
   FileSpreadsheet,
   ChevronsUpDown,
   Check,
+  CalendarArrowDown,
+  CalendarArrowUp,
 } from "lucide-react";
 
 import type { Booking, Listing, Payment, User } from "@/lib/types";
@@ -89,12 +91,12 @@ interface ListingReportProps {
   location?: string; // Optional: for location-based reports
   allListings: Listing[];
   initialBookings: Booking[];
-  initialDateRange: DateRange;
+  initialDateRange: { from: string; to: string };
   initialPeriod: { unit: string; amount: number };
   session: User | null;
 }
 
-type Grouping = "status" | "guest" | "unit";
+type Grouping = "status" | "guest" | "unit" | "startDate" | "endDate";
 
 const calculateBookingFinancials = (booking: Booking, listing?: Listing) => {
   const from = parseDate(booking.startDate);
@@ -148,7 +150,7 @@ export function ListingReport({
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
-  const [date, setDate] = useState<Date | undefined>(initialDateRange.to);
+  const [date, setDate] = useState<string | undefined>(initialDateRange.to);
   const [period, setPeriod] = useState(initialPeriod);
   const [isEmailPending, startEmailTransition] = useTransition();
   const [email, setEmail] = useState(session?.email || "");
@@ -213,6 +215,8 @@ export function ListingReport({
       status: {},
       guest: {},
       unit: {},
+      startDate: {},
+      endDate: {},
     };
 
     bookingsWithFinancials.forEach((booking) => {
@@ -231,6 +235,16 @@ export function ListingReport({
         if (!groupings.unit[unitName]) groupings.unit[unitName] = [];
         groupings.unit[unitName].push(booking);
       });
+
+      // Group by Start Date
+      const startDate = booking.startDate;
+      if (!groupings.startDate[startDate]) groupings.startDate[startDate] = [];
+      groupings.startDate[startDate].push(booking);
+
+      // Group by End Date
+      const endDate = booking.endDate;
+      if (!groupings.endDate[endDate]) groupings.endDate[endDate] = [];
+      groupings.endDate[endDate].push(booking);
     });
 
     const sortedStatusGroup = Object.fromEntries(
@@ -241,16 +255,26 @@ export function ListingReport({
         );
       })
     );
+    
+    const sortedStartDateGroup = Object.fromEntries(
+        Object.entries(groupings.startDate).sort(([a], [b]) => a.localeCompare(b))
+    );
+
+    const sortedEndDateGroup = Object.fromEntries(
+        Object.entries(groupings.endDate).sort(([a], [b]) => a.localeCompare(b))
+    );
 
     return {
       status: sortedStatusGroup,
       guest: groupings.guest,
       unit: groupings.unit,
+      startDate: sortedStartDateGroup,
+      endDate: sortedEndDateGroup,
     };
   }, [bookingsWithFinancials]);
 
   const handleDateOrPeriodChange = () => {
-    const targetDate = date || new Date();
+    const targetDate = date || new Date().toISOString().split("T")[0];
     const periodString = `${period.amount}${period.unit}`;
 
     // Use the current pathname to rebuild the URL, preserving the scope (listing, location, or global)
@@ -261,13 +285,13 @@ export function ListingReport({
     const basePath = currentPathSegments.slice(0, -2).join("/");
 
     router.push(
-      `${basePath}/${formatDateToStr(targetDate, "yyyy-MM-dd")}/${periodString}`
+      `${basePath}/${targetDate}/${periodString}`
     );
   };
 
   const handleScopeChange = (newPath: string) => {
     setIsScopeOpen(false);
-    const dateStr = formatDateToStr(date || new Date(), "yyyy-MM-dd");
+    const dateStr = date || new Date().toISOString().split("T")[0];
     const periodStr = `${period.amount}${period.unit}`;
     router.push(`${newPath}/${dateStr}/${periodStr}`);
   };
@@ -296,8 +320,8 @@ export function ListingReport({
         b.userName,
         b.listingName,
         b.inventoryNames?.join(", ") || "N/A",
-        formatDateToStr(parseDate(b.startDate), "yyyy-MM-dd"),
-        formatDateToStr(parseDate(b.endDate), "yyyy-MM-dd"),
+        b.startDate,
+        b.endDate,
         b.financials.stayDuration,
         b.financials.totalPayments.toFixed(2),
         b.financials.totalBill.toFixed(2),
@@ -318,10 +342,8 @@ export function ListingReport({
     const link = document.createElement("a");
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
-      const reportDate = formatDateToStr(
-        initialDateRange?.to || initialDateRange?.from || new Date(),
-        "yyyy-MM-dd"
-      );
+      const reportDate =
+        initialDateRange?.to || initialDateRange?.from;
       const periodString = `${initialPeriod.amount}${initialPeriod.unit}`;
       link.setAttribute("href", url);
       link.setAttribute(
@@ -349,11 +371,7 @@ export function ListingReport({
     doc.setFontSize(11);
     doc.setTextColor(100);
     const dateDisplay = initialDateRange?.from
-      ? `${formatDateToStr(initialDateRange.from, "LLL dd, y")} - ${
-          initialDateRange.to
-            ? formatDateToStr(initialDateRange.to, "LLL dd, y")
-            : ""
-        }`
+      ? `${initialDateRange.from} - ${initialDateRange.to}`
       : "All time";
     doc.text(`Period: ${dateDisplay}`, 14, 30);
 
@@ -376,7 +394,7 @@ export function ListingReport({
         b.userName,
         b.listingName,
         b.inventoryNames?.join(", ") || "N/A",
-        formatDateToStr(parseDate(b.startDate), "MMM d, yyyy"),
+        b.startDate,
         b.financials.stayDuration,
         formatCurrency(b.financials.totalPayments, currencyCode),
         formatCurrency(b.financials.totalBill, currencyCode),
@@ -409,7 +427,7 @@ export function ListingReport({
         ],
       ],
       body: Object.values(dailyData).map((day) => [
-        formatDateToStr(day.date, "MMM d, yyyy"),
+        day.date,
         day.unitsUsed,
         formatCurrency(day.dailyCharge, currencyCode),
         formatCurrency(day.payments.Cash, currencyCode),
@@ -446,10 +464,8 @@ export function ListingReport({
       theme: "grid",
     });
 
-    const reportDate = formatDateToStr(
-      initialDateRange?.to || initialDateRange?.from || new Date(),
-      "yyyy-MM-dd"
-    );
+    const reportDate =
+      initialDateRange?.to || initialDateRange?.from;
     const periodString = `${initialPeriod.amount}${initialPeriod.unit}`;
     doc.save(
       `report_${(listing?.name || "all").replace(
@@ -475,12 +491,12 @@ export function ListingReport({
     if (!initialDateRange?.from || !initialDateRange?.to) return dailyData;
 
     const reportDays = eachDayOfInterval({
-      start: initialDateRange.from!,
-      end: initialDateRange.to!,
+      start: parseDate(initialDateRange.from!),
+      end: parseDate(initialDateRange.to!),
     });
 
     reportDays.forEach((day) => {
-      const dayStr = formatDateToStr(day, "yyyy-MM-dd");
+      const dayStr = formatDateToStr(day);
       dailyData[dayStr] = {
         date: dayStr,
         unitsUsed: 0,
@@ -512,11 +528,11 @@ export function ListingReport({
       bookingDays.forEach((day) => {
         if (
           isWithinInterval(day, {
-            start: initialDateRange.from!,
-            end: addDays(initialDateRange.to!, 1),
+            start: parseDate(initialDateRange.from!),
+            end: addDays(parseDate(initialDateRange.to!), 1),
           })
         ) {
-          const dayStr = formatDateToStr(day, "yyyy-MM-dd");
+          const dayStr = formatDateToStr(day);
           if (dailyData[dayStr]) {
             dailyData[dayStr].unitsUsed += (booking.inventoryIds || []).length;
             dailyData[dayStr].dailyCharge +=
@@ -527,8 +543,7 @@ export function ListingReport({
 
       (booking.payments || []).forEach((payment) => {
         const paymentDayStr = formatDateToStr(
-          parseDate(payment.timestamp),
-          "yyyy-MM-dd"
+          parseDate(payment.timestamp)
         );
         if (dailyData[paymentDayStr]) {
           dailyData[paymentDayStr].payments[payment.method] =
@@ -551,8 +566,8 @@ export function ListingReport({
       // For a global report, listingId is null. The server action needs to handle this.
       const result = await sendReportEmailAction({
         listingId: listing?.id,
-        fromDate: initialDateRange.from!.toISOString(),
-        toDate: initialDateRange.to!.toISOString(),
+        fromDate: initialDateRange.from,
+        toDate: initialDateRange.to,
         email,
       });
 
@@ -630,8 +645,8 @@ export function ListingReport({
                 {!listing && <TableCell>{b.listingName}</TableCell>}
                 <TableCell>{b.inventoryNames?.join(", ") || "N/A"}</TableCell>
                 <TableCell>
-                  {formatDateToStr(parseDate(b.startDate), "MMM d")} -{" "}
-                  {formatDateToStr(parseDate(b.endDate), "MMM d, yyyy")} (
+                  {formatDateToStr(b.startDate, "MMM d")} -{" "}
+                  {formatDateToStr(b.endDate, "MMM d, yyyy")} (
                   {b.financials.stayDuration}d)
                 </TableCell>
                 <TableCell className="text-right text-green-600">
@@ -777,8 +792,8 @@ export function ListingReport({
               <PopoverContent className="w-auto p-0">
                 <Calendar
                   mode="single"
-                  selected={date}
-                  onSelect={setDate}
+                  selected={date ? parseDate(date) : undefined}
+                  onSelect={(d) => setDate(d ? formatDateToStr(d) : undefined)}
                   initialFocus
                 />
               </PopoverContent>
@@ -892,7 +907,7 @@ export function ListingReport({
       </Card>
 
       <Tabs defaultValue="guest">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="guest">
             <Users className="mr-2 h-4 w-4" />
             Group by Guest
@@ -904,6 +919,14 @@ export function ListingReport({
           <TabsTrigger value="unit">
             <Warehouse className="mr-2 h-4 w-4" />
             Group by Unit
+          </TabsTrigger>
+          <TabsTrigger value="startDate">
+            <CalendarArrowDown className="mr-2 h-4 w-4" />
+            Group by Start Date
+          </TabsTrigger>
+          <TabsTrigger value="endDate">
+            <CalendarArrowUp className="mr-2 h-4 w-4" />
+            Group by End Date
           </TabsTrigger>
         </TabsList>
         <TabsContent value="guest" className="space-y-4">
@@ -924,6 +947,26 @@ export function ListingReport({
             .map(([unit, bookings]) => (
               <ReportTable key={unit} bookings={bookings} title={unit} />
             ))}
+        </TabsContent>
+        <TabsContent value="startDate" className="space-y-4">
+          {Object.entries(groupedData.startDate).map(
+            ([date, bookings]) => (
+              <ReportTable
+                key={date}
+                bookings={bookings}
+                title={`Starting on ${formatDateToStr(date, "PPP")}`}
+              />
+            )
+          )}
+        </TabsContent>
+        <TabsContent value="endDate" className="space-y-4">
+          {Object.entries(groupedData.endDate).map(([date, bookings]) => (
+            <ReportTable
+              key={date}
+              bookings={bookings}
+              title={`Ending on ${formatDateToStr(date, "PPP")}`}
+            />
+          ))}
         </TabsContent>
       </Tabs>
 
