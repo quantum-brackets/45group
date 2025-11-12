@@ -45,8 +45,6 @@ import {
 } from "@/lib/email";
 import {
   add,
-  addDays,
-  differenceInCalendarDays,
   eachDayOfInterval,
   isWithinInterval,
 } from "date-fns";
@@ -57,6 +55,7 @@ import {
   parseDate,
   formatDateToStr,
   calculateBookingFinancials,
+  differenceInDays,
 } from "@/lib/utils";
 import { getAllBookings, getBookingsByDateRange } from "./data";
 import { EVENT_BOOKING_DAILY_HRS, MAX_DISCOUNT_PERCENT } from "./constants";
@@ -79,9 +78,11 @@ function unpackListing(listing: any): Listing {
   return { ...rest, ...data, inventoryCount };
 }
 
-function unpackBooking(booking: any): Booking {
-  if (!booking) return null as any;
-  const { data, listing_id, user_id, start_date, end_date, ...rest } = booking;
+function unpackBooking(dbBooking: any): Booking {
+  if (!dbBooking) return null as any;
+  const { data, listing_id, user_id, start_date, end_date, ...rest } =
+    dbBooking;
+
   // For backwards compatibility, derive `createdAt` from the actions array if not present.
   // New bookings will have `data.createdAt` directly.
   const createdAt =
@@ -98,9 +99,9 @@ function unpackBooking(booking: any): Booking {
     userId: user_id,
     startDate: start_date,
     endDate: end_date,
-    createdAt,
+    createdAt: createdAt,
   };
-}
+};
 
 /**
  * Updates the permissions for all roles in the system.
@@ -539,18 +540,19 @@ export async function deleteListingAction(id: string) {
   };
 }
 
+// Zod schema for creating bookings.
 const CreateBookingSchema = z
   .object({
     listingId: z.string(),
     startDate: z
       .string()
-      .refine((val) => !isNaN(Date.parse(val)), {
-        message: "Invalid start date",
+      .refine((val) => val.match(/^\d{4}-\d{2}-\d{2}$/), {
+        message: "Invalid start date format, expected YYYY-MM-DD",
       }),
     endDate: z
       .string()
-      .refine((val) => !isNaN(Date.parse(val)), {
-        message: "Invalid end date",
+      .refine((val) => val.match(/^\d{4}-\d{2}-\d{2}$/), {
+        message: "Invalid end date format, expected YYYY-MM-DD",
       }),
     guests: z.coerce.number().int().min(1, "At least one guest is required."),
     numberOfUnits: z.coerce
@@ -748,23 +750,11 @@ export async function createBookingAction(
     };
   }
 
-  const { listingId, guests, numberOfUnits, userId, guestName, guestNotes } =
+  const { listingId, startDate, endDate, guests, numberOfUnits, userId, guestName, guestNotes } =
     validatedFields.data;
   const guestEmail = validatedFields.data.guestEmail
     ? validatedFields.data.guestEmail.toLowerCase()
     : undefined;
-
-  // Standardize dates to 12:00 PM (noon)
-  const setTimeToNoon = (date: Date) => {
-    date.setUTCHours(12, 0, 0, 0);
-    return date;
-  };
-  const startDate = setTimeToNoon(
-    parseDate(validatedFields.data.startDate)
-  ).toISOString();
-  const endDate = setTimeToNoon(
-    parseDate(validatedFields.data.endDate)
-  ).toISOString();
 
   let finalUserId: string;
   let finalUserName: string;
@@ -953,17 +943,18 @@ export async function createBookingAction(
     revalidatePath("/bookings");
     revalidatePath(`/listing/${listingId}`);
 
+    const baseReturn = {
+      success: true,
+      message: "Your booking request has been sent and is pending confirmation.",
+      bookingId: newBooking.id
+    };
+
     if (session) {
-      return {
-        success: true,
-        message:
-          "Your booking request has been sent and is pending confirmation.",
-      };
+      return baseReturn;
     } else {
       return {
-        success: true,
-        message:
-          "Your booking request has been sent! Check your email to complete your account setup.",
+        ...baseReturn,
+        message: "Your booking request has been sent! Check your email to complete your account setup."
       };
     }
   } catch (e: any) {
@@ -977,12 +968,14 @@ const UpdateBookingSchema = z.object({
   bookingName: z.string().min(1, "Booking name is required."),
   startDate: z
     .string()
-    .refine((val) => !isNaN(Date.parse(val)), {
-      message: "Invalid start date",
+    .refine((val) => val.match(/^\d{4}-\d{2}-\d{2}$/), {
+      message: "Invalid start date format, expected YYYY-MM-DD",
     }),
   endDate: z
     .string()
-    .refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
+    .refine((val) => val.match(/^\d{4}-\d{2}-\d{2}$/), {
+      message: "Invalid end date format, expected YYYY-MM-DD",
+    }),
   guests: z.coerce.number().int().min(1, "At least one guest is required."),
   numberOfUnits: z.coerce
     .number()
@@ -991,6 +984,7 @@ const UpdateBookingSchema = z.object({
   userId: z.string().optional(),
   inventoryIds: z.array(z.string()).optional(),
 });
+
 
 /**
  * Updates an existing booking.
@@ -1065,8 +1059,8 @@ export async function updateBookingAction(
   }
 
   // Determine if critical fields have changed, which may require re-confirmation.
-  const existingStartDate = parseDate(booking.start_date).toISOString();
-  const existingEndDate = parseDate(booking.end_date).toISOString();
+  const existingStartDate = booking.start_date;
+  const existingEndDate = booking.end_date;
   const existingNumberOfUnits = (booking.data.inventoryIds || []).length;
   const existingInventoryIds = new Set<string>(booking.data.inventoryIds || []);
   const newInventoryIds = new Set<string>(inventoryIds || []);
@@ -1236,8 +1230,8 @@ export async function cancelBookingAction(
   const session = await getSession();
   if (!session)
     return {
-      error:
-        "Authentication Error: You must be logged in to perform this action.",
+      success: false,
+      message: "Authentication Error: You must be logged in to perform this action."
     };
 
   const { bookingId } = BookingActionSchema.parse(data);
@@ -1248,7 +1242,7 @@ export async function cancelBookingAction(
     .eq("id", bookingId)
     .single();
   if (fetchError || !booking)
-    return { error: "Database Error: Could not find the booking to cancel." };
+    return { success: false, message: "Database Error: Could not find the booking to cancel." };
 
   if (
     !hasPermission(perms, session, "booking:cancel:own", {
@@ -1257,7 +1251,8 @@ export async function cancelBookingAction(
     !hasPermission(perms, session, "booking:cancel")
   ) {
     return {
-      error:
+      success: false,
+      message:
         "Permission Denied: You are not authorized to cancel this booking.",
     };
   }
@@ -1290,14 +1285,16 @@ export async function cancelBookingAction(
 
   if (error)
     return {
-      error: `Database Error: Failed to cancel booking. ${error.message}`,
+      success: false,
+      message: `Database Error: Failed to cancel booking. ${error.message}`,
     };
 
   revalidatePath("/bookings");
   revalidatePath(`/booking/${bookingId}`);
 
   return {
-    success: `Booking for ${
+    success: true,
+    message: `Booking for ${
       listing?.data.name || "listing"
     } has been cancelled.`,
   };
@@ -1310,12 +1307,10 @@ export async function cancelBookingAction(
  * @returns An object with `totalBill`, `totalPayments`, and `balance`.
  */
 function calculateBookingBalance(booking: Booking, listing: Listing) {
-  const from = parseDate(booking.startDate);
-  const to = parseDate(booking.endDate);
   const units = (booking.inventoryIds || []).length;
   const guests = booking.guests;
 
-  const durationDays = differenceInCalendarDays(to, from) + 1;
+  const durationDays = differenceInDays(booking.endDate, booking.startDate) + 1;
   const nights = durationDays > 1 ? durationDays - 1 : 1;
 
   let baseBookingCost = 0;
@@ -1359,7 +1354,8 @@ export async function confirmBookingAction(
   const session = await getSession();
   if (!session || !hasPermission(perms, session, "booking:confirm")) {
     return {
-      error: "Permission Denied: You are not authorized to confirm bookings.",
+      success: false,
+      message: "Permission Denied: You are not authorized to confirm bookings."
     };
   }
 
@@ -1371,7 +1367,7 @@ export async function confirmBookingAction(
     .eq("id", bookingId)
     .single();
   if (fetchError || !booking)
-    return { error: "Database Error: Could not find the booking to confirm." };
+    return { success: false, message: "Database Error: Could not find the booking to confirm." };
 
   const unpackedBooking = unpackBooking(booking);
 
@@ -1382,7 +1378,7 @@ export async function confirmBookingAction(
     .eq("id", unpackedBooking.listingId)
     .single();
   if (!listingData)
-    return { error: "Database Error: Could not find the associated listing." };
+    return { success: false, message: "Database Error: Could not find the associated listing." };
   const unpackedListing = unpackListing(listingData);
 
   // Check payment status for staff AND ADMINS
@@ -1409,7 +1405,8 @@ export async function confirmBookingAction(
 
     if (totalPayments < depositRequired) {
       return {
-        error: `Action Blocked: A deposit of at least ${new Intl.NumberFormat(
+        success: false,
+        message: `Action Blocked: A deposit of at least ${new Intl.NumberFormat(
           "en-US",
           { style: "currency", currency: unpackedListing.currency || "USD" }
         ).format(depositRequired)} is required to confirm.`,
@@ -1456,7 +1453,8 @@ export async function confirmBookingAction(
       revalidatePath("/bookings");
       revalidatePath(`/booking/${bookingId}`);
       return {
-        error:
+        success: false,
+        message:
           "Confirmation Failed: An inventory conflict was detected. The booking has been automatically cancelled.",
       };
     }
@@ -1499,9 +1497,9 @@ export async function confirmBookingAction(
 
     revalidatePath("/bookings");
     revalidatePath(`/booking/${bookingId}`);
-    return { success: `Booking has been confirmed.` };
+    return { success: true, message: `Booking has been confirmed.` };
   } catch (e: any) {
-    return { error: `Confirmation Failed: ${e.message}` };
+    return { success: false, message: `Confirmation Failed: ${e.message}` };
   }
 }
 
@@ -1518,7 +1516,8 @@ export async function completeBookingAction(
   const session = await getSession();
   if (!session || !hasPermission(perms, session, "booking:confirm")) {
     return {
-      error: "Permission Denied: You are not authorized to complete bookings.",
+      success: false,
+      message: "Permission Denied: You are not authorized to complete bookings.",
     };
   }
 
@@ -1530,7 +1529,7 @@ export async function completeBookingAction(
     .eq("id", bookingId)
     .single();
   if (fetchError || !bookingData) {
-    return { error: "Database Error: Could not find the booking to complete." };
+    return { success: false, message: "Database Error: Could not find the booking to complete." };
   }
 
   const unpackedBooking = unpackBooking(bookingData);
@@ -1541,7 +1540,7 @@ export async function completeBookingAction(
     .eq("id", unpackedBooking.listingId)
     .single();
   if (!listingData)
-    return { error: "Database Error: Could not find the associated listing." };
+    return { success: false, message: "Database Error: Could not find the associated listing." };
   const unpackedListing = unpackListing(listingData);
 
   if (session.role === "staff" || session.role === "admin") {
@@ -1551,7 +1550,8 @@ export async function completeBookingAction(
     );
     if (balance > 0) {
       return {
-        error:
+        success: false,
+        message:
           "Action Blocked: Cannot complete a booking with an outstanding balance.",
       };
     }
@@ -1580,7 +1580,8 @@ export async function completeBookingAction(
 
   if (error) {
     return {
-      error: `Database Error: Failed to complete booking. ${error.message}`,
+      success: false,
+      message: `Database Error: Failed to complete booking. ${error.message}`,
     };
   }
 
@@ -1601,7 +1602,7 @@ export async function completeBookingAction(
 
   revalidatePath("/bookings");
   revalidatePath(`/booking/${bookingId}`);
-  return { success: "Booking has been marked as completed." };
+  return { success: true, message: "Booking has been marked as completed." };
 }
 
 // Zod schema for adding/updating users.
@@ -2451,14 +2452,8 @@ export async function addPaymentAction(data: z.infer<typeof AddPaymentSchema>) {
 
 const AvailableInventorySchema = z.object({
   listingId: z.string(),
-  startDate: z
-    .string()
-    .refine((val) => !isNaN(Date.parse(val)), {
-      message: "Invalid start date",
-    }),
-  endDate: z
-    .string()
-    .refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
+  startDate: z.string(),
+  endDate: z.string(),
   excludeBookingId: z.string().optional(),
 });
 
@@ -2580,14 +2575,14 @@ export async function setDiscountAction(
 
 const SendReportEmailSchema = z.object({
   listingId: z.string().optional(),
-  fromDate: z.string().datetime(),
-  toDate: z.string().datetime(),
+  fromDate: z.string(),
+  toDate: z.string(),
   email: z.string().email(),
 });
 
 function getDailySummaryCsv(
   bookings: Booking[],
-  dateRange: { from: Date; to: Date },
+  dateRange: { from: string; to: string },
   listing: Listing | null
 ) {
   const dailyData: Record<
@@ -2629,20 +2624,20 @@ function getDailySummaryCsv(
       end: parseDate(booking.endDate),
     });
     const bookingDuration =
-      differenceInCalendarDays(
-        parseDate(booking.endDate),
-        parseDate(booking.startDate)
+      differenceInDays(
+        booking.endDate,
+        booking.startDate
       ) || 1;
     const dailyRate = (listingForBooking.price || 0) / bookingDuration;
 
     bookingDays.forEach((day) => {
+      const dayStr = formatDateToStr(day);
       if (
-        isWithinInterval(day, {
-          start: dateRange.from!,
-          end: addDays(dateRange.to!, 1),
+        isWithinInterval(parseDate(dayStr), {
+          start: parseDate(dateRange.from),
+          end: add(parseDate(dateRange.to), { days: 1 }),
         })
       ) {
-        const dayStr = formatDateToStr(day, "yyyy-MM-dd");
         if (dailyData[dayStr]) {
           dailyData[dayStr].unitsUsed += (booking.inventoryIds || []).length;
           dailyData[dayStr].dailyCharge +=
@@ -2654,7 +2649,6 @@ function getDailySummaryCsv(
     (booking.payments || []).forEach((payment) => {
       const paymentDayStr = formatDateToStr(
         parseDate(payment.timestamp),
-        "yyyy-MM-dd"
       );
       if (dailyData[paymentDayStr]) {
         dailyData[paymentDayStr].payments[payment.method] =
@@ -2764,8 +2758,8 @@ export async function sendReportEmailAction(
         b.userName,
         b.listingName,
         b.inventoryNames?.join(", ") || "N/A",
-        formatDateToStr(parseDate(b.startDate), "yyyy-MM-dd"),
-        formatDateToStr(parseDate(b.endDate), "yyyy-MM-dd"),
+        b.startDate,
+        b.endDate,
         financials.stayDuration,
         financials.totalPayments.toFixed(2),
         financials.totalBill.toFixed(2),
@@ -2780,7 +2774,7 @@ export async function sendReportEmailAction(
     const csvContent = [headers.join(","), ...rows].join("\n");
     const dailyCsvContent = getDailySummaryCsv(
       bookings,
-      { from: new Date(fromDate), to: new Date(toDate) },
+      { from: fromDate, to: toDate },
       listing
     );
 
@@ -2788,7 +2782,7 @@ export async function sendReportEmailAction(
       email,
       listing, // Can be null for global reports
       bookings,
-      dateRange: { from: new Date(fromDate), to: new Date(toDate) },
+      dateRange: { from: fromDate, to: toDate },
       csvContent,
       dailyCsvContent,
     });
@@ -2801,6 +2795,28 @@ export async function sendReportEmailAction(
     };
   }
 }
+
+const WalkInReservationSchema = z.object({
+  listingId: z.string().min(1, "Please select a listing."),
+  userId: z.string().optional(),
+  newCustomerName: z.string().optional(),
+  guests: z.coerce.number().int().min(1, "At least one guest is required."),
+  units: z.coerce.number().int().min(1, "At least one unit is required."),
+  bills: z.array(z.object({
+      description: z.string().min(1, "Description cannot be empty."),
+      amount: z.coerce.number().positive("Amount must be a positive number."),
+      paid: z.boolean(),
+  })).optional(),
+}).superRefine((data, ctx) => {
+  if (!data.userId && !data.newCustomerName) {
+      ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['newCustomerName'],
+          message: 'Please select an existing customer or enter a name for a new one.',
+      });
+  }
+});
+
 
 export async function createWalkInReservationAction(
   data: z.infer<typeof WalkInReservationSchema>
@@ -2856,8 +2872,7 @@ export async function createWalkInReservationAction(
       throw new Error("No customer specified.");
     }
 
-    const today = parseDate(new Date());
-    today.setUTCHours(12, 0, 0, 0);
+    const today = formatDateToStr(new Date());
 
     const { data: listingData } = await supabase
       .from("listings")
@@ -2887,15 +2902,14 @@ export async function createWalkInReservationAction(
       };
     }
 
-    const endDate = add(today, {
-      days: listing.type === ListingTypes.HOTEL ? 1 : 0,
-    });
+    const endDate = listing.type === ListingTypes.HOTEL ? formatDateToStr(add(parseDate(today), { days: 1 })) : today;
+
 
     const availableInventory = await findAvailableInventory(
       supabase,
       listingId,
-      today.toISOString(),
-      endDate.toISOString()
+      today,
+      endDate
     );
     if (availableInventory.length < units) {
       return {
@@ -2962,8 +2976,8 @@ export async function createWalkInReservationAction(
     const { error: createError } = await supabase.from("bookings").insert({
       listing_id: listingId,
       user_id: finalUserId,
-      start_date: today.toISOString(),
-      end_date: endDate.toISOString(),
+      start_date: today,
+      end_date: endDate,
       status: bookingStatus,
       data: bookingData,
     });
