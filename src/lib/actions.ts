@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This file contains all the "Server Actions" for the application.
  * Server Actions are asynchronous functions that are only executed on the server.
@@ -2966,6 +2967,46 @@ const ConsolidateUsersSchema = z.object({
   primaryUserId: z.string(),
   userIdsToMerge: z.array(z.string()).min(1),
 });
+
+const ConsolidateMultipleUsersSchema = z.object({
+  groups: z.array(ConsolidateUsersSchema),
+});
+
+/**
+ * Consolidates multiple groups of user accounts into their respective primary accounts.
+ * @param data - An array of groups to merge, each with a primary user ID and IDs to merge.
+ * @returns A summary result object.
+ */
+export async function consolidateMultipleUsersAction(
+  data: z.infer<typeof ConsolidateMultipleUsersSchema>
+) {
+  const { groups } = data;
+  let successCount = 0;
+  let failureCount = 0;
+
+  for (const group of groups) {
+    const result = await consolidateUsersAction(group);
+    if (result.success) {
+      successCount++;
+    } else {
+      failureCount++;
+      // Log the error for debugging, but don't stop the whole process.
+      console.error(`Failed to merge group with primary user ${group.primaryUserId}: ${result.message}`);
+    }
+  }
+
+  if (failureCount > 0) {
+    return {
+      success: false,
+      message: `Consolidation finished with errors. Successfully merged: ${successCount}. Failed to merge: ${failureCount}. Check server logs for details.`,
+    };
+  }
+
+  return {
+    success: true,
+    message: `Successfully merged ${successCount} group(s).`,
+  };
+}
 
 /**
  * Consolidates multiple user accounts into a single primary account.

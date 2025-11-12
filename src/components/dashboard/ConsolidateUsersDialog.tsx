@@ -11,9 +11,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { consolidateUsersAction } from '@/lib/actions';
+import { consolidateMultipleUsersAction } from '@/lib/actions';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { Checkbox } from '../ui/checkbox';
 
 interface ConsolidateUsersDialogProps {
     allUsers: User[];
@@ -122,7 +123,8 @@ export function ConsolidateUsersDialog({ allUsers, isOpen, onOpenChange }: Conso
 
     // State to hold the primary user selection for each group.
     const [primaryUserSelections, setPrimaryUserSelections] = useState<Record<string, string>>({});
-    
+    const [selectedGroups, setSelectedGroups] = useState<Record<string, boolean>>({});
+
     // Set default primary user for each group (the first user in the list).
     useEffect(() => {
         const initialSelections: Record<string, string> = {};
@@ -141,23 +143,23 @@ export function ConsolidateUsersDialog({ allUsers, isOpen, onOpenChange }: Conso
 
     const handleConsolidate = () => {
         startTransition(async () => {
-            const groupKey = Object.keys(primaryUserSelections)[0];
-            if (!groupKey) {
-                toast({ title: 'Error', description: 'No group selected for consolidation.', variant: 'destructive' });
+            const groupsToMerge = Object.keys(selectedGroups)
+                .filter(key => selectedGroups[key])
+                .map(key => {
+                    const primaryUserId = primaryUserSelections[key];
+                    const userIdsToMerge = duplicateGroups[key]
+                        .map(u => u.id)
+                        .filter(id => id !== primaryUserId);
+                    return { primaryUserId, userIdsToMerge };
+                })
+                .filter(group => group.userIdsToMerge.length > 0);
+
+            if (groupsToMerge.length === 0) {
+                toast({ title: 'No Action Taken', description: 'Select at least one group to merge, and ensure a different primary user is chosen.', variant: 'default' });
                 return;
             }
 
-            const primaryUserId = primaryUserSelections[groupKey];
-            const userIdsToMerge = duplicateGroups[groupKey]
-                .map(u => u.id)
-                .filter(id => id !== primaryUserId);
-            
-            if(userIdsToMerge.length === 0) {
-                toast({ title: 'No Action Taken', description: 'You must select different users to merge.', variant: 'default' });
-                return;
-            }
-
-            const result = await consolidateUsersAction({ primaryUserId, userIdsToMerge });
+            const result = await consolidateMultipleUsersAction({ groups: groupsToMerge });
             if (result.success) {
                 toast({ title: 'Success!', description: result.message });
                 onOpenChange(false);
@@ -166,6 +168,8 @@ export function ConsolidateUsersDialog({ allUsers, isOpen, onOpenChange }: Conso
             }
         });
     };
+
+    const numSelectedGroups = Object.values(selectedGroups).filter(Boolean).length;
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -179,22 +183,32 @@ export function ConsolidateUsersDialog({ allUsers, isOpen, onOpenChange }: Conso
                 <DialogHeader>
                     <DialogTitle>Consolidate Duplicate Users</DialogTitle>
                     <DialogDescription>
-                        Review potential duplicate accounts (2+ matching name parts). Select one user to keep as the primary account; all bookings from the other users in that group will be moved to the primary account, and the others will be deleted.
+                        Review potential duplicate accounts (2+ matching name parts). Select groups to merge, choose a primary account for each, then consolidate. All bookings from other users in a group will be moved to the primary account, and the others will be deleted.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="py-4">
                     {groupKeys.length > 0 ? (
                         <ScrollArea className="h-96 pr-4">
-                            <Accordion type="single" collapsible className="w-full">
+                            <Accordion type="multiple" className="w-full">
                                 {groupKeys.map(key => (
                                     <AccordionItem value={key} key={key}>
-                                        <AccordionTrigger>
-                                            <div className="flex items-center gap-2">
-                                                <Users className="h-4 w-4" />
-                                                Group of {duplicateGroups[key].length} Potential Duplicates
-                                            </div>
-                                        </AccordionTrigger>
+                                        <div className="flex items-center gap-2 pr-4">
+                                            <Checkbox
+                                                id={`select-${key}`}
+                                                checked={selectedGroups[key] || false}
+                                                onCheckedChange={(checked) => {
+                                                    setSelectedGroups(prev => ({...prev, [key]: !!checked}))
+                                                }}
+                                                className="ml-1"
+                                            />
+                                            <AccordionTrigger className="flex-1">
+                                                <Label htmlFor={`select-${key}`} className="flex items-center gap-2 cursor-pointer">
+                                                    <Users className="h-4 w-4" />
+                                                    Group of {duplicateGroups[key].length} Potential Duplicates
+                                                </Label>
+                                            </AccordionTrigger>
+                                        </div>
                                         <AccordionContent>
                                             <RadioGroup
                                                 value={primaryUserSelections[key]}
@@ -229,9 +243,9 @@ export function ConsolidateUsersDialog({ allUsers, isOpen, onOpenChange }: Conso
 
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>Cancel</Button>
-                    <Button onClick={handleConsolidate} disabled={isPending || groupKeys.length === 0}>
+                    <Button onClick={handleConsolidate} disabled={isPending || numSelectedGroups === 0}>
                         {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserCheck className="mr-2 h-4 w-4" />}
-                        Merge Selected Group
+                        Merge {numSelectedGroups > 0 ? `${numSelectedGroups} Selected Group(s)` : ''}
                     </Button>
                 </DialogFooter>
             </DialogContent>
