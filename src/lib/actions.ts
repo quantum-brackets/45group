@@ -2995,6 +2995,8 @@ export async function consolidateMultipleUsersAction(
     }
   }
 
+  revalidatePath("/dashboard?tab=users");
+
   if (failureCount > 0) {
     return {
       success: false,
@@ -3046,7 +3048,28 @@ export async function consolidateUsersAction(
     };
   }
 
-  // Step 1: Re-assign all bookings from the users-to-be-merged to the primary user.
+  // Step 1: Validate that all users exist before attempting any operations.
+  const allUserIds = [primaryUserId, ...userIdsToMerge];
+  const { data: users, error: validationError } = await supabase
+    .from("users")
+    .select("id")
+    .in("id", allUserIds);
+
+  if (validationError) {
+    return {
+      success: false,
+      message: `Database Error: Failed to validate users. ${validationError.message}`,
+    };
+  }
+
+  if (users.length !== allUserIds.length) {
+    return {
+      success: false,
+      message: "Merge Failed: One or more of the selected users no longer exist. Please refresh and try again.",
+    };
+  }
+
+  // Step 2: Re-assign all bookings from the users-to-be-merged to the primary user.
   const { error: updateBookingsError } = await supabase
     .from("bookings")
     .update({ user_id: primaryUserId })
@@ -3063,7 +3086,7 @@ export async function consolidateUsersAction(
     };
   }
 
-  // Step 2: Delete the now-redundant user accounts.
+  // Step 3: Delete the now-redundant user accounts.
   const { error: deleteUsersError } = await supabase
     .from("users")
     .delete()
@@ -3082,8 +3105,6 @@ export async function consolidateUsersAction(
     };
   }
 
-  revalidatePath("/dashboard?tab=users");
-  revalidatePath("/bookings");
   return {
     success: true,
     message: `${userIdsToMerge.length} user(s) were successfully merged.`,
