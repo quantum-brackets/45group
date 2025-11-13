@@ -2,7 +2,7 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import crypto from "crypto";
 import { eachDayOfInterval, format } from "date-fns";
-import { Booking, Listing } from "./types";
+import { Booking, Listing, User } from "./types";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -33,6 +33,9 @@ function formatDateToStr(
   date: string | Date,
   formatStr: string = "yyyy-MM-dd"
 ): string {
+  if (typeof date === 'string') {
+    return format(parseDate(date), formatStr);
+  }
   return format(date, formatStr);
 }
 
@@ -96,6 +99,91 @@ const calculateBookingFinancials = (
   return { totalBill, totalPayments, balance, stayDuration: durationDays };
 };
 
+
+/**
+ * Shared logic to determine if two user names are similar.
+ * Returns true if they share at least two common name parts.
+ * @param name1 - The first name string.
+ * @param name2 - The second name string.
+ * @returns A boolean indicating if the names are similar.
+ */
+function areNamesSimilar(name1: string, name2: string): boolean {
+  if (!name1 || !name2) return false;
+
+  const tokens1 = name1.toLowerCase().split(/\s+/).filter(Boolean);
+  const tokens2 = name2.toLowerCase().split(/\s+/).filter(Boolean);
+
+  const commonTokens = tokens1.filter(token => tokens2.includes(token));
+
+  return commonTokens.length >= 2;
+}
+
+/**
+ * Finds groups of duplicate users based on name similarity.
+ * @param users - An array of all users to check.
+ * @returns A record where keys are group identifiers and values are arrays of similar users.
+ */
+export const findDuplicateUsers = (users: User[]): {
+  [key: string]: User[];
+} => {
+  if (users.length < 2) return {};
+
+  const adj: Record<string, string[]> = {};
+  users.forEach(u => adj[u.id] = []);
+
+  // Build an adjacency list based on name similarity
+  for (let i = 0; i < users.length; i++) {
+    for (let j = i + 1; j < users.length; j++) {
+      if (areNamesSimilar(users[i].name, users[j].name)) {
+        adj[users[i].id].push(users[j].id);
+        adj[users[j].id].push(users[i].id);
+      }
+    }
+  }
+
+  // Use graph traversal (DFS) to find connected components (clusters of duplicates)
+  const clusters: User[][] = [];
+  const visited = new Set<string>();
+
+  users.forEach(user => {
+    if (!visited.has(user.id)) {
+      const currentCluster: User[] = [];
+      const stack = [user.id];
+      visited.add(user.id);
+
+      while (stack.length > 0) {
+        const uId = stack.pop()!;
+        const fullUser = users.find(u => u.id === uId);
+        if (fullUser) {
+          currentCluster.push(fullUser);
+        }
+
+        (adj[uId] || []).forEach(vId => {
+          if (!visited.has(vId)) {
+            visited.add(vId);
+            stack.push(vId);
+          }
+        });
+      }
+
+      if (currentCluster.length > 1) {
+        clusters.push(currentCluster);
+      }
+    }
+  });
+
+  // Format clusters into the required output structure
+  const duplicateGroups: { [key: string]: User[] } = {};
+  clusters.forEach(cluster => {
+    cluster.sort((a, b) => a.name.localeCompare(b.name));
+    const groupKey = cluster.map(u => u.id).sort().join(',');
+    duplicateGroups[groupKey] = cluster;
+  });
+
+  return duplicateGroups;
+};
+
+
 export {
   cn,
   calculateBookingFinancials,
@@ -105,4 +193,5 @@ export {
   generateRandomString,
   parseDate,
   subDays,
+  areNamesSimilar,
 };

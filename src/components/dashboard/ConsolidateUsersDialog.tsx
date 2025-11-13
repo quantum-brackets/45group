@@ -15,104 +15,13 @@ import { consolidateMultipleUsersAction } from '@/lib/actions';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { Checkbox } from '../ui/checkbox';
+import { findDuplicateUsers } from '@/lib/utils';
 
 interface ConsolidateUsersDialogProps {
     allUsers: User[];
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
 }
-
-type DuplicateGroups = {
-    [key: string]: User[];
-};
-
-// Helper function to find potential duplicate users using a graph-based clustering approach.
-// This ensures that groups are properly normalized (e.g., A-B and B-C become A-B-C).
-const findDuplicateUsers = (users: User[]): DuplicateGroups => {
-    if (users.length < 2) return {};
-
-    const userTokens: { id: string, tokens: string[] }[] = users.map(user => ({
-        id: user.id,
-        tokens: user.name.toLowerCase().split(/\s+/).filter(Boolean).sort((a, b) => b.length - a.length) // Sort by length descending
-    }));
-
-    // Build an adjacency list for the graph where an edge represents a potential duplicate pair.
-    const adj: Record<string, string[]> = {};
-    userTokens.forEach(u => adj[u.id] = []);
-
-    for (let i = 0; i < userTokens.length; i++) {
-        for (let j = i + 1; j < userTokens.length; j++) {
-            const userA = userTokens[i];
-            const userB = userTokens[j];
-
-            let commonTokens = 0;
-            const seenTokens = new Set<string>();
-
-            // Use substring matching instead of exact matching.
-            for (const tokenA of userA.tokens) {
-                for (const tokenB of userB.tokens) {
-                    if (seenTokens.has(tokenA) || seenTokens.has(tokenB)) continue;
-
-                    if (tokenA.includes(tokenB) || tokenB.includes(tokenA)) {
-                        commonTokens++;
-                        seenTokens.add(tokenA);
-                        seenTokens.add(tokenB);
-                        break; // Move to the next tokenA once a match is found
-                    }
-                }
-            }
-            
-            // If they share 2 or more name parts, they are connected in the graph.
-            if (commonTokens >= 2) {
-                adj[userA.id].push(userB.id);
-                adj[userB.id].push(userA.id);
-            }
-        }
-    }
-
-    const clusters: User[][] = [];
-    const visited = new Set<string>();
-
-    // Traverse the graph to find all connected components (the clusters of duplicates).
-    userTokens.forEach(user => {
-        if (!visited.has(user.id)) {
-            const currentCluster: User[] = [];
-            const stack = [user.id];
-            visited.add(user.id);
-
-            while (stack.length > 0) {
-                const uId = stack.pop()!;
-                const fullUser = users.find(u => u.id === uId);
-                if (fullUser) {
-                    currentCluster.push(fullUser);
-                }
-
-                (adj[uId] || []).forEach(vId => {
-                    if (!visited.has(vId)) {
-                        visited.add(vId);
-                        stack.push(vId);
-                    }
-                });
-            }
-
-            // Only consider clusters with more than one user as a duplicate group.
-            if (currentCluster.length > 1) {
-                clusters.push(currentCluster);
-            }
-        }
-    });
-
-    // Convert the clusters into the required DuplicateGroups format.
-    const duplicateGroups: DuplicateGroups = {};
-    clusters.forEach(cluster => {
-        // Sort by name to keep the order consistent.
-        cluster.sort((a, b) => a.name.localeCompare(b.name));
-        const groupKey = cluster.map(u => u.id).sort().join(',');
-        duplicateGroups[groupKey] = cluster;
-    });
-
-    return duplicateGroups;
-};
 
 
 export function ConsolidateUsersDialog({ allUsers, isOpen, onOpenChange }: ConsolidateUsersDialogProps) {

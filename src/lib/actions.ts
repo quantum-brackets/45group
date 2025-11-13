@@ -50,9 +50,38 @@ import {
   calculateBookingFinancials,
   differenceInDays,
   subDays,
+  areNamesSimilar,
 } from "@/lib/utils";
 import { getAllBookings, getBookingsByDateRange } from "./data";
 import { EVENT_BOOKING_DAILY_HRS, MAX_DISCOUNT_PERCENT } from "./constants";
+
+
+/**
+ * Finds the most similar existing user based on name.
+ * @param supabase - The Supabase admin client.
+ * @param name - The name to search for.
+ * @returns A User object if a similar user is found, otherwise null.
+ */
+async function findSimilarUser(
+  supabase: any,
+  name: string
+): Promise<User | null> {
+  const { data: allUsers, error } = await supabase
+    .from("users")
+    .select("id, data, email, role, status");
+  if (error) {
+    console.error("Error fetching users for similarity check:", error);
+    return null;
+  }
+
+  for (const user of allUsers.map(unpackUser)) {
+    if (user.name && areNamesSimilar(name, user.name)) {
+      return user; // Return the first match found
+    }
+  }
+
+  return null;
+}
 
 function unpackUser(user: any): User {
   if (!user) return null as any;
@@ -626,46 +655,6 @@ type FindOrCreateResult = {
   isNewUser: boolean;
   error?: string;
 };
-
-/**
- * Finds the most similar existing user based on name.
- * @param supabase - The Supabase admin client.
- * @param name - The name to search for.
- * @returns A User object if a similar user is found, otherwise null.
- */
-async function findSimilarUser(
-  supabase: any,
-  name: string
-): Promise<User | null> {
-  const { data: allUsers, error } = await supabase
-    .from("users")
-    .select("id, data, email, role, status");
-  if (error) {
-    console.error("Error fetching users for similarity check:", error);
-    return null;
-  }
-
-  const searchTokens = name.toLowerCase().split(/\s+/).filter(Boolean);
-  let bestMatch: { user: User; score: number } | null = null;
-
-  for (const user of allUsers.map(unpackUser)) {
-    if (!user.name) continue;
-    const existingTokens = user.name.toLowerCase().split(/\s+/).filter(Boolean);
-    const commonTokens = searchTokens.filter((t) =>
-      existingTokens.includes(t)
-    ).length;
-
-    // Require at least two common name parts for a potential match.
-    if (commonTokens >= 2) {
-      if (!bestMatch || commonTokens > bestMatch.score) {
-        bestMatch = { user, score: commonTokens };
-      }
-    }
-  }
-
-  return bestMatch ? bestMatch.user : null;
-}
-
 
 /**
  * Finds an existing user or creates a new provisional one.
