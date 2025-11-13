@@ -41,7 +41,7 @@ const reservationSchema = z.object({
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ['newCustomerName'],
-            message: 'Please select an existing customer or enter a name for a new one.',
+            message: 'Please enter a name for the customer.',
         });
     }
 });
@@ -98,7 +98,7 @@ export function AddReservationDialog({ children, allListings, allUsers, isOpen, 
                 <DialogHeader>
                     <DialogTitle>Confirm Reservation</DialogTitle>
                     <DialogDescription>
-                        Quickly create a confirmed booking for a walk-in or new customer.
+                        Quickly create a confirmed booking for a walk-in or new customer. The system will attempt to match the name to an existing customer.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -153,39 +153,14 @@ export function AddReservationDialog({ children, allListings, allUsers, isOpen, 
                             </div>
                             <Separator />
                             <div className="space-y-2">
-                                <FormLabel>Customer</FormLabel>
-                                <FormField
-                                    control={form.control}
-                                    name="userId"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormControl>
-                                                <Combobox
-                                                    options={allUsers.map(u => ({ label: `${u.name} (${u.email})`, value: u.id }))}
-                                                    value={field.value}
-                                                    onChange={(value) => { field.onChange(value); if (value) form.setValue('newCustomerName', undefined); }}
-                                                    placeholder="Select an existing customer..."
-                                                    searchPlaceholder="Search customers..."
-                                                    emptyPlaceholder="No customers found."
-                                                    className="w-full"
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <div className="flex items-center gap-4">
-                                    <Separator className="flex-1" />
-                                    <span className="text-xs text-muted-foreground">OR</span>
-                                    <Separator className="flex-1" />
-                                </div>
                                 <FormField
                                     control={form.control}
                                     name="newCustomerName"
                                     render={({ field }) => (
                                         <FormItem>
+                                            <FormLabel>Customer Name</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Enter a new customer name..." {...field} onChange={(e) => { field.onChange(e); if (e.target.value) form.setValue('userId', undefined); }} />
+                                                <Input placeholder="Enter customer name..." {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>

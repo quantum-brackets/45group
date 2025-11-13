@@ -21,10 +21,8 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import { DateRange } from 'react-day-picker';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Combobox } from '@/components/ui/combobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { cn, formatDateToStr, parseDate } from '@/lib/utils';
 import Link from 'next/link';
@@ -59,7 +57,6 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
 
   const [bookingFor, setBookingFor] = useState<'self' | 'other'>('self');
   const canBookForOthers = session && hasPermission(permissions, session, 'booking:create');
-  const guestUsers = useMemo(() => allUsers.filter(u => u.role === 'guest'), [allUsers]);
 
   const [availability, setAvailability] = useState({
     availableCount: listing.inventoryCount || 0,
@@ -190,17 +187,16 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
 
     // Logged-in user booking for someone else (new or existing)
     if (session && bookingFor === 'other') {
-      const selectedUserId = form.getValues('userId');
       const guestName = form.getValues('guestName');
 
-      if (!selectedUserId && !guestName) {
-        form.setError('guestName', { message: 'Please select an existing customer or enter a new one by name.' });
+      if (!guestName) {
+        form.setError('guestName', { message: 'Please enter a name for the customer.' });
         return;
       }
 
       const guestEmail = form.getValues('guestEmail');
       // If an email is provided for a new guest, validate it.
-      if (!selectedUserId && guestName && guestEmail) {
+      if (guestName && guestEmail) {
         const emailValidation = z.string().email().safeParse(guestEmail);
         if (!emailValidation.success) {
           form.setError('guestEmail', { message: 'Please enter a valid email.' });
@@ -307,7 +303,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                     <Label className="text-xs font-bold uppercase text-muted-foreground">From</Label>
                     <div className="text-sm mt-1">{date?.from ? formatDateToStr(date.from, 'yyyy-MM-dd') : 'Add date'}</div>
                   </div>
-                  <Separator orientation="vertical" className="h-auto" />
+                  <div className="h-auto w-px bg-border" />
                    <div className="flex-1 p-3">
                     <Label className="text-xs font-bold uppercase text-muted-foreground">To</Label>
                     <div className="text-sm mt-1">{date?.to ? formatDateToStr(date.to, 'yyyy-MM-dd') : 'Add date'}</div>
@@ -386,40 +382,8 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
               </RadioGroup>
               {bookingFor === 'other' && (
                 <div className="space-y-4 pt-2">
-                  <FormField
-                    control={form.control}
-                    name="userId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Existing Customer</FormLabel>
-                        <FormControl>
-                          <Combobox
-                            options={guestUsers.map(u => ({ label: `${u.name} (${u.email})`, value: u.id }))}
-                            value={field.value}
-                            onChange={(value) => {
-                                field.onChange(value);
-                                if (value) {
-                                  form.setValue('guestName', undefined);
-                                  form.setValue('guestEmail', undefined);
-                                  form.setValue('guestNotes', undefined);
-                                }
-                            }}
-                            placeholder="Select an existing customers..."
-                            searchPlaceholder="Search customers..."
-                            emptyPlaceholder="No customers found."
-                            className="w-full"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex items-center gap-4">
-                      <Separator className="flex-1" />
-                      <span className="text-xs text-muted-foreground">OR</span>
-                      <Separator className="flex-1" />
-                  </div>
                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">The system will attempt to match the name to an existing customer.</p>
                       <FormField
                           control={form.control}
                           name="guestName"
@@ -427,10 +391,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                           <FormItem>
                               <FormLabel>New Customer <strong className="text-red-500">*</strong></FormLabel>
                               <FormControl>
-                                <Input placeholder="Name e.g. John Doe" {...field} onChange={(e) => {
-                                    field.onChange(e);
-                                    if(e.target.value) { form.setValue('userId', undefined); }
-                                }}/>
+                                <Input placeholder="Name e.g. John Doe" {...field} />
                               </FormControl>
                               <FormMessage />
                           </FormItem>
@@ -441,12 +402,9 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                           name="guestEmail"
                           render={({ field }) => (
                           <FormItem>
-                              <FormLabel>Customer Email</FormLabel>
+                              <FormLabel>Customer Email (Optional)</FormLabel>
                               <FormControl>
-                                <Input placeholder="guest@example.com" {...field} onChange={(e) => {
-                                    field.onChange(e);
-                                    if(e.target.value) { form.setValue('userId', undefined); }
-                                }}/>
+                                <Input placeholder="guest@example.com" {...field} />
                               </FormControl>
                               <FormMessage />
                           </FormItem>
@@ -457,12 +415,9 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
                         name="guestNotes"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Booking Notes</FormLabel>
+                                <FormLabel>Booking Notes (Optional)</FormLabel>
                                 <FormControl>
-                                    <Textarea placeholder="Internal notes about the new customer..." {...field} onChange={(e) => {
-                                        field.onChange(e);
-                                        if(e.target.value) { form.setValue('userId', undefined); }
-                                    }}/>
+                                    <Textarea placeholder="Internal notes about the new customer..." {...field}/>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -475,7 +430,7 @@ export function BookingForm({ listing, confirmedBookings, session, allUsers = []
           ) : !session && (
             <div className="w-full space-y-4 pt-4 border-t">
               <h3 className="font-semibold text-center">Continue as Guest</h3>
-              <p className="text-sm text-center text-muted-foreground -mt-2">An account will be created for you to manage this booking.</p>
+              <p className="text-sm text-center text-muted-foreground -mt-2">The system will link to an existing account if your name is similar, or create a new one to manage this booking.</p>
               <FormField
                 control={form.control}
                 name="guestName"

@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview This file contains all the "Server Actions" for the application.
  * Server Actions are asynchronous functions that are only executed on the server.
@@ -629,6 +628,46 @@ type FindOrCreateResult = {
 };
 
 /**
+ * Finds the most similar existing user based on name.
+ * @param supabase - The Supabase admin client.
+ * @param name - The name to search for.
+ * @returns A User object if a similar user is found, otherwise null.
+ */
+async function findSimilarUser(
+  supabase: any,
+  name: string
+): Promise<User | null> {
+  const { data: allUsers, error } = await supabase
+    .from("users")
+    .select("id, data, email, role, status");
+  if (error) {
+    console.error("Error fetching users for similarity check:", error);
+    return null;
+  }
+
+  const searchTokens = name.toLowerCase().split(/\s+/).filter(Boolean);
+  let bestMatch: { user: User; score: number } | null = null;
+
+  for (const user of allUsers.map(unpackUser)) {
+    if (!user.name) continue;
+    const existingTokens = user.name.toLowerCase().split(/\s+/).filter(Boolean);
+    const commonTokens = searchTokens.filter((t) =>
+      existingTokens.includes(t)
+    ).length;
+
+    // Require at least two common name parts for a potential match.
+    if (commonTokens >= 2) {
+      if (!bestMatch || commonTokens > bestMatch.score) {
+        bestMatch = { user, score: commonTokens };
+      }
+    }
+  }
+
+  return bestMatch ? bestMatch.user : null;
+}
+
+
+/**
  * Finds an existing user or creates a new provisional one.
  * This centralized function is used by both the booking and user creation flows.
  * @param supabase - The Supabase admin client.
@@ -643,6 +682,18 @@ async function findOrCreateGuestUser(
   email?: string | null,
   notes?: string | null
 ): Promise<FindOrCreateResult> {
+  // First, check for a similar name match.
+  const similarUser = await findSimilarUser(supabase, name);
+  if (similarUser) {
+    return {
+      userId: similarUser.id,
+      userName: similarUser.name,
+      userEmail: similarUser.email,
+      isNewUser: false,
+    };
+  }
+
+  // If no similar name, check for an exact email match.
   if (email) {
     const lowerCaseEmail = email.toLowerCase();
     const { data: existingUser } = await supabase
@@ -655,13 +706,12 @@ async function findOrCreateGuestUser(
       if (existingUser.status === "active") {
         return {
           error:
-            'An active account with this email already exists. Please select them from the "Existing Customer" dropdown or ask them to log in.',
+            'An active account with this email already exists. Please use a different email or log in.',
           isNewUser: false,
           userId: "",
           userName: "",
         };
       }
-      // If provisional, we can proceed with this user.
       return {
         userId: existingUser.id,
         userName: existingUser.data.name || name,
@@ -671,7 +721,7 @@ async function findOrCreateGuestUser(
     }
   }
 
-  // If no existing user was found (or if no email was provided), create a new one.
+  // If no similar user and no email match, create a new one.
   const placeholderEmail = email
     ? email.toLowerCase()
     : `walk-in-booking-${generateRandomString(6)}@45group.org`;
@@ -754,40 +804,24 @@ export async function createBookingAction(
     actorId = session.id;
     actorName = session.name;
 
-    // Case 1: Staff/Admin booking for an existing user.
-    if (userId) {
+    // Case 1: Logged-in user booking for someone else.
+    if (guestName) {
       if (!hasPermission(perms, session, "booking:create"))
         return { success: false, message: "Permission Denied" };
-      const { data: targetUser, error: targetUserError } = await supabase
-        .from("users")
-        .select("email, data")
-        .eq("id", userId)
-        .single();
-      if (targetUserError || !targetUser)
-        return {
-          success: false,
-          message:
-            "Booking Failed: The selected guest user could not be found.",
-        };
-      finalUserId = userId;
-      finalUserName = targetUser.data.name;
-      finalUserEmail = targetUser.email;
-      // Case 2: Staff/Admin booking for a NEW guest (with or without email).
-    } else if (guestName) {
-      if (!hasPermission(perms, session, "booking:create"))
-        return { success: false, message: "Permission Denied" };
+      
       const result = await findOrCreateGuestUser(
         supabase,
         guestName,
         guestEmail,
         guestNotes
       );
+
       if (result.error) return { success: false, message: result.error };
       finalUserId = result.userId;
       finalUserName = result.userName;
       finalUserEmail = result.userEmail;
       isNewUser = result.isNewUser;
-      // Case 3: User booking for themselves.
+    // Case 2: User booking for themselves.
     } else {
       if (
         !hasPermission(perms, session, "booking:create:own", {
@@ -800,7 +834,7 @@ export async function createBookingAction(
       finalUserEmail = session.email;
     }
   } else {
-    // Case 4: Unauthenticated guest checkout.
+    // Case 3: Unauthenticated guest checkout.
     if (!guestName || !guestEmail)
       return {
         success: false,
@@ -2780,7 +2814,7 @@ const WalkInReservationSchema = z.object({
       ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['newCustomerName'],
-          message: 'Please select an existing customer or enter a name for a new one.',
+          message: 'Please enter a name for the customer.',
       });
   }
 });
@@ -2811,34 +2845,20 @@ export async function createWalkInReservationAction(
     };
   }
 
-  const { listingId, userId, newCustomerName, guests, units, bills } =
+  const { listingId, newCustomerName, guests, units, bills } =
     validatedFields.data;
   const actorId = session.id;
   const actorName = session.name;
 
   try {
-    let finalUserId: string;
-    let finalUserName: string;
-
-    if (userId) {
-      const { data: existingUser } = await supabase
-        .from("users")
-        .select("data")
-        .eq("id", userId)
-        .single();
-      const existingUserName = existingUser?.data.name;
-      if (!existingUserName)
-        throw new Error(`Selected customer not found. ${existingUser}`);
-      finalUserId = userId;
-      finalUserName = existingUserName;
-    } else if (newCustomerName) {
-      const result = await findOrCreateGuestUser(supabase, newCustomerName);
-      if (result.error) throw new Error(result.error);
-      finalUserId = result.userId;
-      finalUserName = result.userName;
-    } else {
-      throw new Error("No customer specified.");
+    if (!newCustomerName) {
+       throw new Error("No customer name specified.");
     }
+    
+    const result = await findOrCreateGuestUser(supabase, newCustomerName);
+    if (result.error) throw new Error(result.error);
+    const finalUserId = result.userId;
+    const finalUserName = result.userName;
 
     const today = new Date().toISOString().split("T")[0];
 
