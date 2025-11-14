@@ -644,7 +644,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                             {booking.userName}
                         </Link>
                         {booking.createdAt && (
-                        <span className="block text-sm">on {formatDateToStr(booking.createdAt, 'PP')}</span>
+                        <span className="block text-sm">on {formatDateToStr(booking.createdAt.substr(0, 10), 'PP')}</span>
                         )}
                     </p>
                     </div>
@@ -693,7 +693,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                     <span className="text-muted-foreground">by {mostRecentAction.actorName}</span>
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    {isClient ? formatDateToStr(mostRecentAction.timestamp, 'MMM d, yyyy, h:mm a') : <Skeleton className="h-4 w-32" />}
+                                    {isClient ? formatDateToStr(mostRecentAction.timestamp.substr(0,10), 'MMM d, yyyy') : <Skeleton className="h-4 w-32" />}
                                   </div>
                                   <p className="text-muted-foreground text-sm mt-1">{mostRecentAction.message}</p>
                                   <p className="text-xs text-primary mt-2 font-semibold">View full history...</p>
@@ -724,7 +724,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                         <span className="text-muted-foreground">by {action.actorName}</span>
                                       </div>
                                       <div className="text-xs text-muted-foreground">
-                                        {isClient ? formatDateToStr(action.timestamp, 'MMM d, yyyy, h:mm a') : <Skeleton className="h-4 w-32" />}
+                                        {isClient ? formatDateToStr(action.timestamp.substr(0,10), 'MMM d, yyyy') : <Skeleton className="h-4 w-32" />}
                                       </div>
                                       <p className="text-muted-foreground text-sm mt-1">{action.message}</p>
                                     </div>
@@ -834,7 +834,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                                         {payment.notes && (
                                                             <p className="text-sm text-muted-foreground italic mt-1">"{payment.notes}"</p>
                                                         )}
-                                                        <p className="text-xs text-muted-foreground mt-1">Recorded by {payment.actorName} on {formatDateToStr(payment.timestamp, 'PP')}</p>
+                                                        <p className="text-xs text-muted-foreground mt-1">Recorded by {payment.actorName} on {formatDateToStr(payment.timestamp.substr(0,10), 'PP')}</p>
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">{formatCurrency(payment.amount, listing.currency)}</TableCell>
                                                 </TableRow>
