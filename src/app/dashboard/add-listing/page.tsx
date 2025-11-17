@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getListingById, getInventoryByListingId } from '@/lib/data';
 import { ListingForm } from '@/components/dashboard/ListingForm';
 import { getSession } from '@/lib/session';
+import { ListingInventory } from '@/lib/types';
 
 export default async function AddListingPage({ searchParams }: { searchParams: { duplicate?: string } }) {
   const session = await getSession();
@@ -14,15 +15,16 @@ export default async function AddListingPage({ searchParams }: { searchParams: {
   }
 
   let listingToDuplicate = null;
-  let inventoryToDuplicate = [];
-  const isDuplicateMode = !!searchParams.duplicate;
+  let inventoryToDuplicate: ListingInventory[] = [];
+  const { duplicate } = (await searchParams) || {};
+  const isDuplicateMode = !!duplicate;
 
   if (isDuplicateMode) {
-    listingToDuplicate = await getListingById(searchParams.duplicate!);
+    listingToDuplicate = await getListingById(duplicate!);
     if (!listingToDuplicate) {
       notFound();
     }
-    inventoryToDuplicate = await getInventoryByListingId(searchParams.duplicate!);
+    inventoryToDuplicate = await getInventoryByListingId(duplicate!);
   }
 
   return (

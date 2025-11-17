@@ -69,7 +69,7 @@ import {
   parseDate,
   formatDateToStr,
   formatCurrency,
-  subDays,
+  daysInterval,
   differenceInDays as differenceInDaysStr,
 } from "@/lib/utils";
 import { sendReportEmailAction } from "@/lib/actions";
@@ -484,7 +484,7 @@ export function ListingReport({
     > = {};
     if (!initialDateRange?.from || !initialDateRange?.to) return dailyData;
 
-    const reportDays = subDays(initialDateRange.from, initialDateRange.to);
+    const reportDays = daysInterval(initialDateRange.from, initialDateRange.to);
 
     reportDays.forEach((day: any) => {
       const dayStr = day;
@@ -504,7 +504,7 @@ export function ListingReport({
         price_unit: booking.price_unit,
         ...listing,
       };
-      const bookingDays = subDays(booking.startDate, booking.endDate);
+      const bookingDays = daysInterval(booking.startDate, booking.endDate);
 
       const bookingDuration =
         differenceInDaysStr(booking.endDate, booking.startDate) || 1;

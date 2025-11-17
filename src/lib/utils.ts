@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import crypto from "crypto";
-import { eachDayOfInterval, format } from "date-fns";
+import { eachDayOfInterval, format, sub } from "date-fns";
 import { Booking, Listing, User } from "./types";
 
 function cn(...inputs: ClassValue[]) {
@@ -23,17 +23,22 @@ function generateRandomString(length: number): string {
   return result;
 }
 
-const subDays = (from: string, to: string) =>
-  eachDayOfInterval({
+const subDays = (from: string, differenceInDays: number) => {
+  return formatDateToStr(sub(parseDate(from), { days: differenceInDays }));
+};
+
+const daysInterval = (from: string, to: string) => {
+  return eachDayOfInterval({
     start: parseDate(from),
     end: parseDate(to),
   });
+};
 
 function formatDateToStr(
   date: string | Date,
   formatStr: string = "yyyy-MM-dd"
 ): string {
-  if (typeof date === 'string') {
+  if (typeof date === "string") {
     return format(parseDate(date), formatStr);
   }
   return format(date, formatStr);
@@ -99,7 +104,6 @@ const calculateBookingFinancials = (
   return { totalBill, totalPayments, balance, stayDuration: durationDays };
 };
 
-
 /**
  * Shared logic to determine if two user names are similar.
  * Returns true if they share at least two common name parts.
@@ -113,7 +117,7 @@ function areNamesSimilar(name1: string, name2: string): boolean {
   const tokens1 = name1.toLowerCase().split(/\s+/).filter(Boolean);
   const tokens2 = name2.toLowerCase().split(/\s+/).filter(Boolean);
 
-  const commonTokens = tokens1.filter(token => tokens2.includes(token));
+  const commonTokens = tokens1.filter((token) => tokens2.includes(token));
 
   return commonTokens.length >= 2;
 }
@@ -123,13 +127,15 @@ function areNamesSimilar(name1: string, name2: string): boolean {
  * @param users - An array of all users to check.
  * @returns A record where keys are group identifiers and values are arrays of similar users.
  */
-export const findDuplicateUsers = (users: User[]): {
+export const findDuplicateUsers = (
+  users: User[]
+): {
   [key: string]: User[];
 } => {
   if (users.length < 2) return {};
 
   const adj: Record<string, string[]> = {};
-  users.forEach(u => adj[u.id] = []);
+  users.forEach((u) => (adj[u.id] = []));
 
   // Build an adjacency list based on name similarity
   for (let i = 0; i < users.length; i++) {
@@ -145,7 +151,7 @@ export const findDuplicateUsers = (users: User[]): {
   const clusters: User[][] = [];
   const visited = new Set<string>();
 
-  users.forEach(user => {
+  users.forEach((user) => {
     if (!visited.has(user.id)) {
       const currentCluster: User[] = [];
       const stack = [user.id];
@@ -153,12 +159,12 @@ export const findDuplicateUsers = (users: User[]): {
 
       while (stack.length > 0) {
         const uId = stack.pop()!;
-        const fullUser = users.find(u => u.id === uId);
+        const fullUser = users.find((u) => u.id === uId);
         if (fullUser) {
           currentCluster.push(fullUser);
         }
 
-        (adj[uId] || []).forEach(vId => {
+        (adj[uId] || []).forEach((vId) => {
           if (!visited.has(vId)) {
             visited.add(vId);
             stack.push(vId);
@@ -174,15 +180,17 @@ export const findDuplicateUsers = (users: User[]): {
 
   // Format clusters into the required output structure
   const duplicateGroups: { [key: string]: User[] } = {};
-  clusters.forEach(cluster => {
+  clusters.forEach((cluster) => {
     cluster.sort((a, b) => a.name.localeCompare(b.name));
-    const groupKey = cluster.map(u => u.id).sort().join(',');
+    const groupKey = cluster
+      .map((u) => u.id)
+      .sort()
+      .join(",");
     duplicateGroups[groupKey] = cluster;
   });
 
   return duplicateGroups;
 };
-
 
 export {
   cn,
@@ -192,6 +200,7 @@ export {
   formatDateToStr,
   generateRandomString,
   parseDate,
+  daysInterval,
   subDays,
   areNamesSimilar,
 };

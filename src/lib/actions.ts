@@ -49,12 +49,13 @@ import {
   generateRandomString,
   calculateBookingFinancials,
   differenceInDays,
-  subDays,
+  daysInterval,
   areNamesSimilar,
+  subDays,
+  parseDate,
 } from "@/lib/utils";
 import { getAllBookings, getBookingsByDateRange } from "./data";
 import { EVENT_BOOKING_DAILY_HRS, MAX_DISCOUNT_PERCENT } from "./constants";
-
 
 /**
  * Finds the most similar existing user based on name.
@@ -124,7 +125,7 @@ function unpackBooking(dbBooking: any): Booking {
     endDate: end_date,
     createdAt: createdAt,
   };
-};
+}
 
 /**
  * Updates the permissions for all roles in the system.
@@ -695,7 +696,7 @@ async function findOrCreateGuestUser(
       if (existingUser.status === "active") {
         return {
           error:
-            'An active account with this email already exists. Please use a different email or log in.',
+            "An active account with this email already exists. Please use a different email or log in.",
           isNewUser: false,
           userId: "",
           userName: "",
@@ -776,8 +777,16 @@ export async function createBookingAction(
     };
   }
 
-  const { listingId, startDate, endDate, guests, numberOfUnits, userId, guestName, guestNotes } =
-    validatedFields.data;
+  const {
+    listingId,
+    startDate,
+    endDate,
+    guests,
+    numberOfUnits,
+    userId,
+    guestName,
+    guestNotes,
+  } = validatedFields.data;
   const guestEmail = validatedFields.data.guestEmail
     ? validatedFields.data.guestEmail.toLowerCase()
     : undefined;
@@ -797,7 +806,7 @@ export async function createBookingAction(
     if (guestName) {
       if (!hasPermission(perms, session, "booking:create"))
         return { success: false, message: "Permission Denied" };
-      
+
       const result = await findOrCreateGuestUser(
         supabase,
         guestName,
@@ -810,7 +819,7 @@ export async function createBookingAction(
       finalUserName = result.userName;
       finalUserEmail = result.userEmail;
       isNewUser = result.isNewUser;
-    // Case 2: User booking for themselves.
+      // Case 2: User booking for themselves.
     } else {
       if (
         !hasPermission(perms, session, "booking:create:own", {
@@ -955,8 +964,9 @@ export async function createBookingAction(
 
     const baseReturn = {
       success: true,
-      message: "Your booking request has been sent and is pending confirmation.",
-      bookingId: newBooking.id
+      message:
+        "Your booking request has been sent and is pending confirmation.",
+      bookingId: newBooking.id,
     };
 
     if (session) {
@@ -964,7 +974,8 @@ export async function createBookingAction(
     } else {
       return {
         ...baseReturn,
-        message: "Your booking request has been sent! Check your email to complete your account setup."
+        message:
+          "Your booking request has been sent! Check your email to complete your account setup.",
       };
     }
   } catch (e: any) {
@@ -986,7 +997,6 @@ const UpdateBookingSchema = z.object({
   userId: z.string().optional(),
   inventoryIds: z.array(z.string()).optional(),
 });
-
 
 /**
  * Updates an existing booking.
@@ -1233,7 +1243,8 @@ export async function cancelBookingAction(
   if (!session)
     return {
       success: false,
-      message: "Authentication Error: You must be logged in to perform this action."
+      message:
+        "Authentication Error: You must be logged in to perform this action.",
     };
 
   const { bookingId } = BookingActionSchema.parse(data);
@@ -1244,7 +1255,10 @@ export async function cancelBookingAction(
     .eq("id", bookingId)
     .single();
   if (fetchError || !booking)
-    return { success: false, message: "Database Error: Could not find the booking to cancel." };
+    return {
+      success: false,
+      message: "Database Error: Could not find the booking to cancel.",
+    };
 
   if (
     !hasPermission(perms, session, "booking:cancel:own", {
@@ -1357,7 +1371,7 @@ export async function confirmBookingAction(
   if (!session || !hasPermission(perms, session, "booking:confirm")) {
     return {
       success: false,
-      message: "Permission Denied: You are not authorized to confirm bookings."
+      message: "Permission Denied: You are not authorized to confirm bookings.",
     };
   }
 
@@ -1369,7 +1383,10 @@ export async function confirmBookingAction(
     .eq("id", bookingId)
     .single();
   if (fetchError || !booking)
-    return { success: false, message: "Database Error: Could not find the booking to confirm." };
+    return {
+      success: false,
+      message: "Database Error: Could not find the booking to confirm.",
+    };
 
   const unpackedBooking = unpackBooking(booking);
 
@@ -1380,7 +1397,10 @@ export async function confirmBookingAction(
     .eq("id", unpackedBooking.listingId)
     .single();
   if (!listingData)
-    return { success: false, message: "Database Error: Could not find the associated listing." };
+    return {
+      success: false,
+      message: "Database Error: Could not find the associated listing.",
+    };
   const unpackedListing = unpackListing(listingData);
 
   // Check payment status for staff AND ADMINS
@@ -1519,7 +1539,8 @@ export async function completeBookingAction(
   if (!session || !hasPermission(perms, session, "booking:confirm")) {
     return {
       success: false,
-      message: "Permission Denied: You are not authorized to complete bookings.",
+      message:
+        "Permission Denied: You are not authorized to complete bookings.",
     };
   }
 
@@ -1531,7 +1552,10 @@ export async function completeBookingAction(
     .eq("id", bookingId)
     .single();
   if (fetchError || !bookingData) {
-    return { success: false, message: "Database Error: Could not find the booking to complete." };
+    return {
+      success: false,
+      message: "Database Error: Could not find the booking to complete.",
+    };
   }
 
   const unpackedBooking = unpackBooking(bookingData);
@@ -1542,7 +1566,10 @@ export async function completeBookingAction(
     .eq("id", unpackedBooking.listingId)
     .single();
   if (!listingData)
-    return { success: false, message: "Database Error: Could not find the associated listing." };
+    return {
+      success: false,
+      message: "Database Error: Could not find the associated listing.",
+    };
   const unpackedListing = unpackListing(listingData);
 
   if (session.role === "staff" || session.role === "admin") {
@@ -2598,9 +2625,9 @@ function getDailySummaryCsv(
       balance: number;
     }
   > = {};
-  const reportDays = subDays(dateRange.from, dateRange.to);
+  const reportDays = daysInterval(dateRange.from, dateRange.to);
 
-  reportDays.forEach((day:any) => {
+  reportDays.forEach((day: any) => {
     const dayStr = day;
     dailyData[dayStr] = {
       date: dayStr,
@@ -2618,18 +2645,13 @@ function getDailySummaryCsv(
       price_unit: booking.price_unit,
       ...listing,
     };
-    const bookingDays = subDays(booking.startDate, booking.endDate);
+    const bookingDays = daysInterval(booking.startDate, booking.endDate);
     const bookingDuration =
-      differenceInDays(
-        booking.endDate,
-        booking.startDate
-      ) || 1;
+      differenceInDays(booking.endDate, booking.startDate) || 1;
     const dailyRate = (listingForBooking.price || 0) / bookingDuration;
 
-    bookingDays.forEach((day:any) => {
-      if (
-       (day >= dateRange.from && day <= dateRange.to)
-      ) {
+    bookingDays.forEach((day: any) => {
+      if (day >= dateRange.from && day <= dateRange.to) {
         const dayStr = day;
         if (dailyData[dayStr]) {
           dailyData[dayStr].unitsUsed += (booking.inventoryIds || []).length;
@@ -2773,7 +2795,7 @@ export async function sendReportEmailAction(
       email,
       listing, // Can be null for global reports
       bookings,
-      dateRange: { from: fromDate, to: toDate },
+      dateRange: { from: parseDate(fromDate), to: parseDate(toDate) },
       csvContent,
       dailyCsvContent,
     });
@@ -2787,27 +2809,34 @@ export async function sendReportEmailAction(
   }
 }
 
-const WalkInReservationSchema = z.object({
-  listingId: z.string().min(1, "Please select a listing."),
-  userId: z.string().optional(),
-  newCustomerName: z.string().optional(),
-  guests: z.coerce.number().int().min(1, "At least one guest is required."),
-  units: z.coerce.number().int().min(1, "At least one unit is required."),
-  bills: z.array(z.object({
-      description: z.string().min(1, "Description cannot be empty."),
-      amount: z.coerce.number().positive("Amount must be a positive number."),
-      paid: z.boolean(),
-  })).optional(),
-}).superRefine((data, ctx) => {
-  if (!data.userId && !data.newCustomerName) {
+const WalkInReservationSchema = z
+  .object({
+    listingId: z.string().min(1, "Please select a listing."),
+    userId: z.string().optional(),
+    newCustomerName: z.string().optional(),
+    guests: z.coerce.number().int().min(1, "At least one guest is required."),
+    units: z.coerce.number().int().min(1, "At least one unit is required."),
+    bills: z
+      .array(
+        z.object({
+          description: z.string().min(1, "Description cannot be empty."),
+          amount: z.coerce
+            .number()
+            .positive("Amount must be a positive number."),
+          paid: z.boolean(),
+        })
+      )
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.userId && !data.newCustomerName) {
       ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['newCustomerName'],
-          message: 'Please enter a name for the customer.',
+        code: z.ZodIssueCode.custom,
+        path: ["newCustomerName"],
+        message: "Please enter a name for the customer.",
       });
-  }
-});
-
+    }
+  });
 
 export async function createWalkInReservationAction(
   data: z.infer<typeof WalkInReservationSchema>
@@ -2841,9 +2870,9 @@ export async function createWalkInReservationAction(
 
   try {
     if (!newCustomerName) {
-       throw new Error("No customer name specified.");
+      throw new Error("No customer name specified.");
     }
-    
+
     const result = await findOrCreateGuestUser(supabase, newCustomerName);
     if (result.error) throw new Error(result.error);
     const finalUserId = result.userId;
@@ -2879,8 +2908,8 @@ export async function createWalkInReservationAction(
       };
     }
 
-    const endDate = listing.type === ListingTypes.HOTEL ? subDays(today, -1) : today;
-
+    const endDate =
+      listing.type === ListingTypes.HOTEL ? subDays(today, -1) : today;
 
     const availableInventory = await findAvailableInventory(
       supabase,
@@ -2950,14 +2979,18 @@ export async function createWalkInReservationAction(
       discount: 0,
     };
 
-    const { data: newBooking, error: createError } = await supabase.from("bookings").insert({
-      listing_id: listingId,
-      user_id: finalUserId,
-      start_date: today,
-      end_date: endDate,
-      status: bookingStatus,
-      data: bookingData,
-    }).select('id').single();
+    const { data: newBooking, error: createError } = await supabase
+      .from("bookings")
+      .insert({
+        listing_id: listingId,
+        user_id: finalUserId,
+        start_date: today,
+        end_date: endDate,
+        status: bookingStatus,
+        data: bookingData,
+      })
+      .select("id")
+      .single();
 
     if (createError) throw createError;
 
@@ -3000,7 +3033,9 @@ export async function consolidateMultipleUsersAction(
     } else {
       failureCount++;
       // Log the error for debugging, but don't stop the whole process.
-      console.error(`Failed to merge group with primary user ${group.primaryUserId}: ${result.message}`);
+      console.error(
+        `Failed to merge group with primary user ${group.primaryUserId}: ${result.message}`
+      );
     }
   }
 
@@ -3074,7 +3109,8 @@ export async function consolidateUsersAction(
   if (users.length !== allUserIds.length) {
     return {
       success: false,
-      message: "Merge Failed: One or more of the selected users no longer exist. Please refresh and try again.",
+      message:
+        "Merge Failed: One or more of the selected users no longer exist. Please refresh and try again.",
     };
   }
 

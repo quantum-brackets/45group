@@ -13,7 +13,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const listings = await getAllListings();
   const users = await getAllUsers();
   const session = await getSession();
-  const defaultTab = searchParams?.tab === 'users' ? 'users' : 'listings';
+  const { tab } = (await searchParams) || {};
+  const defaultTab = tab === 'users' ? 'users' : 'listings';
 
   return (
     <div className="container mx-auto px-4 py-8">
