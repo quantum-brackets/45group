@@ -2604,6 +2604,7 @@ export async function setDiscountAction(
 
 const SendReportEmailSchema = z.object({
   listingId: z.string().optional(),
+  location: z.string().optional(),
   fromDate: z.string(),
   toDate: z.string(),
   email: z.string().email(),
@@ -2723,7 +2724,8 @@ export async function sendReportEmailAction(
     return { success: false, message: "Invalid data provided for report." };
   }
 
-  const { listingId, fromDate, toDate, email } = validatedFields.data;
+  const { listingId, location, fromDate, toDate, email } =
+    validatedFields.data;
 
   let listing: Listing | null = null;
   let bookings: Booking[];
@@ -2731,7 +2733,7 @@ export async function sendReportEmailAction(
   if (listingId) {
     const { data: listingData, error: listingError } = await supabase
       .from("listings")
-      .select("id, data")
+      .select("id, data, location")
       .eq("id", listingId)
       .single();
     if (listingError || !listingData) {
@@ -2740,8 +2742,30 @@ export async function sendReportEmailAction(
     listing = unpackListing({ ...listingData, id: listingId });
     bookings = await getBookingsByDateRange(listingId, fromDate, toDate);
   } else {
-    // Global report
-    bookings = await getAllBookings({ fromDate, toDate });
+    // Global or location-based report
+    bookings = await getAllBookings({
+      fromDate,
+      toDate,
+      location: location,
+    });
+    // For location reports, create a mock listing object for the email template
+    if (location) {
+      listing = {
+        id: location,
+        name: `Location: ${decodeURIComponent(location)}`,
+        location: location,
+        type: "hotel", // placeholder
+        description: "",
+        images: [],
+        price: 0,
+        price_unit: "night",
+        currency: "NGN",
+        rating: 0,
+        reviews: [],
+        features: [],
+        max_guests: 0,
+      };
+    }
   }
 
   try {
@@ -2786,11 +2810,7 @@ export async function sendReportEmailAction(
 
     const csvContent = [headers.join(","), ...rows].join("\n");
     const dateRange = { from: fromDate, to: toDate };
-    const dailyCsvContent = getDailySummaryCsv(
-      bookings,
-      dateRange,
-      listing
-    );
+    const dailyCsvContent = getDailySummaryCsv(bookings, dateRange, listing);
 
     await sendReportEmail({
       email,

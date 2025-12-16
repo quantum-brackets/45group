@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
@@ -541,9 +542,9 @@ export function ListingReport({
 
   const handleSendEmail = () => {
     startEmailTransition(async () => {
-      // For a global report, listingId is null. The server action needs to handle this.
       const result = await sendReportEmailAction({
         listingId: listing?.id,
+        location: location,
         fromDate: initialDateRange.from,
         toDate: initialDateRange.to,
         email,
