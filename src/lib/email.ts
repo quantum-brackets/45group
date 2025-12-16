@@ -165,11 +165,11 @@ export async function sendReportEmail({ email, csvContent, dailyCsvContent, ...p
         attachments: [
             {
                 filename: 'report_details.csv',
-                content: csvContent,
+                content: Buffer.from(csvContent, 'utf-8'),
             },
             {
                 filename: 'report_daily_summary.csv',
-                content: dailyCsvContent,
+                content: Buffer.from(dailyCsvContent, 'utf-8'),
             }
         ]
       });
