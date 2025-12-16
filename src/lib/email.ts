@@ -144,7 +144,7 @@ interface SendReportEmailProps {
     email: string;
     listing: Listing | null; // Can be null for global reports
     bookings: Booking[];
-    dateRange: { from: Date; to: Date };
+    dateRange: { from: string; to: string };
     csvContent: string;
     dailyCsvContent: string;
 }

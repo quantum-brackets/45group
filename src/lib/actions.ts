@@ -2785,9 +2785,10 @@ export async function sendReportEmailAction(
     });
 
     const csvContent = [headers.join(","), ...rows].join("\n");
+    const dateRange = { from: fromDate, to: toDate };
     const dailyCsvContent = getDailySummaryCsv(
       bookings,
-      { from: fromDate, to: toDate },
+      dateRange,
       listing
     );
 
@@ -2795,7 +2796,7 @@ export async function sendReportEmailAction(
       email,
       listing, // Can be null for global reports
       bookings,
-      dateRange: { from: parseDate(fromDate), to: parseDate(toDate) },
+      dateRange,
       csvContent,
       dailyCsvContent,
     });
