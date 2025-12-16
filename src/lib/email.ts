@@ -142,18 +142,18 @@ export async function sendBookingSummaryEmail(user: User, booking: Booking, list
 
 interface SendReportEmailProps {
     email: string;
-    listing: Listing | null; // Can be null for global reports
-    bookings: Booking[];
+    listing: Listing | null;
     dateRange: { from: string; to: string };
-    csvContent: string;
-    dailyCsvContent: string;
+    guestOccupancyCsv: string;
+    salesReportCsv: string;
+    recordOfPaymentsCsv: string;
 }
   
 /**
  * Sends a report email containing booking data.
  * @param props - The properties for the report email.
  */
-export async function sendReportEmail({ email, csvContent, dailyCsvContent, ...props }: SendReportEmailProps) {
+export async function sendReportEmail({ email, guestOccupancyCsv, salesReportCsv, recordOfPaymentsCsv, ...props }: SendReportEmailProps) {
     if (!canSendEmail()) return;
   
     try {
@@ -164,12 +164,16 @@ export async function sendReportEmail({ email, csvContent, dailyCsvContent, ...p
         react: ReportEmail(props),
         attachments: [
             {
-                filename: 'report_details.csv',
-                content: Buffer.from(csvContent, 'utf-8'),
+                filename: 'guest_occupancy.csv',
+                content: Buffer.from(guestOccupancyCsv, 'utf-8'),
             },
             {
-                filename: 'report_daily_summary.csv',
-                content: Buffer.from(dailyCsvContent, 'utf-8'),
+                filename: 'sales_report.csv',
+                content: Buffer.from(salesReportCsv, 'utf-8'),
+            },
+            {
+                filename: 'record_of_payments.csv',
+                content: Buffer.from(recordOfPaymentsCsv, 'utf-8'),
             }
         ]
       });

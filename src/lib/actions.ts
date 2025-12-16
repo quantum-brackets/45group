@@ -50,13 +50,33 @@ import {
   calculateBookingFinancials,
   differenceInDays,
   daysInterval,
-  areNamesSimilar,
-  subDays,
   parseDate,
   formatDateToStr,
+  findDuplicateUsers,
 } from "@/lib/utils";
 import { getAllBookings, getBookingsByDateRange } from "./data";
 import { EVENT_BOOKING_DAILY_HRS, MAX_DISCOUNT_PERCENT } from "./constants";
+import { intersection, difference } from 'date-fns';
+
+
+/**
+ * Helper function to determine if two user names are similar.
+ * Returns true if they share at least two common name parts.
+ * @param name1 - The first name string.
+ * @param name2 - The second name string.
+ * @returns A boolean indicating if the names are similar.
+ */
+function areNamesSimilar(name1: string, name2: string): boolean {
+    if (!name1 || !name2) return false;
+
+    const tokens1 = name1.toLowerCase().split(/\s+/).filter(Boolean);
+    const tokens2 = name2.toLowerCase().split(/\s+/).filter(Boolean);
+
+    const commonTokens = tokens1.filter(token => tokens2.includes(token));
+    
+    return commonTokens.length >= 2;
+}
+
 
 /**
  * Finds the most similar existing user based on name.
@@ -2611,103 +2631,6 @@ const SendReportEmailSchema = z.object({
   email: z.string().email(),
 });
 
-function getDailySummaryCsv(
-  bookings: Booking[],
-  dateRange: { from: string; to: string },
-  listing: Listing | null
-) {
-  const dailyData: Record<
-    string,
-    {
-      date: string;
-      unitsUsed: number;
-      dailyCharge: number;
-      payments: Record<Payment["method"], number>;
-      totalPaid: number;
-      balance: number;
-    }
-  > = {};
-  const reportDays = daysInterval(dateRange.from, dateRange.to);
-
-  reportDays.forEach((day: any) => {
-    const dayStr = formatDateToStr(day);
-    dailyData[dayStr] = {
-      date: dayStr,
-      unitsUsed: 0,
-      dailyCharge: 0,
-      payments: { Cash: 0, Transfer: 0, Debit: 0, Credit: 0 },
-      totalPaid: 0,
-      balance: 0,
-    };
-  });
-
-  bookings.forEach((booking) => {
-    const listingForBooking = {
-      price: booking.price,
-      price_unit: booking.price_unit,
-      ...listing,
-    };
-    const bookingDays = daysInterval(booking.startDate, booking.endDate);
-    const bookingDuration =
-      differenceInDays(booking.endDate, booking.startDate) || 1;
-    const dailyRate = (listingForBooking.price || 0) / bookingDuration;
-
-    bookingDays.forEach((day: any) => {
-      if (day >= parseDate(dateRange.from) && day <= parseDate(dateRange.to)) {
-        const dayStr = formatDateToStr(day);
-        if (dailyData[dayStr]) {
-          dailyData[dayStr].unitsUsed += (booking.inventoryIds || []).length;
-          dailyData[dayStr].dailyCharge +=
-            dailyRate * (booking.inventoryIds || []).length;
-        }
-      }
-    });
-
-    (booking.payments || []).forEach((payment) => {
-      const paymentDayStr = formatDateToStr(payment.timestamp);
-      if (dailyData[paymentDayStr]) {
-        dailyData[paymentDayStr].payments[payment.method] =
-          (dailyData[paymentDayStr].payments[payment.method] || 0) +
-          payment.amount;
-        dailyData[paymentDayStr].totalPaid += payment.amount;
-      }
-    });
-  });
-
-  Object.values(dailyData).forEach((day) => {
-    day.balance = day.dailyCharge - day.totalPaid;
-  });
-
-  const headers = [
-    "Date",
-    "Units Used",
-    "Daily Charge",
-    "Paid (Cash)",
-    "Paid (Transfer)",
-    "Paid (Debit)",
-    "Paid (Credit)",
-    "Owed",
-    "Currency",
-  ];
-  const currencyCode = listing?.currency || bookings[0]?.currency || "NGN";
-  const rows = Object.values(dailyData).map((d) =>
-    [
-      d.date,
-      d.unitsUsed,
-      d.dailyCharge.toFixed(2),
-      d.payments.Cash.toFixed(2),
-      d.payments.Transfer.toFixed(2),
-      d.payments.Debit.toFixed(2),
-      d.payments.Credit.toFixed(2),
-      d.balance.toFixed(2),
-      currencyCode,
-    ]
-      .map((field) => `"${String(field || "").replace(/"/g, '""')}"`)
-      .join(",")
-  );
-
-  return [headers.join(","), ...rows].join("\n");
-}
 
 export async function sendReportEmailAction(
   data: z.infer<typeof SendReportEmailSchema>
@@ -2770,57 +2693,103 @@ export async function sendReportEmailAction(
   }
 
   try {
-    const headers = [
-      "Booking ID",
-      "Guest",
-      "Venue",
-      "Units",
-      "Start Date",
-      "End Date",
-      "Duration (days)",
-      "Paid",
-      "Owed",
-      "Balance",
-      "Status",
-      "Currency",
-    ];
-    const currencyCode = listing?.currency || bookings[0]?.currency || "NGN";
-
-    const rows = bookings.map((b) => {
-      const financials = calculateBookingFinancials(
-        b,
-        listing ? listing : ({ ...b } as Listing)
-      );
-      return [
-        b.id,
-        b.userName,
-        b.listingName,
-        b.inventoryNames?.join(", ") || "N/A",
-        b.startDate,
-        b.endDate,
-        financials.stayDuration,
-        financials.totalPayments.toFixed(2),
-        financials.totalBill.toFixed(2),
-        financials.balance.toFixed(2),
-        b.status,
-        currencyCode,
-      ]
-        .map((field) => `"${String(field || "").replace(/"/g, '""')}"`)
-        .join(",");
-    });
-
-    const csvContent = [headers.join(","), ...rows].join("\n");
     const dateRange = { from: fromDate, to: toDate };
-    const dailyCsvContent = getDailySummaryCsv(bookings, dateRange, listing);
+
+    // --- GUEST OCCUPANCY CSV ---
+    const guestOccupancyHeaders = ["S/N", "Guest Name", "Room No", "Methods of payment", "Amount", "No. of nights"];
+    const guestOccupancyRows = bookings.map((b, index) => {
+        const bookingInterval = { start: parseDate(b.startDate), end: parseDate(b.endDate) };
+        const reportInterval = { start: parseDate(fromDate), end: parseDate(toDate) };
+        const overlap = intersection(bookingInterval, reportInterval);
+        
+        const nightsCharged = overlap ? differenceInDays(overlap.end, overlap.start) + 1 : 0;
+        
+        const totalDuration = differenceInDays(b.endDate, b.startDate) + 1;
+        const dailyRate = (b.price || 0) / (totalDuration || 1);
+        const accommodationAmount = dailyRate * nightsCharged;
+
+        const paymentMethods = [...new Set((b.payments || []).map(p => p.method))].join(', ');
+        
+        return [
+            index + 1,
+            b.userName,
+            b.inventoryNames?.join(", ") || "N/A",
+            paymentMethods,
+            accommodationAmount.toFixed(2),
+            nightsCharged
+        ].map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(',');
+    });
+    const guestOccupancyCsv = [guestOccupancyHeaders.join(','), ...guestOccupancyRows].join('\n');
+
+    // --- SALES REPORT CSV ---
+    const salesReport: Record<string, number> = {
+        'Accomodation': 0, 'Kitchen': 0, 'Bar (drinking)': 0, 'Bar (wine)': 0, 'Service charge': 0, 'Laundry': 0, 'Other': 0
+    };
+    bookings.forEach(b => {
+        const bookingInterval = { start: parseDate(b.startDate), end: parseDate(b.endDate) };
+        const reportInterval = { start: parseDate(fromDate), end: parseDate(toDate) };
+        const overlap = intersection(bookingInterval, reportInterval);
+        const nightsCharged = overlap ? differenceInDays(overlap.end, overlap.start) + 1 : 0;
+        const totalDuration = differenceInDays(b.endDate, b.startDate) + 1;
+        const dailyRate = (b.price || 0) / (totalDuration || 1);
+        salesReport['Accomodation'] += dailyRate * nightsCharged;
+
+        (b.bills || []).forEach(bill => {
+            const billDate = parseDate(bill.createdAt.substring(0, 10));
+            if(billDate >= reportInterval.start && billDate <= reportInterval.end) {
+                if(salesReport.hasOwnProperty(bill.description)) {
+                    salesReport[bill.description] += bill.amount;
+                } else {
+                    salesReport['Other'] += bill.amount;
+                }
+            }
+        });
+    });
+    const salesReportHeaders = ["Description", "Amount"];
+    const salesReportRows = Object.entries(salesReport).map(([desc, amount]) => 
+        [`"${desc}"`, amount.toFixed(2)].join(',')
+    );
+    const salesReportCsv = [salesReportHeaders.join(','), ...salesReportRows].join('\n');
+
+    // --- RECORD OF PAYMENTS CSV ---
+    const recordOfPaymentsHeaders = ["Name of customer", "Payment method", "Amount", "Date of transfer", "Notes"];
+    const allPayments = bookings.flatMap(b => 
+        (b.payments || []).map(p => {
+            const paymentDate = parseDate(p.timestamp.substring(0,10));
+             if (paymentDate >= parseDate(fromDate) && paymentDate <= parseDate(toDate)) {
+                return {
+                    customerName: b.userName,
+                    method: p.method,
+                    amount: p.amount,
+                    date: p.timestamp.substring(0, 10),
+                    notes: p.notes
+                }
+            }
+            return null;
+        })
+    ).filter(p => p !== null);
+
+    const recordOfPaymentsRows = allPayments.map(p => 
+        [
+            p!.customerName,
+            p!.method,
+            p!.amount.toFixed(2),
+            p!.date,
+            p!.notes
+        ].map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(',')
+    );
+    const recordOfPaymentsCsv = [recordOfPaymentsHeaders.join(','), ...recordOfPaymentsRows].join('\n');
+    
 
     await sendReportEmail({
       email,
-      listing, // Can be null for global reports
-      bookings,
+      listing,
       dateRange,
-      csvContent,
-      dailyCsvContent,
+      guestOccupancyCsv,
+      salesReportCsv,
+      recordOfPaymentsCsv,
     });
+
     return { success: true, message: `Report successfully sent to ${email}` };
   } catch (error) {
     console.error("Failed to send report email:", error);
@@ -2931,7 +2900,7 @@ export async function createWalkInReservationAction(
     }
 
     const endDate =
-      listing.type === ListingTypes.HOTEL ? subDays(today, -1) : today;
+      listing.type === ListingTypes.HOTEL ? formatDateToStr(difference(parseDate(today), { days: -1 })) : today;
 
     const availableInventory = await findAvailableInventory(
       supabase,

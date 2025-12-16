@@ -15,11 +15,9 @@ import {
 import * as React from "react";
 import type { Booking, Listing } from "@/lib/types";
 import { format } from "date-fns";
-import { calculateBookingFinancials, formatCurrency } from "@/lib/utils";
 
 export interface ReportEmailProps {
   listing: Listing | null; // Can be null for global reports
-  bookings: Booking[];
   dateRange: { from: string; to: string };
 }
 
@@ -27,38 +25,14 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
 export const ReportEmail = ({
   listing,
-  bookings,
   dateRange,
 }: ReportEmailProps) => {
-  const bookingsWithFinancials = bookings.map((b) => ({
-    ...b,
-    financials: calculateBookingFinancials(b, listing),
-  }));
-
-  const financialSummary = bookingsWithFinancials.reduce(
-    (acc, booking) => {
-      const target =
-        booking.status === "Cancelled" ? acc.cancelled : acc.active;
-      target.count += 1;
-      target.totalPaid += booking.financials.totalPayments;
-      target.totalOwed += booking.financials.totalBill;
-      target.balance += booking.financials.balance;
-      return acc;
-    },
-    {
-      active: { count: 0, totalPaid: 0, totalOwed: 0, balance: 0 },
-      cancelled: { count: 0, totalPaid: 0, totalOwed: 0, balance: 0 },
-    }
-  );
-
-  // Assume a default currency if no single listing is provided
-  const currency = listing?.currency || "NGN";
-
+  
   return (
     <Html>
       <Head />
       <Preview>
-        Report for {listing?.name || "All Venues"} from {dateRange.from}
+        Report for {listing?.name || "All Venues"} from {dateRange.from} to {dateRange.to}
       </Preview>
       <Body style={main}>
         <Container style={container}>
@@ -69,6 +43,14 @@ export const ReportEmail = ({
             alt="45 Booking Logo"
           />
           <Heading style={heading}>Booking Report</Heading>
+          <Text style={paragraph}>
+            Attached you will find the requested booking reports:
+          </Text>
+          <ul>
+            <li style={paragraph}>- Guest Occupancy Report</li>
+            <li style={paragraph}>- Sales Report</li>
+            <li style={paragraph}>- Record of Payments</li>
+          </ul>
           <Section style={detailsSection}>
             <Row>
               <Column style={column}>
@@ -83,94 +65,6 @@ export const ReportEmail = ({
               </Column>
             </Row>
           </Section>
-
-          <Heading as="h2" style={subHeading}>
-            Financial Summary
-          </Heading>
-          <table style={table} cellPadding={0} cellSpacing={0}>
-            <thead style={tableHead}>
-              <tr>
-                <th style={tableCell}>Category</th>
-                <th style={tableCell}>Total Paid</th>
-                <th style={tableCell}>Total Owed</th>
-                <th style={tableCell}>Balance</th>
-              </tr>
-            </thead>
-            <tbody style={tableBody}>
-              <tr>
-                <td style={tableCell}>
-                  {financialSummary.active.count} Active/Completed Booking(s)
-                </td>
-                <td style={tableCell}>
-                  {formatCurrency(financialSummary.active.totalPaid, currency)}
-                </td>
-                <td style={tableCell}>
-                  {formatCurrency(financialSummary.active.totalOwed, currency)}
-                </td>
-                <td style={tableCell}>
-                  {formatCurrency(financialSummary.active.balance, currency)}
-                </td>
-              </tr>
-              <tr>
-                <td style={tableCell}>
-                  {financialSummary.cancelled.count} Cancelled Booking(s)
-                </td>
-                <td style={tableCell}>
-                  {formatCurrency(
-                    financialSummary.cancelled.totalPaid,
-                    currency
-                  )}
-                </td>
-                <td style={tableCell}>
-                  {formatCurrency(
-                    financialSummary.cancelled.totalOwed,
-                    currency
-                  )}
-                </td>
-                <td style={tableCell}>
-                  {formatCurrency(financialSummary.cancelled.balance, currency)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <Heading as="h2" style={subHeading}>
-            Booking Details
-          </Heading>
-          <table style={table} cellPadding={0} cellSpacing={0}>
-            <thead style={tableHead}>
-              <tr>
-                <th style={tableCell}>Guest</th>
-                {!listing && <th style={tableCell}>Venue</th>}
-                <th style={tableCell}>Units</th>
-                <th style={tableCell}>Dates</th>
-                <th style={tableCell}>Status</th>
-                <th style={tableCell}>Paid</th>
-                <th style={tableCell}>Balance</th>
-              </tr>
-            </thead>
-            <tbody style={tableBody}>
-              {bookingsWithFinancials.map((booking) => (
-                <tr key={booking.id}>
-                  <td style={tableCell}>{booking.userName}</td>
-                  {!listing && <td style={tableCell}>{booking.listingName}</td>}
-                  <td style={tableCell}>
-                    {booking.inventoryNames?.join(", ")}
-                  </td>
-                  <td style={tableCell}>
-                    {booking.startDate} - {booking.endDate}
-                  </td>
-                  <td style={tableCell}>{booking.status}</td>
-                  <td style={tableCell}>
-                    {formatCurrency(booking.financials.totalPayments, currency)}
-                  </td>
-                  <td style={tableCell}>
-                    {formatCurrency(booking.financials.balance, currency)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
 
           <Hr style={hr} />
           <Text style={footer}>
@@ -196,7 +90,7 @@ const container = {
   margin: "0 auto",
   padding: "20px 0 48px",
   marginBottom: "64px",
-  maxWidth: "800px",
+  maxWidth: "600px",
 };
 
 const heading = {
@@ -207,11 +101,10 @@ const heading = {
   color: "#333",
 };
 
-const subHeading = {
-  fontSize: "20px",
-  fontWeight: "bold",
-  color: "#d34c23",
-  padding: "20px 20px 10px 20px",
+const paragraph = {
+    fontSize: '16px',
+    lineHeight: '24px',
+    color: '#484848',
 };
 
 const detailsSection = {
@@ -239,41 +132,6 @@ const detailText = {
   margin: "0",
 };
 
-const summarySection = {
-  textAlign: "center" as const,
-  margin: "0 20px 20px 20px",
-  border: "1px solid #e6e6e6",
-  borderRadius: "5px",
-};
-
-const summaryCell = {
-  padding: "10px",
-};
-
-const summaryTitle = {
-  fontWeight: "bold",
-  color: "#555",
-};
-
-const table = {
-  width: "100%",
-  borderCollapse: "collapse" as const,
-  padding: "0 20px",
-  marginBottom: "20px",
-};
-
-const tableHead = {
-  backgroundColor: "#f0f0f0",
-};
-
-const tableBody = {};
-
-const tableCell = {
-  padding: "8px 12px",
-  borderBottom: "1px solid #e6e6e6",
-  textAlign: "left" as const,
-  fontSize: "12px",
-};
 
 const hr = {
   borderColor: "#e6e6e6",
