@@ -2625,6 +2625,7 @@ const SendReportEmailSchema = z.object({
   location: z.string().optional(),
   fromDate: z.string(),
   toDate: z.string(),
+  period: z.string(),
   email: z.string().email(),
 });
 
@@ -2645,7 +2646,7 @@ export async function sendReportEmailAction(
     return { success: false, message: "Invalid data provided for report." };
   }
 
-  const { listingId, location, fromDate, toDate, email } =
+  const { listingId, location, fromDate, toDate, period, email } =
     validatedFields.data;
 
   let listing: Listing | null = null;
@@ -2673,7 +2674,7 @@ export async function sendReportEmailAction(
     if (location) {
       listing = {
         id: location,
-        name: `Location: ${decodeURIComponent(location)}`,
+        name: decodeURIComponent(location),
         location: location,
         type: "hotel", // placeholder
         description: "",
@@ -2694,7 +2695,7 @@ export async function sendReportEmailAction(
     const reportInterval = { start: parseDate(fromDate), end: parseDate(toDate) };
 
     // --- GUEST OCCUPANCY CSV ---
-    const guestOccupancyHeaders = ["S/N", "Guest Name", "Room No", "Methods of payment", "Amount", "No. of nights"];
+    const guestOccupancyHeaders = ["S/N", "Guest Name", "Methods of payment", "Amount", "No. of nights", "Room No"];
     const guestOccupancyRows = bookings.map((b, index) => {
         const bookingStart = parseDate(b.startDate);
         const bookingEnd = parseDate(b.endDate);
@@ -2717,10 +2718,10 @@ export async function sendReportEmailAction(
         return [
             index + 1,
             b.userName,
-            b.inventoryNames?.join(", ") || "N/A",
             paymentMethods,
             accommodationAmount.toFixed(2),
-            nightsCharged
+            nightsCharged,
+            b.inventoryNames?.join(", ") || "N/A",
         ].map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(',');
     });
     const guestOccupancyCsv = [guestOccupancyHeaders.join(','), ...guestOccupancyRows].join('\n');
@@ -2777,15 +2778,16 @@ export async function sendReportEmailAction(
             }
             return null;
         })
-    ).filter(p => p !== null);
+    ).filter((p): p is NonNullable<typeof p> => p !== null)
+    .sort((a, b) => a.date.localeCompare(b.date));
 
     const recordOfPaymentsRows = allPayments.map(p => 
         [
-            p!.customerName,
-            p!.method,
-            p!.amount.toFixed(2),
-            p!.date,
-            p!.notes
+            p.customerName,
+            p.method,
+            p.amount.toFixed(2),
+            p.date,
+            p.notes
         ].map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(',')
     );
     const recordOfPaymentsCsv = [recordOfPaymentsHeaders.join(','), ...recordOfPaymentsRows].join('\n');
@@ -2795,6 +2797,7 @@ export async function sendReportEmailAction(
       email,
       listing,
       dateRange,
+      period,
       guestOccupancyCsv,
       salesReportCsv,
       recordOfPaymentsCsv,

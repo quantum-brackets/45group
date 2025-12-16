@@ -547,6 +547,7 @@ export function ListingReport({
         location: location,
         fromDate: initialDateRange.from,
         toDate: initialDateRange.to,
+        period: `${initialPeriod.amount}${initialPeriod.unit}`,
         email,
       });
 

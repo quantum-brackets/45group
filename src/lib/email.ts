@@ -144,6 +144,7 @@ interface SendReportEmailProps {
     email: string;
     listing: Listing | null;
     dateRange: { from: string; to: string };
+    period: string;
     guestOccupancyCsv: string;
     salesReportCsv: string;
     recordOfPaymentsCsv: string;
@@ -155,24 +156,29 @@ interface SendReportEmailProps {
  */
 export async function sendReportEmail({ email, guestOccupancyCsv, salesReportCsv, recordOfPaymentsCsv, ...props }: SendReportEmailProps) {
     if (!canSendEmail()) return;
+
+    const venueName = props.listing?.name || 'All Venues';
+    const reportDate = props.dateRange.to;
+    const period = props.period;
+    const safeVenueName = venueName.replace(/[^a-zA-Z0-9]/g, ' ').replace(/\s+/g, ' ');
   
     try {
       await resend.emails.send({
         from: fromEmail!,
         to: email,
-        subject: `Booking Report for ${props.listing?.name || 'All Venues'}`,
+        subject: `Booking Report for ${venueName} (${props.dateRange.from} to ${props.dateRange.to})`,
         react: ReportEmail(props),
         attachments: [
             {
-                filename: 'guest_occupancy.csv',
+                filename: `Guest Occupancy ${safeVenueName} ${reportDate} ${period}.csv`,
                 content: Buffer.from(guestOccupancyCsv, 'utf-8'),
             },
             {
-                filename: 'sales_report.csv',
+                filename: `Sales Report ${safeVenueName} ${reportDate} ${period}.csv`,
                 content: Buffer.from(salesReportCsv, 'utf-8'),
             },
             {
-                filename: 'record_of_payments.csv',
+                filename: `Record of Payments ${safeVenueName} ${reportDate} ${period}.csv`,
                 content: Buffer.from(recordOfPaymentsCsv, 'utf-8'),
             }
         ]
