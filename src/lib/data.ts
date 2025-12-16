@@ -65,11 +65,11 @@ const unpackBooking = (dbBooking: any): Booking => {
   // For backwards compatibility, derive `createdAt` from the actions array if not present.
   // New bookings will have `data.createdAt` directly.
   const createdAt =
-    data?.createdAt ||
+    (data?.createdAt ||
     (data?.actions && data.actions.length > 0
       ? data.actions.find((a: BookingAction) => a.action === "Created")
           ?.timestamp
-      : new Date(0).toISOString()); // Fallback for very old data with no actions
+      : new Date(0).toISOString())).substr(0, 10); // Fallback for very old data with no actions
 
   return {
     ...rest,

@@ -522,7 +522,7 @@ export function ListingReport({
       });
 
       (booking.payments || []).forEach((payment) => {
-        const paymentDayStr = formatDateToStr(payment.timestamp);
+        const paymentDayStr = formatDateToStr(payment.timestamp.substr(0, 10));
         if (dailyData[paymentDayStr]) {
           dailyData[paymentDayStr].payments[payment.method] =
             (dailyData[paymentDayStr].payments[payment.method] || 0) +
