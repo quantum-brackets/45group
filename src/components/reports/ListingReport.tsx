@@ -488,7 +488,7 @@ export function ListingReport({
     const reportDays = daysInterval(initialDateRange.from, initialDateRange.to);
 
     reportDays.forEach((day: any) => {
-      const dayStr = day;
+      const dayStr = formatDateToStr(day);
       dailyData[dayStr] = {
         date: dayStr,
         unitsUsed: 0,
@@ -512,8 +512,8 @@ export function ListingReport({
       const dailyRate = (listingForBooking.price || 0) / bookingDuration;
 
       bookingDays.forEach((day: any) => {
-        if (day >= initialDateRange.from! && day <= initialDateRange.to!) {
-          const dayStr = day;
+        if (day >= parseDate(initialDateRange.from!) && day <= parseDate(initialDateRange.to!)) {
+          const dayStr = formatDateToStr(day);
           if (dailyData[dayStr]) {
             dailyData[dayStr].unitsUsed += (booking.inventoryIds || []).length;
             dailyData[dayStr].dailyCharge +=

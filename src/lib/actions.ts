@@ -53,6 +53,7 @@ import {
   areNamesSimilar,
   subDays,
   parseDate,
+  formatDateToStr,
 } from "@/lib/utils";
 import { getAllBookings, getBookingsByDateRange } from "./data";
 import { EVENT_BOOKING_DAILY_HRS, MAX_DISCOUNT_PERCENT } from "./constants";
@@ -2629,7 +2630,7 @@ function getDailySummaryCsv(
   const reportDays = daysInterval(dateRange.from, dateRange.to);
 
   reportDays.forEach((day: any) => {
-    const dayStr = day;
+    const dayStr = formatDateToStr(day);
     dailyData[dayStr] = {
       date: dayStr,
       unitsUsed: 0,
@@ -2652,8 +2653,8 @@ function getDailySummaryCsv(
     const dailyRate = (listingForBooking.price || 0) / bookingDuration;
 
     bookingDays.forEach((day: any) => {
-      if (day >= dateRange.from && day <= dateRange.to) {
-        const dayStr = day;
+      if (day >= parseDate(dateRange.from) && day <= parseDate(dateRange.to)) {
+        const dayStr = formatDateToStr(day);
         if (dailyData[dayStr]) {
           dailyData[dayStr].unitsUsed += (booking.inventoryIds || []).length;
           dailyData[dayStr].dailyCharge +=
@@ -2663,7 +2664,7 @@ function getDailySummaryCsv(
     });
 
     (booking.payments || []).forEach((payment) => {
-      const paymentDayStr = payment.timestamp;
+      const paymentDayStr = formatDateToStr(payment.timestamp);
       if (dailyData[paymentDayStr]) {
         dailyData[paymentDayStr].payments[payment.method] =
           (dailyData[paymentDayStr].payments[payment.method] || 0) +
