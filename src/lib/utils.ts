@@ -47,7 +47,7 @@ function formatDateToStr(
 function parseDate(dateStr: string) {
   const [year, month, day] = dateStr.split("-").map(Number);
   // Note: month is 0-indexed in JS Date
-  return new Date(year, month - 1, day);
+  return new Date(Date.UTC(year, month - 1, day));
 }
 
 function differenceInDays(dateStr1: string, dateStr2: string) {

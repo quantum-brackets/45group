@@ -53,7 +53,7 @@ import {
 } from "@/lib/utils";
 import { getAllBookings, getBookingsByDateRange } from "./data";
 import { EVENT_BOOKING_DAILY_HRS, MAX_DISCOUNT_PERCENT } from "./constants";
-import { addDays, differenceInDays, intersection } from "date-fns";
+import { addDays, differenceInDays } from "date-fns";
 
 
 /**
@@ -2691,17 +2691,24 @@ export async function sendReportEmailAction(
 
   try {
     const dateRange = { from: fromDate, to: toDate };
+    const reportInterval = { start: parseDate(fromDate), end: parseDate(toDate) };
 
     // --- GUEST OCCUPANCY CSV ---
     const guestOccupancyHeaders = ["S/N", "Guest Name", "Room No", "Methods of payment", "Amount", "No. of nights"];
     const guestOccupancyRows = bookings.map((b, index) => {
-        const bookingInterval = { start: parseDate(b.startDate), end: parseDate(b.endDate) };
-        const reportInterval = { start: parseDate(fromDate), end: parseDate(toDate) };
-        const overlap = intersection(bookingInterval, reportInterval);
+        const bookingStart = parseDate(b.startDate);
+        const bookingEnd = parseDate(b.endDate);
         
-        const nightsCharged = overlap ? differenceInDays(overlap.end, overlap.start) + 1 : 0;
+        // Calculate the actual start and end of the overlap
+        const overlapStart = new Date(Math.max(bookingStart.getTime(), reportInterval.start.getTime()));
+        const overlapEnd = new Date(Math.min(bookingEnd.getTime(), reportInterval.end.getTime()));
+
+        let nightsCharged = 0;
+        if (overlapStart <= overlapEnd) {
+            nightsCharged = differenceInDays(overlapEnd, overlapStart) + 1;
+        }
         
-        const totalDuration = differenceInDays(parseDate(b.endDate), parseDate(b.startDate)) + 1;
+        const totalDuration = differenceInDays(bookingEnd, bookingStart) + 1;
         const dailyRate = (b.price || 0) / (totalDuration || 1);
         const accommodationAmount = dailyRate * nightsCharged;
 
@@ -2723,11 +2730,17 @@ export async function sendReportEmailAction(
         'Accomodation': 0, 'Kitchen': 0, 'Bar (drinking)': 0, 'Bar (wine)': 0, 'Service charge': 0, 'Laundry': 0, 'Other': 0
     };
     bookings.forEach(b => {
-        const bookingInterval = { start: parseDate(b.startDate), end: parseDate(b.endDate) };
-        const reportInterval = { start: parseDate(fromDate), end: parseDate(toDate) };
-        const overlap = intersection(bookingInterval, reportInterval);
-        const nightsCharged = overlap ? differenceInDays(overlap.end, overlap.start) + 1 : 0;
-        const totalDuration = differenceInDays(parseDate(b.endDate), parseDate(b.startDate)) + 1;
+        const bookingStart = parseDate(b.startDate);
+        const bookingEnd = parseDate(b.endDate);
+        const overlapStart = new Date(Math.max(bookingStart.getTime(), reportInterval.start.getTime()));
+        const overlapEnd = new Date(Math.min(bookingEnd.getTime(), reportInterval.end.getTime()));
+
+        let nightsCharged = 0;
+        if (overlapStart <= overlapEnd) {
+            nightsCharged = differenceInDays(overlapEnd, overlapStart) + 1;
+        }
+
+        const totalDuration = differenceInDays(bookingEnd, bookingStart) + 1;
         const dailyRate = (b.price || 0) / (totalDuration || 1);
         salesReport['Accomodation'] += dailyRate * nightsCharged;
 
@@ -2753,7 +2766,7 @@ export async function sendReportEmailAction(
     const allPayments = bookings.flatMap(b => 
         (b.payments || []).map(p => {
             const paymentDate = parseDate(p.timestamp.substring(0,10));
-             if (paymentDate >= parseDate(fromDate) && paymentDate <= parseDate(toDate)) {
+             if (paymentDate >= reportInterval.start && paymentDate <= reportInterval.end) {
                 return {
                     customerName: b.userName,
                     method: p.method,
