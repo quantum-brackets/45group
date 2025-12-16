@@ -48,15 +48,12 @@ import { hasPermission } from "@/lib/permissions";
 import {
   generateRandomString,
   calculateBookingFinancials,
-  differenceInDays,
-  daysInterval,
   parseDate,
   formatDateToStr,
-  findDuplicateUsers,
 } from "@/lib/utils";
 import { getAllBookings, getBookingsByDateRange } from "./data";
 import { EVENT_BOOKING_DAILY_HRS, MAX_DISCOUNT_PERCENT } from "./constants";
-import { intersection, difference } from 'date-fns';
+import { addDays, differenceInDays, intersection } from "date-fns";
 
 
 /**
@@ -1347,7 +1344,7 @@ function calculateBookingBalance(booking: Booking, listing: Listing) {
   const units = (booking.inventoryIds || []).length;
   const guests = booking.guests;
 
-  const durationDays = differenceInDays(booking.endDate, booking.startDate);
+  const durationDays = differenceInDays(parseDate(booking.endDate), parseDate(booking.startDate));
   const nights = durationDays > 0 ? durationDays : 1;
 
   let baseBookingCost = 0;
@@ -2704,7 +2701,7 @@ export async function sendReportEmailAction(
         
         const nightsCharged = overlap ? differenceInDays(overlap.end, overlap.start) + 1 : 0;
         
-        const totalDuration = differenceInDays(b.endDate, b.startDate) + 1;
+        const totalDuration = differenceInDays(parseDate(b.endDate), parseDate(b.startDate)) + 1;
         const dailyRate = (b.price || 0) / (totalDuration || 1);
         const accommodationAmount = dailyRate * nightsCharged;
 
@@ -2730,7 +2727,7 @@ export async function sendReportEmailAction(
         const reportInterval = { start: parseDate(fromDate), end: parseDate(toDate) };
         const overlap = intersection(bookingInterval, reportInterval);
         const nightsCharged = overlap ? differenceInDays(overlap.end, overlap.start) + 1 : 0;
-        const totalDuration = differenceInDays(b.endDate, b.startDate) + 1;
+        const totalDuration = differenceInDays(parseDate(b.endDate), parseDate(b.startDate)) + 1;
         const dailyRate = (b.price || 0) / (totalDuration || 1);
         salesReport['Accomodation'] += dailyRate * nightsCharged;
 
@@ -2795,7 +2792,7 @@ export async function sendReportEmailAction(
     console.error("Failed to send report email:", error);
     return {
       success: false,
-      message: "An error occurred while sending the email.",
+      message: "An error occurred while sending the email. " + error,
     };
   }
 }
@@ -2900,7 +2897,7 @@ export async function createWalkInReservationAction(
     }
 
     const endDate =
-      listing.type === ListingTypes.HOTEL ? formatDateToStr(difference(parseDate(today), { days: -1 })) : today;
+      listing.type === ListingTypes.HOTEL ? formatDateToStr(addDays(parseDate(today), 1)) : today;
 
     const availableInventory = await findAvailableInventory(
       supabase,
