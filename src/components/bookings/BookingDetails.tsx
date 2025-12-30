@@ -790,7 +790,7 @@ export function BookingDetails({ booking, listing, session, allInventory = [], a
                                                 <TableRow key={bill.id}>
                                                     <TableCell>
                                                         <p>{bill.description}</p>
-                                                        <p className="text-xs text-muted-foreground">Added by {bill.actorName} on {formatDateToStr(bill.createdAt, 'PP')}</p>
+                                                        <p className="text-xs text-muted-foreground">Added by {bill.actorName} on {formatDateToStr(bill.createdAt.substr(0, 10), 'PP')}</p>
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">{formatCurrency(bill.amount, listing.currency)}</TableCell>
                                                 </TableRow>
